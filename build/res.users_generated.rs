@@ -1,1 +1,0 @@
-let name : & 'a str ;

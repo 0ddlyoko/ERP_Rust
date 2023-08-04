@@ -36,13 +36,17 @@ pub struct UserInit<'a> {
     name: &'a str,
 }
 
+pub struct TestUser2 {
+
+}
+
 #[model("player.age")]
 pub struct PlayerAge {
     age: u32,
 }
 
 #[test_main]
-fn test() {
+fn a_test() {
     let a = HttpStatus::Continue;
     // my_function();
     // my_function();

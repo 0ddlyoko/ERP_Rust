@@ -1,6 +1,10 @@
 use proc_macro::*;
 use syn::Fields;
 
+mod shared_data;
+
+use shared_data::SharedData;
+
 pub fn handle_model(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = syn::parse_macro_input!(item as syn::ItemStruct);
 
@@ -51,7 +55,12 @@ pub fn handle_model(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 fn save_generated_code(name: &str, code: &TokenStream) {
+    let mut shared_data = SharedData::default();
     let code_str = code.to_string();
-    let file_name = format!("build/{}_generated.rs", name.to_lowercase());
-    std::fs::write(file_name, code_str).expect("Failed to write the generated code to file");
+    {
+        let mut data_map = shared_data.data_map.write().unwrap();
+        data_map.insert(name.to_lowercase(), code_str);
+    }
+    // let file_name = format!("build/{}_generated.rs", name.to_lowercase());
+    // std::fs::write(file_name, code_str).expect("Failed to write the generated code to file");
 }
