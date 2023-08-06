@@ -1,8 +1,7 @@
 use rocket::{get, launch, routes};
-use code_gen::{model, test_main};
 use http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Pointer};
 // use my_macro::log_entry_and_exit;
 
 // #[tokio::main]
@@ -13,6 +12,8 @@ use std::fmt::{Display, Formatter};
 
 // #[launch]
 // fn rocket() -> _ {
+//     let a = routes![hello];
+//     println!("{:?}", a);
 //     rocket::build().mount("/hello", routes![hello])
 // }
 //
@@ -31,92 +32,70 @@ use std::fmt::{Display, Formatter};
 //     println!("TEST");
 // }
 
-#[model("res.users")]
-pub struct UserInit<'a> {
-    name: &'a str,
+// use diesel::prelude::*;
+//
+// #[derive(Queryable, Selectable)]
+// #[diesel(table_name = crate::schema::posts)]
+// #[diesel(check_for_backend(diesel::pg::Pg))]
+// #[loll]
+// pub struct Post {
+//     pub id: i32,
+//     pub title: String,
+//     pub body: String,
+//     pub published: bool,
+// }
+
+
+
+
+
+
+
+
+use code_gen::*;
+
+#[derive(Model, Debug)]
+#[odd(table_name = "post")]
+pub struct Post {
+    pub id: i32,
+    #[odd(required)]
+    pub title: String,
+    pub body: String,
+    pub published: bool,
 }
 
-pub struct TestUser2 {
+#[derive(Model, Debug)]
+// #[odd(is_copy = "True")]
+#[odd(table_name = "post_2")]
+pub struct Post2 {
+    pub title: String,
+    pub id: i32,
+    pub body: String,
+    pub published: bool,
+}
+
+#[derive(Model)]
+#[odd(table_name = "test_enum")]
+enum Test {
 
 }
 
-#[model("player.age")]
-pub struct PlayerAge {
-    age: u32,
+impl Display for Post {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {}, title: {}, body: {}, published: {}", self.id, self.title, self.body, self.published)
+    }
 }
 
-#[test_main]
-fn a_test() {
-    let a = HttpStatus::Continue;
-    // my_function();
-    // my_function();
+fn main() {
+    let a = Post {
+        id: 10,
+        title: "Salut".to_string(),
+        body: "Bonjour :D".to_string(),
+        published: true,
+    };
+
     println!("{}", a);
-    println!("{}", HttpStatus { code: 100 });
-    println!("{}", HttpStatus { code: 504 });
-    println!("{}", HttpStatus { code: 200 });
-    println!("{}", HttpStatus { code: 201 });
-
-    // let b = UserInit {
-    //     name: "test"
-    // };
-    // println!("{}", b);
-    // println!("{}", b.the_name());
-    // test();
+    println!("Post table_name = {}", a._name());
+    println!("Post _get_fields = {:?}", a._get_fields());
+    println!("Post _get_fields_required = {:?}", a._get_fields_required());
 }
-
-//
-// #[macro_use]
-// extern crate my_macro;
-
-// use rocket::get;
-
-// #[log_entry_and_exit("hello")]
-// fn this_will_be_destroyed() -> u32 {
-//     42
-// }
-//
-// macro_rules! create_function {
-//     ($func_name:ident) => {
-//         fn $func_name() {
-//             println!("You called {:?}()", stringify!($func_name));
-//         }
-//     }
-// }
-//
-// macro_rules! bar {
-//     (3) => {}
-// }
-//
-// macro_rules! foo {
-//     ($l:tt) => {
-//         bar!($l);
-//     }
-// }
-
-// create_function!(foo);
-// create_function!(bar);
-
-// fn main() {
-//     foo!(3);
-//     println!("{}", this_will_be_destroyed());
-// }
-
-//
-// impl<'a> Test<'a> {
-//     fn new(lol: &'a str) -> Self {
-//         Test { lol }
-//     }
-//
-//     fn show(&self) {
-//         println!("{}", self.lol);
-//     }
-// }
-
-// #[proc_macro_attribute]
-// fn test_here() {
-//     println!("haha")
-// }
-
-// fn hello(name: &str, age: u8) -> String {
-//     return "Hello %s" % (name)
-// }

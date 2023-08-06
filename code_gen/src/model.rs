@@ -1,66 +1,71 @@
-use proc_macro::*;
-use syn::Fields;
+use std::ptr::null;
+use proc_macro2::Span;
+use syn::{Data, DataStruct, DeriveInput, Fields};
+use syn::punctuated::Punctuated;
+use syn::Field as SynField;
+use syn::Result;
+use syn::spanned::Spanned;
+use syn::token::Comma;
+use crate::attrs::{AllowedModelAttr, parse_attributes};
+use crate::field::Field;
+use crate::util::generate_missing_table_name_error;
 
-mod shared_data;
-
-use shared_data::SharedData;
-
-pub fn handle_model(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = syn::parse_macro_input!(item as syn::ItemStruct);
-
-    // let fn_name = &input_fn.ident;
-
-    let attribute_value = if !attr.is_empty() {
-        attr.to_string().replace("\"", "")
-    } else {
-        "Undefined".to_string()
-    };
-
-
-    if let Fields::Named(fields_named) = &input_fn.fields {
-        let fields = fields_named.named.iter();
-
-        let generated_code = quote::quote! {
-            #(let #fields;)*
-        };
-        save_generated_code(&attribute_value, &generated_code.into());
-    }
-
-
-    return TokenStream::from(quote::quote! {
-
-    });
-
-    // if let Fields::Named(fields_named) = &input_fn.fields {
-    //     let fields = fields_named.named.iter().map(|field| &field.ident);
-    //
-    //
-    //     let generated_code: proc_macro2::TokenStream = quote::quote! {
-    //         #input_fn
-    //
-    //         impl #fn_name<'_> {
-    //             pub fn the_name(&self) -> &'static str {
-    //                 #attribute_value
-    //             }
-    //         }
-    //         //
-    //         // impl Display for #fn_name {
-    //         //     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    //         //         write!(f, "Model {}", #fn_name)
-    //         //     }
-    //         // }
-    //     };
-    //     return generated_code.into();
-    // }
+pub struct Model {
+    table_name: String,
+    fields: Vec<Field>,
 }
 
-fn save_generated_code(name: &str, code: &TokenStream) {
-    let mut shared_data = SharedData::default();
-    let code_str = code.to_string();
-    {
-        let mut data_map = shared_data.data_map.write().unwrap();
-        data_map.insert(name.to_lowercase(), code_str);
+impl Model {
+    pub fn from_item(item: &DeriveInput) -> Result<Self> {
+        let DeriveInput {
+            data, ident, attrs, ..
+        } = item;
+
+        let mut table_name: String = String::new();
+
+        for attr in parse_attributes(attrs)? {
+            match attr.item {
+                AllowedModelAttr::TableName(_, value) => table_name = value.value(),
+            }
+        }
+
+        if table_name.is_empty() {
+            return Err(generate_missing_table_name_error(ident.span()));
+        }
+
+        // Fields
+        let fields = match data {
+            Data::Struct(DataStruct {
+                             fields: Fields::Named(named_fields),
+                             ..
+                         }) => Some(&named_fields.named),
+            Data::Struct(DataStruct {
+                             fields: Fields::Unnamed(unnamed_fields),
+                             ..
+                         }) => Some(&unnamed_fields.unnamed),
+            _ => None,
+        };
+        let fields = syn_fields_from_data(fields)?;
+
+        Ok(Self {
+            table_name: table_name.to_string(),
+            fields: fields,
+        })
     }
-    // let file_name = format!("build/{}_generated.rs", name.to_lowercase());
-    // std::fs::write(file_name, code_str).expect("Failed to write the generated code to file");
+
+    pub fn table_name(&self) -> &String {
+        &self.table_name
+    }
+
+    pub fn fields(&self) -> &[Field] {
+        &self.fields
+    }
+}
+
+fn syn_fields_from_data(fields: Option<&Punctuated<SynField, Comma>>) -> Result<Vec<Field>> {
+    fields.map(|fields| {
+        fields.iter()
+            .map(|f| Field::from_item(f))
+            .collect::<Result<Vec<_>>>()
+    }).unwrap_or_else(|| Ok(Vec::new()))
 }

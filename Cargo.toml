@@ -17,3 +17,4 @@ http = { path = "http" }
 lib = { path = "lib" }
 my_macro = { path = "my_macro" }
 syn = "2.0"
+diesel = "2.1"
