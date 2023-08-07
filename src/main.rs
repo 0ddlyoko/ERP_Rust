@@ -2,6 +2,8 @@ use rocket::{get, launch, routes};
 use test_http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
 use std::fmt::{Display, Formatter, Pointer};
+use std::string::ToString;
+use diesel::IntoSql;
 // use my_macro::log_entry_and_exit;
 
 // #[tokio::main]
@@ -48,11 +50,31 @@ use std::fmt::{Display, Formatter, Pointer};
 
 
 
+pub struct Player {
+    pub id: i32,
+    pub name: String,
+}
+
+impl Player {
+    pub const model_data: &'static str = "4";
+}
+
+pub struct PlayerWithDate {
+    pub id: i32,
+    pub date: String,
+}
+
+
+
 
 
 
 
 use code_gen::*;
+use test_lib::*;
+
+// const a: &InternalModel;
+
 
 #[derive(Model, Debug)]
 #[odd(table_name = "post")]
@@ -98,4 +120,17 @@ fn main() {
     println!("Post table_name = {}", a._name());
     println!("Post _get_fields = {:?}", a._get_fields());
     println!("Post _get_fields_required = {:?}", a._get_fields_required());
+
+    let a = Post::_get_model;
+    let b = Post2::_get_model;
+
+    let models: Vec<fn() -> &'static str> = vec![a, b];
+
+    vec![&Post, &Post2];
+}
+
+fn register<E>(models: Vec<fn() -> &'static str>) {
+    for model in models {
+        println!("{:?}", model())
+    }
 }

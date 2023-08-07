@@ -15,6 +15,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
     Ok(quote! {
         impl #struct_name {
+            // pub const model_data: String = "4".to_string();
+
             pub fn _name(&self) -> &'static str {
                 #table_name
             }
@@ -25,6 +27,12 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
             pub fn _get_fields_required(&self) -> Vec<bool> {
                 vec![#(#fields_required,)*]
+            }
+        }
+
+        impl InternalModel for #struct_name {
+            fn _get_model() -> &'static str {
+                "salut"
             }
         }
     })

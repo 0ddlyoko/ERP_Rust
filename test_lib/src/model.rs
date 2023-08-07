@@ -20,3 +20,7 @@ impl Model {
         self.fields.get(field_name)
     }
 }
+
+pub trait InternalModel {
+    fn _get_model() ->&'static str;
+}
