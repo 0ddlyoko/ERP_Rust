@@ -1,5 +1,5 @@
 [package]
-name = "lib"
+name = "test_lib"
 version = "0.1.0"
 authors = ["0ddlyoko"]
 edition = "2021"

@@ -12,9 +12,9 @@ bytes = "1"
 tokio = { version = "1.29", features = ["full"] }
 hyper = "1.0.0-rc.4"
 rocket = "0.5.0-rc.3"
-code_gen = { path = "code_gen" }
-http = { path = "http" }
-lib = { path = "lib" }
-my_macro = { path = "my_macro" }
 syn = "2.0"
 diesel = "2.1"
+code_gen = { path = "code_gen" }
+test_http = { path = "test_http" }
+test_lib = { path = "test_lib" }
+my_macro = { path = "my_macro" }

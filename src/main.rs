@@ -1,5 +1,5 @@
 use rocket::{get, launch, routes};
-use http::HttpStatus;
+use test_http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
 use std::fmt::{Display, Formatter, Pointer};
 // use my_macro::log_entry_and_exit;
