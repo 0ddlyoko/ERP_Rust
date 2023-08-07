@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
-use syn::{parse_quote, Result};
+use syn::Result;
 
 use crate::model::Model;
 

@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Span};
-use syn::{Attribute, Error, LitBool, LitStr};
+use syn::{Attribute, LitStr};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -23,7 +23,7 @@ pub enum AllowedModelAttr {
     TableName(Ident, LitStr),
 }
 
-static validModelStrings: &'static [&str] = &["table_name"];
+static VALID_MODEL_STRINGS: &'static [&str] = &["table_name"];
 
 impl Parse for AllowedModelAttr {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -33,7 +33,7 @@ impl Parse for AllowedModelAttr {
         match name_str.as_str() {
             "table_name" => Ok(TableName(name, parse_eq(input, "table_name = \"my_table_name\"")?)),
             _ => {
-                Err(generate_unknown_key_error(name.span(), &name_str, validModelStrings))
+                Err(generate_unknown_key_error(name.span(), &name_str, VALID_MODEL_STRINGS))
             },
         }
     }
@@ -53,7 +53,7 @@ pub enum AllowedFieldAttr {
     Required(Ident),
 }
 
-static validFieldStrings: &'static [&str] = &["required"];
+static VALID_FIELD_STRINGS: &'static [&str] = &["required"];
 
 impl Parse for AllowedFieldAttr {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -63,7 +63,7 @@ impl Parse for AllowedFieldAttr {
         match name_str.as_str() {
             "required" => Ok(Required(name)),
             _ => {
-                Err(generate_unknown_key_error(name.span(), &name_str, validFieldStrings))
+                Err(generate_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
             },
         }
     }

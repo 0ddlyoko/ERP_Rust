@@ -1,4 +1,3 @@
-use std::fmt::{Display, format};
 use proc_macro2::Span;
 use syn::Error;
 use syn::parse::{Parse, ParseStream, Result};
@@ -24,8 +23,8 @@ pub fn generate_only_struct_allowed_error(span: Span) -> Error {
     syn::Error::new(span, format!("Model derive can only be on struct"))
 }
 
-pub fn generate_unknown_key_error(span: Span, name: &str, validStrings: &[&str]) -> Error {
-    let joined_str = validStrings.join(", ");
+pub fn generate_unknown_key_error(span: Span, name: &str, valid_strings: &[&str]) -> Error {
+    let joined_str = valid_strings.join(", ");
     syn::Error::new(span, format!("Unknown key {}. Valid keys are: {}", name, joined_str))
 }
 

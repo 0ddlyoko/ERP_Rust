@@ -1,10 +1,7 @@
-use std::ptr::null;
-use proc_macro2::Span;
 use syn::{Data, DataStruct, DeriveInput, Fields};
 use syn::punctuated::Punctuated;
 use syn::Field as SynField;
 use syn::Result;
-use syn::spanned::Spanned;
 use syn::token::Comma;
 use crate::attrs::{AllowedModelAttr, parse_attributes};
 use crate::field::Field;

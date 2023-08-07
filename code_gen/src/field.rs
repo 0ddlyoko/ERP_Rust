@@ -16,7 +16,7 @@ pub struct Field {
 impl Field {
     pub fn from_item(item: &SynField) -> Result<Self> {
         let SynField {
-            ident, ty, attrs, ..
+            ident,  attrs, ..
         } = item;
 
         let ident = match ident {
@@ -26,7 +26,6 @@ impl Field {
 
         let field_name = ident.to_string();
         let mut is_required = false;
-        let mut test: String = String::new();
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
