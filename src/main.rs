@@ -87,13 +87,12 @@ pub struct Post {
 }
 
 #[derive(Model, Debug)]
-// #[odd(is_copy = "True")]
-#[odd(table_name = "post2")]
+#[odd(table_name = "post")]
 pub struct Post2 {
-    #[odd(required)]
     pub id: i32,
     pub title: String,
     pub author: String,
+    #[odd(required)]
     pub published: bool,
 }
 
@@ -104,11 +103,12 @@ impl Display for Post {
 }
 
 fn main() {
-    register::<Post>();
-    register::<Post2>();
-}
+    let mut model_manager = ModelManager::new();
+    model_manager.register::<Post>("module_a");
+    model_manager.register::<Post2>("module_b");
 
-fn register<E>() where E: InternalModelGetterDescriptor {
-    let a = E::_get_model_descriptor();
-    println!("{:?}", a);
+    let models = model_manager.models();
+    for (name, model_descriptor) in models {
+        println!("{}, {:?}", name, model_descriptor);
+    }
 }

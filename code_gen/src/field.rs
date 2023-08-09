@@ -10,7 +10,7 @@ pub struct Field {
     field_name: String,
     field_span: Span,
     field_name_span: Span,
-    is_required: bool,
+    is_required: Option<bool>,
 }
 
 impl Field {
@@ -25,11 +25,11 @@ impl Field {
         };
 
         let field_name = ident.to_string();
-        let mut is_required = false;
+        let mut is_required = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
-                AllowedFieldAttr::Required(_) => is_required = true,
+                AllowedFieldAttr::Required(_) => is_required = Some(true),
             }
         }
 
@@ -53,7 +53,7 @@ impl Field {
         self.field_name_span
     }
 
-    pub fn required(&self) -> bool {
+    pub fn required(&self) -> Option<bool> {
         self.is_required
     }
 }
