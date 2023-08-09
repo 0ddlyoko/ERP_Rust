@@ -18,7 +18,6 @@ impl GeneratedModelDescriptor {
     }
 
     pub fn field(&self, field_name: &str) -> Option<&GeneratedFieldDescriptor> {
-        let a = "Salut";
         self.fields.get(field_name)
     }
 }

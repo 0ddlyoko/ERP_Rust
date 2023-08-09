@@ -35,3 +35,12 @@ pub fn generate_missing_table_name_error(span: Span) -> Error {
 pub fn generate_field_no_name_error(span: Span) -> Error {
     syn::Error::new(span, format!("Missing field name"))
 }
+
+pub fn option_to_tuple<E>(the_option: Option<E>, default_value: E) -> (bool, E) {
+    let is_present = the_option.is_some();
+    let value = match the_option {
+        Some(value) => value,
+        None => default_value,
+    };
+    return (is_present, value);
+}

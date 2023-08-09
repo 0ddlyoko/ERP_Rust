@@ -4,15 +4,7 @@ use syn::DeriveInput;
 use syn::Result;
 
 use crate::model::Model;
-
-fn option_to_tuple<E>(the_option: Option<E>, default_value: E) -> (bool, E) {
-    let is_present = the_option.is_some();
-    let value = match the_option {
-        Some(value) => value,
-        None => default_value,
-    };
-    return (is_present, value);
-}
+use crate::util::option_to_tuple;
 
 pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let struct_name = &item.ident;

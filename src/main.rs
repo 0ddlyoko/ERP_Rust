@@ -52,19 +52,19 @@ use diesel::IntoSql;
 
 
 
-pub struct Player {
-    pub id: i32,
-    pub name: String,
-}
-
-impl Player {
-    pub const model_data: &'static str = "4";
-}
-
-pub struct PlayerWithDate {
-    pub id: i32,
-    pub date: String,
-}
+// pub struct Player {
+//     pub id: i32,
+//     pub name: String,
+// }
+//
+// impl Player {
+//     pub const model_data: &'static str = "4";
+// }
+//
+// pub struct PlayerWithDate {
+//     pub id: i32,
+//     pub date: String,
+// }
 
 
 
