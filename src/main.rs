@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use rocket::{get, launch, routes};
 use test_http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
 use std::fmt::{Display, Formatter, Pointer};
+use std::ptr::hash;
 use std::string::ToString;
 use diesel::IntoSql;
 // use my_macro::log_entry_and_exit;
@@ -73,14 +75,12 @@ pub struct PlayerWithDate {
 use code_gen::*;
 use test_lib::*;
 
-// const a: &InternalModel;
-
 
 #[derive(Model, Debug)]
 #[odd(table_name = "post")]
 pub struct Post {
-    pub id: i32,
     #[odd(required)]
+    pub id: i32,
     pub title: String,
     pub body: String,
     pub published: bool,
@@ -88,18 +88,13 @@ pub struct Post {
 
 #[derive(Model, Debug)]
 // #[odd(is_copy = "True")]
-#[odd(table_name = "post_2")]
+#[odd(table_name = "post2")]
 pub struct Post2 {
-    pub title: String,
+    #[odd(required)]
     pub id: i32,
-    pub body: String,
+    pub title: String,
+    pub author: String,
     pub published: bool,
-}
-
-#[derive(Model)]
-#[odd(table_name = "test_enum")]
-enum Test {
-
 }
 
 impl Display for Post {
@@ -109,28 +104,11 @@ impl Display for Post {
 }
 
 fn main() {
-    let a = Post {
-        id: 10,
-        title: "Salut".to_string(),
-        body: "Bonjour :D".to_string(),
-        published: true,
-    };
-
-    println!("{}", a);
-    println!("Post table_name = {}", a._name());
-    println!("Post _get_fields = {:?}", a._get_fields());
-    println!("Post _get_fields_required = {:?}", a._get_fields_required());
-
-    let a = Post::_get_model;
-    let b = Post2::_get_model;
-
-    let models: Vec<fn() -> &'static str> = vec![a, b];
-
-    vec![&Post, &Post2];
+    register::<Post>();
+    register::<Post2>();
 }
 
-fn register<E>(models: Vec<fn() -> &'static str>) {
-    for model in models {
-        println!("{:?}", model())
-    }
+fn register<E>() where E: InternalModelGetterDescriptor {
+    let a = E::_get_model_descriptor();
+    println!("{:?}", a);
 }

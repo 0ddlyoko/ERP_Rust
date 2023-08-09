@@ -2,6 +2,6 @@
 mod field;
 mod model;
 
-pub use field::Field;
-pub use model::Model;
-pub use model::InternalModel;
+pub use field::FieldDescriptor;
+pub use model::ModelDescriptor;
+pub use model::InternalModelGetterDescriptor;
