@@ -2,6 +2,9 @@ mod env;
 mod field;
 mod model;
 
+pub use env::Environment;
+pub use env::GlobalEnvironment;
+pub use env::ModelEnvironment;
 pub use field::GeneratedFieldDescriptor;
 pub use field::FieldDescriptor;
 pub use model::GeneratedModelDescriptor;

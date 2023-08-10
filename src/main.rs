@@ -102,6 +102,17 @@ impl Display for Post {
     }
 }
 
+impl ModelEnvironment for Post {
+    my_env : &Environment,
+    fn env(&self) -> &Environment {
+        return self.my_env;
+    }
+
+    fn restore_env(&self, env: Environment) {
+        self.my_env = env;
+    }
+}
+
 fn main() {
     let mut model_manager = ModelManager::new();
     model_manager.register::<Post>("module_a");
