@@ -6,7 +6,7 @@ use syn::DeriveInput;
 use syn::Result;
 
 use crate::model::Model;
-use crate::util::{generate_missing_table_name_error, option_to_tuple};
+use crate::util::option_to_tuple;
 
 pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
@@ -64,9 +64,20 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
     let internal_model_getter_descriptor_impl = quote! {
         impl #generics InternalModelGetterDescriptor for #struct_name #generics {
-
             fn _get_generated_model_descriptor() -> GeneratedModelDescriptor {
                 #model_descriptor
+            }
+        }
+    };
+
+    let model_environment_impl = quote! {
+        impl #generics ModelEnvironment<'env> for #struct_name #generics {
+            fn env(&self) -> &Environment<'env> {
+                self._env
+            }
+
+            fn restore_env(&mut self, env: &'env Environment<'env>) {
+                self._env = env;
             }
         }
     };
@@ -75,6 +86,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         #impl_struct
 
         #internal_model_getter_descriptor_impl
+
+        #model_environment_impl
     };
 
     Ok(result)

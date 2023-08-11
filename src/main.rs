@@ -77,22 +77,6 @@ use code_gen::*;
 
 use test_lib::*;
 
-// #[macro_export]
-macro_rules! model {
-    (
-        $(#[$derive_2:meta])*
-        $pub:vis struct $name:ident $(<$($a:tt),*>)? {
-            $($fields:tt)*
-        }
-    ) => {
-        #[derive(Model)]
-        $(#[$derive_2])*
-        $pub struct $name<'env$(, $($a),*)?> {
-            env: &'env Environment<'env>,
-            $($fields)*
-        }
-    }
-}
 
 model! {
     #[derive(Debug)]
@@ -105,6 +89,16 @@ model! {
         pub published: bool,
     }
 }
+
+// impl<'env, 'a> ModelEnvironment<'env> for Post<'env, 'a> {
+//     fn env(&self) -> &Environment<'env> {
+//         self._env
+//     }
+//
+//     fn restore_env(&mut self, env: &'env Environment<'env>) {
+//         self._env = env;
+//     }
+// }
 
 model! {
     #[derive(Debug)]

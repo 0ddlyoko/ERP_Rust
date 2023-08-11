@@ -53,7 +53,7 @@ impl GlobalEnvironment {
     }
 }
 
-pub trait ModelEnvironment {
-    fn env(&self) -> &Environment;
-    fn restore_env(&self, env: Environment);
+pub trait ModelEnvironment<'env> {
+    fn env(&self) -> &Environment<'env>;
+    fn restore_env(&mut self, env: &'env Environment<'env>);
 }
