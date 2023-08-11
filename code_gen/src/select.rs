@@ -77,13 +77,5 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         #internal_model_getter_descriptor_impl
     };
 
-    let mut file = File::create("generate/generated_code.rs");
-    let mut file = match file {
-        Ok(file) => file,
-        Err(_) => return Err(generate_missing_table_name_error(struct_name.span())),
-    };
-
-    file.write_all(result.to_string().as_bytes());
-
     Ok(result)
 }
