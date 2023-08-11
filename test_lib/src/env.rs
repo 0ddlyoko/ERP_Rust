@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::ModelManager;
 
 // Specific environment-stuff
+#[derive(Debug)]
 pub struct Environment<'a> {
     global: &'a GlobalEnvironment,
     context: HashMap<String, Box<dyn Any>>,
@@ -35,6 +36,7 @@ impl<'a> Environment<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct GlobalEnvironment {
     model_manager: ModelManager,
 }

@@ -73,45 +73,67 @@ use diesel::IntoSql;
 
 
 use code_gen::*;
+
+
 use test_lib::*;
 
-
-#[derive(Model, Debug)]
-#[odd(table_name = "post")]
-pub struct Post {
-    #[odd(required)]
-    pub id: i32,
-    pub title: String,
-    pub body: String,
-    pub published: bool,
+// #[macro_export]
+macro_rules! model {
+    (
+        $(#[$derive_2:meta])*
+        $pub:vis struct $name:ident $(<$($a:tt),*>)? {
+            $($fields:tt)*
+        }
+    ) => {
+        #[derive(Model)]
+        $(#[$derive_2])*
+        $pub struct $name<'env$(, $($a),*)?> {
+            env: &'env Environment<'env>,
+            $($fields)*
+        }
+    }
 }
 
-#[derive(Model, Debug)]
-#[odd(table_name = "post")]
-pub struct Post2 {
-    pub id: i32,
-    pub title: String,
-    pub author: String,
-    #[odd(required)]
-    pub published: bool,
+model! {
+    #[derive(Debug)]
+    #[odd(table_name = "post")]
+    pub struct Post<'a> {
+        #[odd(required)]
+        pub id: i32,
+        pub title: &'a String,
+        pub body: String,
+        pub published: bool,
+    }
 }
 
-impl Display for Post {
+model! {
+    #[derive(Debug)]
+    #[odd(table_name = "post")]
+    pub struct Post2 {
+        pub id: i32,
+        pub title: String,
+        pub author: String,
+        #[odd(required)]
+        pub published: bool,
+    }
+}
+
+impl<'env, 'a> Display for Post<'env, 'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "id: {}, title: {}, body: {}, published: {}", self.id, self.title, self.body, self.published)
     }
 }
 
-impl ModelEnvironment for Post {
-    my_env : &Environment,
-    fn env(&self) -> &Environment {
-        return self.my_env;
-    }
-
-    fn restore_env(&self, env: Environment) {
-        self.my_env = env;
-    }
-}
+// impl ModelEnvironment for Post {
+//     my_env : &Environment,
+//     fn env(&self) -> &Environment {
+//         return self.my_env;
+//     }
+//
+//     fn restore_env(&self, env: Environment) {
+//         self.my_env = env;
+//     }
+// }
 
 fn main() {
     let mut model_manager = ModelManager::new();

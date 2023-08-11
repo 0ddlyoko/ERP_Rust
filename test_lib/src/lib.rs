@@ -1,6 +1,7 @@
 mod env;
 mod field;
 mod model;
+mod r#macro;
 
 pub use env::Environment;
 pub use env::GlobalEnvironment;

@@ -61,6 +61,7 @@ impl ModelDescriptor {
     }
 }
 
+#[derive(Debug)]
 pub struct ModelManager {
     models: HashMap<String, ModelDescriptor>,
 }

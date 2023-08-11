@@ -1,13 +1,17 @@
+use std::fs::File;
+use std::io::Write;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
 use syn::Result;
 
 use crate::model::Model;
-use crate::util::option_to_tuple;
+use crate::util::{generate_missing_table_name_error, option_to_tuple};
 
 pub fn derive(item: DeriveInput) -> Result<TokenStream> {
-    let struct_name = &item.ident;
+    let DeriveInput {
+        ident: ref struct_name, ref generics, ..
+    } = item;
     let model = Model::from_item(&item)?;
 
     let table_name = model.table_name();
@@ -42,8 +46,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
-    Ok(quote! {
-        impl #struct_name {
+    let impl_struct = quote! {
+        impl #generics #struct_name #generics {
             pub fn _name(&self) -> &'static str {
                 #table_name
             }
@@ -56,12 +60,30 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 vec![#(#fields_required,)*]
             }
         }
+    };
 
-        impl InternalModelGetterDescriptor for #struct_name {
+    let internal_model_getter_descriptor_impl = quote! {
+        impl #generics InternalModelGetterDescriptor for #struct_name #generics {
 
             fn _get_generated_model_descriptor() -> GeneratedModelDescriptor {
                 #model_descriptor
             }
         }
-    })
+    };
+
+    let result = quote! {
+        #impl_struct
+
+        #internal_model_getter_descriptor_impl
+    };
+
+    let mut file = File::create("generate/generated_code.rs");
+    let mut file = match file {
+        Ok(file) => file,
+        Err(_) => return Err(generate_missing_table_name_error(struct_name.span())),
+    };
+
+    file.write_all(result.to_string().as_bytes());
+
+    Ok(result)
 }
