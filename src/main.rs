@@ -90,16 +90,6 @@ model! {
     }
 }
 
-// impl<'env, 'a> ModelEnvironment<'env> for Post<'env, 'a> {
-//     fn env(&self) -> &Environment<'env> {
-//         self._env
-//     }
-//
-//     fn restore_env(&mut self, env: &'env Environment<'env>) {
-//         self._env = env;
-//     }
-// }
-
 model! {
     #[derive(Debug)]
     #[odd(table_name = "post")]

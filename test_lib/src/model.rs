@@ -85,4 +85,8 @@ impl ModelManager {
     pub fn models(&self) -> &HashMap<String, ModelDescriptor> {
         &self.models
     }
+
+    pub fn model(&self, model: &str) -> &ModelDescriptor {
+        &self.models[model]
+    }
 }

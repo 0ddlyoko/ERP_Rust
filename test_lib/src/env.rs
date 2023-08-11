@@ -27,12 +27,10 @@ impl<'a> Environment<'a> {
 
     pub fn with_context<T: Any>(&mut self, key: &str, value: T) {
         self.context.insert(key.to_string(), Box::new(value));
-        // let mut context = self.context.clone();
-        // context.insert(key.to_string(), Box::new(value));
-        // Self {
-        //     global: self.global,
-        //     context: context,
-        // }
+    }
+
+    pub fn with_new_context<T: Any>(&mut self, key: &str, value: T) -> Environment {
+
     }
 }
 
@@ -50,6 +48,10 @@ impl GlobalEnvironment {
 
     pub fn new_env(&self) -> Environment {
         Environment::new(&self)
+    }
+
+    pub fn models(&self) -> &ModelManager {
+        &self.model_manager
     }
 }
 
