@@ -4,13 +4,13 @@ use crate::ModelManager;
 
 // Specific environment-stuff
 #[derive(Debug)]
-pub struct Environment<'a> {
-    global: &'a GlobalEnvironment,
-    context: HashMap<String, Box<dyn Any>>,
+pub struct Environment<'env> {
+    global: &'env GlobalEnvironment,
+    context: HashMap<String, String>,
 }
 
-impl<'a> Environment<'a> {
-    pub fn new(global: &'a GlobalEnvironment) -> Environment<'a> {
+impl<'env> Environment<'env> {
+    pub fn new(global: &'env GlobalEnvironment) -> Environment<'env> {
         Self {
             global: global,
             context: HashMap::new(),
@@ -25,12 +25,29 @@ impl<'a> Environment<'a> {
         &self.global.model_manager
     }
 
-    pub fn with_context<T: Any>(&mut self, key: &str, value: T) {
-        self.context.insert(key.to_string(), Box::new(value));
+    pub fn with_context(&mut self, key: &str, value: String) {
+        self.context.insert(key.to_string(), value);
     }
 
-    pub fn with_new_context<T: Any>(&mut self, key: &str, value: T) -> Environment {
+    pub fn with_new_context(&mut self, key: &str, value: String) -> Environment {
+        let mut new_env = self.clone();
+        new_env.with_context(key, value);
+        new_env
+    }
+}
 
+// impl<'env> Copy for Environment<'env> {}
+
+impl<'env> Clone for Environment<'env> {
+    fn clone(&self) -> Self {
+        let mut context = HashMap::new();
+        self.context.iter().for_each(|(key, value)| {
+            context.insert(key.clone(), (*value).clone());
+        });
+        Self {
+            global: self.global,
+            context: context,
+        }
     }
 }
 
