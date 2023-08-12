@@ -73,6 +73,8 @@ use diesel::IntoSql;
 
 
 use code_gen::*;
+use rocket::figment::providers::Env;
+use rocket::form::Context;
 
 
 use test_lib::*;
@@ -89,6 +91,17 @@ model! {
         pub published: bool,
     }
 }
+
+// impl<'env, 'a> Post<'env, 'a> {
+
+//     fn test(&mut self) {
+//         let old_context = self._env.with_new_context("skip_backorder", "true");
+//         // Call SO
+//
+//         // Restore old context
+//         self._env.restore_context(old_context);
+//     }
+// }
 
 model! {
     #[derive(Debug)]
@@ -118,6 +131,13 @@ impl<'env, 'a> Display for Post<'env, 'a> {
 //         self.my_env = env;
 //     }
 // }
+pub struct Test<'env> {
+    pub id: i32,
+    pub title: String,
+    pub author: String,
+    pub published: bool,
+    pub _env: &'env mut Environment<'env>,
+}
 
 fn main() {
     let mut model_manager = ModelManager::new();
@@ -128,4 +148,19 @@ fn main() {
     for (name, model_descriptor) in models {
         println!("{}, {:?}", name, model_descriptor);
     }
+
+    let global_env = GlobalEnvironment::new();
+    let mut env = global_env.new_env();
+
+    let post = Post {
+        id: 1,
+        title: &"Hello".to_string(),
+        body: "World".to_string(),
+        published: true,
+        _env: &mut env,
+    };
+
+    let a = post._env.with_context("test", "true");
+
+    // let post2: Post2 = post.into();
 }

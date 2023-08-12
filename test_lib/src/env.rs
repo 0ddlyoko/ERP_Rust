@@ -1,19 +1,23 @@
+mod context;
+
 use std::any::Any;
 use std::collections::HashMap;
+use std::mem;
+use crate::env::context::Context;
 use crate::ModelManager;
 
 // Specific environment-stuff
 #[derive(Debug)]
 pub struct Environment<'env> {
     global: &'env GlobalEnvironment,
-    context: HashMap<String, String>,
+    context: Context,
 }
 
 impl<'env> Environment<'env> {
     pub fn new(global: &'env GlobalEnvironment) -> Environment<'env> {
         Self {
             global: global,
-            context: HashMap::new(),
+            context: Context::new(),
         }
     }
 
@@ -25,14 +29,31 @@ impl<'env> Environment<'env> {
         &self.global.model_manager
     }
 
-    pub fn with_context(&mut self, key: &str, value: String) {
-        self.context.insert(key.to_string(), value);
+    pub fn with_context(&mut self, key: &str, value: &str) -> &mut Environment<'env> {
+        self.context.register(key, value);
+        self
     }
 
-    pub fn with_new_context(&mut self, key: &str, value: String) -> Environment {
-        let mut new_env = self.clone();
-        new_env.with_context(key, value);
-        new_env
+    pub fn with_new_context(&mut self, key: &str, value: &str) -> Context {
+        let new_context = self.context.clone();
+        let old_context = mem::replace(&mut self.context, new_context);
+        self.with_context(key, value);
+        old_context
+    }
+
+    pub fn remove_context(&mut self, key: &str) -> &mut Environment<'env> {
+        self.context.unregister(key);
+        self
+    }
+
+    pub fn restore_context(&mut self, context: Context) -> &mut Environment<'env> {
+        self.context = context;
+        self
+    }
+
+    pub fn clear_context(&mut self) -> &mut Environment<'env> {
+        self.context.clear();
+        self
     }
 }
 
@@ -40,13 +61,10 @@ impl<'env> Environment<'env> {
 
 impl<'env> Clone for Environment<'env> {
     fn clone(&self) -> Self {
-        let mut context = HashMap::new();
-        self.context.iter().for_each(|(key, value)| {
-            context.insert(key.clone(), (*value).clone());
-        });
+        let cloned_context = self.context.clone();
         Self {
             global: self.global,
-            context: context,
+            context: cloned_context,
         }
     }
 }
@@ -74,5 +92,6 @@ impl GlobalEnvironment {
 
 pub trait ModelEnvironment<'env> {
     fn env(&self) -> &Environment<'env>;
-    fn restore_env(&mut self, env: &'env Environment<'env>);
+    fn env_mut(&mut self) -> &mut Environment<'env>;
+    fn restore_env(&mut self, env: &'env mut Environment<'env>);
 }

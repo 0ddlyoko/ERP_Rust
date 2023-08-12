@@ -76,7 +76,11 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 self._env
             }
 
-            fn restore_env(&mut self, env: &'env Environment<'env>) {
+            fn env_mut(&mut self) -> &mut Environment<'env> {
+                self._env
+            }
+
+            fn restore_env(&mut self, env: &'env mut Environment<'env>) {
                 self._env = env;
             }
         }
