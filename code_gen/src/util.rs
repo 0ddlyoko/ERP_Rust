@@ -36,11 +36,21 @@ pub fn generate_field_no_name_error(span: Span) -> Error {
     syn::Error::new(span, format!("Missing field name"))
 }
 
+pub fn generate_field_no_field_error(span: Span) -> Error {
+    syn::Error::new(span, format!("Field should be of type &'field Field<TYPE>"))
+}
+
+pub fn generate_field_invalid_type_error(span: Span) -> Error {
+    syn::Error::new(span, format!("Valid TYPE are String, i32 or bool"))
+}
+
+pub fn generate_field_id_not_u32_error(span: Span) -> Error {
+    syn::Error::new(span, format!("Field should be of type u32"))
+}
+
 pub fn option_to_tuple<E>(the_option: Option<E>, default_value: E) -> (bool, E) {
-    let is_present = the_option.is_some();
-    let value = match the_option {
-        Some(value) => value,
-        None => default_value,
+    return match the_option {
+        Some(value) => (true, value),
+        None => (false, default_value),
     };
-    return (is_present, value);
 }

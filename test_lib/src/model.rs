@@ -23,6 +23,7 @@ impl GeneratedModelDescriptor {
 }
 
 pub trait InternalModelGetterDescriptor {
+    fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
 }
 
@@ -42,20 +43,37 @@ impl ModelDescriptor {
         }
     }
 
-    fn get_fields(&self) -> &HashMap<String, FieldDescriptor> {
+    pub fn get_table_name(&self) -> &String {
+        &self.table_name
+    }
+
+    pub fn get_fields(&self) -> &HashMap<String, FieldDescriptor> {
         &self.fields
     }
 
-    fn add_generated_model(&mut self, module_name: &str, generated_model_descriptor: GeneratedModelDescriptor) {
+    pub fn add_generated_model(&mut self, module_name: &str, generated_model_descriptor: GeneratedModelDescriptor) {
         self.generated_models.insert(module_name.to_string(), generated_model_descriptor);
         let generated_model_descriptor = &self.generated_models[module_name];
         for (name, field) in &generated_model_descriptor.fields {
             let existing_field = self.fields.entry(name.clone()).or_insert_with(|| {
-                FieldDescriptor::default(name.as_str())
+                FieldDescriptor::default(name.as_str(), field.default_field.clone())
             });
+            // Required
             match field.required() {
                 Some(required) => existing_field.is_required = *required,
                 _ => {}
+            }
+            // Default
+            let default_value = field.default_field();
+            let first_discriminant = std::mem::discriminant(&existing_field.default_value);
+            let second_discriminant = std::mem::discriminant(default_value);
+            if first_discriminant != second_discriminant {
+                panic!("Redefinition of field \"{}\" with a different type! ({:?} != {:?})", name, existing_field.default_value, default_value);
+                return
+            }
+            if default_value.has_entry() {
+                // Update the default value
+                existing_field.default_value.update_value(default_value);
             }
         }
     }

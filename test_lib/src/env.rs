@@ -1,24 +1,36 @@
 mod context;
 
-use std::any::Any;
-use std::collections::HashMap;
 use std::mem;
 use crate::env::context::Context;
-use crate::ModelManager;
+use crate::{CachedModels, InternalModelGetterDescriptor, ModelManager};
+use crate::cache::CachedFieldDescriptor;
 
 // Specific environment-stuff
 #[derive(Debug)]
 pub struct Environment<'env> {
     global: &'env GlobalEnvironment,
     context: Context,
+    cache: CachedModels,
+    counter: u32,
 }
 
 impl<'env> Environment<'env> {
     pub fn new(global: &'env GlobalEnvironment) -> Environment<'env> {
-        Self {
+        let mut env = Self {
             global: global,
             context: Context::new(),
-        }
+            cache: CachedModels::new(),
+            counter: 1,
+        };
+        // Load cache
+        global.model_manager.models().values().for_each(|model_descriptor| {
+            let table_name = model_descriptor.get_table_name();
+            let fields: Vec<CachedFieldDescriptor> = vec![];
+            // TODO Retrieve field type & default value
+            env.cache.add_cache_model(table_name, fields);
+        });
+
+        env
     }
 
     pub fn global(&self) -> &GlobalEnvironment {
@@ -55,16 +67,30 @@ impl<'env> Environment<'env> {
         self.context.clear();
         self
     }
+
+    pub fn cache(&self) -> &CachedModels {
+        &self.cache
+    }
+    //
+    // // TODO Move to correct class
+    // // TODO No need to have a mut class
+    // pub fn new_empty_model<IMD>(&mut self) where IMD: InternalModelGetterDescriptor {
+    //     let name = IMD::_name();
+    //     let id = self.counter;
+    //     self.counter += 1;
+    // }
 }
 
 // impl<'env> Copy for Environment<'env> {}
 
 impl<'env> Clone for Environment<'env> {
     fn clone(&self) -> Self {
-        let cloned_context = self.context.clone();
         Self {
             global: self.global,
-            context: cloned_context,
+            context: self.context.clone(),
+            // TODO Clone cache ????
+            cache: CachedModels::new(),
+            counter: 1,
         }
     }
 }

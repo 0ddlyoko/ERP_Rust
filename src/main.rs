@@ -73,6 +73,7 @@ use diesel::IntoSql;
 
 
 use code_gen::*;
+use diesel::sql_types::Integer;
 use rocket::figment::providers::Env;
 use rocket::form::Context;
 
@@ -82,14 +83,54 @@ use test_lib::*;
 
 model! {
     #[derive(Debug)]
-    #[odd(table_name = "post")]
-    pub struct Post<'a> {
-        #[odd(required)]
-        pub id: i32,
-        pub title: &'a String,
-        pub body: String,
-        pub published: bool,
+    #[odd(table_name = "res_partner")]
+    pub struct Post<'field> {
+        pub title: &'field Field<String>,
+        // pub title: &'field Option<String>,
+        pub body: &'field Field<String>,
+        #[odd(default = "true")]
+        pub published: &'field Field<bool>,
+        #[odd(default = "42")]
+        pub lol: &'field Field<i32>,
     }
+}
+
+impl Post<'_, '_> {
+    pub fn get_id(&self) -> u32 {
+        self.id
+    }
+
+    // pub fn get_title(&self) -> &Option<String> {
+    //     self.title
+    // }
+    //
+    // pub fn get_body(&self) -> &Option<String> {
+    //     self.body
+    // }
+    //
+    // pub fn get_published(&self) -> &Option<bool> {
+    //     self.published
+    // }
+    //
+    // pub fn set_title(&mut self, title: Option<String>) {
+    //     // self.title = title;
+    //     // TODO Change in cache
+    // }
+
+    // pub fn from<'env, 'field>(env: &Environment, map: HashMap<String, &Field>) -> Post<'env, 'field> {
+    //     let id = map["id"];
+    //     let title = map["title"];
+    //     let body = map["body"];
+    //     let published = map["published"];
+    //
+    //     Post {
+    //         _env: env,
+    //         id: id,
+    //         title: title,
+    //         body: body,
+    //         published: published,
+    //     }
+    // }
 }
 
 // impl<'env, 'a> Post<'env, 'a> {
@@ -105,19 +146,26 @@ model! {
 
 model! {
     #[derive(Debug)]
-    #[odd(table_name = "post")]
-    pub struct Post2 {
-        pub id: i32,
-        pub title: String,
-        pub author: String,
+    #[odd(table_name = "res_partner")]
+    pub struct Post2<'field> {
+        pub title: &'field Field<String>,
+        pub author: &'field Field<String>,
         #[odd(required)]
-        pub published: bool,
+        pub published: &'field Field<bool>,
+        // #[odd(default="45")]
+        pub lol: &'field Field<i32>,
     }
 }
 
-impl<'env, 'a> Display for Post<'env, 'a> {
+// impl SaleOrder {
+//     pub fn get_partner(&self) {
+//         self._env.
+//     }
+// }
+
+impl<'env, 'field> Display for Post<'env, 'field> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "id: {}, title: {}, body: {}, published: {}", self.id, self.title, self.body, self.published)
+        write!(f, "id: {}, title: {:?}, body: {:?}, published: {:?}", self.id, self.title, self.body, self.published)
     }
 }
 
@@ -152,15 +200,15 @@ fn main() {
     let global_env = GlobalEnvironment::new();
     let mut env = global_env.new_env();
 
-    let post = Post {
-        id: 1,
-        title: &"Hello".to_string(),
-        body: "World".to_string(),
-        published: true,
-        _env: &mut env,
-    };
+    // let post = Post {
+    //     id: 1,
+    //     title: &Option::from("Hello".to_string()),
+    //     body: &Option::from("World".to_string()),
+    //     published: &Option::from(true),
+    //     _env: &mut env,
+    // };
 
-    let a = post._env.with_context("test", "true");
+    // let a = post._env.with_context("test", "true");
 
     // let post2: Post2 = post.into();
 }

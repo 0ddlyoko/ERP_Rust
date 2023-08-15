@@ -4,7 +4,7 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use crate::attrs::AllowedFieldAttr::Required;
+use crate::attrs::AllowedFieldAttr::{Default, Required};
 use crate::attrs::AllowedModelAttr::TableName;
 use crate::util::{parse_eq, generate_unknown_key_error};
 
@@ -42,7 +42,7 @@ impl Parse for AllowedModelAttr {
 impl MySpanned for AllowedModelAttr {
     fn span(&self) -> Span {
         match self {
-            AllowedModelAttr::TableName(ident, _) => ident.span(),
+            TableName(ident, _) => ident.span(),
         }
     }
 }
@@ -51,9 +51,10 @@ impl MySpanned for AllowedModelAttr {
 
 pub enum AllowedFieldAttr {
     Required(Ident),
+    Default(Ident, LitStr),
 }
 
-static VALID_FIELD_STRINGS: &'static [&str] = &["required"];
+static VALID_FIELD_STRINGS: &'static [&str] = &["required", "default"];
 
 impl Parse for AllowedFieldAttr {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -62,6 +63,7 @@ impl Parse for AllowedFieldAttr {
 
         match name_str.as_str() {
             "required" => Ok(Required(name)),
+            "default" => Ok(Default(name, parse_eq(input, "default = \"default_value\"")?)),
             _ => {
                 Err(generate_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
             },
@@ -72,7 +74,8 @@ impl Parse for AllowedFieldAttr {
 impl MySpanned for AllowedFieldAttr {
     fn span(&self) -> Span {
         match self {
-            AllowedFieldAttr::Required(ident) => ident.span(),
+            Required(ident) => ident.span(),
+            Default(ident, _) => ident.span(),
         }
     }
 }

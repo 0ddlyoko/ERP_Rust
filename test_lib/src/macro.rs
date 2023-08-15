@@ -11,6 +11,8 @@ macro_rules! model {
         #[derive(Model)]
         $(#[$derive_2])*
         $pub struct $name<'env$(, $($a),*)?> {
+            #[odd(required)]
+            pub id: u32,
             _env: &'env mut Environment<'env>,
             $($fields)*
         }
