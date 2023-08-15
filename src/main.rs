@@ -76,6 +76,7 @@ use code_gen::*;
 use diesel::sql_types::Integer;
 use rocket::figment::providers::Env;
 use rocket::form::Context;
+use test_http::Method::Post;
 
 
 use test_lib::*;
@@ -188,7 +189,8 @@ pub struct Test<'env> {
 }
 
 fn main() {
-    let mut model_manager = ModelManager::new();
+    let mut global_env = GlobalEnvironment::new();
+    let model_manager = global_env.models_mut();
     model_manager.register::<Post>("module_a");
     model_manager.register::<Post2>("module_b");
 
@@ -197,8 +199,9 @@ fn main() {
         println!("{}, {:?}", name, model_descriptor);
     }
 
-    let global_env = GlobalEnvironment::new();
     let mut env = global_env.new_env();
+
+    let model = env.new_model::<Post>();
 
     // let post = Post {
     //     id: 1,

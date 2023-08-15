@@ -25,8 +25,9 @@ impl<'env> Environment<'env> {
         // Load cache
         global.model_manager.models().values().for_each(|model_descriptor| {
             let table_name = model_descriptor.get_table_name();
-            let fields: Vec<CachedFieldDescriptor> = vec![];
-            // TODO Retrieve field type & default value
+            let fields: Vec<CachedFieldDescriptor> = model_descriptor.get_fields().iter().map(|(_, f)| {
+                CachedFieldDescriptor::from_field_descriptor(f)
+            }).collect();
             env.cache.add_cache_model(table_name, fields);
         });
 
@@ -71,14 +72,18 @@ impl<'env> Environment<'env> {
     pub fn cache(&self) -> &CachedModels {
         &self.cache
     }
-    //
-    // // TODO Move to correct class
-    // // TODO No need to have a mut class
-    // pub fn new_empty_model<IMD>(&mut self) where IMD: InternalModelGetterDescriptor {
-    //     let name = IMD::_name();
-    //     let id = self.counter;
-    //     self.counter += 1;
-    // }
+
+    // TODO Move to correct class
+    // TODO No need to have a mut class
+    pub fn new_model<IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor {
+        let name = IMD::_name();
+        let id = self.counter;
+        self.counter += 1;
+
+        let cached_record = self.cache.new_cached_record(name, id).fields_mut();
+        // TODO Create the _from_map method
+        IMD::_from_map(cached_record)
+    }
 }
 
 // impl<'env> Copy for Environment<'env> {}
@@ -113,6 +118,10 @@ impl GlobalEnvironment {
 
     pub fn models(&self) -> &ModelManager {
         &self.model_manager
+    }
+
+    pub fn models_mut(&mut self) -> &mut ModelManager {
+        &mut self.model_manager
     }
 }
 

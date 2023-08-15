@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::Field;
+use crate::{Field, FieldDescriptor};
 use crate::field::FieldType;
 
 /// Cached field descriptor for a model
@@ -9,6 +9,22 @@ pub enum CachedFieldDescriptor {
     String(String, Option<String>),
     Integer(String, Option<i32>),
     Boolean(String, Option<bool>),
+}
+
+impl CachedFieldDescriptor {
+    pub fn from_field_descriptor(field_descriptor: &FieldDescriptor) -> Self {
+        match &field_descriptor.default_value {
+            FieldType::String(field_type) => CachedFieldDescriptor::String(
+                field_descriptor.field_name.clone(), field_type.value().clone()
+            ),
+            FieldType::Integer(field_type) => CachedFieldDescriptor::Integer(
+                field_descriptor.field_name.clone(), field_type.value().clone()
+            ),
+            FieldType::Boolean(field_type) => CachedFieldDescriptor::Boolean(
+                field_descriptor.field_name.clone(), field_type.value().clone()
+            ),
+        }
+    }
 }
 
 /// Entry of a model
@@ -31,6 +47,14 @@ impl CachedRecord {
 
     pub fn clean(&mut self) {
         self.fields.iter_mut().for_each(|(_, f)| f.clear());
+    }
+
+    pub fn fields(&self) -> &HashMap<String, FieldType> {
+        &self.fields
+    }
+
+    pub fn fields_mut(&mut self) -> &mut HashMap<String, FieldType> {
+        &mut self.fields
     }
 
     pub fn field(&self, field_name: &str) -> &FieldType {
@@ -108,6 +132,11 @@ impl CachedModels {
     pub fn get_cached_record_mut(&mut self, table_name: &str, id: u32) -> Option<&mut CachedRecord> {
         let cached_model = self.cache.get_mut(table_name)?;
         cached_model.get_cached_record_mut(id)
+    }
+
+    pub fn new_cached_record(&mut self, table_name: &str, id: u32) -> &mut CachedRecord {
+        let cached_model = self.cache.get_mut(table_name).unwrap();
+        cached_model.create_new_entry(id)
     }
 
     pub fn add_cache_model(&mut self, table_name: &str, fields: Vec<CachedFieldDescriptor>) -> &mut CachedModel {
