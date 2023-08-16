@@ -24,7 +24,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     }).collect::<Vec<_>>();
 
-    let fields = model.fields().iter().map(|f| {
+    let fields_descriptor = model.fields().iter().map(|f| {
         let field_name = f.name();
         let (is_required_present, is_required) = option_to_tuple(f.required(), false);
         let (field_type, (is_default_present, default_value)) = match f.default_value() {
@@ -53,7 +53,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let model_descriptor = quote! {
         let mut fields = HashMap::new();
         #(
-            let field_descriptor = #fields;
+            let field_descriptor = #fields_descriptor;
             fields.insert(field_descriptor.name().to_string(), field_descriptor);
         )*
         GeneratedModelDescriptor {
@@ -74,14 +74,35 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
+    let fields_from_map = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+        let field_name = f.name();
+        let field_ident = syn::Ident::new(field_name, f.span().clone());
+        let field_type = match f.default_value() {
+            FieldType::String(_) => quote! { map[#field_name].as_string() },
+            FieldType::Integer(_) => quote! { map[#field_name].as_integer() },
+            FieldType::Boolean(_) => quote! { map[#field_name].as_boolean() },
+        };
+        quote! {
+            #field_ident: #field_type,
+        }
+    });
+
     let internal_model_getter_descriptor_impl = quote! {
-        impl #generics InternalModelGetterDescriptor for #struct_name #generics {
+        impl #generics InternalModelGetterDescriptor<'env, 'field> for #struct_name #generics {
             fn _name() -> &'static str {
                 #table_name
             }
 
             fn _get_generated_model_descriptor() -> GeneratedModelDescriptor {
                 #model_descriptor
+            }
+
+            fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: &'env mut Environment<'env>) -> Self {
+                Self {
+                    id: id,
+                    #(#fields_from_map)*
+                    _env: env,
+                }
             }
         }
     };

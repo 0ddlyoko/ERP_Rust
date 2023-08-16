@@ -149,6 +149,30 @@ impl FieldType {
         }
     }
 
+    pub fn as_string(&self) -> &Field<String> {
+        match self {
+            FieldType::String(field) => field,
+            FieldType::Integer(_) => panic!("Cannot convert Integer to String!"),
+            FieldType::Boolean(_) => panic!("Cannot convert Boolean to String!"),
+        }
+    }
+
+    pub fn as_integer(&self) -> &Field<i32> {
+        match self {
+            FieldType::String(_) => panic!("Cannot convert String to Integer!"),
+            FieldType::Integer(field) => field,
+            FieldType::Boolean(_) => panic!("Cannot convert Boolean to Integer!"),
+        }
+    }
+
+    pub fn as_boolean(&self) -> &Field<bool> {
+        match self {
+            FieldType::String(_) => panic!("Cannot convert String to Boolean!"),
+            FieldType::Integer(_) => panic!("Cannot convert Integer to Boolean!"),
+            FieldType::Boolean(field) => field,
+        }
+    }
+
     pub fn clone(&self) -> Self {
         match self {
             FieldType::String(field) => {

@@ -4,6 +4,7 @@ use test_http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
 use std::fmt::{Display, Formatter, Pointer};
 use std::ptr::hash;
+use std::rc::{Rc, Weak};
 use std::string::ToString;
 use diesel::IntoSql;
 // use my_macro::log_entry_and_exit;
@@ -76,7 +77,7 @@ use code_gen::*;
 use diesel::sql_types::Integer;
 use rocket::figment::providers::Env;
 use rocket::form::Context;
-use test_http::Method::Post;
+// use test_http::Method::Post;
 
 
 use test_lib::*;
@@ -85,7 +86,7 @@ use test_lib::*;
 model! {
     #[derive(Debug)]
     #[odd(table_name = "res_partner")]
-    pub struct Post<'field> {
+    pub struct Post {
         pub title: &'field Field<String>,
         // pub title: &'field Option<String>,
         pub body: &'field Field<String>,
@@ -96,7 +97,7 @@ model! {
     }
 }
 
-impl Post<'_, '_> {
+impl<'env, 'field> Post<'env, 'field> {
     pub fn get_id(&self) -> u32 {
         self.id
     }
@@ -148,7 +149,7 @@ impl Post<'_, '_> {
 model! {
     #[derive(Debug)]
     #[odd(table_name = "res_partner")]
-    pub struct Post2<'field> {
+    pub struct Post2 {
         pub title: &'field Field<String>,
         pub author: &'field Field<String>,
         #[odd(required)]
@@ -188,20 +189,73 @@ pub struct Test<'env> {
     pub _env: &'env mut Environment<'env>,
 }
 
-fn main() {
-    let mut global_env = GlobalEnvironment::new();
-    let model_manager = global_env.models_mut();
-    model_manager.register::<Post>("module_a");
-    model_manager.register::<Post2>("module_b");
+struct Parent {
+    name: String,
+    children: Vec<Rc<Child>>,
+}
 
-    let models = model_manager.models();
-    for (name, model_descriptor) in models {
-        println!("{}, {:?}", name, model_descriptor);
+struct Child {
+    name: String,
+    parent: Weak<Parent>,
+}
+
+fn main() {
+    // TODO USE Rc & Weak like here for Environment in models
+    let mut parent = Rc::new(Parent {
+        name: "Parent".to_string(),
+        children: Vec::new(),
+    });
+    let child1 = Child {
+        name: "Child 1".to_string(),
+        parent: Rc::downgrade(&parent),
+    };
+    let child2 = Child {
+        name: "Child 2".to_string(),
+        parent: Rc::downgrade(&parent),
+    };
+
+    match child1.parent.upgrade() {
+        Some(a) => {
+            println!("{}", a.name);
+        }
+        None => {
+            println!("EMPTY")
+        }
     }
 
-    let mut env = global_env.new_env();
+    parent = Rc::new(Parent {
+        name: "Parent 2".to_string(),
+        children: Vec::new(),
+    });
 
-    let model = env.new_model::<Post>();
+    match child1.parent.upgrade() {
+        Some(a) => {
+            println!("{}", a.name);
+        }
+        None => {
+            println!("EMPTY")
+        }
+    }
+    // let mut global_env = GlobalEnvironment::new();
+    // let model_manager = global_env.models_mut();
+    // model_manager.register::<Post>("module_a");
+    // // model_manager.register::<Post2>("module_b");
+    //
+    // let models = model_manager.models();
+    // for (name, model_descriptor) in models {
+    //     println!("{}, {:?}", name, model_descriptor);
+    // }
+    //
+    // let mut env = global_env.new_env();
+    // let a = Weak::new();
+    // let id = env.counter;
+    // env.counter += 1;
+    // let cached_record = env.cache_mut().new_cached_record("res_partner", id);
+    // let a = Post::_from_map(id, cached_record.fields_mut(), env);
+
+    // let model = env.new_model::<Post>();
+
+    // Post::_from_map(42, &mut HashMap::new(), &mut env);
 
     // let post = Post {
     //     id: 1,

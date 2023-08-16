@@ -11,7 +11,7 @@ pub struct Environment<'env> {
     global: &'env GlobalEnvironment,
     context: Context,
     cache: CachedModels,
-    counter: u32,
+    pub counter: u32,
 }
 
 impl<'env> Environment<'env> {
@@ -73,17 +73,21 @@ impl<'env> Environment<'env> {
         &self.cache
     }
 
+    pub fn cache_mut(&mut self) -> &mut CachedModels {
+        &mut self.cache
+    }
+
     // TODO Move to correct class
     // TODO No need to have a mut class
-    pub fn new_model<IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor {
-        let name = IMD::_name();
-        let id = self.counter;
-        self.counter += 1;
-
-        let cached_record = self.cache.new_cached_record(name, id).fields_mut();
-        // TODO Create the _from_map method
-        IMD::_from_map(cached_record)
-    }
+    // pub fn new_model<'field, IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor<'env, 'field> {
+    //     let name = IMD::_name();
+    //     let id = self.counter;
+    //     self.counter += 1;
+    //
+    //     let cached_record = self.cache.new_cached_record(name, id);
+    //
+    //     IMD::_from_map(id, cached_record.fields_mut(), self)
+    // }
 }
 
 // impl<'env> Copy for Environment<'env> {}

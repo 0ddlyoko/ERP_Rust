@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::field::GeneratedFieldDescriptor;
-use crate::FieldDescriptor;
+use crate::{Environment, FieldDescriptor, FieldType};
 
 #[derive(Debug)]
 pub struct GeneratedModelDescriptor {
@@ -22,9 +22,10 @@ impl GeneratedModelDescriptor {
     }
 }
 
-pub trait InternalModelGetterDescriptor {
+pub trait InternalModelGetterDescriptor<'env, 'field> {
     fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
+    fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: &'env mut Environment<'env>) -> Self;
 }
 
 #[derive(Debug)]
@@ -69,7 +70,6 @@ impl ModelDescriptor {
             let second_discriminant = std::mem::discriminant(default_value);
             if first_discriminant != second_discriminant {
                 panic!("Redefinition of field \"{}\" with a different type! ({:?} != {:?})", name, existing_field.default_value, default_value);
-                return
             }
             if default_value.has_entry() {
                 // Update the default value
@@ -91,7 +91,7 @@ impl ModelManager {
         }
     }
 
-    pub fn register<IMD>(&mut self, module_name: &str) where IMD: InternalModelGetterDescriptor {
+    pub fn register<'env, 'field, IMD>(&mut self, module_name: &str) where IMD: InternalModelGetterDescriptor<'env, 'field> {
         let generated_model_descriptor = IMD::_get_generated_model_descriptor();
         let table_name = &generated_model_descriptor.table_name;
         let model_descriptor = self.models.entry(table_name.clone()).or_insert_with(|| {
