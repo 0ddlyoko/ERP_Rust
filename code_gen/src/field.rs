@@ -1,5 +1,5 @@
-use proc_macro2::{Ident, Span};
-use syn::{Field as SynField, GenericArgument, Lifetime, PathArguments, PathSegment, Type, TypeReference};
+use proc_macro2::Span;
+use syn::{Field as SynField, GenericArgument, PathArguments, PathSegment, Type};
 use syn::Result;
 use syn::spanned::Spanned;
 use test_lib::FieldType;

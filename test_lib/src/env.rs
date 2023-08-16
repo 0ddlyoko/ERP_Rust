@@ -78,7 +78,6 @@ impl<'env> Environment<'env> {
     }
 
     // TODO Move to correct class
-    // TODO No need to have a mut class
     // pub fn new_model<'field, IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor<'env, 'field> {
     //     let name = IMD::_name();
     //     let id = self.counter;
@@ -129,8 +128,23 @@ impl GlobalEnvironment {
     }
 }
 
+// TODO Check what to add in this trait
 pub trait ModelEnvironment<'env> {
-    fn env(&self) -> &Environment<'env>;
-    fn env_mut(&mut self) -> &mut Environment<'env>;
-    fn restore_env(&mut self, env: &'env mut Environment<'env>);
+    fn new<'field, IMD>(&mut self, env_2: &std::rc::Weak<std::cell::RefCell<Environment<'env>>>) where IMD: InternalModelGetterDescriptor<'env, 'field> {
+        let name = IMD::_name();
+        let cloned_env = env_2.clone();
+        let upgrade_env = cloned_env.upgrade();
+        if upgrade_env.is_none() {
+            // Should be there
+            panic!("Environment should exist!")
+        }
+        let env_borrow = upgrade_env.unwrap();
+        let mut env = env_borrow.borrow_mut();
+        env.counter += 1;
+        let id = env.counter;
+        let new_cached_record = env.cache.new_cached_record(name, id);
+        let a = IMD::_from_map(id, new_cached_record.fields_mut(), cloned_env);
+
+        // IMD::_from_map(cached_record.id(), cached_record.fields_mut(), cloned_env)
+    }
 }

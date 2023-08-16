@@ -13,7 +13,7 @@ macro_rules! model {
         $pub struct $name<'env, 'field$(, $($a),*)?> {
             #[odd(required)]
             pub id: u32,
-            _env: &'env mut Environment<'env>,
+            pub _env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>,
             $($fields)*
         }
     }

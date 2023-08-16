@@ -31,14 +31,20 @@ impl CachedFieldDescriptor {
 /// Contains data of a specific record for a specific model
 #[derive(Debug)]
 pub struct CachedRecord {
+    id: u32,
     fields: HashMap<String, FieldType>,
 }
 
 impl CachedRecord {
-    pub fn new(fields: HashMap<String, FieldType>) -> Self {
+    pub fn new(id: u32, fields: HashMap<String, FieldType>) -> Self {
         Self {
+            id: id,
             fields: fields,
         }
+    }
+
+    pub fn id(&self) -> u32 {
+        self.id
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -105,6 +111,7 @@ impl CachedModel {
             }
         });
         let record = CachedRecord {
+            id: id,
             fields: fields,
         };
         self.cache.insert(id, record);

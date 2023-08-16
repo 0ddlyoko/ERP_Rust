@@ -97,7 +97,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 #model_descriptor
             }
 
-            fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: &'env mut Environment<'env>) -> Self {
+            fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
                 Self {
                     id: id,
                     #(#fields_from_map)*
@@ -109,27 +109,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
     let model_environment_impl = quote! {
         impl #generics ModelEnvironment<'env> for #struct_name #generics {
-            fn env(&self) -> &Environment<'env> {
-                self._env
-            }
-
-            fn env_mut(&mut self) -> &mut Environment<'env> {
-                self._env
-            }
-
-            fn restore_env(&mut self, env: &'env mut Environment<'env>) {
-                self._env = env;
-            }
         }
     };
-
-    // let from_impl = quote! {
-    //     impl #generics From<CachedRecord> for #struct_name #generics {
-    //         fn from(value: CachedRecord) -> Self {
-    //
-    //         }
-    //     }
-    // };
 
     let result = quote! {
         #impl_struct

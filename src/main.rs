@@ -4,7 +4,6 @@ use test_http::HttpStatus;
 use my_macro::{log_entry_and_exit, log_entry_test, lol};
 use std::fmt::{Display, Formatter, Pointer};
 use std::ptr::hash;
-use std::rc::{Rc, Weak};
 use std::string::ToString;
 use diesel::IntoSql;
 // use my_macro::log_entry_and_exit;
@@ -176,10 +175,6 @@ impl<'env, 'field> Display for Post<'env, 'field> {
 //     fn env(&self) -> &Environment {
 //         return self.my_env;
 //     }
-//
-//     fn restore_env(&self, env: Environment) {
-//         self.my_env = env;
-//     }
 // }
 pub struct Test<'env> {
     pub id: i32,
@@ -189,53 +184,70 @@ pub struct Test<'env> {
     pub _env: &'env mut Environment<'env>,
 }
 
-struct Parent {
+struct Parent<'a> {
     name: String,
-    children: Vec<Rc<Child>>,
+    children: Vec<std::rc::Rc<Child<'a>>>,
 }
 
-struct Child {
+struct Child<'a> {
     name: String,
-    parent: Weak<Parent>,
+    parent: std::rc::Weak<std::cell::RefCell<Parent<'a>>>,
 }
 
 fn main() {
     // TODO USE Rc & Weak like here for Environment in models
-    let mut parent = Rc::new(Parent {
+    let mut parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
         name: "Parent".to_string(),
         children: Vec::new(),
-    });
+    }));
     let child1 = Child {
         name: "Child 1".to_string(),
-        parent: Rc::downgrade(&parent),
+        parent: std::rc::Rc::downgrade(&parent),
     };
     let child2 = Child {
         name: "Child 2".to_string(),
-        parent: Rc::downgrade(&parent),
+        parent: std::rc::Rc::downgrade(&parent),
+    };
+    let child3 = Child {
+        name: "Child 3".to_string(),
+        parent: child2.parent.clone(),
     };
 
     match child1.parent.upgrade() {
         Some(a) => {
-            println!("{}", a.name);
+            println!("{}", a.borrow().name);
         }
         None => {
             println!("EMPTY")
         }
     }
 
-    parent = Rc::new(Parent {
-        name: "Parent 2".to_string(),
-        children: Vec::new(),
-    });
+    // parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
+    //     name: "Parent 2".to_string(),
+    //     children: Vec::new(),
+    // }));
 
     match child1.parent.upgrade() {
-        Some(a) => {
-            println!("{}", a.name);
+        Some(rc) => {
+            let mut borrow = rc.borrow_mut();
+            println!("{}", borrow.name);
+            borrow.name = "new name".to_string();
         }
         None => {
             println!("EMPTY")
         }
     }
+
+    match child1.parent.upgrade() {
+        Some(rc) => {
+            let borrow = rc.borrow();
+            println!("{}", borrow.name);
+        }
+        None => {
+            println!("EMPTY")
+        }
+    }
+
     // let mut global_env = GlobalEnvironment::new();
     // let model_manager = global_env.models_mut();
     // model_manager.register::<Post>("module_a");
@@ -247,7 +259,7 @@ fn main() {
     // }
     //
     // let mut env = global_env.new_env();
-    // let a = Weak::new();
+    // let a = std::rc::Weak::new();
     // let id = env.counter;
     // env.counter += 1;
     // let cached_record = env.cache_mut().new_cached_record("res_partner", id);

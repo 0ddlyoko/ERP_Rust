@@ -25,7 +25,7 @@ impl GeneratedModelDescriptor {
 pub trait InternalModelGetterDescriptor<'env, 'field> {
     fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
-    fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: &'env mut Environment<'env>) -> Self;
+    fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self;
 }
 
 #[derive(Debug)]
