@@ -78,9 +78,9 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         let field_type = match f.default_value() {
-            FieldType::String(_) => quote! { map[#field_name].as_string() },
-            FieldType::Integer(_) => quote! { map[#field_name].as_integer() },
-            FieldType::Boolean(_) => quote! { map[#field_name].as_boolean() },
+            FieldType::String(_) => quote! { FieldType::transform_to_string(map.remove(#field_name).unwrap()) },
+            FieldType::Integer(_) => quote! { FieldType::transform_to_integer(map.remove(#field_name).unwrap()) },
+            FieldType::Boolean(_) => quote! { FieldType::transform_to_boolean(map.remove(#field_name).unwrap()) },
         };
         quote! {
             #field_ident: #field_type,
@@ -88,7 +88,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     });
 
     let internal_model_getter_descriptor_impl = quote! {
-        impl #generics InternalModelGetterDescriptor<'env, 'field> for #struct_name #generics {
+        impl #generics InternalModelGetterDescriptor<'env> for #struct_name #generics {
             fn _name() -> &'static str {
                 #table_name
             }
@@ -97,7 +97,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 #model_descriptor
             }
 
-            fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
+            fn _from_map(id: u32, mut map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
                 Self {
                     id: id,
                     #(#fields_from_map)*

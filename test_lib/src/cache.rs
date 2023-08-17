@@ -59,12 +59,16 @@ impl CachedRecord {
         &self.fields
     }
 
-    pub fn fields_mut(&mut self) -> &mut HashMap<String, FieldType> {
-        &mut self.fields
-    }
-
     pub fn field(&self, field_name: &str) -> &FieldType {
         &self.fields[field_name]
+    }
+
+    pub fn get_new_fields(&mut self) -> HashMap<String, FieldType> {
+        let mut map = HashMap::new();
+        self.fields.iter().for_each(|f| {
+            map.insert(f.0.clone(), f.1.clone());
+        });
+        map
     }
 }
 

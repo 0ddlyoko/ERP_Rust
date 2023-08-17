@@ -101,7 +101,6 @@ impl FieldType {
             "Integer" | "i32" => FieldType::Integer(Field::new(value.map(|f| f.parse().unwrap()))),
             "Boolean" | "bool" => FieldType::Boolean(Field::new(value.map(|f| if f == "true" {true} else {false}))),
             _ => panic!("Unknown field type \"{}\"!", field_type),
-            // _ => FieldType::String(Field::new(value)),
         }
     }
 
@@ -149,24 +148,24 @@ impl FieldType {
         }
     }
 
-    pub fn as_string(&self) -> &Field<String> {
-        match self {
+    pub fn transform_to_string(field_type: FieldType) -> Field<String> {
+        match field_type {
             FieldType::String(field) => field,
             FieldType::Integer(_) => panic!("Cannot convert Integer to String!"),
             FieldType::Boolean(_) => panic!("Cannot convert Boolean to String!"),
         }
     }
 
-    pub fn as_integer(&self) -> &Field<i32> {
-        match self {
+    pub fn transform_to_integer(field_type: FieldType) -> Field<i32> {
+        match field_type {
             FieldType::String(_) => panic!("Cannot convert String to Integer!"),
             FieldType::Integer(field) => field,
             FieldType::Boolean(_) => panic!("Cannot convert Boolean to Integer!"),
         }
     }
 
-    pub fn as_boolean(&self) -> &Field<bool> {
-        match self {
+    pub fn transform_to_boolean(field_type: FieldType) -> Field<bool> {
+        match field_type {
             FieldType::String(_) => panic!("Cannot convert String to Boolean!"),
             FieldType::Integer(_) => panic!("Cannot convert Integer to Boolean!"),
             FieldType::Boolean(field) => field,

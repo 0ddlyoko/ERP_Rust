@@ -86,50 +86,25 @@ model! {
     #[derive(Debug)]
     #[odd(table_name = "res_partner")]
     pub struct Post {
-        pub title: &'field Field<String>,
-        // pub title: &'field Option<String>,
-        pub body: &'field Field<String>,
+        pub title: Field<String>,
+        // pub title: &Field<String>,
+        pub body: Field<String>,
         #[odd(default = "true")]
-        pub published: &'field Field<bool>,
+        pub published: Field<bool>,
         #[odd(default = "42")]
-        pub lol: &'field Field<i32>,
+        pub lol: Field<i32>,
     }
 }
 
-impl<'env, 'field> Post<'env, 'field> {
-    pub fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    // pub fn get_title(&self) -> &Option<String> {
-    //     self.title
-    // }
-    //
-    // pub fn get_body(&self) -> &Option<String> {
-    //     self.body
-    // }
-    //
-    // pub fn get_published(&self) -> &Option<bool> {
-    //     self.published
-    // }
-    //
-    // pub fn set_title(&mut self, title: Option<String>) {
-    //     // self.title = title;
-    //     // TODO Change in cache
-    // }
-
-    // pub fn from<'env, 'field>(env: &Environment, map: HashMap<String, &Field>) -> Post<'env, 'field> {
-    //     let id = map["id"];
-    //     let title = map["title"];
-    //     let body = map["body"];
-    //     let published = map["published"];
-    //
-    //     Post {
-    //         _env: env,
+impl<'env> Post<'env> {
+    // fn _from_map(id: u32, mut map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
+    //     Self {
     //         id: id,
-    //         title: title,
-    //         body: body,
-    //         published: published,
+    //         title: FieldType::transform_to_string(map.remove("title").unwrap()),
+    //         body: FieldType::transform_to_string(map.remove("body").unwrap()),
+    //         published: FieldType::transform_to_boolean(map.remove("published").unwrap()),
+    //         lol: FieldType::transform_to_integer(map.remove("lol").unwrap()),
+    //         _env: env,
     //     }
     // }
 }
@@ -149,12 +124,12 @@ model! {
     #[derive(Debug)]
     #[odd(table_name = "res_partner")]
     pub struct Post2 {
-        pub title: &'field Field<String>,
-        pub author: &'field Field<String>,
+        pub title: Field<String>,
+        pub author: Field<String>,
         #[odd(required)]
-        pub published: &'field Field<bool>,
+        pub published: Field<bool>,
         // #[odd(default="45")]
-        pub lol: &'field Field<i32>,
+        pub lol: Field<i32>,
     }
 }
 
@@ -164,7 +139,7 @@ model! {
 //     }
 // }
 
-impl<'env, 'field> Display for Post<'env, 'field> {
+impl<'env> Display for Post<'env> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "id: {}, title: {:?}, body: {:?}, published: {:?}", self.id, self.title, self.body, self.published)
     }

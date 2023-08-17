@@ -22,10 +22,10 @@ impl GeneratedModelDescriptor {
     }
 }
 
-pub trait InternalModelGetterDescriptor<'env, 'field> {
+pub trait InternalModelGetterDescriptor<'env> {
     fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
-    fn _from_map(id: u32, map: &'field mut HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self;
+    fn _from_map(id: u32, map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self;
 }
 
 #[derive(Debug)]
@@ -91,7 +91,7 @@ impl ModelManager {
         }
     }
 
-    pub fn register<'env, 'field, IMD>(&mut self, module_name: &str) where IMD: InternalModelGetterDescriptor<'env, 'field> {
+    pub fn register<'env, IMD>(&mut self, module_name: &str) where IMD: InternalModelGetterDescriptor<'env> {
         let generated_model_descriptor = IMD::_get_generated_model_descriptor();
         let table_name = &generated_model_descriptor.table_name;
         let model_descriptor = self.models.entry(table_name.clone()).or_insert_with(|| {

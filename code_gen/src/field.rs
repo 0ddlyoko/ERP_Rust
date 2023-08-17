@@ -42,61 +42,40 @@ impl Field {
 
         let mut field_type = FieldType::String(test_lib::Field::new(None));
         // Check field type
-        if field_name == "id" {
+        if field_name != "id" && field_name != "_env" {
             if let Type::Path(type_path) = ty {
                 let segments = &type_path.path.segments;
                 if segments.len() != 1 {
-                    return Err(generate_field_id_not_u32_error(ident.span()));
+                    return Err(generate_field_no_field_error(ident.span()));
                 }
-                if segments[0].ident != "u32" {
-                    return Err(generate_field_id_not_u32_error(ident.span()));
+                let PathSegment { ident, arguments } = &segments[0];
+                if ident != "Field" {
+                    return Err(generate_field_no_field_error(ident.span()));
+                }
+                if let PathArguments::AngleBracketed(angle_bracketed_generic_arguments) = arguments {
+                    let args = &angle_bracketed_generic_arguments.args;
+                    if args.len() != 1 {
+                        return Err(generate_field_no_field_error(args.span()));
+                    }
+                    if let GenericArgument::Type(generic_type) = &args[0] {
+                        if let Type::Path(type_path) = generic_type {
+                            let segments = &type_path.path.segments;
+                            if segments.len() != 1 {
+                                return Err(generate_field_no_field_error(segments.span()))
+                            }
+                            let field_type_keyword = &segments[0].ident;
+                            field_type = FieldType::from(field_type_keyword.to_string().as_str(), default_value);
+                        } else {
+                            return Err(generate_field_no_field_error(generic_type.span()))
+                        }
+                    } else {
+                        return Err(generate_field_no_field_error(args[0].span()))
+                    }
+                } else {
+                    return Err(generate_field_no_field_error(arguments.span()))
                 }
             } else {
-                return Err(generate_field_id_not_u32_error(ident.span()));
-            }
-        } else if field_name != "_env" {
-            match ty {
-                Type::Reference(type_ref) => {
-                    let elem = &type_ref.elem;
-                    if let Type::Path(type_path) = &**elem {
-                        let segments = &type_path.path.segments;
-                        if segments.len() != 1 {
-                            return Err(generate_field_no_field_error(ident.span()));
-                        }
-                        let PathSegment { ident, arguments } = &segments[0];
-                        if ident != "Field" {
-                            return Err(generate_field_no_field_error(ident.span()));
-                        }
-                        if let PathArguments::AngleBracketed(angle_bracketed_generic_arguments) = arguments {
-                            let args = &angle_bracketed_generic_arguments.args;
-                            if args.len() != 1 {
-                                return Err(generate_field_no_field_error(args.span()));
-                            }
-                            if let GenericArgument::Type(generic_type) = &args[0] {
-                                if let Type::Path(type_path) = generic_type {
-                                    let segments = &type_path.path.segments;
-                                    if segments.len() != 1 {
-                                        return Err(generate_field_no_field_error(segments.span()))
-                                    }
-                                    let field_type_keyword = &segments[0].ident;
-                                    field_type = FieldType::from(field_type_keyword.to_string().as_str(), default_value);
-                                } else {
-                                    return Err(generate_field_no_field_error(generic_type.span()))
-                                }
-                            } else {
-                                return Err(generate_field_no_field_error(args[0].span()))
-                            }
-                        } else {
-                            return Err(generate_field_no_field_error(arguments.span()))
-                        }
-
-                    } else {
-                        return Err(generate_field_no_field_error(elem.span()))
-                    }
-                }
-                _ => {
-                    return Err(generate_field_no_field_error(ident.span()))
-                }
+                return Err(generate_field_no_field_error(ty.span()))
             }
         }
 

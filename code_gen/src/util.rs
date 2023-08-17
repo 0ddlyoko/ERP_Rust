@@ -37,7 +37,7 @@ pub fn generate_field_no_name_error(span: Span) -> Error {
 }
 
 pub fn generate_field_no_field_error(span: Span) -> Error {
-    syn::Error::new(span, format!("Field should be of type &'field Field<TYPE>"))
+    syn::Error::new(span, format!("Field should be of type Field<TYPE>"))
 }
 
 pub fn generate_field_invalid_type_error(span: Span) -> Error {
