@@ -87,6 +87,12 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
+    let fields_to_map = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+        let field_name = f.name();
+        let field_ident = syn::Ident::new(field_name, f.span().clone());
+        let field_to_map = quote! { map.insert(#field_name, ) };
+    });
+
     let internal_model_getter_descriptor_impl = quote! {
         impl #generics InternalModelGetterDescriptor<'env> for #struct_name #generics {
             fn _name() -> &'static str {
@@ -103,6 +109,16 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     #(#fields_from_map)*
                     _env: env,
                 }
+            }
+
+            fn _id(&self) -> u32 {
+                self.id
+            }
+
+            fn _to_map(&self) -> HashMap<String, &FieldType> {
+                let map = HashMap::new();
+
+                map
             }
         }
     };

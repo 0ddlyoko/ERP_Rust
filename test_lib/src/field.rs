@@ -132,17 +132,20 @@ impl FieldType {
         match self {
             FieldType::String(field_to_edit) => {
                 if let FieldType::String(field) = field_type {
-                    field_to_edit.value = field.value.clone()
+                    field_to_edit.value = field.value.clone();
+                    field_to_edit.dirty = true;
                 }
             }
             FieldType::Integer(field_to_edit) => {
                 if let FieldType::Integer(field) = field_type {
-                    field_to_edit.value = field.value.clone()
+                    field_to_edit.value = field.value.clone();
+                    field_to_edit.dirty = true;
                 }
             }
             FieldType::Boolean(field_to_edit) => {
                 if let FieldType::Boolean(field) = field_type {
-                    field_to_edit.value = field.value.clone()
+                    field_to_edit.value = field.value.clone();
+                    field_to_edit.dirty = true;
                 }
             }
         }

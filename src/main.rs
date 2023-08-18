@@ -223,17 +223,21 @@ fn main() {
         }
     }
 
-    // let mut global_env = GlobalEnvironment::new();
-    // let model_manager = global_env.models_mut();
-    // model_manager.register::<Post>("module_a");
-    // // model_manager.register::<Post2>("module_b");
-    //
-    // let models = model_manager.models();
-    // for (name, model_descriptor) in models {
-    //     println!("{}, {:?}", name, model_descriptor);
-    // }
-    //
-    // let mut env = global_env.new_env();
+    let mut global_env = GlobalEnvironment::new();
+    let model_manager = global_env.models_mut();
+    model_manager.register::<Post>("module_a");
+    // model_manager.register::<Post2>("module_b");
+
+    let models = model_manager.models();
+    for (name, model_descriptor) in models {
+        println!("{}, {:?}", name, model_descriptor);
+    }
+
+    let mut env = std::rc::Rc::new(std::cell::RefCell::new(global_env.new_env()));
+    let mut my_post = Post::new::<Post>(std::rc::Rc::downgrade(&env));
+    println!("{}, {:?}", my_post.id, my_post.published.value());
+    my_post.published.set(false);
+    println!("{}, {:?}", my_post.id, my_post.published.value());
     // let a = std::rc::Weak::new();
     // let id = env.counter;
     // env.counter += 1;

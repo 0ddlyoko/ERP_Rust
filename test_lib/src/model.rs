@@ -26,6 +26,30 @@ pub trait InternalModelGetterDescriptor<'env> {
     fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
     fn _from_map(id: u32, map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self;
+    fn _id(&self) -> u32;
+    fn _to_map(&self) -> HashMap<String, &FieldType>;
+
+    fn new<IMD>(env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
+        let name = IMD::_name();
+        let (id, new_fields) = match env.upgrade() {
+            Some(env_borrow) => {
+                let mut env = env_borrow.borrow_mut();
+                env.counter += 1;
+                let id = env.counter;
+                let cached_record = env.cache_mut().new_cached_record(name, id);
+                (id, cached_record.get_new_fields())
+            }
+            None => {
+                // Should be there
+                panic!("Environment should exist!")
+            }
+        };
+        IMD::_from_map(id, new_fields, env)
+    }
+
+    fn save(&mut self) {
+        let map = self._to_map();
+    }
 }
 
 #[derive(Debug)]

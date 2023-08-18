@@ -63,12 +63,22 @@ impl CachedRecord {
         &self.fields[field_name]
     }
 
+    pub fn field_mut(&mut self, field_name: &str) -> &mut FieldType {
+        self.fields.get_mut(field_name).expect("no entry found for key")
+    }
+
     pub fn get_new_fields(&mut self) -> HashMap<String, FieldType> {
         let mut map = HashMap::new();
         self.fields.iter().for_each(|f| {
             map.insert(f.0.clone(), f.1.clone());
         });
         map
+    }
+
+    pub fn update_fields(&mut self, fields: HashMap<String, &FieldType>) {
+        fields.iter().for_each(|(field_name, field)| {
+            self.field_mut(field_name).update_value(field);
+        });
     }
 }
 
@@ -121,6 +131,19 @@ impl CachedModel {
         self.cache.insert(id, record);
         self.cache.get_mut(&id).unwrap()
     }
+
+    pub fn get_or_create_new_entry(&mut self, id: u32) -> &mut CachedRecord {
+        return if self.cache.contains_key(&id) {
+            self.cache.get_mut(&id).unwrap()
+        } else {
+            self.create_new_entry(id)
+        };
+    }
+
+    pub fn save_entry(&mut self, id: u32, fields: HashMap<String, &FieldType>) {
+        let entry = self.get_or_create_new_entry(id);
+        entry.update_fields(fields);
+    }
 }
 
 #[derive(Debug)]
@@ -148,6 +171,11 @@ impl CachedModels {
     pub fn new_cached_record(&mut self, table_name: &str, id: u32) -> &mut CachedRecord {
         let cached_model = self.cache.get_mut(table_name).unwrap();
         cached_model.create_new_entry(id)
+    }
+
+    pub fn save_cached_record(&mut self, table_name: &str, id: u32, fields: HashMap<String, &FieldType>) {
+        let cached_model = self.cache.get_mut(table_name).unwrap();
+        cached_model.save_entry(id, fields)
     }
 
     pub fn add_cache_model(&mut self, table_name: &str, fields: Vec<CachedFieldDescriptor>) -> &mut CachedModel {
