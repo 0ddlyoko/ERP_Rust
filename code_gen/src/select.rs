@@ -90,7 +90,11 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let fields_to_map = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
-        let field_to_map = quote! { map.insert(#field_name, ) };
+        match f.default_value() {
+            FieldType::String(_) => quote! { map.insert(#field_name.to_string(), FieldType::String(Field::new(self.#field_ident.value().clone()))); },
+            FieldType::Integer(_) => quote! { map.insert(#field_name.to_string(), FieldType::Integer(Field::new(self.#field_ident.value().clone()))); },
+            FieldType::Boolean(_) => quote! { map.insert(#field_name.to_string(), FieldType::Boolean(Field::new(self.#field_ident.value().clone()))); },
+        }
     });
 
     let internal_model_getter_descriptor_impl = quote! {
@@ -111,13 +115,17 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 }
             }
 
-            fn _id(&self) -> u32 {
+            fn id(&self) -> u32 {
                 self.id
             }
 
-            fn _to_map(&self) -> HashMap<String, &FieldType> {
-                let map = HashMap::new();
+            fn env(&self) -> &std::rc::Weak<std::cell::RefCell<Environment<'env>>> {
+                &self._env
+            }
 
+            fn _to_map(&self) -> HashMap<String, FieldType> {
+                let mut map = HashMap::new();
+                #(#fields_to_map)*
                 map
             }
         }

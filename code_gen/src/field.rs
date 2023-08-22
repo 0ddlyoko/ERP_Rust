@@ -4,7 +4,7 @@ use syn::Result;
 use syn::spanned::Spanned;
 use test_lib::FieldType;
 use crate::attrs::{AllowedFieldAttr, parse_attributes};
-use crate::util::{generate_field_id_not_u32_error, generate_field_no_field_error, generate_field_no_name_error};
+use crate::util::{generate_field_no_field_error, generate_field_no_name_error};
 
 
 pub struct Field {

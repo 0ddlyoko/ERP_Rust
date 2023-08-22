@@ -97,6 +97,11 @@ model! {
 }
 
 impl<'env> Post<'env> {
+    fn test(&self) -> HashMap<String, FieldType> {
+        let mut map = HashMap::new();
+        map.insert("title".to_string(), FieldType::String(Field::new(self.title.value().clone())));
+        map
+    }
     // fn _from_map(id: u32, mut map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
     //     Self {
     //         id: id,
@@ -170,58 +175,58 @@ struct Child<'a> {
 }
 
 fn main() {
-    // TODO USE Rc & Weak like here for Environment in models
-    let mut parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
-        name: "Parent".to_string(),
-        children: Vec::new(),
-    }));
-    let child1 = Child {
-        name: "Child 1".to_string(),
-        parent: std::rc::Rc::downgrade(&parent),
-    };
-    let child2 = Child {
-        name: "Child 2".to_string(),
-        parent: std::rc::Rc::downgrade(&parent),
-    };
-    let child3 = Child {
-        name: "Child 3".to_string(),
-        parent: child2.parent.clone(),
-    };
-
-    match child1.parent.upgrade() {
-        Some(a) => {
-            println!("{}", a.borrow().name);
-        }
-        None => {
-            println!("EMPTY")
-        }
-    }
-
-    // parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
-    //     name: "Parent 2".to_string(),
+    // // TODO USE Rc & Weak like here for Environment in models
+    // let mut parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
+    //     name: "Parent".to_string(),
     //     children: Vec::new(),
     // }));
-
-    match child1.parent.upgrade() {
-        Some(rc) => {
-            let mut borrow = rc.borrow_mut();
-            println!("{}", borrow.name);
-            borrow.name = "new name".to_string();
-        }
-        None => {
-            println!("EMPTY")
-        }
-    }
-
-    match child1.parent.upgrade() {
-        Some(rc) => {
-            let borrow = rc.borrow();
-            println!("{}", borrow.name);
-        }
-        None => {
-            println!("EMPTY")
-        }
-    }
+    // let child1 = Child {
+    //     name: "Child 1".to_string(),
+    //     parent: std::rc::Rc::downgrade(&parent),
+    // };
+    // let child2 = Child {
+    //     name: "Child 2".to_string(),
+    //     parent: std::rc::Rc::downgrade(&parent),
+    // };
+    // let child3 = Child {
+    //     name: "Child 3".to_string(),
+    //     parent: child2.parent.clone(),
+    // };
+    //
+    // match child1.parent.upgrade() {
+    //     Some(a) => {
+    //         println!("{}", a.borrow().name);
+    //     }
+    //     None => {
+    //         println!("EMPTY")
+    //     }
+    // }
+    //
+    // // parent = std::rc::Rc::new(std::cell::RefCell::new(Parent {
+    // //     name: "Parent 2".to_string(),
+    // //     children: Vec::new(),
+    // // }));
+    //
+    // match child1.parent.upgrade() {
+    //     Some(rc) => {
+    //         let mut borrow = rc.borrow_mut();
+    //         println!("{}", borrow.name);
+    //         borrow.name = "new name".to_string();
+    //     }
+    //     None => {
+    //         println!("EMPTY")
+    //     }
+    // }
+    //
+    // match child1.parent.upgrade() {
+    //     Some(rc) => {
+    //         let borrow = rc.borrow();
+    //         println!("{}", borrow.name);
+    //     }
+    //     None => {
+    //         println!("EMPTY")
+    //     }
+    // }
 
     let mut global_env = GlobalEnvironment::new();
     let model_manager = global_env.models_mut();
@@ -234,10 +239,19 @@ fn main() {
     }
 
     let mut env = std::rc::Rc::new(std::cell::RefCell::new(global_env.new_env()));
-    let mut my_post = Post::new::<Post>(std::rc::Rc::downgrade(&env));
+    let mut my_post: Post = Post::new::<Post>(std::rc::Rc::downgrade(&env));
+    let id = my_post.id;
     println!("{}, {:?}", my_post.id, my_post.published.value());
+    my_post.title.set("SALUT, JE SUIS AUDD :D".to_string());
     my_post.published.set(false);
     println!("{}, {:?}", my_post.id, my_post.published.value());
+    my_post.save();
+
+    let mut my_post_2: Post = Post::load(id, std::rc::Rc::downgrade(&env));
+    println!("{}, {:?}, {:?}", my_post.id, my_post.title.value(), my_post.published.value());
+    println!("{}, {:?}, {:?}", my_post_2.id, my_post_2.title.value(), my_post_2.published.value());
+
+
     // let a = std::rc::Weak::new();
     // let id = env.counter;
     // env.counter += 1;

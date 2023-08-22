@@ -2,7 +2,7 @@ mod context;
 
 use std::mem;
 use crate::env::context::Context;
-use crate::{CachedModels, InternalModelGetterDescriptor, ModelManager};
+use crate::{CachedModels, ModelManager};
 use crate::cache::CachedFieldDescriptor;
 
 // Specific environment-stuff
@@ -76,20 +76,7 @@ impl<'env> Environment<'env> {
     pub fn cache_mut(&mut self) -> &mut CachedModels {
         &mut self.cache
     }
-
-    // TODO Move to correct class
-    // pub fn new_model<IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor<'env, 'field> {
-    //     let name = IMD::_name();
-    //     let id = self.counter;
-    //     self.counter += 1;
-    //
-    //     let cached_record = self.cache.new_cached_record(name, id);
-    //
-    //     IMD::_from_map(id, cached_record.fields_mut(), self)
-    // }
 }
-
-// impl<'env> Copy for Environment<'env> {}
 
 impl<'env> Clone for Environment<'env> {
     fn clone(&self) -> Self {
