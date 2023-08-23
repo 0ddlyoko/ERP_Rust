@@ -86,6 +86,10 @@ impl CachedRecord {
             self.field_mut(field_name).update_value(field);
         });
     }
+
+    pub fn update_field(&mut self, field_name: &str, field: &FieldType) {
+        self.field_mut(field_name).update_value(field)
+    }
 }
 
 /// Cache for a model
@@ -155,6 +159,11 @@ impl CachedModel {
         let entry = self.get_or_create_new_entry(id);
         entry.update_fields_ref(fields);
     }
+
+    pub fn save_entry_field(&mut self, id: u32, field_name: &str, field: &FieldType) {
+        let entry = self.get_or_create_new_entry(id);
+        entry.update_field(field_name, field);
+    }
 }
 
 #[derive(Debug)]
@@ -192,6 +201,11 @@ impl CachedModels {
     pub fn save_cached_record_ref(&mut self, table_name: &str, id: u32, fields: HashMap<String, &FieldType>) {
         let cached_model = self.cache.get_mut(table_name).unwrap();
         cached_model.save_entry_ref(id, fields)
+    }
+
+    pub fn save_cached_field(&mut self, table_name: &str, id: u32, field_name: &str, field: &FieldType) {
+        let cached_model = self.cache.get_mut(table_name).unwrap();
+        cached_model.save_entry_field(id, field_name, field)
     }
 
     pub fn add_cache_model(&mut self, table_name: &str, fields: Vec<CachedFieldDescriptor>) -> &mut CachedModel {

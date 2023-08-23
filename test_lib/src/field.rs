@@ -75,6 +75,14 @@ impl<TYPE> Field<TYPE> {
         self.value.as_ref()
     }
 
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn reset_dirty(&mut self) {
+        self.dirty = false;
+    }
+
     pub fn set(&mut self, value: TYPE) {
         self.value = Some(value);
         self.dirty = true;

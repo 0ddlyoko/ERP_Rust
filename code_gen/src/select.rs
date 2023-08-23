@@ -96,6 +96,38 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             FieldType::Boolean(_) => quote! { map.insert(#field_name.to_string(), FieldType::Boolean(Field::new(self.#field_ident.value().clone()))); },
         }
     });
+    // TODO Find a way to remove all those generated code
+    let fields_to_map_dirty = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+        let field_name = f.name();
+        let field_ident = syn::Ident::new(field_name, f.span().clone());
+        match f.default_value() {
+            FieldType::String(_) => quote! {
+                if (self.#field_ident.is_dirty()) {
+                    map.insert(#field_name.to_string(), FieldType::String(Field::new(self.#field_ident.value().clone())));
+                }
+            },
+            FieldType::Integer(_) => quote! {
+                if (self.#field_ident.is_dirty()) {
+                   map.insert(#field_name.to_string(), FieldType::Integer(Field::new(self.#field_ident.value().clone())));
+                }
+            },
+            FieldType::Boolean(_) => quote! {
+                if (self.#field_ident.is_dirty()) {
+                   map.insert(#field_name.to_string(), FieldType::Boolean(Field::new(self.#field_ident.value().clone())));
+                }
+            },
+        }
+    });
+
+    let fields_reset_dirty = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+        let field_name = f.name();
+        let field_ident = syn::Ident::new(field_name, f.span().clone());
+        match f.default_value() {
+            FieldType::String(_) => quote! { self.#field_ident.reset_dirty(); },
+            FieldType::Integer(_) => quote! { self.#field_ident.reset_dirty(); },
+            FieldType::Boolean(_) => quote! { self.#field_ident.reset_dirty(); },
+        }
+    });
 
     let internal_model_getter_descriptor_impl = quote! {
         impl #generics InternalModelGetterDescriptor<'env> for #struct_name #generics {
@@ -128,6 +160,16 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 #(#fields_to_map)*
                 map
             }
+
+            fn _to_map_dirty(&self) -> HashMap<String, FieldType> {
+                let mut map = HashMap::new();
+                #(#fields_to_map_dirty)*
+                map
+            }
+
+            fn _remove_dirty(&mut self) {
+                #(#fields_reset_dirty)*
+            }
         }
     };
 
@@ -140,7 +182,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         #impl_struct
 
         #internal_model_getter_descriptor_impl
-
+-
         #model_environment_impl
     };
 

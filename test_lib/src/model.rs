@@ -29,6 +29,8 @@ pub trait InternalModelGetterDescriptor<'env> {
     fn id(&self) -> u32;
     fn env(&self) -> &std::rc::Weak<std::cell::RefCell<Environment<'env>>>;
     fn _to_map(&self) -> HashMap<String, FieldType>;
+    fn _to_map_dirty(&self) -> HashMap<String, FieldType>;
+    fn _remove_dirty(&mut self);
 
     fn new<IMD>(env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
         let name = IMD::_name();
@@ -73,11 +75,28 @@ pub trait InternalModelGetterDescriptor<'env> {
     }
 
     fn save(&mut self) {
-        let map = self._to_map();
+        let map = self._to_map_dirty();
+        if map.is_empty() { return; }
+        println!("Map = {:?}", map);
         match self.env().upgrade() {
             Some(env_borrow) => {
                 let mut env = env_borrow.borrow_mut();
                 env.cache_mut().save_cached_record(Self::_name(), self.id(), map);
+                // Remove dirty
+                self._remove_dirty();
+            }
+            None => {
+                // Should be there
+                panic!("Environment should exist!")
+            }
+        }
+    }
+
+    fn save_field(&self, field_name: &str, field: &FieldType) {
+        match self.env().upgrade() {
+            Some(env_borrow) => {
+                let mut env = env_borrow.borrow_mut();
+                env.cache_mut().save_cached_field(Self::_name(), self.id(), field_name, field)
             }
             None => {
                 // Should be there
