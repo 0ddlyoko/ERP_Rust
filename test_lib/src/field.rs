@@ -125,7 +125,7 @@ impl FieldType {
         match field_type {
             "String" => FieldType::String(Field::new(value)),
             "Integer" | "i32" => FieldType::Integer(Field::new(value.map(|f| f.parse().unwrap()))),
-            "Boolean" | "bool" => FieldType::Boolean(Field::new(value.map(|f| if f == "true" {true} else {false}))),
+            "Boolean" | "bool" => FieldType::Boolean(Field::new(value.map(|f| f == "true"))),
             _ => panic!("Unknown field type \"{}\"!", field_type),
         }
     }
