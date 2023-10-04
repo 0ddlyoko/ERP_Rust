@@ -12,6 +12,7 @@ pub use env::GlobalEnvironment;
 pub use env::ModelEnvironment;
 pub use field::Field;
 pub use field::FieldDescriptor;
+pub use field::FieldHandler;
 pub use field::FieldType;
 pub use field::GeneratedFieldDescriptor;
 pub use model::GeneratedModelDescriptor;

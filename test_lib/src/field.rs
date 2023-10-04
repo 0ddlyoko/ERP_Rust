@@ -2,7 +2,7 @@
 // Generated Fields
 
 use std::fmt;
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct GeneratedFieldDescriptor {
@@ -103,8 +103,8 @@ impl<TYPE> Field<TYPE> where TYPE: FieldHandler {
     }
 }
 
-impl<TYPE> Display for Field<TYPE> where TYPE: FieldHandler + fmt::Display {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl<TYPE> Display for Field<TYPE> where TYPE: FieldHandler + Display {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         return match &self.value {
             Option::Some(test) => write!(f, "{}", test),
             Option::None => write!(f, "None"),

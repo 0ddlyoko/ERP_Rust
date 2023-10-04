@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use crate::field::GeneratedFieldDescriptor;
-use crate::{Environment, FieldDescriptor, FieldType};
+use crate::field::{FieldHandler, GeneratedFieldDescriptor};
+use crate::{Environment, Field, FieldDescriptor, FieldType};
 
 #[derive(Debug)]
 pub struct GeneratedModelDescriptor {
@@ -31,6 +31,9 @@ pub trait InternalModelGetterDescriptor<'env> {
     fn _to_map(&self) -> HashMap<String, FieldType>;
     fn _to_map_dirty(&self) -> HashMap<String, FieldType>;
     fn _remove_dirty(&mut self);
+    /// Update current model with the given new values
+    /// If a field is given but is not registered in this model, do not save it
+    fn update(&mut self, map: HashMap<String, FieldType>);
 
     fn new<IMD>(env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
         let name = IMD::_name();
@@ -82,6 +85,7 @@ pub trait InternalModelGetterDescriptor<'env> {
         return Self::load(id, env.clone());
     }
 
+    /// Save the current model in the cache
     fn save(&mut self) {
         let map = self._to_map_dirty();
         if map.is_empty() { return; }
