@@ -101,7 +101,25 @@ model! {
     #[odd(table_name = "sale_order_line")]
     pub struct SaleOrderLine {
         pub name: Field<String>,
-        pub sale_order: Field<Many2one<SaleOrder>>,
+        // pub sale_order: Field<Many2one<SaleOrder>>,
+    }
+}
+
+model! {
+    #[derive(Debug)]
+    #[odd(table_name = "sale_order")]
+    pub struct SaleOrderCopy {
+        // Existing fields
+        pub title: Field<String>,
+        // New fields
+        #[odd(default = "0ddlyoko")]
+        pub author: Field<String>,
+    }
+}
+
+impl<'env> SaleOrderCopy<'env> {
+    fn print_author_and_title(&self) {
+        println!("author = {}, title = {}", self.author, self.title);
     }
 }
 
@@ -115,17 +133,20 @@ fn main() {
     let mut global_env = GlobalEnvironment::new();
     let model_manager = global_env.models_mut();
     model_manager.register::<SaleOrder>("module_a");
+    model_manager.register::<SaleOrderCopy>("module_b");
 
     let models = model_manager.models();
-    for (name, model_descriptor) in models {
-        println!("{}, {:?}", name, model_descriptor);
-    }
+    // for (name, model_descriptor) in models {
+    //     println!("{}, {:?}", name, model_descriptor);
+    // }
 
-    let mut env = std::rc::Rc::new(std::cell::RefCell::new(global_env.new_env()));
+    let env = std::rc::Rc::new(std::cell::RefCell::new(global_env.new_env()));
     let mut sale_order: SaleOrder = SaleOrder::new::<SaleOrder>(std::rc::Rc::downgrade(&env));
-    let id = sale_order.id;
     sale_order.title.set("SALUT, JE SUIS AUDD :D".to_string());
     sale_order.published.set(false);
-    sale_order.save();
-    sale_order.save();
+    // sale_order.save();
+
+    let mut sale_order_copy: SaleOrderCopy = sale_order.convert_to();
+    // println!("{:?}", sale_order_copy);
+    sale_order_copy.print_author_and_title();
 }

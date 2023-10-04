@@ -74,6 +74,14 @@ pub trait InternalModelGetterDescriptor<'env> {
         IMD::_from_map(id, new_fields, env)
     }
 
+    fn convert_to<IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
+        // Before converting, save in cache
+        self.save();
+        let id = self.id();
+        let env = self.env();
+        return Self::load(id, env.clone());
+    }
+
     fn save(&mut self) {
         let map = self._to_map_dirty();
         if map.is_empty() { return; }

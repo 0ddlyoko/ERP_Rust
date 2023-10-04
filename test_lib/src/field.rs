@@ -1,6 +1,9 @@
 
 // Generated Fields
 
+use std::fmt;
+use std::fmt::{Display, Formatter, write};
+
 #[derive(Debug)]
 pub struct GeneratedFieldDescriptor {
     pub field_name: String,
@@ -43,15 +46,21 @@ impl FieldDescriptor {
     }
 }
 
+pub trait FieldHandler {}
+impl FieldHandler for String {}
+impl FieldHandler for bool {}
+impl FieldHandler for i32 {}
+
+
 // Fields used in Models
 
 #[derive(Debug)]
-pub struct Field<TYPE> {
+pub struct Field<TYPE> where TYPE: FieldHandler {
     value: Option<TYPE>,
     pub dirty: bool,
 }
 
-impl<TYPE> Field<TYPE> {
+impl<TYPE> Field<TYPE> where TYPE: FieldHandler {
     pub fn new(value: Option<TYPE>) -> Self {
         Field {
             value: value,
@@ -91,6 +100,15 @@ impl<TYPE> Field<TYPE> {
     pub fn clear(&mut self) {
         self.value = None;
         self.dirty = true;
+    }
+}
+
+impl<TYPE> Display for Field<TYPE> where TYPE: FieldHandler + fmt::Display {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        return match &self.value {
+            Option::Some(test) => write!(f, "{}", test),
+            Option::None => write!(f, "None"),
+        }
     }
 }
 
