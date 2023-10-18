@@ -2,7 +2,7 @@
 // Generated Fields
 
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug)]
 pub struct GeneratedFieldDescriptor {
@@ -46,10 +46,24 @@ impl FieldDescriptor {
     }
 }
 
-pub trait FieldHandler {}
-impl FieldHandler for String {}
-impl FieldHandler for bool {}
-impl FieldHandler for i32 {}
+pub trait FieldHandler: Sized {
+    fn to_field(option: Option<&str>) -> Option<Self>;
+}
+impl FieldHandler for String {
+    fn to_field(option: Option<&str>) -> Option<String> {
+        option.map(|v| v.to_string())
+    }
+}
+impl FieldHandler for bool {
+    fn to_field(option: Option<&str>) -> Option<bool> {
+        option.map(|v| v == "true")
+    }
+}
+impl FieldHandler for i32 {
+    fn to_field(option: Option<&str>) -> Option<i32> {
+        option.map(|v| v.parse().unwrap())
+    }
+}
 
 
 // Fields used in Models
@@ -101,6 +115,19 @@ impl<TYPE> Field<TYPE> where TYPE: FieldHandler {
         self.value = None;
         self.dirty = true;
     }
+
+    pub fn set_option_from_string(&mut self, field_type: Option<&str>) {
+        let type_value = TYPE::to_field(field_type);
+        self.set_option(type_value)
+    }
+
+    pub fn set_option(&mut self, field: Option<TYPE>) {
+        if let Some(value) = field {
+            self.set(value);
+        } else {
+            self.clear();
+        }
+    }
 }
 
 impl<TYPE> Display for Field<TYPE> where TYPE: FieldHandler + Display {
@@ -120,6 +147,14 @@ pub enum FieldType {
 }
 
 impl FieldType {
+
+    pub fn to_string(&self) -> Option<String> {
+        match self {
+            FieldType::String(field) => field.value.clone(),
+            FieldType::Integer(field) => field.value.clone().map(|f| f.to_string()),
+            FieldType::Boolean(field) => field.value.clone().map(|f| f.to_string()),
+        }
+    }
 
     pub fn from(field_type: &str, value: Option<String>) -> Self {
         match field_type {
@@ -158,20 +193,17 @@ impl FieldType {
         match self {
             FieldType::String(field_to_edit) => {
                 if let FieldType::String(field) = field_type {
-                    field_to_edit.value = field.value.clone();
-                    field_to_edit.dirty = true;
+                    field_to_edit.set_option(field.value.clone());
                 }
             }
             FieldType::Integer(field_to_edit) => {
                 if let FieldType::Integer(field) = field_type {
-                    field_to_edit.value = field.value.clone();
-                    field_to_edit.dirty = true;
+                    field_to_edit.set_option(field.value);
                 }
             }
             FieldType::Boolean(field_to_edit) => {
                 if let FieldType::Boolean(field) = field_type {
-                    field_to_edit.value = field.value.clone();
-                    field_to_edit.dirty = true;
+                    field_to_edit.set_option(field.value);
                 }
             }
         }
@@ -223,4 +255,12 @@ impl FieldType {
             }
         }
     }
+    //
+    // pub fn to_option<T>(&mut self) -> Option<T> where T: FieldHandler {
+    //     match self {
+    //         FieldType::String(f) => f.value.clone().map(|x| x as T),
+    //         FieldType::Integer(f) => f.value.clone().map(|x| x as T),
+    //         FieldType::Boolean(f) => f.value.clone().map(|x| x as T),
+    //     }
+    // }
 }

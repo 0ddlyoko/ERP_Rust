@@ -139,6 +139,16 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
+    let fields_update = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+        let field_name = f.name();
+        let field_ident = syn::Ident::new(field_name, f.span().clone());
+        quote! {
+            if (field_name.eq(#field_name)) {
+                self.#field_ident.set_option_from_string(option);
+            }
+        }
+    });
+
     let internal_model_getter_descriptor_impl = quote! {
         impl #generics InternalModelGetterDescriptor<'env> for #struct_name #generics {
             fn _name() -> &'static str {
@@ -181,8 +191,10 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 #(#fields_reset_dirty)*
             }
 
-            fn update(&mut self, map: HashMap<String, FieldType>) {
-
+            fn update(&mut self, map: HashMap<&str, Option<&str>>) {
+                for (field_name, option) in map {
+                    #(#fields_update)*
+                }
             }
         }
     };

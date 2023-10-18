@@ -1,8 +1,10 @@
+use std::arch::x86_64::_mm_add_pd;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Pointer};
 use std::string::ToString;
 
 use code_gen::*;
+use diesel::serialize::ToSql;
 use test_lib::*;
 
 
@@ -71,5 +73,11 @@ fn main() {
 
     let mut sale_order_copy: SaleOrderCopy = sale_order.convert_to();
     // println!("{:?}", sale_order_copy);
+    sale_order_copy.print_author_and_title();
+
+    sale_order.update(HashMap::from([
+        ("title", Some("New title")),
+        ("published", Some("true")),
+    ]));
     sale_order_copy.print_author_and_title();
 }

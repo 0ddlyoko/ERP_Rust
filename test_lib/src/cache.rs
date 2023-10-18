@@ -52,7 +52,7 @@ impl CachedRecord {
     }
 
     pub fn clean(&mut self) {
-        self.fields.iter_mut().for_each(|(_, f)| f.clear());
+        self.fields.iter_mut().for_each(|(_, field_type)| field_type.clear());
     }
 
     pub fn fields(&self) -> &HashMap<String, FieldType> {
@@ -69,21 +69,21 @@ impl CachedRecord {
 
     pub fn get_new_fields(&self) -> HashMap<String, FieldType> {
         let mut map = HashMap::new();
-        self.fields.iter().for_each(|f| {
-            map.insert(f.0.clone(), f.1.clone());
+        self.fields.iter().for_each(|(field_name, field_type)| {
+            map.insert(field_name.clone(), field_type.clone());
         });
         map
     }
 
     pub fn update_fields(&mut self, fields: HashMap<String, FieldType>) {
-        fields.iter().for_each(|(field_name, field)| {
-            self.field_mut(field_name).update_value(field);
+        fields.iter().for_each(|(field_name, field_type)| {
+            self.field_mut(field_name).update_value(field_type);
         });
     }
 
     pub fn update_fields_ref(&mut self, fields: HashMap<String, &FieldType>) {
-        fields.iter().for_each(|(field_name, field)| {
-            self.field_mut(field_name).update_value(field);
+        fields.iter().for_each(|(field_name, field_type)| {
+            self.field_mut(field_name).update_value(field_type);
         });
     }
 
