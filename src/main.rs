@@ -66,7 +66,7 @@ fn main() {
     model_manager.register::<SaleOrderCopy>("module_b");
 
     let env = std::rc::Rc::new(std::cell::RefCell::new(global_env.new_env()));
-    let mut sale_order: SaleOrder = SaleOrder::new::<SaleOrder>(std::rc::Rc::downgrade(&env));
+    let mut sale_order: SaleOrder = SaleOrder::new(std::rc::Rc::downgrade(&env));
     sale_order.title.set("SALUT, JE SUIS AUDD :D".to_string());
     sale_order.published.set(false);
     // sale_order.save();
