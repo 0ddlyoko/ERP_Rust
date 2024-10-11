@@ -143,11 +143,11 @@ impl CachedModel {
     }
 
     pub fn get_or_create_new_entry(&mut self, id: u32) -> &mut CachedRecord {
-        return if self.cache.contains_key(&id) {
+        if self.cache.contains_key(&id) {
             self.cache.get_mut(&id).unwrap()
         } else {
             self.create_new_entry(id)
-        };
+        }
     }
 
     pub fn save_entry(&mut self, id: u32, fields: HashMap<String, FieldType>) {

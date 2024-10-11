@@ -10,10 +10,9 @@ macro_rules! model {
     ) => {
         #[derive(Model)]
         $(#[$derive_2])*
-        $pub struct $name<'env$(, $($a),*)?> {
+        $pub struct $name<$($($a),*)?> {
             #[odd(required)]
             pub id: u32,
-            pub _env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>,
             $($fields)*
         }
     }

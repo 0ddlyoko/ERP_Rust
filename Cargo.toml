@@ -1,5 +1,5 @@
 [package]
-name = "Rust"
+name = "rust-erp"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,4 +17,3 @@ diesel = "2.1"
 code_gen = { path = "code_gen" }
 test_http = { path = "test_http" }
 test_lib = { path = "test_lib" }
-my_macro = { path = "my_macro" }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::field::GeneratedFieldDescriptor;
-use crate::{Environment, FieldDescriptor, FieldHandler, FieldType};
+use crate::{Environment, FieldDescriptor, FieldType};
 
 #[derive(Debug)]
 pub struct GeneratedModelDescriptor {
@@ -22,12 +22,11 @@ impl GeneratedModelDescriptor {
     }
 }
 
-pub trait InternalModelGetterDescriptor<'env> {
+pub trait Model {
     fn _name() -> &'static str;
     fn _get_generated_model_descriptor() -> GeneratedModelDescriptor;
-    fn _from_map(id: u32, map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self;
+    fn _from_map<'env>(id: u32, map: HashMap<String, FieldType>, env: &'env Environment<'env>) -> Self;
     fn id(&self) -> u32;
-    fn env(&self) -> &std::rc::Weak<std::cell::RefCell<Environment<'env>>>;
     fn _to_map(&self) -> HashMap<String, FieldType>;
     fn _to_map_dirty(&self) -> HashMap<String, FieldType>;
     fn _remove_dirty(&mut self);
@@ -35,54 +34,36 @@ pub trait InternalModelGetterDescriptor<'env> {
     /// If a field is given but is not registered in this model, do not save it
     fn update(&mut self, map: HashMap<&str, Option<&str>>);
 
-    fn new<IMD>(env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
+    fn new<'env, IMD>(env: &'env mut Environment<'env>) -> IMD where IMD: Model<'env> {
         let name = IMD::_name();
-        let (id, new_fields) = match env.upgrade() {
-            Some(env_borrow) => {
-                let mut env = env_borrow.borrow_mut();
-                env.counter += 1;
-                let id = env.counter;
-                let cached_record = env.cache_mut().new_cached_record(name, id);
-                (id, cached_record.get_new_fields())
+
+        env.counter += 1;
+        let id = env.counter;
+        let cached_record = env.cache_mut().new_cached_record(name, id);
+        IMD::_from_map(id, cached_record.get_new_fields(), env)
+    }
+
+    fn load<'env, IMD>(id: u32, mut env: &'env mut Environment<'env>) -> IMD where IMD: Model<'env> {
+        let name = IMD::_name();
+        let cached_record = env.cache_mut().get_cached_record(name, id);
+        let new_fields = match cached_record {
+            Some(record) => {
+                record.get_new_fields()
             }
             None => {
-                // Should be there
-                panic!("Environment should exist!")
+                // TODO Load it
+                panic!("TODO Load it")
             }
         };
         IMD::_from_map(id, new_fields, env)
     }
 
-    fn load<IMD>(id: u32, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
-        let name = IMD::_name();
-        let new_fields = match env.upgrade() {
-            Some(env_borrow) => {
-                let mut env = env_borrow.borrow_mut();
-                let cached_record = env.cache_mut().get_cached_record(name, id);
-                match cached_record {
-                    Some(record) => {
-                        record.get_new_fields()
-                    }
-                    None => {
-                        // TODO Load it
-                        panic!("TODO Load it")
-                    }
-                }
-            },
-            None => {
-                // Should be there
-                panic!("Environment should exist!")
-            }
-        };
-        IMD::_from_map(id, new_fields, env)
-    }
-
-    fn convert_to<IMD>(&mut self) -> IMD where IMD: InternalModelGetterDescriptor<'env> {
+    fn convert_to<'env, IMD>(&mut self) -> IMD where IMD: Model<'env> {
         // Before converting, save in cache
         self.save();
+        let env = self.env_mut();
         let id = self.id();
-        let env = self.env();
-        return Self::load(id, env.clone());
+        Self::load(id, env)
     }
 
     /// Save the current model in the cache
@@ -90,31 +71,17 @@ pub trait InternalModelGetterDescriptor<'env> {
         let map = self._to_map_dirty();
         if map.is_empty() { return; }
         println!("Map = {:?}", map);
-        match self.env().upgrade() {
-            Some(env_borrow) => {
-                let mut env = env_borrow.borrow_mut();
-                env.cache_mut().save_cached_record(Self::_name(), self.id(), map);
-                // Remove dirty
-                self._remove_dirty();
-            }
-            None => {
-                // Should be there
-                panic!("Environment should exist!")
-            }
-        }
+        let id = self.id();
+        let env = self.env_mut();
+        env.cache_mut().save_cached_record(Self::_name(), id, map);
+        // Remove dirty
+        self._remove_dirty();
     }
 
-    fn save_field(&self, field_name: &str, field: &FieldType) {
-        match self.env().upgrade() {
-            Some(env_borrow) => {
-                let mut env = env_borrow.borrow_mut();
-                env.cache_mut().save_cached_field(Self::_name(), self.id(), field_name, field)
-            }
-            None => {
-                // Should be there
-                panic!("Environment should exist!")
-            }
-        }
+    fn save_field(&mut self, field_name: &str, field: &FieldType) {
+        let env = self.env_mut();
+        let id = self.id();
+        env.cache_mut().save_cached_field(Self::_name(), id, field_name, field)
     }
 }
 
@@ -181,7 +148,7 @@ impl ModelManager {
         }
     }
 
-    pub fn register<'env, IMD>(&mut self, module_name: &str) where IMD: InternalModelGetterDescriptor<'env> {
+    pub fn register<'env, IMD>(&mut self, module_name: &str) where IMD: Model<'env> {
         let generated_model_descriptor = IMD::_get_generated_model_descriptor();
         let table_name = &generated_model_descriptor.table_name;
         let model_descriptor = self.models.entry(table_name.clone()).or_insert_with(|| {

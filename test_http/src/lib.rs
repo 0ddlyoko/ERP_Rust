@@ -3,9 +3,6 @@ mod method;
 
 extern crate tokio;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
-
 pub use http_status::HttpStatus;
 pub use method::Method;
 

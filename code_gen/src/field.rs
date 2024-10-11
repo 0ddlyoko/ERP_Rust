@@ -7,7 +7,7 @@ use crate::attrs::{AllowedFieldAttr, parse_attributes};
 use crate::util::{generate_field_no_field_error, generate_field_no_name_error};
 
 
-pub struct Field {
+pub struct FieldGen {
     field_name: String,
     field_span: Span,
     field_name_span: Span,
@@ -15,7 +15,7 @@ pub struct Field {
     default_value: FieldType,
 }
 
-impl Field {
+impl FieldGen {
     pub fn from_item(item: &SynField) -> Result<Self> {
         let SynField {
             ident,  attrs, ty, ..
@@ -79,7 +79,7 @@ impl Field {
             }
         }
 
-        Ok(Field {
+        Ok(FieldGen {
             field_name: field_name,
             field_span: item.span(),
             field_name_span: ident.span(),

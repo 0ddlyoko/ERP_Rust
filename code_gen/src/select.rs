@@ -6,14 +6,14 @@ use syn::DeriveInput;
 use syn::Result;
 use test_lib::FieldType;
 
-use crate::model::Model;
+use crate::model::ModelGen;
 use crate::util::option_to_tuple;
 
 pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
         ident: ref struct_name, ref generics, ..
     } = item;
-    let model = Model::from_item(&item)?;
+    let model = ModelGen::from_item(&item)?;
 
     let table_name = model.table_name();
     let fields_str: Vec<&str> = model.fields().iter().map(|f| f.name().as_str()).collect::<Vec<_>>();
@@ -74,7 +74,9 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
-    let fields_from_map = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_filtered = model.fields().iter().filter(|f| f.name() != "id");
+
+    let fields_from_map = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         let field_type = match f.default_value() {
@@ -87,7 +89,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
-    let fields_to_map = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_to_map = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         match f.default_value() {
@@ -97,7 +99,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
     // TODO Find a way to remove all those generated code
-    let fields_to_map_dirty = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_to_map_dirty = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         match f.default_value() {
@@ -119,17 +121,13 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
-    let fields_reset_dirty = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_reset_dirty = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
-        match f.default_value() {
-            FieldType::String(_) => quote! { self.#field_ident.reset_dirty(); },
-            FieldType::Integer(_) => quote! { self.#field_ident.reset_dirty(); },
-            FieldType::Boolean(_) => quote! { self.#field_ident.reset_dirty(); },
-        }
+        quote! { self.#field_ident.reset_dirty(); }
     });
 
-    let fields_get_field_mut = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_get_field_mut = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         quote! {
@@ -139,7 +137,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
-    let fields_update = model.fields().iter().filter(|f| f.name() != "id" && f.name() != "_env").map(|f| {
+    let fields_update = fields_filtered.clone().map(|f| {
         let field_name = f.name();
         let field_ident = syn::Ident::new(field_name, f.span().clone());
         quote! {
@@ -149,8 +147,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
-    let internal_model_getter_descriptor_impl = quote! {
-        impl #generics InternalModelGetterDescriptor<'env> for #struct_name #generics {
+    let model_impl = quote! {
+        impl #generics Model for #struct_name #generics {
             fn _name() -> &'static str {
                 #table_name
             }
@@ -159,7 +157,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 #model_descriptor
             }
 
-            fn _from_map(id: u32, mut map: HashMap<String, FieldType>, env: std::rc::Weak<std::cell::RefCell<Environment<'env>>>) -> Self {
+            fn _from_map(id: u32, mut map: HashMap<String, FieldType>, env: &'env Environment<'env>) -> Self {
                 Self {
                     id: id,
                     #(#fields_from_map)*
@@ -169,10 +167,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
             fn id(&self) -> u32 {
                 self.id
-            }
-
-            fn env(&self) -> &std::rc::Weak<std::cell::RefCell<Environment<'env>>> {
-                &self._env
             }
 
             fn _to_map(&self) -> HashMap<String, FieldType> {
@@ -198,23 +192,17 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
         }
     };
-    let model_environment_impl = quote! {
-        impl #generics ModelEnvironment<'env> for #struct_name #generics {
-        }
-    };
 
     let result = quote! {
         #impl_struct
 
-        #internal_model_getter_descriptor_impl
-
-        #model_environment_impl
+        #model_impl
     };
 
-    let mut file = File::create(format!("generated/generated_code_{}.rs", table_name));
+    let file = File::create(format!("generated/generated_code_{}.rs", table_name));
     match file {
         Ok(mut file) => {
-            file.write_all(result.to_string().as_bytes());
+            file.write_all(result.to_string().as_bytes()).expect("TODO: panic message");
         }
         Err(_) => {}
     };

@@ -4,15 +4,15 @@ use syn::Field as SynField;
 use syn::Result;
 use syn::token::Comma;
 use crate::attrs::{AllowedModelAttr, parse_attributes};
-use crate::field::Field;
+use crate::field::FieldGen;
 use crate::util::generate_missing_table_name_error;
 
-pub struct Model {
+pub struct ModelGen {
     table_name: String,
-    fields: Vec<Field>,
+    fields: Vec<FieldGen>,
 }
 
-impl Model {
+impl ModelGen {
     pub fn from_item(item: &DeriveInput) -> Result<Self> {
         let DeriveInput {
             data, ident, attrs, ..
@@ -54,15 +54,15 @@ impl Model {
         &self.table_name
     }
 
-    pub fn fields(&self) -> &[Field] {
+    pub fn fields(&self) -> &[FieldGen] {
         &self.fields
     }
 }
 
-fn syn_fields_from_data(fields: Option<&Punctuated<SynField, Comma>>) -> Result<Vec<Field>> {
+fn syn_fields_from_data(fields: Option<&Punctuated<SynField, Comma>>) -> Result<Vec<FieldGen>> {
     fields.map(|fields| {
         fields.iter()
-            .map(|f| Field::from_item(f))
+            .map(|f| FieldGen::from_item(f))
             .collect::<Result<Vec<_>>>()
     }).unwrap_or_else(|| Ok(Vec::new()))
 }
