@@ -34,7 +34,7 @@ pub trait Model {
     /// If a field is given but is not registered in this model, do not save it
     fn update(&mut self, map: HashMap<&str, Option<&str>>);
 
-    fn new<'env, IMD>(env: &'env mut Environment<'env>) -> IMD where IMD: Model<'env> {
+    fn new<'env, IMD>(env: &'env mut Environment<'env>) -> IMD where IMD: Model {
         let name = IMD::_name();
 
         env.counter += 1;
@@ -43,7 +43,7 @@ pub trait Model {
         IMD::_from_map(id, cached_record.get_new_fields(), env)
     }
 
-    fn load<'env, IMD>(id: u32, mut env: &'env mut Environment<'env>) -> IMD where IMD: Model<'env> {
+    fn load<'env, IMD>(id: u32, mut env: &'env mut Environment<'env>) -> IMD where IMD: Model {
         let name = IMD::_name();
         let cached_record = env.cache_mut().get_cached_record(name, id);
         let new_fields = match cached_record {
@@ -58,7 +58,7 @@ pub trait Model {
         IMD::_from_map(id, new_fields, env)
     }
 
-    fn convert_to<'env, IMD>(&mut self) -> IMD where IMD: Model<'env> {
+    fn convert_to<'env, IMD>(&mut self) -> IMD where IMD: Model {
         // Before converting, save in cache
         self.save();
         let env = self.env_mut();
@@ -148,7 +148,7 @@ impl ModelManager {
         }
     }
 
-    pub fn register<'env, IMD>(&mut self, module_name: &str) where IMD: Model<'env> {
+    pub fn register<'env, IMD>(&mut self, module_name: &str) where IMD: Model {
         let generated_model_descriptor = IMD::_get_generated_model_descriptor();
         let table_name = &generated_model_descriptor.table_name;
         let model_descriptor = self.models.entry(table_name.clone()).or_insert_with(|| {
