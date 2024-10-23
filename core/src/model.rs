@@ -5,7 +5,7 @@ pub use model_manager::ModelManager;
 use std::collections::HashMap;
 use crate::field::{FieldDescriptor, FieldType};
 
-pub type MapOfFields<'a> = HashMap<&'a str, Option<FieldType>>;
+pub type MapOfFields = HashMap<&'static str, Option<FieldType>>;
 
 pub struct ModelDescriptor {
     pub name: String,
@@ -14,7 +14,7 @@ pub struct ModelDescriptor {
 }
 
 pub trait Model {
-    fn get_model_name() -> String where Self: Sized;
+    fn get_model_name() -> &'static str where Self: Sized;
     fn get_model_descriptor() -> ModelDescriptor where Self: Sized;
 
     /// Returns the id of the current record

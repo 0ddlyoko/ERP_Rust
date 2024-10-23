@@ -104,8 +104,8 @@ impl SaleOrder {
 }
 
 impl core::model::Model for SaleOrder {
-    fn get_model_name() -> String {
-        "sale_order".to_string()
+    fn get_model_name() -> &'static str {
+        "sale_order"
     }
 
     fn get_model_descriptor() -> core::model::ModelDescriptor {
@@ -138,7 +138,7 @@ impl core::model::Model for SaleOrder {
         let name = data["name"].clone().unwrap().string();
         Self {
             id,
-            name: name,
+            name,
         }
     }
 }
@@ -146,17 +146,23 @@ impl core::model::Model for SaleOrder {
 fn main() {
     let mut model_manager = core::model::ModelManager::new();
     model_manager.register_model::<SaleOrder>();
-    let mut a: core::model::MapOfFields = HashMap::new();
-    a.insert("name", Some(core::field::FieldType::String("0ddlyoko".to_string())));
-    let z = model_manager.create_instance::<SaleOrder>(1, a);
-    match z {
-        None => {
-            println!("No model found");
-        }
-        Some(some) => {
-            println!("Model found");
-            println!("{:?}", some.get_id());
-            println!("{:?}", some.get_name());
-        }
-    }
+    
+    let mut env: core::environment::Environment = model_manager.new_environment();
+    
+    let record = env.get_record_from_name("test", 1);
+    println!("{}", record.is_some());
+    
+    // let mut a: core::model::MapOfFields = HashMap::new();
+    // a.insert("name".to_string(), Some(core::field::FieldType::String("0ddlyoko".to_string())));
+    // let z = model_manager.create_instance::<SaleOrder>(1, a);
+    // match z {
+    //     None => {
+    //         println!("No model found");
+    //     }
+    //     Some(some) => {
+    //         println!("Model found");
+    //         println!("{:?}", some.get_id());
+    //         println!("{:?}", some.get_name());
+    //     }
+    // }
 }

@@ -17,7 +17,7 @@ impl FieldType {
     pub fn integer(&self) -> i64 {
         match self {
             FieldType::Integer(i) => *i,
-            _ => panic!("Not a integer field type!"),
+            _ => panic!("Not an integer field type!"),
         }
     }
 

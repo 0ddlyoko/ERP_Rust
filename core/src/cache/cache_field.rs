@@ -47,15 +47,16 @@ impl PartialEq<Self> for CacheFieldValue {
 /// Cache for a single field
 pub struct CacheField {
     value: Option<CacheFieldValue>,
+    dirty: bool,
 }
 
 impl CacheField {
     pub fn new() -> Self {
-        Self { value: None }
+        Self { value: None, dirty: false }
     }
 
     pub fn new_with_value(value: CacheFieldValue) -> Self {
-        Self { value: Some(value) }
+        Self { value: Some(value), dirty: false }
     }
 
     pub fn get(&self) -> Option<&CacheFieldValue> {
@@ -68,9 +69,25 @@ impl CacheField {
     pub fn set(&mut self, value: CacheFieldValue) {
         self.value = Some(value);
     }
+    
+    pub fn is_set(&self) -> bool {
+        self.value.is_some()
+    }
 
     pub fn clear(&mut self) {
         self.value = None;
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn set_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    pub fn clean_dirty(&mut self) {
+        self.dirty = false;
     }
 }
 

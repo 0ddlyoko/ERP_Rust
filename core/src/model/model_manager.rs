@@ -1,15 +1,16 @@
 use std::collections::HashMap;
+use crate::environment::Environment;
 use crate::model::{MapOfFields, Model, ModelDescriptor};
 
 
 struct InternalModel {
-    model_name: String,
+    model_name: &'static str,
     model_descriptor: ModelDescriptor,
     create_instance: fn(u32, MapOfFields) -> Box<dyn Model>,
 }
 
 pub struct ModelManager {
-    models: HashMap<String, Vec<InternalModel>>,
+    models: HashMap<&'static str, Vec<InternalModel>>,
 }
 
 impl ModelManager {
@@ -31,7 +32,7 @@ impl ModelManager {
             create_instance,
         };
 
-        self.models.entry(internal_model.model_name.clone()).or_insert_with(Vec::new).push(internal_model);
+        self.models.entry(internal_model.model_name).or_insert_with(Vec::new).push(internal_model);
     }
 
     pub fn create_instance_from_name(&self, model_name: &str, id: u32, data: MapOfFields) -> Option<Box<dyn Model>> {
@@ -44,5 +45,9 @@ impl ModelManager {
 
     pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> Option<M> where M: Model + 'static {
         Some(M::create_model(id, data))
+    }
+
+    pub fn new_environment(&self) -> Environment {
+        Environment::new(self)
     }
 }
