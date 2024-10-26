@@ -86,7 +86,7 @@ impl CacheField {
         self.dirty = true;
     }
 
-    pub fn clean_dirty(&mut self) {
+    pub fn clear_dirty(&mut self) {
         self.dirty = false;
     }
 }

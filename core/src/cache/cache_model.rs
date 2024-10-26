@@ -53,20 +53,16 @@ impl CacheModel {
 
     pub fn insert_field(&mut self, name: &'static str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
         let entry = self.fields.entry(name);
-        let exists = match entry {
-            Occupied(_) => true,
-            Vacant(_) => false,
-        };
         let cache_field = entry.or_insert_with(CacheField::new);
         match field_value {
             Some(field) => {
-                if exists && &field != cache_field.get().unwrap() {
+                if cache_field.get().is_none() || &field != cache_field.get().unwrap() {
                     cache_field.set_dirty();
                     cache_field.set(field);
                 }
             }
             None => {
-                if exists && cache_field.is_set() {
+                if cache_field.is_set() {
                     cache_field.set_dirty();
                     cache_field.clear();
                 }
@@ -78,6 +74,12 @@ impl CacheModel {
     pub fn insert_fields(&mut self, fields: CacheMapOfFields) {
         for (name, value) in fields {
             self.insert_field(name, value);
+        }
+    }
+
+    pub fn clear_all_dirty(&mut self) {
+        for value in self.fields.values_mut() {
+            value.clear_dirty();
         }
     }
 

@@ -1,12 +1,13 @@
 mod cache_field;
 mod cache_model;
+pub mod errors;
 
 pub use cache_field::CacheField;
 pub use cache_field::CacheFieldValue;
+pub use cache_model::CacheMapOfFields;
 pub use cache_model::CacheModel;
 
 use std::collections::HashMap;
-use crate::cache::cache_model::CacheMapOfFields;
 use crate::field::FieldType;
 use crate::model::MapOfFields;
 
@@ -62,6 +63,14 @@ impl Cache {
     pub fn insert_record_model_with_map(&mut self, model_name: &'static str, id: u32, fields: CacheMapOfFields) {
         let cache_model = self.get_record_or_create(model_name, id);
         cache_model.insert_fields(fields)
+    }
+
+    pub fn clear_all_dirty_of_model(&mut self, model_name: &'static str, id: u32) {
+        let cache_model = self.get_cache_record_mut(model_name, id);
+        if cache_model.is_none() {
+            return;
+        }
+        cache_model.unwrap().clear_all_dirty();
     }
 
     pub fn transform_into_map_of_fields(fields: &CacheMapOfFields) -> MapOfFields {

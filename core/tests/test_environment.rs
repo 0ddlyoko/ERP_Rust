@@ -82,9 +82,12 @@ fn test_get_record() {
     map.insert("name", Some(core::cache::CacheFieldValue::String("0ddlyoko".to_string())));
     map.insert("total_price", Some(core::cache::CacheFieldValue::Int(42)));
     env.cache.insert_record_model_with_map("sale_order", 1, map);
+    env.cache.clear_all_dirty_of_model("sale_order", 1);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder>(1);
+    assert!(sale_order.is_ok());
+    let sale_order = sale_order.unwrap();
     assert!(sale_order.is_some());
     let mut sale_order = sale_order.unwrap();
     assert_eq!(sale_order.id, 1);

@@ -150,7 +150,7 @@ fn main() {
     let mut env: core::environment::Environment = model_manager.new_environment();
     
     let record = env.get_record_from_name("test", 1);
-    println!("{}", record.is_some());
+    println!("{}", record.unwrap().is_some());
     
     // let mut a: core::model::MapOfFields = HashMap::new();
     // a.insert("name".to_string(), Some(core::field::FieldType::String("0ddlyoko".to_string())));
