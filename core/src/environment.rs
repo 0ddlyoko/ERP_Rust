@@ -1,7 +1,7 @@
 use crate::cache;
 use crate::cache::Cache;
-use crate::model::{Model, ModelManager};
-use std::collections::HashMap;
+use crate::field::FieldType;
+use crate::model::{MapOfFields, Model, ModelManager};
 use std::error::Error;
 
 pub struct Environment<'model_manager> {
@@ -25,8 +25,8 @@ impl<'model_manager> Environment<'model_manager> {
             return Ok(());
         }
 
-        // TODO Load fields from the db
-        let map_of_fields = HashMap::new();
+        let map_of_fields = self.get_data_from_db(model_name, id)?;
+        let map_of_fields = Cache::transform_map_to_fields_into_cache(&map_of_fields);
         self.cache.insert_record_model_with_map(model_name, id, map_of_fields);
         self.cache.clear_all_dirty_of_model(model_name, id);
         Ok(())
@@ -44,11 +44,26 @@ impl<'model_manager> Environment<'model_manager> {
             return Ok(());
         }
         let dirty_fields = cache_model.unwrap().get_fields_dirty();
-        // TODO Save record
+        self.save_data_to_db(model_name, id, dirty_fields)?;
         Ok(())
     }
 
+    pub fn get_data_from_db(&self, model_name: &'static str, id: u32) -> Result<MapOfFields, Box<dyn Error>> {
+        todo!("Save data to db")
+    }
+
+    /// Save given data in the database
+    pub fn save_data_to_db(&self, model_name: &'static str, id: u32, data: MapOfFields) -> Result<(), Box<dyn Error>> {
+        todo!("Save data to db")
+    }
+
+    pub fn insert_data_to_db(&self, model_name: &'static str, data: MapOfFields) -> Result<u32, Box<dyn Error>> {
+        todo!("Insert data to db")
+    }
+
+    /// Insert given model in the cache
     pub fn save_record_from_name(&mut self, model_name: &'static str, record: &dyn Model) {
+        assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
         let model_name = model_name;
         let data = record.get_data();
@@ -94,13 +109,35 @@ impl<'model_manager> Environment<'model_manager> {
         let map_of_fields = record.transform_into_map_of_fields();
         Ok(self.model_manager.create_instance::<M>(id, map_of_fields))
     }
-    
-    // pub fn create_record_from_name(&mut self, model_name: &'static str, data: MapOfFields) -> Result<Box<dyn Model>, Box<dyn Error>> {
-    //
-    // }
-    //
-    // pub fn create_new_record<M>(&mut self, data: MapOfFields) -> Result<M, Box<dyn Error>> where M: Model + 'static {
-    //     let model_name = M::get_model_name();
-    //
-    // }
+
+    /// Create a new record for a specific model and a given list of fields
+    pub fn create_record_from_name(&mut self, model_name: &'static str, mut data: MapOfFields) -> Result<Box<dyn Model>, Box<dyn Error>> {
+        self.fill_default_values_on_map(model_name, &mut data);
+
+        let id = self.insert_data_to_db(model_name, data)?;
+        self.load_record_from_db(model_name, id)?;
+        Ok(self.get_record_from_name(model_name, id)?.unwrap())
+    }
+
+    /// Create a new record for a specific model and a given list of fields
+    pub fn create_new_record_from_map<M>(&mut self, mut data: MapOfFields) -> Result<M, Box<dyn Error>> where M: Model + 'static {
+        let model_name = M::get_model_name();
+        self.fill_default_values_on_map(model_name, &mut data);
+        let id = self.insert_data_to_db(model_name, data)?;
+        self.load_record_from_db(model_name, id)?;
+        Ok(self.get_record::<M>(id)?.unwrap())
+    }
+
+    /// Create a new record for a specific model and a given model instance
+    ///
+    /// The returned model instance will be different that the original one
+    pub fn create_new_record<M>(&mut self, model: M) -> Result<M, Box<dyn Error>> where M: Model + 'static {
+        self.create_new_record_from_map::<M>(model.get_data())
+    }
+
+    /// Add default values for a given model on given data
+    fn fill_default_values_on_map(&self, model_name: &'static str, data: &mut MapOfFields) {
+        todo!("Insert default values");
+        data.insert("test", Some(FieldType::Integer(42)));
+    }
 }

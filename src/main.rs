@@ -111,11 +111,11 @@ impl core::model::Model for SaleOrder {
     fn get_model_descriptor() -> core::model::ModelDescriptor {
         core::model::ModelDescriptor {
             name: "sale_order".to_string(),
-            description: "A Sale Order!".to_string(),
+            description: Some("A Sale Order!".to_string()),
             fields: vec![
                 core::field::FieldDescriptor {
-                    name: "name".to_string(),
-                    field_type: core::field::FieldType::String(String::new()),
+                    name: "name",
+                    default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
                     required: Some(true),
                     ..core::field::FieldDescriptor::default()

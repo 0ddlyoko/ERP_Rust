@@ -30,18 +30,18 @@ impl core::model::Model for SaleOrder {
     fn get_model_descriptor() -> core::model::ModelDescriptor {
         core::model::ModelDescriptor {
             name: "sale_order".to_string(),
-            description: "A Sale Order!".to_string(),
+            description: Some("A Sale Order!".to_string()),
             fields: vec![
                 core::field::FieldDescriptor {
-                    name: "name".to_string(),
-                    field_type: core::field::FieldType::String(String::new()),
+                    name: "name",
+                    default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
                     required: Some(true),
                     ..core::field::FieldDescriptor::default()
                 },
                 core::field::FieldDescriptor {
-                    name: "total_price".to_string(),
-                    field_type: core::field::FieldType::Integer(0),
+                    name: "total_price",
+                    default_value: Some(core::field::FieldType::Integer(42)),
                     description: Some("Total price of the SO".to_string()),
                     ..core::field::FieldDescriptor::default()
                 },
@@ -79,8 +79,8 @@ fn test_get_record() {
 
     // Insert random data inside
     let mut map = HashMap::new();
-    map.insert("name", Some(core::cache::CacheFieldValue::String("0ddlyoko".to_string())));
-    map.insert("total_price", Some(core::cache::CacheFieldValue::Int(42)));
+    // map.insert("name", Some(core::cache::CacheFieldValue::String("0ddlyoko".to_string())));
+    // map.insert("total_price", Some(core::cache::CacheFieldValue::Int(42)));
     env.cache.insert_record_model_with_map("sale_order", 1, map);
     env.cache.clear_all_dirty_of_model("sale_order", 1);
 

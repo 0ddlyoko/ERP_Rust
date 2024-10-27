@@ -9,8 +9,19 @@ pub type MapOfFields = HashMap<&'static str, Option<FieldType>>;
 
 pub struct ModelDescriptor {
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub fields: Vec<FieldDescriptor>,
+}
+
+impl ModelDescriptor {
+    pub fn new(name: String) -> Self {
+        let description = Some(name.clone());
+        ModelDescriptor {
+            name,
+            description,
+            fields: Vec::new(),
+        }
+    }
 }
 
 pub trait Model {

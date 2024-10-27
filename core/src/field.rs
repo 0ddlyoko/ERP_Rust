@@ -48,8 +48,8 @@ impl Clone for FieldType {
 }
 
 pub struct FieldDescriptor {
-    pub name: String,
-    pub field_type: FieldType,
+    pub name: &'static str,
+    pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,
 }
@@ -57,8 +57,8 @@ pub struct FieldDescriptor {
 impl Default for FieldDescriptor {
     fn default() -> FieldDescriptor {
         FieldDescriptor {
-            name: "".to_string(),
-            field_type: FieldType::String("".to_string()),
+            name: "",
+            default_value: None,
             description: None,
             required: None,
         }

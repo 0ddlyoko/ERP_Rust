@@ -1,16 +1,10 @@
-use std::collections::HashMap;
 use crate::environment::Environment;
-use crate::model::{MapOfFields, Model, ModelDescriptor};
-
-
-struct InternalModel {
-    model_name: &'static str,
-    model_descriptor: ModelDescriptor,
-    create_instance: fn(u32, MapOfFields) -> Box<dyn Model>,
-}
+use crate::internal::internal_model::FinalInternalModel;
+use crate::model::{MapOfFields, Model};
+use std::collections::HashMap;
 
 pub struct ModelManager {
-    models: HashMap<&'static str, Vec<InternalModel>>,
+    models: HashMap<&'static str, FinalInternalModel>,
 }
 
 impl ModelManager {
@@ -22,24 +16,15 @@ impl ModelManager {
 
     pub fn register_model<M>(&mut self) where M: Model + 'static {
         let model_name = M::get_model_name();
-        let model_descriptor = M::get_model_descriptor();
 
-        let create_instance: fn(u32, MapOfFields) -> Box<dyn Model> = |id, data| Box::new(M::create_model(id, data));
-
-        let internal_model = InternalModel {
-            model_name,
-            model_descriptor,
-            create_instance,
-        };
-
-        self.models.entry(internal_model.model_name).or_insert_with(Vec::new).push(internal_model);
+        self.models.entry(model_name).or_insert_with(|| {
+            FinalInternalModel::new(model_name)
+        }).register_internal_model::<M>();
     }
 
     pub fn create_instance_from_name(&self, model_name: &str, id: u32, data: MapOfFields) -> Option<Box<dyn Model>> {
         self.models.get(model_name).and_then(|model| {
-            model.first().map(|internal_model| {
-                (internal_model.create_instance)(id, data)
-            })
+            Option::from((model.first().create_instance)(id, data))
         })
     }
 
