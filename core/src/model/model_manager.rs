@@ -35,4 +35,12 @@ impl ModelManager {
     pub fn new_environment(&self) -> Environment {
         Environment::new(self)
     }
+    
+    pub fn get_model(&self, model_name: &'static str) -> Option<&FinalInternalModel> {
+        self.models.get(model_name)
+    }
+    
+    pub fn get_model_mut(&mut self, model_name: &'static str) -> Option<&mut FinalInternalModel> {
+        self.models.get_mut(model_name)
+    }
 }

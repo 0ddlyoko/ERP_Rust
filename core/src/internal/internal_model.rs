@@ -2,10 +2,11 @@ use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::{MapOfFields, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
-use crate::field::FieldDescriptor;
+use std::fmt::format;
+use crate::field::{FieldDescriptor, FieldType};
 
 /// Model descriptor represented by a single struct model
-pub(crate) struct InternalModel {
+pub struct InternalModel {
     pub name: &'static str,
     pub description: Option<String>,
     pub fields: HashMap<&'static str, InternalField>,
@@ -15,7 +16,7 @@ pub(crate) struct InternalModel {
 /// Final descriptor of a model.
 ///
 /// Represent all combined InternalModel
-pub(crate) struct FinalInternalModel {
+pub struct FinalInternalModel {
     pub name: &'static str,
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
@@ -86,5 +87,54 @@ impl FinalInternalModel {
     pub fn get_internal_model_mut<M>(&mut self) -> &mut InternalModel where M: Model + 'static {
         let type_id = TypeId::of::<M>();
         self.models.get_mut(&type_id).expect("Internal model not registered")
+    }
+
+    /// Get a vector of all registered fields for this model
+    pub fn get_fields_name(&self) -> Vec<&'static str> {
+        self.fields.keys().cloned().collect()
+    }
+
+    /// Get a vector of difference between all registered fields for this model, and given vector
+    pub fn get_missing_fields(&self, current_fields: Vec<&'static str>) -> Vec<&'static str> {
+        self.fields.keys().filter(|x| !current_fields.contains(x)).cloned().collect()
+    }
+
+    /// Return default value for given field.
+    /// If the first is not present, panic
+    pub fn get_default_value(&self, field_name: &'static str) -> FieldType {
+        let field = self.fields.get(field_name).expect(format!("Field {} is not present in model {}", field_name, field_name).as_str());
+        field.default_value.clone()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::field::{FieldDescriptor, FieldType};
+    use crate::internal::internal_model::FinalInternalModel;
+
+    #[test]
+    fn test_get_fields_name() {
+        let mut internal_model = FinalInternalModel::new("");
+
+        internal_model.register_internal_field(&FieldDescriptor {
+            name: "name",
+            default_value: Some(FieldType::String("0ddlyoko".to_string())),
+            description: Some("This is the name".to_string()),
+            required: None,
+        });
+
+        internal_model.register_internal_field(&FieldDescriptor {
+            name: "age",
+            default_value: Some(FieldType::Integer(42)),
+            description: Some("This is the age of the person".to_string()),
+            required: None,
+        });
+
+        assert_eq!({
+            let mut fields = internal_model.get_fields_name();
+            fields.sort();
+            fields
+        }, vec!["age", "name"]);
+        assert_eq!(internal_model.get_missing_fields(vec!["age"]), vec!["name"]);
     }
 }

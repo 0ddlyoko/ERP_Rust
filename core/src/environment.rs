@@ -136,8 +136,16 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Add default values for a given model on given data
-    fn fill_default_values_on_map(&self, model_name: &'static str, data: &mut MapOfFields) {
-        todo!("Insert default values");
-        data.insert("test", Some(FieldType::Integer(42)));
+    pub fn fill_default_values_on_map(&self, model_name: &'static str, data: &mut MapOfFields) {
+        let final_internal_model = self.model_manager.get_model(model_name);
+        if final_internal_model.is_none() {
+            return;
+        }
+        let final_internal_model = final_internal_model.unwrap();
+        let missing_fields_to_load: Vec<&'static str> = final_internal_model.get_missing_fields(data.keys().cloned().collect());
+        for missing_field_to_load in missing_fields_to_load {
+            let default_value = final_internal_model.get_default_value(missing_field_to_load);
+            data.insert(missing_field_to_load, Some(default_value));
+        }
     }
 }

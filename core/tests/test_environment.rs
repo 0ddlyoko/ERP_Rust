@@ -1,74 +1,30 @@
+mod models;
+
 use core::environment::Environment;
 use core::model::ModelManager;
 use std::collections::HashMap;
 
-struct SaleOrder {
-    id: u32,
-    name: String,
-    total_price: i64,
-}
+use models::sale_order::SaleOrder;
 
-impl SaleOrder {
-    fn get_id(&self) -> u32 {
-        self.id
-    }
+#[test]
+fn test_fill_default_values_on_map() {
+    let mut model_manager = ModelManager::new();
+    model_manager.register_model::<SaleOrder>();
+    let env = Environment::new(&model_manager);
 
-    fn get_name(&self) -> String {
-        self.name.clone()
-    }
+    let mut map: core::model::MapOfFields = HashMap::new();
+    env.fill_default_values_on_map("sale_order", &mut map);
 
-    fn get_total_price(&self) -> i64 {
-        self.total_price
-    }
-}
+    let name = &map["name"];
+    let total_price = &map["total_price"];
 
-impl core::model::Model for SaleOrder {
-    fn get_model_name() -> &'static str {
-        "sale_order"
-    }
+    assert!(name.is_some());
+    assert!(total_price.is_some());
 
-    fn get_model_descriptor() -> core::model::ModelDescriptor {
-        core::model::ModelDescriptor {
-            name: "sale_order".to_string(),
-            description: Some("A Sale Order!".to_string()),
-            fields: vec![
-                core::field::FieldDescriptor {
-                    name: "name",
-                    default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
-                    description: Some("Name of the SO".to_string()),
-                    required: Some(true),
-                    ..core::field::FieldDescriptor::default()
-                },
-                core::field::FieldDescriptor {
-                    name: "total_price",
-                    default_value: Some(core::field::FieldType::Integer(42)),
-                    description: Some("Total price of the SO".to_string()),
-                    ..core::field::FieldDescriptor::default()
-                },
-            ],
-        }
-    }
-
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    fn get_data(&self) -> core::model::MapOfFields {
-        let mut map = HashMap::new();
-        map.insert("name", Some(core::field::FieldType::String(self.name.clone())));
-        map.insert("total_price", Some(core::field::FieldType::Integer(self.total_price)));
-        map
-    }
-
-    fn create_model(id: u32, data: core::model::MapOfFields) -> Self {
-        let name = data["name"].clone().unwrap().string();
-        let total_price = data["total_price"].clone().unwrap().integer();
-        Self {
-            id,
-            name,
-            total_price,
-        }
-    }
+    let name = name.clone().unwrap();
+    let total_price = total_price.clone().unwrap();
+    assert_eq!(name, core::field::FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(total_price, core::field::FieldType::Integer(42));
 }
 
 #[test]
@@ -78,7 +34,10 @@ fn test_get_record() {
     let mut env = Environment::new(&model_manager);
 
     // Insert random data inside
-    let mut map = HashMap::new();
+    let mut map: core::model::MapOfFields = HashMap::new();
+    env.fill_default_values_on_map("sale_order", &mut map);
+
+    let map = core::cache::Cache::transform_map_to_fields_into_cache(&map);
     // map.insert("name", Some(core::cache::CacheFieldValue::String("0ddlyoko".to_string())));
     // map.insert("total_price", Some(core::cache::CacheFieldValue::Int(42)));
     env.cache.insert_record_model_with_map("sale_order", 1, map);
