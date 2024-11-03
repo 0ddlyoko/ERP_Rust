@@ -18,3 +18,9 @@ edition = "2021"
 #old_test_http = { path = "old_test_http" }
 #old_test_lib = { path = "old_test_lib" }
 core = { path = "core" }
+
+[workspace]
+members = [
+    "core",
+    "plugins/test_plugin",
+]
