@@ -87,6 +87,9 @@
 // }
 
 use std::collections::HashMap;
+use std::path::Path;
+use config::{Config, ConfigError, Environment, File};
+use directories::ProjectDirs;
 
 struct SaleOrder {
     id: u32,
@@ -143,14 +146,37 @@ impl core::model::Model for SaleOrder {
     }
 }
 
+fn build_config() -> Result<core::config::Config, ConfigError> {
+    let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
+        panic!("Impossible to have a config");
+    };
+    let config_file = Path::join(config_dir.config_dir(), "config.toml");
+
+    let config = Config::builder()
+        .set_default("database.url", "localhost")?
+        .set_default("database.port", 5432)?
+        .set_default("database.name", "erp")?
+        .add_source(File::from(config_file).required(true))
+        .add_source(Environment::with_prefix("ERP").try_parsing(true).separator("_").list_separator(" "))
+        .build()
+        .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
+
+    config.try_deserialize()
+}
+
 fn main() {
-    let mut model_manager = core::model::ModelManager::new();
-    model_manager.register_model::<SaleOrder>();
-    
-    let mut env: core::environment::Environment = model_manager.new_environment();
-    
-    let record = env.get_record_from_name("test", 1);
-    println!("{}", record.unwrap().is_some());
+    let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
+    let mut app = core::app::Application::new(config);
+
+    app.load();
+
+    // let mut model_manager = core::model::ModelManager::new();
+    // model_manager.register_model::<SaleOrder>();
+    //
+    // let mut env: core::environment::Environment = model_manager.new_environment();
+    //
+    // let record = env.get_record_from_name("test", 1);
+    // println!("{}", record.unwrap().is_some());
     
     // let mut a: core::model::MapOfFields = HashMap::new();
     // a.insert("name".to_string(), Some(core::field::FieldType::String("0ddlyoko".to_string())));

@@ -1,7 +1,6 @@
 use crate::cache::cache_field::{CacheField, CacheFieldValue};
 use crate::cache::Cache;
 use crate::model::MapOfFields;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
 
 pub type CacheMapOfFields = HashMap<&'static str, Option<CacheFieldValue>>;

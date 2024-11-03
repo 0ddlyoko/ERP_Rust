@@ -7,13 +7,15 @@ pub struct ModelManager {
     models: HashMap<&'static str, FinalInternalModel>,
 }
 
-impl ModelManager {
-    pub fn new() -> Self {
+impl Default for ModelManager {
+    fn default() -> Self {
         Self {
             models: HashMap::new(),
         }
     }
+}
 
+impl ModelManager {
     pub fn register_model<M>(&mut self) where M: Model + 'static {
         let model_name = M::get_model_name();
 
