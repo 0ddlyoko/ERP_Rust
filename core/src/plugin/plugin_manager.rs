@@ -24,18 +24,15 @@ impl PluginManager {
         let paths = fs::read_dir(directory_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            unsafe {
-                // let result = Self::read_plugin_from_file(&path)?;
-                self.add_plugin(&path)?;
-            }
+            self.add_plugin(&path)?;
         }
 
         Ok(())
     }
 
-    pub unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<Box<dyn Plugin>, Error> {
-        type PluginCreator = unsafe extern fn() -> Box<dyn Plugin>;
-        
+    pub unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<*mut Box<dyn Plugin>, Error> {
+        type PluginCreator = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
+
         let lib = libloading::Library::new(path)?;
         let func: libloading::Symbol<PluginCreator> = lib.get(b"_create_plugin")?;
         Ok(func())
@@ -44,11 +41,31 @@ impl PluginManager {
     fn add_plugin(&mut self, plugin_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         unsafe {
             let plugin = Self::read_plugin_from_file(plugin_path)?;
-            let name = plugin.name();
-            self.plugins.insert(name, plugin);
+            let mut plugin = Box::from_raw(plugin);
+            plugin.init();
+            // self.plugins.insert(name, plugin);
         }
         Ok(())
     }
+
+    // unsafe fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //     // Chemin vers la bibliothèque dynamique du plugin
+    //     let lib = libloading::Library::new("plugins/test_plugin/target/debug/libtest_plugin.so")?;
+    // 
+    //     // Charge la fonction `_create_plugin` depuis la bibliothèque
+    //     let create_plugin: libloading::Symbol<unsafe extern "C" fn() -> *mut Box<dyn Plugin>> = lib.get(b"_create_plugin")?;
+    // 
+    //     // Appelle la fonction pour obtenir une instance du plugin
+    //     let mut plugin = Box::from_raw(create_plugin());
+    // 
+    //     // Utilise le plugin
+    //     plugin.init();
+    //     plugin.execute("Hello from main");
+    // 
+    //     // Libération explicite pour éviter les fuites mémoire
+    //     drop(plugin);
+    //     Ok(())
+    // }
 
     // fn add_plugin<P>(&mut self, plugin: Box<P>) where P: Plugin + 'static {
     //     let name = plugin.name();

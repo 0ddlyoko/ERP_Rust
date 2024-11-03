@@ -168,7 +168,7 @@ fn main() {
     let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
     let mut app = core::app::Application::new(config);
 
-    app.load();
+    app.load().unwrap_or_else(|err| panic!("Error: {:?}", err));
 
     // let mut model_manager = core::model::ModelManager::new();
     // model_manager.register_model::<SaleOrder>();
