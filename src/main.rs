@@ -86,65 +86,9 @@
     // println!("{:?} {:?}", sale_order.title, sale_order.published);
 // }
 
-use std::collections::HashMap;
-use std::path::Path;
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
-
-struct SaleOrder {
-    id: u32,
-    name: String,
-}
-
-impl SaleOrder {
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    fn get_name(&self) -> String {
-        self.name.clone()
-    }
-}
-
-impl core::model::Model for SaleOrder {
-    fn get_model_name() -> &'static str {
-        "sale_order"
-    }
-
-    fn get_model_descriptor() -> core::model::ModelDescriptor {
-        core::model::ModelDescriptor {
-            name: "sale_order".to_string(),
-            description: Some("A Sale Order!".to_string()),
-            fields: vec![
-                core::field::FieldDescriptor {
-                    name: "name",
-                    default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
-                    description: Some("Name of the SO".to_string()),
-                    required: Some(true),
-                    ..core::field::FieldDescriptor::default()
-                }
-            ],
-        }
-    }
-
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    fn get_data(&self) -> core::model::MapOfFields {
-        let mut map = HashMap::new();
-        map.insert("name", Some(core::field::FieldType::String(self.name.clone())));
-        map
-    }
-
-    fn create_model(id: u32, data: core::model::MapOfFields) -> Self {
-        let name = data["name"].clone().unwrap().string();
-        Self {
-            id,
-            name,
-        }
-    }
-}
+use std::path::Path;
 
 fn build_config() -> Result<core::config::Config, ConfigError> {
     let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
@@ -168,27 +112,13 @@ fn main() {
     let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
     let mut app = core::app::Application::new(config);
 
-    app.load().unwrap_or_else(|err| panic!("Error: {:?}", err));
-
-    // let mut model_manager = core::model::ModelManager::new();
-    // model_manager.register_model::<SaleOrder>();
-    //
-    // let mut env: core::environment::Environment = model_manager.new_environment();
-    //
-    // let record = env.get_record_from_name("test", 1);
-    // println!("{}", record.unwrap().is_some());
+    app.load().unwrap_or_else(|err| panic!("Error: {}", err));
     
-    // let mut a: core::model::MapOfFields = HashMap::new();
-    // a.insert("name".to_string(), Some(core::field::FieldType::String("0ddlyoko".to_string())));
-    // let z = model_manager.create_instance::<SaleOrder>(1, a);
-    // match z {
-    //     None => {
-    //         println!("No model found");
-    //     }
-    //     Some(some) => {
-    //         println!("Model found");
-    //         println!("{:?}", some.get_id());
-    //         println!("{:?}", some.get_name());
-    //     }
-    // }
+    let model = app.model_manager.get_model("sale_order");
+    if model.is_none() {
+        println!("No model found");
+    } else {
+        let model = model.unwrap();
+        println!("Models: {}", model.name);
+    }
 }

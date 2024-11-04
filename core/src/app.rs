@@ -31,7 +31,9 @@ impl Application {
     }
 
     fn load_models(&mut self) {
-
+        self.plugin_manager.plugins.iter().for_each(|(_, internal_plugin)| {
+            internal_plugin.plugin.init_models(&mut self.model_manager);
+        })
     }
 
     fn new_env(&self) -> Environment {
