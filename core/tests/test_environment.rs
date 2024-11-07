@@ -8,7 +8,7 @@ use models::sale_order::SaleOrder;
 
 #[test]
 fn test_fill_default_values_on_map() {
-    let mut model_manager = ModelManager::new();
+    let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder>();
     let env = Environment::new(&model_manager);
 
@@ -29,7 +29,7 @@ fn test_fill_default_values_on_map() {
 
 #[test]
 fn test_get_record() {
-    let mut model_manager = ModelManager::new();
+    let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder>();
     let mut env = Environment::new(&model_manager);
 

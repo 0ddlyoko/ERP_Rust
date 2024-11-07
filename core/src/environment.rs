@@ -65,7 +65,6 @@ impl<'model_manager> Environment<'model_manager> {
     pub fn save_record_from_name(&mut self, model_name: &'static str, record: &dyn Model) {
         assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
-        let model_name = model_name;
         let data = record.get_data();
         self.cache.insert_record_model_with_map(model_name, id, Cache::transform_map_to_fields_into_cache(&data));
     }
