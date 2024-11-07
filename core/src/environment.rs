@@ -11,7 +11,7 @@ pub struct Environment<'model_manager> {
 impl<'model_manager> Environment<'model_manager> {
     pub fn new(model_manager: &'model_manager ModelManager) -> Self {
         Environment {
-            cache: Cache::new(),
+            cache: Cache::default(),
             model_manager,
         }
     }

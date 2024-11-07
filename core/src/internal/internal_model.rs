@@ -1,8 +1,8 @@
 use crate::field::{FieldDescriptor, FieldType};
-use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::{MapOfFields, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
+use crate::internal::internal_field::{FinalInternalField, InternalField};
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
@@ -108,8 +108,8 @@ impl FinalInternalModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::field::{FieldDescriptor, FieldType};
     use crate::internal::internal_model::FinalInternalModel;
+    use crate::field::{FieldDescriptor, FieldType};
 
     #[test]
     fn test_get_fields_name() {

@@ -11,17 +11,12 @@ use std::collections::HashMap;
 use crate::field::FieldType;
 use crate::model::MapOfFields;
 
+#[derive(Default)]
 pub struct Cache {
     cache: HashMap<&'static str, HashMap<u32, CacheModel>>,
 }
 
 impl Cache {
-    pub fn new() -> Self {
-        Self {
-            cache: HashMap::new(),
-        }
-    }
-
     pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
         if let Some(model_cache) = self.cache.get(model_name) {
             model_cache.contains_key(&id)
@@ -110,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_get_and_insert_field() {
-        let mut cache = Cache::new();
+        let mut cache = Cache::default();
         let mut cached_fields = HashMap::new();
         cached_fields.insert("my_field", Some(CacheFieldValue::String("my_value".to_string())));
         cache.get_record_or_create("my_model", 1).insert_fields(cached_fields);

@@ -1,18 +1,11 @@
 use crate::environment::Environment;
-use crate::internal::internal_model::FinalInternalModel;
 use crate::model::{MapOfFields, Model};
 use std::collections::HashMap;
+use crate::internal::internal_model::FinalInternalModel;
 
+#[derive(Default)]
 pub struct ModelManager {
     models: HashMap<&'static str, FinalInternalModel>,
-}
-
-impl Default for ModelManager {
-    fn default() -> Self {
-        Self {
-            models: HashMap::new(),
-        }
-    }
 }
 
 impl ModelManager {

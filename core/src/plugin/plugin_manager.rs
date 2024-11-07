@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use std::{error, fs};
 use std::path::PathBuf;
 use crate::plugin::errors::PluginAlreadyRegisteredError;
-use crate::plugin::internal_plugin::{InternalPlugin, InternalPluginState, InternalPluginType};
+use crate::plugin::internal_plugin::{InternalPlugin, InternalPluginType};
 use crate::plugin::internal_plugin::InternalPluginState::Installed;
+use crate::plugin::internal_plugin::InternalPluginState::NotInstalled;
 use crate::util::dependency;
 
 unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error> {
@@ -23,49 +24,41 @@ unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error>
         plugin,
         plugin_type,
         depends,
-        state: InternalPluginState::NotInstalled,
+        state: NotInstalled,
     })
 }
 
+#[derive(Default)]
 pub struct PluginManager {
     pub(crate) plugins: HashMap<&'static str, InternalPlugin>,
 }
 
-impl Default for PluginManager {
-    fn default() -> Self {
-        PluginManager {
-            plugins: HashMap::new(),
-        }
-    }
-}
-
 impl PluginManager {
 
-    pub fn register_plugins(&mut self, directory_path: &String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn register_plugins(&mut self, directory_path: &String) -> Result<(), Box<dyn error::Error>> {
         let paths = fs::read_dir(directory_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
             self.register_plugin_from_file(&path)?;
         }
-
-
+        
         Ok(())
     }
 
-    pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), Box<dyn error::Error>> {
         let plugin_name = plugin.name();
         if self.plugins.contains_key(plugin_name) {
             return Err(PluginAlreadyRegisteredError { plugin_name: plugin_name.to_string() }.into());
         }
         let plugin_type = InternalPluginType::Static();
         let depends = plugin.get_depends();
-        let internal_plugin = InternalPlugin { plugin, plugin_type, depends, state: InternalPluginState::NotInstalled, };
+        let internal_plugin = InternalPlugin { plugin, plugin_type, depends, state: NotInstalled, };
         self.plugins.insert(plugin_name, internal_plugin);
 
         Ok(())
     }
 
-    pub fn register_plugin_from_file(&mut self, plugin_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn register_plugin_from_file(&mut self, plugin_path: &PathBuf) -> Result<(), Box<dyn error::Error>> {
         let internal_plugin = unsafe { read_plugin_from_file(plugin_path)? };
 
         let plugin_name = internal_plugin.plugin.name();
@@ -82,9 +75,9 @@ impl PluginManager {
         Ok(())
     }
 
-    pub fn load_plugin(&mut self, plugin_name: &str) -> Result<&mut InternalPlugin, Box<dyn error::Error>> {
+    pub(crate) fn load_plugin(&mut self, plugin_name: &str) -> Result<&mut InternalPlugin, Box<dyn error::Error>> {
         let plugin = self.get_plugin_mut(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
-        plugin.state = InternalPluginState::Installed;
+        plugin.state = Installed;
         plugin.plugin.init();
         Ok(plugin)
     }
@@ -127,7 +120,7 @@ impl PluginManager {
 
         dependency::sort_dependencies(&dependencies)
     }
-    
+
     pub fn is_installed(&self, plugin_name: &str) -> bool {
         let plugin = self.plugins.get(plugin_name);
         let Some(plugin) = plugin else {

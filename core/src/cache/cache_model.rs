@@ -52,7 +52,7 @@ impl CacheModel {
 
     pub fn insert_field(&mut self, name: &'static str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
         let entry = self.fields.entry(name);
-        let cache_field = entry.or_insert_with(CacheField::new);
+        let cache_field = entry.or_default();
         match field_value {
             Some(field) => {
                 if cache_field.get().is_none() || &field != cache_field.get().unwrap() {
@@ -96,10 +96,10 @@ mod tests {
     #[test]
     fn test_access_valid_fields() {
         let mut map: HashMap<&'static str, CacheField> = HashMap::new();
-        map.insert("test", CacheField::new());
-        map.insert("test2", CacheField::new());
-        map.insert("test3", CacheField::new());
-        map.insert("test4", CacheField::new());
+        map.insert("test", CacheField::default());
+        map.insert("test2", CacheField::default());
+        map.insert("test3", CacheField::default());
+        map.insert("test4", CacheField::default());
 
         let mut model = CacheModel::new_with_fields(1, map);
         let test_option = model.get_field_mut("test");
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn test_access_invalid_field_should_not_panic() {
         let mut map: HashMap<&'static str, CacheField> = HashMap::new();
-        map.insert("test", CacheField::new());
+        map.insert("test", CacheField::default());
         let model = CacheModel::new_with_fields(1, map);
 
         // Accessing to an invalid field should throw an error

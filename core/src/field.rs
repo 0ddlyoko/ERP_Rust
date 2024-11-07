@@ -95,20 +95,10 @@ impl PartialEq for FieldType {
     }
 }
 
+#[derive(Default)]
 pub struct FieldDescriptor {
     pub name: &'static str,
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,
-}
-
-impl Default for FieldDescriptor {
-    fn default() -> FieldDescriptor {
-        FieldDescriptor {
-            name: "",
-            default_value: None,
-            description: None,
-            required: None,
-        }
-    }
 }

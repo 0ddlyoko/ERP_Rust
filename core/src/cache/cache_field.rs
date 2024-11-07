@@ -45,16 +45,13 @@ impl PartialEq<Self> for CacheFieldValue {
 }
 
 /// Cache for a single field
+#[derive(Default)]
 pub struct CacheField {
     value: Option<CacheFieldValue>,
     dirty: bool,
 }
 
 impl CacheField {
-    pub fn new() -> Self {
-        Self { value: None, dirty: false }
-    }
-
     pub fn new_with_value(value: CacheFieldValue) -> Self {
         Self { value: Some(value), dirty: false }
     }
@@ -97,7 +94,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut cache_field = CacheField::new();
+        let mut cache_field = CacheField::default();
         assert!(cache_field.get().is_none());
 
         cache_field.set(CacheFieldValue::Int(1));

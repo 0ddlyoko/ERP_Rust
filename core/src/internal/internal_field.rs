@@ -56,8 +56,8 @@ impl FinalInternalField {
 
 #[cfg(test)]
 mod tests {
-    use crate::field::{FieldDescriptor, FieldType};
     use crate::internal::internal_field::FinalInternalField;
+    use crate::field::{FieldDescriptor, FieldType};
 
     #[test]
     fn test_register_field() {
