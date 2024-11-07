@@ -26,7 +26,7 @@ impl Application {
     }
 
     fn load_plugins(&mut self) -> MyResult {
-        self.plugin_manager.load_plugins(self.config.plugin_path.clone())?;
+        self.plugin_manager.load_plugins(&self.config.plugin_path)?;
         Ok(())
     }
 
@@ -34,6 +34,12 @@ impl Application {
         self.plugin_manager.plugins.iter().for_each(|(_, internal_plugin)| {
             internal_plugin.plugin.init_models(&mut self.model_manager);
         })
+    }
+
+    pub fn unload(&mut self) {
+        self.plugin_manager.unload();
+        self.plugin_manager = PluginManager::default();
+        self.model_manager = ModelManager::default();
     }
 
     fn new_env(&self) -> Environment {

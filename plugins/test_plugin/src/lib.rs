@@ -17,6 +17,10 @@ impl core::plugin::Plugin for TestPlugin {
         println!("init_models");
         model_manager.register_model::<SaleOrder>();
     }
+
+    fn unload(&mut self) {
+
+    }
 }
 
 #[no_mangle]

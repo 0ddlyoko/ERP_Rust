@@ -121,4 +121,7 @@ fn main() {
         let model = model.unwrap();
         println!("Models: {}", model.name);
     }
+    // let model = 2;
+
+    app.unload();
 }

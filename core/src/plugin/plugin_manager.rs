@@ -20,11 +20,11 @@ impl Default for PluginManager {
 
 impl PluginManager {
 
-    pub fn load_plugins(&mut self, directory_path: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_plugins(&mut self, directory_path: &String) -> Result<(), Box<dyn std::error::Error>> {
         let paths = fs::read_dir(directory_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            self.add_plugin(&path)?;
+            self.load_plugin(&path)?;
         }
 
         Ok(())
@@ -45,7 +45,7 @@ impl PluginManager {
         })
     }
 
-    fn add_plugin(&mut self, plugin_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn load_plugin(&mut self, plugin_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let internal_plugin = unsafe { self.read_plugin_from_file(plugin_path)? };
 
         let plugin_name = internal_plugin.plugin.name();
@@ -63,17 +63,32 @@ impl PluginManager {
 
         Ok(())
     }
+
+    pub fn unload_plugin(&mut self, plugin_name: &str) {
+        let plugin = self.plugins.get_mut(plugin_name);
+        let Some(plugin) = plugin else { return };
+        plugin.plugin.unload();
+
+        let plugin = self.plugins.remove(plugin_name);
+        let Some(internal_plugin) = plugin else { return };
+        let InternalPlugin { plugin, library } = internal_plugin;
+
+        drop(plugin);
+        drop(library);
+    }
+
+    pub fn unload(&mut self) {
+        let plugin_names = self.plugins.keys().copied().collect::<Vec<_>>();
+        for name in plugin_names {
+            self.unload_plugin(name);
+        }
+    }
 }
 
 /// We need to first drop the instance of the plugin, then the library as the instance of the
 /// plugin is loaded into the library memory chunk.
 impl Drop for PluginManager {
     fn drop(&mut self) {
-        while let Some((_, internal_plugin)) = self.plugins.drain().next() {
-            let InternalPlugin { plugin, library } = internal_plugin;
-
-            drop(plugin);
-            drop(library);
-        }
+        self.unload();
     }
 }
