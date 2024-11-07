@@ -107,7 +107,7 @@ impl FinalInternalModel {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::field::{FieldDescriptor, FieldType};
     use crate::internal::internal_model::FinalInternalModel;
 

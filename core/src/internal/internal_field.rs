@@ -55,7 +55,7 @@ impl FinalInternalField {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::field::{FieldDescriptor, FieldType};
     use crate::internal::internal_field::FinalInternalField;
 

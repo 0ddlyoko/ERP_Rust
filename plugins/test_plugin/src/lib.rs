@@ -9,17 +9,39 @@ impl core::plugin::Plugin for TestPlugin {
         "test_plugin"
     }
 
-    fn init(&mut self) {
-        println!("init");
-    }
-
     fn init_models(&self, model_manager: &mut core::model::model_manager::ModelManager) {
         println!("init_models");
         model_manager.register_model::<SaleOrderTest>();
     }
+}
 
-    fn unload(&mut self) {
+pub struct TestPlugin2;
 
+impl core::plugin::Plugin for TestPlugin2 {
+    fn name(&self) -> &'static str {
+        "test_plugin2"
+    }
+
+    fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
+    }
+
+    fn get_depends(&self) -> Vec<&'static str> {
+        vec!["test_plugin"]
+    }
+}
+
+pub struct TestPlugin3;
+
+impl core::plugin::Plugin for TestPlugin3 {
+    fn name(&self) -> &'static str {
+        "test_plugin3"
+    }
+
+    fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
+    }
+
+    fn get_depends(&self) -> Vec<&'static str> {
+        vec!["test_plugin", "test_plugin2"]
     }
 }
 

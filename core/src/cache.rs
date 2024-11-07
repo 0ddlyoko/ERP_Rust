@@ -22,7 +22,7 @@ impl Cache {
         }
     }
 
-    pub fn is_record_present(&self, model_name: &'static str, id: u32) -> bool {
+    pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
         if let Some(model_cache) = self.cache.get(model_name) {
             model_cache.contains_key(&id)
         } else {
@@ -30,16 +30,16 @@ impl Cache {
         }
     }
     
-    pub fn get_cache_record(&self, model_name: &'static str, id: u32) -> Option<&CacheModel> {
+    pub fn get_cache_record(&self, model_name: &str, id: u32) -> Option<&CacheModel> {
         self.cache.get(model_name)?.get(&id)
     }
 
-    pub fn get_cache_record_mut(&mut self, model_name: &'static str, id: u32) -> Option<&mut CacheModel> {
+    pub fn get_cache_record_mut(&mut self, model_name: &str, id: u32) -> Option<&mut CacheModel> {
         self.cache.get_mut(model_name)?.get_mut(&id)
     }
 
     fn get_model_from_name_or_create(&mut self, model_name: &'static str) -> &mut HashMap<u32, CacheModel> {
-        self.cache.entry(model_name).or_insert_with(HashMap::new)
+        self.cache.entry(model_name).or_default()
     }
 
     pub fn get_record_or_create(&mut self, model_name: &'static str, id: u32) -> &mut CacheModel {
@@ -47,11 +47,11 @@ impl Cache {
         cached_models.entry(id).or_insert_with(|| CacheModel::new(id))
     }
 
-    pub fn get_record_field(&self, model_name: &'static str, id: u32, field_name: &'static str) -> Option<&CacheField> {
+    pub fn get_record_field(&self, model_name: &str, id: u32, field_name: &str) -> Option<&CacheField> {
         self.cache.get(model_name)?.get(&id)?.get_field(field_name)
     }
 
-    pub fn get_record_field_mut(&mut self, model_name: &'static str, id: u32, field_name: &'static str) -> Option<&mut CacheField> {
+    pub fn get_record_field_mut(&mut self, model_name: &str, id: u32, field_name: &str) -> Option<&mut CacheField> {
         self.cache.get_mut(model_name)?.get_mut(&id)?.get_field_mut(field_name)
     }
 
@@ -65,7 +65,7 @@ impl Cache {
         cache_model.insert_fields(fields)
     }
 
-    pub fn clear_all_dirty_of_model(&mut self, model_name: &'static str, id: u32) {
+    pub fn clear_all_dirty_of_model(&mut self, model_name: &str, id: u32) {
         let cache_model = self.get_cache_record_mut(model_name, id);
         if cache_model.is_none() {
             return;
@@ -103,7 +103,7 @@ impl Cache {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::cache::cache_field::CacheFieldValue;
     use crate::cache::Cache;
     use std::collections::HashMap;

@@ -1,10 +1,12 @@
 use crate::plugin::Plugin;
 use libloading::{Error, Library, Symbol};
 use std::collections::HashMap;
-use std::fs;
+use std::{error, fs};
 use std::path::PathBuf;
 use crate::plugin::errors::PluginAlreadyRegisteredError;
-use crate::plugin::internal_plugin::{InternalPlugin, InternalPluginType};
+use crate::plugin::internal_plugin::{InternalPlugin, InternalPluginState, InternalPluginType};
+use crate::plugin::internal_plugin::InternalPluginState::Installed;
+use crate::util::dependency;
 
 unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error> {
     type PluginCreator = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
@@ -15,10 +17,13 @@ unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error>
 
     let plugin = *Box::from_raw(boxed_raw);
     let plugin_type = InternalPluginType::Dll(library);
+    let depends = plugin.get_depends();
 
     Ok(InternalPlugin {
         plugin,
         plugin_type,
+        depends,
+        state: InternalPluginState::NotInstalled,
     })
 }
 
@@ -53,7 +58,8 @@ impl PluginManager {
             return Err(PluginAlreadyRegisteredError { plugin_name: plugin_name.to_string() }.into());
         }
         let plugin_type = InternalPluginType::Static();
-        let internal_plugin = InternalPlugin { plugin, plugin_type };
+        let depends = plugin.get_depends();
+        let internal_plugin = InternalPlugin { plugin, plugin_type, depends, state: InternalPluginState::NotInstalled, };
         self.plugins.insert(plugin_name, internal_plugin);
 
         Ok(())
@@ -64,7 +70,7 @@ impl PluginManager {
 
         let plugin_name = internal_plugin.plugin.name();
         if self.plugins.contains_key(plugin_name) {
-            let InternalPlugin { plugin, plugin_type } = internal_plugin;
+            let InternalPlugin { plugin, plugin_type, .. } = internal_plugin;
             let plugin_name_string = plugin_name.to_string().clone();
             drop(plugin);
             drop(plugin_type);
@@ -76,6 +82,13 @@ impl PluginManager {
         Ok(())
     }
 
+    pub fn load_plugin(&mut self, plugin_name: &str) -> Result<&mut InternalPlugin, Box<dyn error::Error>> {
+        let plugin = self.get_plugin_mut(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
+        plugin.state = InternalPluginState::Installed;
+        plugin.plugin.init();
+        Ok(plugin)
+    }
+
     pub(crate) fn unload_plugin(&mut self, plugin_name: &str) {
         let plugin = self.plugins.get_mut(plugin_name);
         let Some(plugin) = plugin else { return };
@@ -83,7 +96,7 @@ impl PluginManager {
 
         let plugin = self.plugins.remove(plugin_name);
         let Some(internal_plugin) = plugin else { return };
-        let InternalPlugin { plugin, plugin_type } = internal_plugin;
+        let InternalPlugin { plugin, plugin_type, .. } = internal_plugin;
 
         drop(plugin);
         drop(plugin_type);
@@ -102,6 +115,25 @@ impl PluginManager {
 
     pub(crate) fn get_plugin_mut(&mut self, plugin_name: &str) -> Option<&mut InternalPlugin> {
         self.plugins.get_mut(plugin_name)
+    }
+
+    pub(crate) fn _get_ordered_dependencies<'a>(&self) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
+        let keys = self.plugins.keys().cloned().collect::<Vec<_>>();
+        let dependencies: HashMap<&str, Vec<&str>> = keys.iter().map(|plugin_name| {
+            let internal_plugin = self.plugins.get(plugin_name).unwrap();
+            let depends = internal_plugin.depends.clone();
+            (*plugin_name, depends)
+        }).collect();
+
+        dependency::sort_dependencies(&dependencies)
+    }
+    
+    pub fn is_installed(&self, plugin_name: &str) -> bool {
+        let plugin = self.plugins.get(plugin_name);
+        let Some(plugin) = plugin else {
+            return false;
+        };
+        plugin.state == Installed
     }
 }
 

@@ -1,8 +1,10 @@
 use crate::config::Config;
 use crate::environment::Environment;
 use crate::model::ModelManager;
-use crate::plugin::Plugin;
+use crate::plugin::internal_plugin::InternalPluginState::Installed;
 use crate::plugin::plugin_manager::PluginManager;
+use crate::plugin::Plugin;
+
 type MyResult = Result<(), Box<dyn std::error::Error>>;
 
 pub struct Application {
@@ -37,18 +39,35 @@ impl Application {
     }
 
     fn load_plugins(&mut self) -> MyResult {
-        // TODO Only load some plugins, and in correct order
-        for (_, internal_plugin) in self.plugin_manager.plugins.iter_mut() {
-            internal_plugin.plugin.init();
-            internal_plugin.plugin.init_models(&mut self.model_manager);
+        let ordered_depends = self.plugin_manager._get_ordered_dependencies()?;
+
+        for plugin_name in ordered_depends.iter() {
+            self._load_plugin(plugin_name)?;
         }
 
         Ok(())
     }
 
     pub fn load_plugin(&mut self, plugin_name: &'static str) -> MyResult {
-        let plugin = self.plugin_manager.get_plugin_mut(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
-        plugin.plugin.init();
+        // Only detect if there is a recursion along all the plugins. We don't care about the result
+        self.plugin_manager._get_ordered_dependencies()?;
+
+        self._load_plugin(plugin_name)
+    }
+
+    /// Load given plugin and all plugins that the given one depends.
+    /// Do not check if there is a recursion between plugins.
+    fn _load_plugin(&mut self, plugin_name: &'static str) -> MyResult {
+        let plugin = self.plugin_manager.get_plugin(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
+        if plugin.state == Installed {
+            return Ok(())
+        }
+        let depends: Vec<_> = plugin.depends.to_vec();
+        for depend in depends {
+            self._load_plugin(depend)?;
+        }
+
+        let plugin = self.plugin_manager.load_plugin(plugin_name)?;
         plugin.plugin.init_models(&mut self.model_manager);
 
         Ok(())

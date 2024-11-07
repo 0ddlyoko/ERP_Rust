@@ -1,6 +1,5 @@
 use crate::cache;
 use crate::cache::Cache;
-use crate::field::FieldType;
 use crate::model::{MapOfFields, Model, ModelManager};
 use std::error::Error;
 

@@ -27,7 +27,7 @@ impl CacheModel {
     ///
     /// We assume the field name given to this method exists, as giving an invalid name or a name
     /// that does not belong to this model is invalid.
-    pub fn get_field(&self, name: &'static str) -> Option<&CacheField> {
+    pub fn get_field(&self, name: &str) -> Option<&CacheField> {
         self.fields.get(name)
     }
 
@@ -35,7 +35,7 @@ impl CacheModel {
     ///
     /// We assume the field name given to this method exists, as giving an invalid name or a name
     /// that does not belong to this model is invalid.
-    pub fn get_field_mut(&mut self, name: &'static str) -> Option<&mut CacheField> {
+    pub fn get_field_mut(&mut self, name: &str) -> Option<&mut CacheField> {
         self.fields.get_mut(name)
     }
 
@@ -87,7 +87,8 @@ impl CacheModel {
     }
 }
 
-mod test {
+#[cfg(test)]
+mod tests {
     use crate::cache::cache_field::CacheFieldValue;
     use crate::cache::cache_model::{CacheField, CacheModel};
     use std::collections::HashMap;

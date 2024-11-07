@@ -91,7 +91,8 @@ impl CacheField {
     }
 }
 
-mod test {
+#[cfg(test)]
+mod tests {
     use crate::cache::cache_field::{CacheField, CacheFieldValue};
 
     #[test]
