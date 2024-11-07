@@ -10,4 +10,7 @@ pub trait Plugin: Any + Send + Sync {
     fn init(&mut self);
     fn init_models(&self, model_manager: &mut ModelManager);
     fn unload(&mut self);
+    fn get_depends(&self) -> Vec<&'static str> {
+        Vec::new()
+    }
 }

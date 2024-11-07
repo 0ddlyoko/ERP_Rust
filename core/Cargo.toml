@@ -10,3 +10,8 @@ directories = "5.0.1"
 serde_derive = "1.0.214"
 serde = { version = "1.0.214", features = ["derive"] }
 libloading = "0.8.5"
+
+[dev-dependencies]
+utilities = { path = "utilities" }
+test_plugin = { path = "../plugins/test_plugin" }
+

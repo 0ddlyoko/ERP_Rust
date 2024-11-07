@@ -1,4 +1,4 @@
-use crate::models::sale_order::SaleOrder;
+use crate::models::sale_order_test::SaleOrderTest;
 
 mod models;
 
@@ -15,7 +15,7 @@ impl core::plugin::Plugin for TestPlugin {
 
     fn init_models(&self, model_manager: &mut core::model::model_manager::ModelManager) {
         println!("init_models");
-        model_manager.register_model::<SaleOrder>();
+        model_manager.register_model::<SaleOrderTest>();
     }
 
     fn unload(&mut self) {

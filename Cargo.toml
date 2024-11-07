@@ -14,9 +14,6 @@ edition = "2021"
 #rocket = "0.5.0-rc.3"
 #syn = "2.0"
 #diesel = "2.1"
-#old_code_gen = { path = "old_code_gen" }
-#old_test_http = { path = "old_test_http" }
-#old_test_lib = { path = "old_test_lib" }
 core = { path = "core" }
 config = { version = "0.14.1", features = ["toml"] }
 directories = "5.0.1"

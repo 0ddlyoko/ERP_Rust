@@ -1,9 +1,8 @@
+use crate::field::{FieldDescriptor, FieldType};
 use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::{MapOfFields, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::fmt::format;
-use crate::field::{FieldDescriptor, FieldType};
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
@@ -102,7 +101,7 @@ impl FinalInternalModel {
     /// Return default value for given field.
     /// If the first is not present, panic
     pub fn get_default_value(&self, field_name: &'static str) -> FieldType {
-        let field = self.fields.get(field_name).expect(format!("Field {} is not present in model {}", field_name, field_name).as_str());
+        let field = self.fields.get(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, field_name));
         field.default_value.clone()
     }
 }

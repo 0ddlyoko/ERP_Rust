@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-pub(crate) struct SaleOrder {
+pub(crate) struct SaleOrderTest {
     id: u32,
     name: String,
 }
 
-impl SaleOrder {
+impl SaleOrderTest {
     fn get_id(&self) -> u32 {
         self.id
     }
@@ -15,14 +15,14 @@ impl SaleOrder {
     }
 }
 
-impl core::model::Model for SaleOrder {
+impl core::model::Model for SaleOrderTest {
     fn get_model_name() -> &'static str {
-        "sale_order"
+        "sale_order_test"
     }
 
     fn get_model_descriptor() -> core::model::ModelDescriptor {
         core::model::ModelDescriptor {
-            name: "sale_order".to_string(),
+            name: "sale_order_test".to_string(),
             description: Some("A Sale Order!".to_string()),
             fields: vec![
                 core::field::FieldDescriptor {

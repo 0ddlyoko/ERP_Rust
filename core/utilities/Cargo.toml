@@ -1,0 +1,9 @@
+[package]
+name = "utilities"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+config = { version = "0.14.1", features = ["toml"] }
+directories = "5.0.1"
+core = { path = ".." }
