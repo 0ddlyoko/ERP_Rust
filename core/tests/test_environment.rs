@@ -1,5 +1,6 @@
 mod models;
 
+use core::model::MapOfFields;
 use core::environment::Environment;
 use core::model::ModelManager;
 use std::collections::HashMap;
@@ -12,19 +13,19 @@ fn test_fill_default_values_on_map() {
     model_manager.register_model::<SaleOrder>();
     let env = Environment::new(&model_manager);
 
-    let mut map: core::model::MapOfFields = HashMap::new();
+    let mut map: core::model::MapOfFields = core::model::MapOfFields::new(HashMap::new());
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    let name = &map["name"];
-    let total_price = &map["total_price"];
+    let name: Option<String> = map.get_option("name");
+    let total_price: Option<i64> = map.get_option("total_price");
 
     assert!(name.is_some());
     assert!(total_price.is_some());
 
-    let name = name.clone().unwrap();
+    let name = name.unwrap();
     let total_price = total_price.clone().unwrap();
-    assert_eq!(name, core::field::FieldType::String("0ddlyoko".to_string()));
-    assert_eq!(total_price, core::field::FieldType::Integer(42));
+    assert_eq!(name, "0ddlyoko".to_string());
+    assert_eq!(total_price, 42);
 }
 
 #[test]
@@ -34,12 +35,10 @@ fn test_get_record() {
     let mut env = Environment::new(&model_manager);
 
     // Insert random data inside
-    let mut map: core::model::MapOfFields = HashMap::new();
+    let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
     let map = core::cache::Cache::transform_map_to_fields_into_cache(&map);
-    // map.insert("name", Some(core::cache::CacheFieldValue::String("0ddlyoko".to_string())));
-    // map.insert("total_price", Some(core::cache::CacheFieldValue::Int(42)));
     env.cache.insert_record_model_with_map("sale_order", 1, map);
     env.cache.clear_all_dirty_of_model("sale_order", 1);
 

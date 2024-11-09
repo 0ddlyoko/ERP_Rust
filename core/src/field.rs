@@ -1,4 +1,11 @@
+use std::error::Error;
 use std::fmt::{Display, Formatter};
+
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+pub trait FromType<T> where Self: Sized {
+    fn from_type(t: T) -> Option<Self>;
+}
 
 #[derive(Debug)]
 pub enum FieldType {
@@ -7,6 +14,42 @@ pub enum FieldType {
     Float(f64),
     Bool(bool),
 }
+
+impl FromType<&FieldType> for String {
+    fn from_type(t: &FieldType) -> Option<Self> {
+        match t {
+            FieldType::String(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl FromType<&FieldType> for i64 {
+    fn from_type(t: &FieldType) -> Option<Self> {
+        match t {
+            FieldType::Integer(s) => Some(*s),
+            _ => None,
+        }
+    }
+}
+
+impl FromType<&String> for FieldType {
+    fn from_type(t: &String) -> Option<Self> {
+        Some(FieldType::String(t.clone()))
+    }
+}
+
+impl FromType<i64> for FieldType {
+    fn from_type(t: i64) -> Option<Self> {
+        Some(FieldType::Integer(t))
+    }
+}
+
+// impl<'a> FromType<'a, &String> for FieldType {
+//     fn from_type(t: &'a &String) -> Option<Self> {
+//         Some(FieldType::String(t.to_string()))
+//     }
+// }
 
 impl FieldType {
     pub fn string(&self) -> String {
@@ -97,7 +140,7 @@ impl PartialEq for FieldType {
 
 #[derive(Default)]
 pub struct FieldDescriptor {
-    pub name: &'static str,
+    pub name: String,
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,

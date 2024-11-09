@@ -6,9 +6,9 @@ use crate::internal::internal_field::{FinalInternalField, InternalField};
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
-    pub name: &'static str,
+    pub name: String,
     pub description: Option<String>,
-    pub fields: HashMap<&'static str, InternalField>,
+    pub fields: HashMap<String, InternalField>,
     pub create_instance: fn(u32, MapOfFields) -> Box<dyn Model>,
 }
 
@@ -16,14 +16,14 @@ pub struct InternalModel {
 ///
 /// Represent all combined InternalModel
 pub struct FinalInternalModel {
-    pub name: &'static str,
+    pub name: String,
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
-    pub fields: HashMap<&'static str, FinalInternalField>,
+    pub fields: HashMap<String, FinalInternalField>,
 }
 
 impl FinalInternalModel {
-    pub fn new(model_name: &'static str) -> FinalInternalModel {
+    pub fn new(model_name: String) -> FinalInternalModel {
         FinalInternalModel {
             name: model_name,
             description: "".to_string(),
@@ -40,8 +40,8 @@ impl FinalInternalModel {
         let description = model_descriptor.description;
         let mut fields = HashMap::new();
         for field in &model_descriptor.fields {
-            fields.insert(field.name, InternalField {
-                name: field.name,
+            fields.insert(field.name.clone(), InternalField {
+                name: field.name.clone(),
                 default_value: field.default_value.clone(),
                 description: field.description.clone(),
                 required: field.required,
@@ -65,8 +65,8 @@ impl FinalInternalModel {
     }
 
     fn register_internal_field(&mut self, field_descriptor: &FieldDescriptor) {
-        let name = field_descriptor.name;
-        let internal_field = self.fields.entry(name).or_insert_with(|| { FinalInternalField::new(name) });
+        let name = &field_descriptor.name;
+        let internal_field = self.fields.entry(name.to_string()).or_insert_with(|| { FinalInternalField::new(name) });
         internal_field.register_internal_field(field_descriptor);
     }
 
@@ -89,18 +89,18 @@ impl FinalInternalModel {
     }
 
     /// Get a vector of all registered fields for this model
-    pub fn get_fields_name(&self) -> Vec<&'static str> {
-        self.fields.keys().cloned().collect()
+    pub fn get_fields_name(&self) -> Vec<&str> {
+        self.fields.keys().map(|field| field.as_str()).collect()
     }
 
     /// Get a vector of difference between all registered fields for this model, and given vector
-    pub fn get_missing_fields(&self, current_fields: Vec<&'static str>) -> Vec<&'static str> {
-        self.fields.keys().filter(|x| !current_fields.contains(x)).cloned().collect()
+    pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<&str> {
+        self.fields.keys().filter(|&x| !current_fields.contains(&x.as_str())).map(|field| field.as_str()).collect()
     }
 
     /// Return default value for given field.
     /// If the first is not present, panic
-    pub fn get_default_value(&self, field_name: &'static str) -> FieldType {
+    pub fn get_default_value(&self, field_name: &str) -> FieldType {
         let field = self.fields.get(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, field_name));
         field.default_value.clone()
     }
@@ -113,17 +113,17 @@ mod tests {
 
     #[test]
     fn test_get_fields_name() {
-        let mut internal_model = FinalInternalModel::new("");
+        let mut internal_model = FinalInternalModel::new("".to_string());
 
         internal_model.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
         });
 
         internal_model.register_internal_field(&FieldDescriptor {
-            name: "age",
+            name: "age".to_string(),
             default_value: Some(FieldType::Integer(42)),
             description: Some("This is the age of the person".to_string()),
             required: None,

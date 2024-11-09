@@ -19,7 +19,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// Load given record from the database to the cache.
     /// If the record is already present in cache, do nothing
     /// Returns true if the record has been found
-    pub fn load_record_from_db(&mut self, model_name: &'static str, id: u32) -> Result<(), Box<dyn Error>> {
+    pub fn load_record_from_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
         if self.cache.is_record_present(model_name, id) {
             return Ok(());
         }
@@ -36,7 +36,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// If the record is already saved, do nothing
     ///
     /// If the record is not present in cache, do nothing
-    pub fn save_record_to_db(&mut self, model_name: &'static str, id: u32) -> Result<(), Box<dyn Error>> {
+    pub fn save_record_to_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
         let cache_model = self.cache.get_cache_record(model_name, id);
         if cache_model.is_none() {
             // Nothing to update
@@ -47,21 +47,21 @@ impl<'model_manager> Environment<'model_manager> {
         Ok(())
     }
 
-    pub fn get_data_from_db(&self, model_name: &'static str, id: u32) -> Result<MapOfFields, Box<dyn Error>> {
+    pub fn get_data_from_db(&self, model_name: &str, id: u32) -> Result<MapOfFields, Box<dyn Error>> {
         todo!("Save data to db")
     }
 
     /// Save given data in the database
-    pub fn save_data_to_db(&self, model_name: &'static str, id: u32, data: MapOfFields) -> Result<(), Box<dyn Error>> {
+    pub fn save_data_to_db(&self, model_name: &str, id: u32, data: MapOfFields) -> Result<(), Box<dyn Error>> {
         todo!("Save data to db")
     }
 
-    pub fn insert_data_to_db(&self, model_name: &'static str, data: MapOfFields) -> Result<u32, Box<dyn Error>> {
+    pub fn insert_data_to_db(&self, model_name: &str, data: MapOfFields) -> Result<u32, Box<dyn Error>> {
         todo!("Insert data to db")
     }
 
     /// Insert given model in the cache
-    pub fn save_record_from_name(&mut self, model_name: &'static str, record: &dyn Model) {
+    pub fn save_record_from_name(&mut self, model_name: &str, record: &dyn Model) {
         assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
         let data = record.get_data();
@@ -73,13 +73,13 @@ impl<'model_manager> Environment<'model_manager> {
         let id = record.get_id();
         let model_name = M::get_model_name();
         let data = record.get_data();
-        self.cache.insert_record_model_with_map(model_name, id, Cache::transform_map_to_fields_into_cache(&data));
+        self.cache.insert_record_model_with_map(model_name.as_str(), id, Cache::transform_map_to_fields_into_cache(&data));
     }
 
     /// Returns the first record of given model for a specific id
     ///
     /// If the record is not present in cache, loads it from the database
-    pub fn get_record_from_name(&mut self, model_name: &'static str, id: u32) -> Result<Option<Box<dyn Model>>, Box<dyn Error>> {
+    pub fn get_record_from_name(&mut self, model_name: &str, id: u32) -> Result<Option<Box<dyn Model>>, Box<dyn Error>> {
         self.load_record_from_db(model_name, id)?;
         let cache_record = self.cache.get_cache_record(model_name, id);
         if cache_record.is_none() {
@@ -95,8 +95,8 @@ impl<'model_manager> Environment<'model_manager> {
     /// If the record is not present in cache, loads it from the database
     pub fn get_record<M>(&mut self, id: u32) -> Result<Option<M>, Box<dyn Error>> where M: Model + 'static {
         let model_name = M::get_model_name();
-        self.load_record_from_db(model_name, id)?;
-        let cache_record = self.cache.get_cache_record(model_name, id);
+        self.load_record_from_db(model_name.as_str(), id)?;
+        let cache_record = self.cache.get_cache_record(model_name.as_str(), id);
         if cache_record.is_none() {
             return Err(cache::errors::RecordNotFoundError {
                 model_name,
@@ -109,7 +109,7 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Create a new record for a specific model and a given list of fields
-    pub fn create_record_from_name(&mut self, model_name: &'static str, mut data: MapOfFields) -> Result<Box<dyn Model>, Box<dyn Error>> {
+    pub fn create_record_from_name(&mut self, model_name: &str, mut data: MapOfFields) -> Result<Box<dyn Model>, Box<dyn Error>> {
         self.fill_default_values_on_map(model_name, &mut data);
 
         let id = self.insert_data_to_db(model_name, data)?;
@@ -120,9 +120,9 @@ impl<'model_manager> Environment<'model_manager> {
     /// Create a new record for a specific model and a given list of fields
     pub fn create_new_record_from_map<M>(&mut self, mut data: MapOfFields) -> Result<M, Box<dyn Error>> where M: Model + 'static {
         let model_name = M::get_model_name();
-        self.fill_default_values_on_map(model_name, &mut data);
-        let id = self.insert_data_to_db(model_name, data)?;
-        self.load_record_from_db(model_name, id)?;
+        self.fill_default_values_on_map(model_name.as_str(), &mut data);
+        let id = self.insert_data_to_db(model_name.as_str(), data)?;
+        self.load_record_from_db(model_name.as_str(), id)?;
         Ok(self.get_record::<M>(id)?.unwrap())
     }
 
@@ -134,16 +134,16 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Add default values for a given model on given data
-    pub fn fill_default_values_on_map(&self, model_name: &'static str, data: &mut MapOfFields) {
+    pub fn fill_default_values_on_map(&self, model_name: &str, data: &mut MapOfFields) {
         let final_internal_model = self.model_manager.get_model(model_name);
         if final_internal_model.is_none() {
             return;
         }
         let final_internal_model = final_internal_model.unwrap();
-        let missing_fields_to_load: Vec<&'static str> = final_internal_model.get_missing_fields(data.keys().cloned().collect());
+        let missing_fields_to_load = final_internal_model.get_missing_fields(data.get_keys());
         for missing_field_to_load in missing_fields_to_load {
             let default_value = final_internal_model.get_default_value(missing_field_to_load);
-            data.insert(missing_field_to_load, Some(default_value));
+            data.insert_field_type(missing_field_to_load, default_value);
         }
     }
 }

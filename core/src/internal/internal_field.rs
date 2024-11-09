@@ -2,7 +2,7 @@ use crate::field::{FieldDescriptor, FieldType};
 
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
-    pub name: &'static str,
+    pub name: String,
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,
@@ -12,7 +12,7 @@ pub struct InternalField {
 ///
 /// Represent all combined InternalModel
 pub struct FinalInternalField {
-    pub name: &'static str,
+    pub name: String,
     pub description: String,
     pub required: bool,
     pub default_value: FieldType,
@@ -20,9 +20,9 @@ pub struct FinalInternalField {
 }
 
 impl FinalInternalField {
-    pub fn new(field_name: &'static str) -> Self {
+    pub fn new(field_name: &str) -> Self {
         FinalInternalField {
-            name: field_name,
+            name: field_name.to_string(),
             description: field_name.to_string(),
             required: false,
             default_value: FieldType::String("".to_string()),
@@ -65,14 +65,14 @@ mod tests {
         let mut field_age = FinalInternalField::new("age");
 
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
         });
 
         field_age.register_internal_field(&FieldDescriptor {
-            name: "age",
+            name: "age".to_string(),
             default_value: Some(FieldType::Integer(42)),
             description: Some("This is the age of the person".to_string()),
             required: None,
@@ -90,7 +90,7 @@ mod tests {
 
         // Register a new existing field ("name") should override data
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: Some(FieldType::String("1ddlyoko".to_string())),
             description: None,
             required: Some(true),
@@ -103,7 +103,7 @@ mod tests {
 
         // Again
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: None,
             description: Some("This is another description".to_string()),
             required: None,
@@ -121,7 +121,7 @@ mod tests {
         let mut field_name = FinalInternalField::new("field_name");
 
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: None,
             description: Some("This is the name".to_string()),
             required: None,
@@ -134,14 +134,14 @@ mod tests {
         let mut field_name = FinalInternalField::new("field_name");
 
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
         });
 
         field_name.register_internal_field(&FieldDescriptor {
-            name: "name",
+            name: "name".to_string(),
             default_value: Some(FieldType::Integer(42)),
             description: None,
             required: None,

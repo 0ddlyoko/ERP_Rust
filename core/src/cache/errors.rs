@@ -2,7 +2,7 @@ use std::{error, fmt};
 
 #[derive(Debug, Clone)]
 pub struct RecordNotFoundError {
-    pub(crate) model_name: &'static str,
+    pub(crate) model_name: String,
     pub(crate) id: u32,
 }
 

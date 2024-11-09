@@ -86,6 +86,9 @@
     // println!("{:?} {:?}", sale_order.title, sale_order.published);
 // }
 
+use core::field::FieldType;
+use core::field::FromType;
+use std::collections::HashMap;
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
 use std::path::Path;
@@ -108,20 +111,21 @@ fn build_config() -> Result<core::config::Config, ConfigError> {
     config.try_deserialize()
 }
 
+
+
 fn main() {
     let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
     let mut app = core::app::Application::new(config);
 
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));
-    
-    let model = app.model_manager.get_model("sale_order");
+
+    let model = app.model_manager.get_model("sale_order_test");
     if model.is_none() {
         println!("No model found");
     } else {
         let model = model.unwrap();
         println!("Models: {}", model.name);
     }
-    // let model = 2;
 
     app.unload();
 }

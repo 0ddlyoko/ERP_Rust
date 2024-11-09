@@ -16,8 +16,8 @@ impl SaleOrderTest {
 }
 
 impl core::model::Model for SaleOrderTest {
-    fn get_model_name() -> &'static str {
-        "sale_order_test"
+    fn get_model_name() -> String {
+        "sale_order_test".to_string()
     }
 
     fn get_model_descriptor() -> core::model::ModelDescriptor {
@@ -26,7 +26,7 @@ impl core::model::Model for SaleOrderTest {
             description: Some("A Sale Order!".to_string()),
             fields: vec![
                 core::field::FieldDescriptor {
-                    name: "name",
+                    name: "name".to_string(),
                     default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
                     required: Some(true),
@@ -41,16 +41,15 @@ impl core::model::Model for SaleOrderTest {
     }
 
     fn get_data(&self) -> core::model::MapOfFields {
-        let mut map = HashMap::new();
-        map.insert("name", Some(core::field::FieldType::String(self.name.clone())));
-        map
+        let mut result = core::model::MapOfFields::default();
+        result.insert("name", &self.name);
+        result
     }
 
     fn create_model(id: u32, data: core::model::MapOfFields) -> Self {
-        let name = data["name"].clone().unwrap().string();
         Self {
             id,
-            name,
+            name: data.get("name"),
         }
     }
 }

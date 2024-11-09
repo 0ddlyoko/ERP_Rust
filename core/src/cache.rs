@@ -13,7 +13,7 @@ use crate::model::MapOfFields;
 
 #[derive(Default)]
 pub struct Cache {
-    cache: HashMap<&'static str, HashMap<u32, CacheModel>>,
+    cache: HashMap<String, HashMap<u32, CacheModel>>,
 }
 
 impl Cache {
@@ -33,11 +33,11 @@ impl Cache {
         self.cache.get_mut(model_name)?.get_mut(&id)
     }
 
-    fn get_model_from_name_or_create(&mut self, model_name: &'static str) -> &mut HashMap<u32, CacheModel> {
-        self.cache.entry(model_name).or_default()
+    fn get_model_from_name_or_create(&mut self, model_name: &str) -> &mut HashMap<u32, CacheModel> {
+        self.cache.entry(model_name.to_string()).or_default()
     }
 
-    pub fn get_record_or_create(&mut self, model_name: &'static str, id: u32) -> &mut CacheModel {
+    pub fn get_record_or_create(&mut self, model_name: &str, id: u32) -> &mut CacheModel {
         let cached_models = self.get_model_from_name_or_create(model_name);
         cached_models.entry(id).or_insert_with(|| CacheModel::new(id))
     }
@@ -50,12 +50,12 @@ impl Cache {
         self.cache.get_mut(model_name)?.get_mut(&id)?.get_field_mut(field_name)
     }
 
-    pub fn insert_record_field(&mut self, model_name: &'static str, id: u32, field_name: &'static str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
+    pub fn insert_record_field(&mut self, model_name: &str, id: u32, field_name: &str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
         let cache_model = self.get_record_or_create(model_name, id);
         cache_model.insert_field(field_name, field_value)
     }
 
-    pub fn insert_record_model_with_map(&mut self, model_name: &'static str, id: u32, fields: CacheMapOfFields) {
+    pub fn insert_record_model_with_map(&mut self, model_name: &str, id: u32, fields: CacheMapOfFields) {
         let cache_model = self.get_record_or_create(model_name, id);
         cache_model.insert_fields(fields)
     }
@@ -69,7 +69,7 @@ impl Cache {
     }
 
     pub fn transform_into_map_of_fields(fields: &CacheMapOfFields) -> MapOfFields {
-        fields.iter().map(|(&k, v)| {
+        let fields: HashMap<String, Option<FieldType>> = fields.iter().map(|(k, v)| {
             let value = match v {
                 Some(CacheFieldValue::String(value)) => Some(FieldType::String(value.clone())),
                 Some(CacheFieldValue::Int(value)) => Some(FieldType::Integer(*value)),
@@ -78,12 +78,13 @@ impl Cache {
                 None => None,
             };
 
-            (k, value)
-        }).collect()
+            (k.clone(), value)
+        }).collect();
+        MapOfFields::new(fields)
     }
 
     pub fn transform_map_to_fields_into_cache(fields: &MapOfFields) -> CacheMapOfFields {
-        fields.iter().map(|(&k, v)| {
+        fields.fields.iter().map(|(k, v)| {
             let value = match v {
                 Some(FieldType::String(value)) => Some(CacheFieldValue::String(value.clone())),
                 Some(FieldType::Integer(value)) => Some(CacheFieldValue::Int(*value)),
@@ -92,7 +93,7 @@ impl Cache {
                 None => None,
             };
 
-            (k, value)
+            (k.clone(), value)
         }).collect()
     }
 }
@@ -107,7 +108,7 @@ mod tests {
     fn test_get_and_insert_field() {
         let mut cache = Cache::default();
         let mut cached_fields = HashMap::new();
-        cached_fields.insert("my_field", Some(CacheFieldValue::String("my_value".to_string())));
+        cached_fields.insert("my_field".to_string(), Some(CacheFieldValue::String("my_value".to_string())));
         cache.get_record_or_create("my_model", 1).insert_fields(cached_fields);
 
         // Check if retrieving the field is correct
