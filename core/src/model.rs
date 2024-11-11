@@ -3,10 +3,10 @@ pub mod model_manager;
 
 pub use model_manager::ModelManager;
 
-use std::collections::HashMap;
 use crate::field::{FieldDescriptor, FieldType, FromType};
+use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MapOfFields {
     pub(crate) fields: HashMap<String, Option<FieldType>>,
 }

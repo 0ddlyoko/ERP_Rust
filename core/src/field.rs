@@ -1,7 +1,18 @@
-use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+macro_rules! make_eq {
+    ( $self:expr, $other:expr, $( $path:path ),* ) => {
+        match $self {
+            $($path(ref self_value) => {
+                if let $path(ref other_value) = $other {
+                    self_value == other_value
+                } else {
+                    false
+                }
+            })*
+        }
+    };
+}
 
 pub trait FromType<T> where Self: Sized {
     fn from_type(t: T) -> Option<Self>;
@@ -129,36 +140,13 @@ impl Clone for FieldType {
 
 impl PartialEq for FieldType {
     fn eq(&self, other: &Self) -> bool {
-        match self {
-            FieldType::String(str) => {
-                if let FieldType::String(str2) = other {
-                    str == str2
-                } else {
-                    false
-                }
-            }
-            FieldType::Integer(int) => {
-                if let FieldType::Integer(int2) = other {
-                    int == int2
-                } else {
-                    false
-                }
-            }
-            FieldType::Float(float) => {
-                if let FieldType::Float(float2) = other {
-                    float == float2
-                } else {
-                    false
-                }
-            }
-            FieldType::Bool(bool) => {
-                if let FieldType::Bool(bool2) = other {
-                    bool == bool2
-                } else {
-                    false
-                }
-            }
-        }
+        make_eq!(
+            self, other,
+            FieldType::String,
+            FieldType::Integer,
+            FieldType::Float,
+            FieldType::Bool
+        )
     }
 }
 

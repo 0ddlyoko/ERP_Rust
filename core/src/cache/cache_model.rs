@@ -1,10 +1,11 @@
-use crate::cache::cache_field::{CacheField, CacheFieldValue};
+use crate::cache::cache_field::CacheField;
 use crate::cache::Cache;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
+use crate::field::FieldType;
 
 // TODO Remove this CacheMapOfFields
-pub type CacheMapOfFields = HashMap<String, Option<CacheFieldValue>>;
+pub type CacheMapOfFields = HashMap<String, Option<FieldType>>;
 
 pub struct CacheModel {
     id: u32,
@@ -42,7 +43,7 @@ impl CacheModel {
 
     /// Get the list of fields that are dirty
     pub fn get_fields_dirty(&self) -> MapOfFields {
-        Cache::transform_into_map_of_fields(&self.fields.iter().filter_map(|(k, v)| {
+        Cache::transform_into_map_of_fields(self.fields.iter().filter_map(|(k, v)| {
             if v.is_dirty() {
                 Some((k.clone(), v.get().cloned()))
             } else {
@@ -51,7 +52,7 @@ impl CacheModel {
         }).collect())
     }
 
-    pub fn insert_field(&mut self, name: &str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
+    pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {
         let entry = self.fields.entry(name.to_string());
         let cache_field = entry.or_default();
         match field_value {
@@ -84,15 +85,15 @@ impl CacheModel {
     }
 
     pub fn transform_into_map_of_fields(&self) -> MapOfFields {
-        Cache::transform_into_map_of_fields(&self.fields.iter().map(|(k, v)| (k.clone(), v.get().cloned())).collect())
+        Cache::transform_into_map_of_fields(self.fields.iter().map(|(k, v)| (k.clone(), v.get().cloned())).collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::cache_field::CacheFieldValue;
     use crate::cache::cache_model::{CacheField, CacheModel};
     use std::collections::HashMap;
+    use crate::field::FieldType;
 
     #[test]
     fn test_access_valid_fields() {
@@ -110,11 +111,11 @@ mod tests {
         let result = test_field.get();
         assert!(result.is_none());
 
-        test_field.set(CacheFieldValue::String("test".to_string()));
+        test_field.set(FieldType::String("test".to_string()));
 
         let result = test_field.get();
         assert!(result.clone().is_some());
-        assert_eq!(result.unwrap(), &CacheFieldValue::String("test".to_string()));
+        assert_eq!(result.unwrap(), &FieldType::String("test".to_string()));
     }
 
     #[test]

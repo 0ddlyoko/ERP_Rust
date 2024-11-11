@@ -25,7 +25,7 @@ impl<'model_manager> Environment<'model_manager> {
         }
 
         let map_of_fields = self.get_data_from_db(model_name, id)?;
-        let map_of_fields = Cache::transform_map_to_fields_into_cache(&map_of_fields);
+        let map_of_fields = Cache::transform_map_to_fields_into_cache(map_of_fields);
         self.cache.insert_record_model_with_map(model_name, id, map_of_fields);
         self.cache.clear_all_dirty_of_model(model_name, id);
         Ok(())
@@ -65,7 +65,7 @@ impl<'model_manager> Environment<'model_manager> {
         assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
         let data = record.get_data();
-        self.cache.insert_record_model_with_map(model_name, id, Cache::transform_map_to_fields_into_cache(&data));
+        self.cache.insert_record_model_with_map(model_name, id, Cache::transform_map_to_fields_into_cache(data));
     }
 
     /// Save given record to the cache
@@ -73,7 +73,7 @@ impl<'model_manager> Environment<'model_manager> {
         let id = record.get_id();
         let model_name = M::get_model_name();
         let data = record.get_data();
-        self.cache.insert_record_model_with_map(model_name.as_str(), id, Cache::transform_map_to_fields_into_cache(&data));
+        self.cache.insert_record_model_with_map(model_name.as_str(), id, Cache::transform_map_to_fields_into_cache(data));
     }
 
     /// Returns the first record of given model for a specific id

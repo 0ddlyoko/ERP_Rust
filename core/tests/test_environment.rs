@@ -1,8 +1,8 @@
 mod models;
 
-use core::model::MapOfFields;
+use core::field::FieldType;
+use core::model::{ MapOfFields, ModelManager };
 use core::environment::Environment;
-use core::model::ModelManager;
 use std::collections::HashMap;
 
 use models::sale_order::SaleOrder;
@@ -38,7 +38,7 @@ fn test_get_record() {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    let map = core::cache::Cache::transform_map_to_fields_into_cache(&map);
+    let map = core::cache::Cache::transform_map_to_fields_into_cache(map);
     env.cache.insert_record_model_with_map("sale_order", 1, map);
     env.cache.clear_all_dirty_of_model("sale_order", 1);
 
@@ -62,8 +62,8 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(total_price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), core::cache::CacheFieldValue::String("0ddlyoko".to_string()));
-    assert_eq!(*total_price_cache_record.get().unwrap(), core::cache::CacheFieldValue::Int(42));
+    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(*total_price_cache_record.get().unwrap(), FieldType::Integer(42));
 
     // Changing the price should not alter the cache (as it's not already saved)
     sale_order.total_price = 50;
@@ -72,8 +72,8 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(total_price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), core::cache::CacheFieldValue::String("0ddlyoko".to_string()));
-    assert_eq!(*total_price_cache_record.get().unwrap(), core::cache::CacheFieldValue::Int(42));
+    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(*total_price_cache_record.get().unwrap(), FieldType::Integer(42));
 
     // But saving it should
     env.save_record(&sale_order);
@@ -89,8 +89,8 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(total_price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), core::cache::CacheFieldValue::String("0ddlyoko".to_string()));
-    assert_eq!(*total_price_cache_record.get().unwrap(), core::cache::CacheFieldValue::Int(50));
+    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(*total_price_cache_record.get().unwrap(), FieldType::Integer(50));
 
     let cache_model = env.cache.get_cache_record("sale_order", 1);
     assert!(cache_model.is_some());

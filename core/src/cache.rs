@@ -3,7 +3,6 @@ mod cache_model;
 pub mod errors;
 
 pub use cache_field::CacheField;
-pub use cache_field::CacheFieldValue;
 pub use cache_model::CacheMapOfFields;
 pub use cache_model::CacheModel;
 
@@ -50,7 +49,7 @@ impl Cache {
         self.cache.get_mut(model_name)?.get_mut(&id)?.get_field_mut(field_name)
     }
 
-    pub fn insert_record_field(&mut self, model_name: &str, id: u32, field_name: &str, field_value: Option<CacheFieldValue>) -> Option<&mut CacheField> {
+    pub fn insert_record_field(&mut self, model_name: &str, id: u32, field_name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {
         let cache_model = self.get_record_or_create(model_name, id);
         cache_model.insert_field(field_name, field_value)
     }
@@ -68,39 +67,18 @@ impl Cache {
         cache_model.unwrap().clear_all_dirty();
     }
 
-    pub fn transform_into_map_of_fields(fields: &CacheMapOfFields) -> MapOfFields {
-        let fields: HashMap<String, Option<FieldType>> = fields.iter().map(|(k, v)| {
-            let value = match v {
-                Some(CacheFieldValue::String(value)) => Some(FieldType::String(value.clone())),
-                Some(CacheFieldValue::Int(value)) => Some(FieldType::Integer(*value)),
-                Some(CacheFieldValue::Float(value)) => Some(FieldType::Float(*value)),
-                Some(CacheFieldValue::Bool(value)) => Some(FieldType::Bool(*value)),
-                None => None,
-            };
-
-            (k.clone(), value)
-        }).collect();
+    pub fn transform_into_map_of_fields(fields: CacheMapOfFields) -> MapOfFields {
         MapOfFields::new(fields)
     }
 
-    pub fn transform_map_to_fields_into_cache(fields: &MapOfFields) -> CacheMapOfFields {
-        fields.fields.iter().map(|(k, v)| {
-            let value = match v {
-                Some(FieldType::String(value)) => Some(CacheFieldValue::String(value.clone())),
-                Some(FieldType::Integer(value)) => Some(CacheFieldValue::Int(*value)),
-                Some(FieldType::Float(value)) => Some(CacheFieldValue::Float(*value)),
-                Some(FieldType::Bool(value)) => Some(CacheFieldValue::Bool(*value)),
-                None => None,
-            };
-
-            (k.clone(), value)
-        }).collect()
+    pub fn transform_map_to_fields_into_cache(fields: MapOfFields) -> CacheMapOfFields {
+        fields.fields
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::cache_field::CacheFieldValue;
+    use crate::field::FieldType;
     use crate::cache::Cache;
     use std::collections::HashMap;
 
@@ -108,20 +86,20 @@ mod tests {
     fn test_get_and_insert_field() {
         let mut cache = Cache::default();
         let mut cached_fields = HashMap::new();
-        cached_fields.insert("my_field".to_string(), Some(CacheFieldValue::String("my_value".to_string())));
+        cached_fields.insert("my_field".to_string(), Some(FieldType::String("my_value".to_string())));
         cache.get_record_or_create("my_model", 1).insert_fields(cached_fields);
 
         // Check if retrieving the field is correct
         let cache_field = cache.get_record_field("my_model", 1, "my_field");
         assert!(cache_field.unwrap().get().is_some());
-        assert_eq!(cache_field.unwrap().get().unwrap(), &CacheFieldValue::String("my_value".to_string()));
+        assert_eq!(cache_field.unwrap().get().unwrap(), &FieldType::String("my_value".to_string()));
 
         // Modify it
-        cache.insert_record_field("my_model", 1, "my_field", Some(CacheFieldValue::String("my_value_2".to_string())));
+        cache.insert_record_field("my_model", 1, "my_field", Some(FieldType::String("my_value_2".to_string())));
         let cache_field = cache.get_record_field("my_model", 1, "my_field");
         assert!(cache_field.is_some());
         assert!(cache_field.unwrap().get().is_some());
-        assert_eq!(cache_field.unwrap().get().unwrap(), &CacheFieldValue::String("my_value_2".to_string()));
+        assert_eq!(cache_field.unwrap().get().unwrap(), &FieldType::String("my_value_2".to_string()));
 
         // Clear the field
         cache.insert_record_field("my_model", 1, "my_field", None);
@@ -129,7 +107,7 @@ mod tests {
         assert!(cache_field.is_some());
         assert!(cache_field.unwrap().get().is_none());
         // Put field back
-        cache.insert_record_field("my_model", 1, "my_field", Some(CacheFieldValue::String("my_value_2".to_string())));
+        cache.insert_record_field("my_model", 1, "my_field", Some(FieldType::String("my_value_2".to_string())));
 
         // Insert another model
         cache.get_record_or_create("my_model", 2);
@@ -137,17 +115,17 @@ mod tests {
         let cache_field = cache.get_record_field("my_model", 1, "my_field");
         assert!(cache_field.is_some());
         assert!(cache_field.unwrap().get().is_some());
-        assert_eq!(cache_field.unwrap().get().unwrap(), &CacheFieldValue::String("my_value_2".to_string()));
+        assert_eq!(cache_field.unwrap().get().unwrap(), &FieldType::String("my_value_2".to_string()));
 
         // Modifying the other model shouldn't modify the other field
-        cache.insert_record_field("my_model", 2, "my_field", Some(CacheFieldValue::String("my_value_3".to_string())));
+        cache.insert_record_field("my_model", 2, "my_field", Some(FieldType::String("my_value_3".to_string())));
         let cache_field = cache.get_record_field("my_model", 1, "my_field");
         assert!(cache_field.is_some());
         assert!(cache_field.unwrap().get().is_some());
-        assert_eq!(cache_field.unwrap().get().unwrap(), &CacheFieldValue::String("my_value_2".to_string()));
+        assert_eq!(cache_field.unwrap().get().unwrap(), &FieldType::String("my_value_2".to_string()));
         let cache_field = cache.get_record_field("my_model", 2, "my_field");
         assert!(cache_field.is_some());
         assert!(cache_field.unwrap().get().is_some());
-        assert_eq!(cache_field.unwrap().get().unwrap(), &CacheFieldValue::String("my_value_3".to_string()));
+        assert_eq!(cache_field.unwrap().get().unwrap(), &FieldType::String("my_value_3".to_string()));
     }
 }
