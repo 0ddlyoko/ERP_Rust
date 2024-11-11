@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::environment::Environment;
 use crate::model::ModelManager;
-use crate::plugin::internal_plugin::InternalPluginState::Installed;
-use crate::plugin::plugin_manager::PluginManager;
+use crate::plugin::InternalPluginState::Installed;
+use crate::plugin::PluginManager;
 use crate::plugin::Plugin;
 
 type MyResult = Result<(), Box<dyn std::error::Error>>;

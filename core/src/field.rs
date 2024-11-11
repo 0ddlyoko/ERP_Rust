@@ -1,5 +1,5 @@
-
 mod field_type;
+
 pub use field_type::FieldType;
 
 pub trait FromType<T> where Self: Sized {

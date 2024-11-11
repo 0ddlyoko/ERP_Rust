@@ -9,7 +9,7 @@ impl core::plugin::Plugin for TestPlugin {
         "test_plugin".to_string()
     }
 
-    fn init_models(&self, model_manager: &mut core::model::model_manager::ModelManager) {
+    fn init_models(&self, model_manager: &mut core::model::ModelManager) {
         println!("init_models");
         model_manager.register_model::<SaleOrderTest>();
     }
@@ -22,7 +22,7 @@ impl core::plugin::Plugin for TestPlugin2 {
         "test_plugin2".to_string()
     }
 
-    fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
+    fn init_models(&self, _model_manager: &mut core::model::ModelManager) {
     }
 
     fn get_depends(&self) -> Vec<String> {
@@ -39,7 +39,7 @@ impl core::plugin::Plugin for TestPlugin3 {
         "test_plugin3".to_string()
     }
 
-    fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
+    fn init_models(&self, _model_manager: &mut core::model::ModelManager) {
     }
 
     fn get_depends(&self) -> Vec<String> {

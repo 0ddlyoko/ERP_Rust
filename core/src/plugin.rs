@@ -1,6 +1,11 @@
 pub mod errors;
-pub mod internal_plugin;
-pub mod plugin_manager;
+mod internal_plugin;
+mod plugin_manager;
+
+pub(crate) use internal_plugin::InternalPluginType;
+pub(crate) use internal_plugin::InternalPluginState;
+pub(crate) use internal_plugin::InternalPlugin;
+pub use plugin_manager::PluginManager;
 
 use std::any::Any;
 use crate::model::ModelManager;
