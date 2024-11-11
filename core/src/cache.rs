@@ -3,7 +3,6 @@ mod cache_model;
 pub mod errors;
 
 pub use cache_field::CacheField;
-pub use cache_model::CacheMapOfFields;
 pub use cache_model::CacheModel;
 
 use std::collections::HashMap;
@@ -54,7 +53,7 @@ impl Cache {
         cache_model.insert_field(field_name, field_value)
     }
 
-    pub fn insert_record_model_with_map(&mut self, model_name: &str, id: u32, fields: CacheMapOfFields) {
+    pub fn insert_record_model_with_map(&mut self, model_name: &str, id: u32, fields: MapOfFields) {
         let cache_model = self.get_record_or_create(model_name, id);
         cache_model.insert_fields(fields)
     }
@@ -66,14 +65,6 @@ impl Cache {
         }
         cache_model.unwrap().clear_all_dirty();
     }
-
-    pub fn transform_into_map_of_fields(fields: CacheMapOfFields) -> MapOfFields {
-        MapOfFields::new(fields)
-    }
-
-    pub fn transform_map_to_fields_into_cache(fields: MapOfFields) -> CacheMapOfFields {
-        fields.fields
-    }
 }
 
 #[cfg(test)]
@@ -81,13 +72,14 @@ mod tests {
     use crate::field::FieldType;
     use crate::cache::Cache;
     use std::collections::HashMap;
+    use crate::model::MapOfFields;
 
     #[test]
     fn test_get_and_insert_field() {
         let mut cache = Cache::default();
         let mut cached_fields = HashMap::new();
         cached_fields.insert("my_field".to_string(), Some(FieldType::String("my_value".to_string())));
-        cache.get_record_or_create("my_model", 1).insert_fields(cached_fields);
+        cache.get_record_or_create("my_model", 1).insert_fields(MapOfFields::new(cached_fields));
 
         // Check if retrieving the field is correct
         let cache_field = cache.get_record_field("my_model", 1, "my_field");

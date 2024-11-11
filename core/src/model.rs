@@ -40,7 +40,7 @@ impl MapOfFields {
         }
     }
 
-    pub fn insert_option<'b, T>(&mut self, field_name: &str, value: Option<T>)
+    pub fn insert_option<T>(&mut self, field_name: &str, value: Option<T>)
     where
         FieldType: FromType<T> {
         if let Some(value) = value {

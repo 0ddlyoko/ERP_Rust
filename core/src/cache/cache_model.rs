@@ -1,11 +1,7 @@
 use crate::cache::cache_field::CacheField;
-use crate::cache::Cache;
+use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
-use crate::field::FieldType;
-
-// TODO Remove this CacheMapOfFields
-pub type CacheMapOfFields = HashMap<String, Option<FieldType>>;
 
 pub struct CacheModel {
     id: u32,
@@ -41,15 +37,25 @@ impl CacheModel {
         self.fields.get_mut(name)
     }
 
+    /// Transform this CacheModel into a MapOfFields that contains given fields.
+    pub fn get_map_of_fields(&self, fields: Vec<&str>) -> MapOfFields {
+        let fields = fields.iter().filter_map(|&field_name| {
+            let field = self.get_field(field_name)?;
+            Some((field_name.to_string(), field.get().cloned()))
+        }).collect();
+        MapOfFields::new(fields)
+    }
+
     /// Get the list of fields that are dirty
     pub fn get_fields_dirty(&self) -> MapOfFields {
-        Cache::transform_into_map_of_fields(self.fields.iter().filter_map(|(k, v)| {
+        let fields = self.fields.iter().filter_map(|(k, v)| {
             if v.is_dirty() {
-                Some((k.clone(), v.get().cloned()))
+                Some(k.as_str())
             } else {
                 None
             }
-        }).collect())
+        }).collect();
+        self.get_map_of_fields(fields)
     }
 
     pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {
@@ -72,8 +78,8 @@ impl CacheModel {
         self.get_field_mut(name)
     }
 
-    pub fn insert_fields(&mut self, fields: CacheMapOfFields) {
-        for (name, value) in fields {
+    pub fn insert_fields(&mut self, fields: MapOfFields) {
+        for (name, value) in fields.fields {
             self.insert_field(name.as_str(), value);
         }
     }
@@ -85,15 +91,16 @@ impl CacheModel {
     }
 
     pub fn transform_into_map_of_fields(&self) -> MapOfFields {
-        Cache::transform_into_map_of_fields(self.fields.iter().map(|(k, v)| (k.clone(), v.get().cloned())).collect())
+        let fields = self.fields.iter().map(|(k, v)| (k.clone(), v.get().cloned())).collect();
+        MapOfFields::new(fields)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::cache::cache_model::{CacheField, CacheModel};
-    use std::collections::HashMap;
     use crate::field::FieldType;
+    use std::collections::HashMap;
 
     #[test]
     fn test_access_valid_fields() {

@@ -38,7 +38,6 @@ fn test_get_record() {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    let map = core::cache::Cache::transform_map_to_fields_into_cache(map);
     env.cache.insert_record_model_with_map("sale_order", 1, map);
     env.cache.clear_all_dirty_of_model("sale_order", 1);
 
