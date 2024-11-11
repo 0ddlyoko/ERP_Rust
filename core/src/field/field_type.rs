@@ -16,13 +16,38 @@ macro_rules! make_eq {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FieldType {
     String(String),
     Integer(i64),
     Float(f64),
     Bool(bool),
 }
+
+impl Display for FieldType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FieldType::String(s) => write!(f, "{}", s),
+            FieldType::Integer(i) => write!(f, "{}", i),
+            FieldType::Float(fl) => write!(f, "{}", fl),
+            FieldType::Bool(b) => write!(f, "{}", b),
+        }
+    }
+}
+
+impl PartialEq for FieldType {
+    fn eq(&self, other: &Self) -> bool {
+        make_eq!(
+            self, other,
+            FieldType::String,
+            FieldType::Integer,
+            FieldType::Float,
+            FieldType::Bool
+        )
+    }
+}
+
+// FromType
 
 impl FromType<&FieldType> for String {
     fn from_type(t: &FieldType) -> Option<Self> {
@@ -81,39 +106,5 @@ impl FromType<f64> for FieldType {
 impl FromType<bool> for FieldType {
     fn from_type(t: bool) -> Option<Self> {
         Some(FieldType::Bool(t))
-    }
-}
-
-impl Display for FieldType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FieldType::String(s) => write!(f, "{}", s),
-            FieldType::Integer(i) => write!(f, "{}", i),
-            FieldType::Float(fl) => write!(f, "{}", fl),
-            FieldType::Bool(b) => write!(f, "{}", b),
-        }
-    }
-}
-
-impl Clone for FieldType {
-    fn clone(&self) -> Self {
-        match self {
-            FieldType::String(str) => { FieldType::String(str.clone()) }
-            FieldType::Integer(int) => { FieldType::Integer(*int) }
-            FieldType::Float(float) => { FieldType::Float(*float) }
-            FieldType::Bool(bool) => { FieldType::Bool(*bool) }
-        }
-    }
-}
-
-impl PartialEq for FieldType {
-    fn eq(&self, other: &Self) -> bool {
-        make_eq!(
-            self, other,
-            FieldType::String,
-            FieldType::Integer,
-            FieldType::Float,
-            FieldType::Bool
-        )
     }
 }
