@@ -15,6 +15,6 @@ pub(crate) enum InternalPluginState {
 pub(crate) struct InternalPlugin {
     pub(crate) plugin: Box<dyn Plugin>,
     pub(crate) plugin_type: InternalPluginType,
-    pub(crate) depends: Vec<&'static str>,
+    pub(crate) depends: Vec<String>,
     pub(crate) state: InternalPluginState,
 }

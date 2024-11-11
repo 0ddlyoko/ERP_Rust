@@ -5,8 +5,8 @@ mod models;
 pub struct TestPlugin;
 
 impl core::plugin::Plugin for TestPlugin {
-    fn name(&self) -> &'static str {
-        "test_plugin"
+    fn name(&self) -> String {
+        "test_plugin".to_string()
     }
 
     fn init_models(&self, model_manager: &mut core::model::model_manager::ModelManager) {
@@ -18,30 +18,35 @@ impl core::plugin::Plugin for TestPlugin {
 pub struct TestPlugin2;
 
 impl core::plugin::Plugin for TestPlugin2 {
-    fn name(&self) -> &'static str {
-        "test_plugin2"
+    fn name(&self) -> String {
+        "test_plugin2".to_string()
     }
 
     fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
     }
 
-    fn get_depends(&self) -> Vec<&'static str> {
-        vec!["test_plugin"]
+    fn get_depends(&self) -> Vec<String> {
+        vec![
+            "test_plugin".to_string(),
+        ]
     }
 }
 
 pub struct TestPlugin3;
 
 impl core::plugin::Plugin for TestPlugin3 {
-    fn name(&self) -> &'static str {
-        "test_plugin3"
+    fn name(&self) -> String {
+        "test_plugin3".to_string()
     }
 
     fn init_models(&self, _model_manager: &mut core::model::model_manager::ModelManager) {
     }
 
-    fn get_depends(&self) -> Vec<&'static str> {
-        vec!["test_plugin", "test_plugin2"]
+    fn get_depends(&self) -> Vec<String> {
+        vec![
+            "test_plugin".to_string(),
+            "test_plugin2".to_string(),
+        ]
     }
 }
 

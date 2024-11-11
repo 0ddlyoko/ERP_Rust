@@ -39,16 +39,16 @@ impl Application {
     }
 
     fn load_plugins(&mut self) -> MyResult {
-        let ordered_depends = self.plugin_manager._get_ordered_dependencies()?;
+        let ordered_depends: Vec<String> = self.plugin_manager._get_ordered_dependencies()?.iter().map(|&str| str.to_string()).collect();
 
         for plugin_name in ordered_depends.iter() {
-            self._load_plugin(plugin_name)?;
+            self._load_plugin(plugin_name.as_str())?;
         }
 
         Ok(())
     }
 
-    pub fn load_plugin(&mut self, plugin_name: &'static str) -> MyResult {
+    pub fn load_plugin(&mut self, plugin_name: &str) -> MyResult {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
         self.plugin_manager._get_ordered_dependencies()?;
 
@@ -57,14 +57,14 @@ impl Application {
 
     /// Load given plugin and all plugins that the given one depends.
     /// Do not check if there is a recursion between plugins.
-    fn _load_plugin(&mut self, plugin_name: &'static str) -> MyResult {
+    fn _load_plugin(&mut self, plugin_name: &str) -> MyResult {
         let plugin = self.plugin_manager.get_plugin(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
         if plugin.state == Installed {
             return Ok(())
         }
         let depends: Vec<_> = plugin.depends.to_vec();
         for depend in depends {
-            self._load_plugin(depend)?;
+            self._load_plugin(depend.as_str())?;
         }
 
         let plugin = self.plugin_manager.load_plugin(plugin_name)?;

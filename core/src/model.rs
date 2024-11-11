@@ -72,8 +72,6 @@ impl MapOfFields {
     }
 }
 
-// pub type MapOfFields = HashMap<&'static str, Option<FieldType>>;
-
 pub struct ModelDescriptor {
     pub name: String,
     pub description: Option<String>,

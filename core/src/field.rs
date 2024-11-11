@@ -33,6 +33,24 @@ impl FromType<&FieldType> for i64 {
     }
 }
 
+impl FromType<&FieldType> for f64 {
+    fn from_type(t: &FieldType) -> Option<Self> {
+        match t {
+            FieldType::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+}
+
+impl FromType<&FieldType> for bool {
+    fn from_type(t: &FieldType) -> Option<Self> {
+        match t {
+            FieldType::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+}
+
 impl FromType<&String> for FieldType {
     fn from_type(t: &String) -> Option<Self> {
         Some(FieldType::String(t.clone()))
@@ -45,11 +63,17 @@ impl FromType<i64> for FieldType {
     }
 }
 
-// impl<'a> FromType<'a, &String> for FieldType {
-//     fn from_type(t: &'a &String) -> Option<Self> {
-//         Some(FieldType::String(t.to_string()))
-//     }
-// }
+impl FromType<f64> for FieldType {
+    fn from_type(t: f64) -> Option<Self> {
+        Some(FieldType::Float(t))
+    }
+}
+
+impl FromType<bool> for FieldType {
+    fn from_type(t: bool) -> Option<Self> {
+        Some(FieldType::Bool(t))
+    }
+}
 
 impl FieldType {
     pub fn string(&self) -> String {

@@ -30,7 +30,7 @@ unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error>
 
 #[derive(Default)]
 pub struct PluginManager {
-    pub(crate) plugins: HashMap<&'static str, InternalPlugin>,
+    pub(crate) plugins: HashMap<String, InternalPlugin>,
 }
 
 impl PluginManager {
@@ -47,7 +47,7 @@ impl PluginManager {
 
     pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), Box<dyn error::Error>> {
         let plugin_name = plugin.name();
-        if self.plugins.contains_key(plugin_name) {
+        if self.plugins.contains_key(&plugin_name) {
             return Err(PluginAlreadyRegisteredError { plugin_name: plugin_name.to_string() }.into());
         }
         let plugin_type = InternalPluginType::Static();
@@ -62,7 +62,7 @@ impl PluginManager {
         let internal_plugin = unsafe { read_plugin_from_file(plugin_path)? };
 
         let plugin_name = internal_plugin.plugin.name();
-        if self.plugins.contains_key(plugin_name) {
+        if self.plugins.contains_key(&plugin_name) {
             let InternalPlugin { plugin, plugin_type, .. } = internal_plugin;
             let plugin_name_string = plugin_name.to_string().clone();
             drop(plugin);
@@ -96,9 +96,9 @@ impl PluginManager {
     }
 
     pub(crate) fn unload(&mut self) {
-        let plugin_names = self.plugins.keys().copied().collect::<Vec<_>>();
+        let plugin_names = self.plugins.keys().cloned().collect::<Vec<_>>();
         for name in plugin_names {
-            self.unload_plugin(name);
+            self.unload_plugin(name.as_str());
         }
     }
 
@@ -110,12 +110,12 @@ impl PluginManager {
         self.plugins.get_mut(plugin_name)
     }
 
-    pub(crate) fn _get_ordered_dependencies<'a>(&self) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
-        let keys = self.plugins.keys().cloned().collect::<Vec<_>>();
-        let dependencies: HashMap<&str, Vec<&str>> = keys.iter().map(|plugin_name| {
+    pub(crate) fn _get_ordered_dependencies(&self) -> Result<Vec<&str>, Box<dyn error::Error>> {
+        let keys = self.plugins.keys().collect::<Vec<_>>();
+        let dependencies: HashMap<&str, Vec<&str>> = keys.iter().map(|&plugin_name| {
             let internal_plugin = self.plugins.get(plugin_name).unwrap();
-            let depends = internal_plugin.depends.clone();
-            (*plugin_name, depends)
+            let depends = internal_plugin.depends.iter().map(|str| str.as_str()).collect();
+            (plugin_name.as_str(), depends)
         }).collect();
 
         dependency::sort_dependencies(&dependencies)
