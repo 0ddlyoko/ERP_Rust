@@ -1,4 +1,4 @@
-use crate::cache::cache_field::CacheField;
+use crate::cache::CacheField;
 use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
@@ -98,7 +98,7 @@ impl CacheModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::cache_model::{CacheField, CacheModel};
+    use crate::cache::{CacheField, CacheModel};
     use crate::field::FieldType;
     use std::collections::HashMap;
 

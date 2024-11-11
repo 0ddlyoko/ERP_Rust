@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use std::{error, fs};
 use std::path::PathBuf;
 use crate::plugin::errors::PluginAlreadyRegisteredError;
-use crate::plugin::internal_plugin::{InternalPlugin, InternalPluginType};
-use crate::plugin::internal_plugin::InternalPluginState::Installed;
-use crate::plugin::internal_plugin::InternalPluginState::NotInstalled;
+use crate::plugin::{InternalPlugin, InternalPluginType};
+use crate::plugin::InternalPluginState::{ Installed, NotInstalled };
 use crate::util::dependency;
 
 unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error> {

@@ -46,7 +46,7 @@ impl CacheField {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::cache_field::{CacheField, FieldType};
+    use crate::cache::{CacheField, FieldType};
 
     #[test]
     fn test() {
