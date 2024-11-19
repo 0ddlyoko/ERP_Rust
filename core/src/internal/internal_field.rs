@@ -69,6 +69,7 @@ mod tests {
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
+            compute: None,
         });
 
         field_age.register_internal_field(&FieldDescriptor {
@@ -76,6 +77,7 @@ mod tests {
             default_value: Some(FieldType::Integer(42)),
             description: Some("This is the age of the person".to_string()),
             required: None,
+            compute: None,
         });
 
         assert_eq!(field_name.name, "name");
@@ -94,6 +96,7 @@ mod tests {
             default_value: Some(FieldType::String("1ddlyoko".to_string())),
             description: None,
             required: Some(true),
+            compute: None,
         });
 
         assert_eq!(field_name.name, "name");
@@ -107,6 +110,7 @@ mod tests {
             default_value: None,
             description: Some("This is another description".to_string()),
             required: None,
+            compute: None,
         });
 
         assert_eq!(field_name.name, "name");
@@ -125,6 +129,7 @@ mod tests {
             default_value: None,
             description: Some("This is the name".to_string()),
             required: None,
+            compute: None,
         });
     }
 
@@ -138,6 +143,7 @@ mod tests {
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
+            compute: None,
         });
 
         field_name.register_internal_field(&FieldDescriptor {
@@ -145,6 +151,7 @@ mod tests {
             default_value: Some(FieldType::Integer(42)),
             description: None,
             required: None,
+            compute: None,
         });
     }
 }

@@ -1,8 +1,12 @@
-use std::collections::HashMap;
+use core::field::FieldDescriptor;
+use core::field::FieldType;
+use core::field::MyFnResult;
+use std::collections::HashSet;
 
 pub(crate) struct SaleOrderTest {
     id: u32,
     name: String,
+    age: i64,
 }
 
 impl SaleOrderTest {
@@ -10,8 +14,14 @@ impl SaleOrderTest {
         self.id
     }
 
-    fn get_name(&self) -> String {
-        self.name.clone()
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+
+    fn _compute_age(ids: &HashSet<u64>) -> MyFnResult {
+        Box::new(async {
+            Some(FieldType::Integer(42))
+        })
     }
 }
 
@@ -25,13 +35,21 @@ impl core::model::Model for SaleOrderTest {
             name: "sale_order_test".to_string(),
             description: Some("A Sale Order!".to_string()),
             fields: vec![
-                core::field::FieldDescriptor {
+                FieldDescriptor {
                     name: "name".to_string(),
-                    default_value: Some(core::field::FieldType::String("0ddlyoko".to_string())),
+                    default_value: Some(FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
                     required: Some(true),
-                    ..core::field::FieldDescriptor::default()
-                }
+                    ..FieldDescriptor::default()
+                },
+                FieldDescriptor {
+                    name: "age".to_string(),
+                    default_value: Some(FieldType::Integer(0)),
+                    description: Some("Age of the logged user".to_string()),
+                    required: Some(true),
+                    compute: Some(Box::new(SaleOrderTest::_compute_age)),
+                    ..FieldDescriptor::default()
+                },
             ],
         }
     }
@@ -50,6 +68,7 @@ impl core::model::Model for SaleOrderTest {
         Self {
             id,
             name: data.get("name"),
+            age: data.get("age"),
         }
     }
 }

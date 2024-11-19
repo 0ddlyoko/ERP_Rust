@@ -3,6 +3,7 @@ use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct CacheModel {
     id: u32,
     fields: HashMap<String, CacheField>,

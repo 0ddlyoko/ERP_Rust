@@ -120,6 +120,7 @@ mod tests {
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: None,
+            compute: None,
         });
 
         internal_model.register_internal_field(&FieldDescriptor {
@@ -127,6 +128,7 @@ mod tests {
             default_value: Some(FieldType::Integer(42)),
             description: Some("This is the age of the person".to_string()),
             required: None,
+            compute: None,
         });
 
         assert_eq!({

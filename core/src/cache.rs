@@ -15,6 +15,7 @@ pub struct Cache {
 }
 
 impl Cache {
+
     pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
         if let Some(model_cache) = self.cache.get(model_name) {
             model_cache.contains_key(&id)
@@ -64,6 +65,16 @@ impl Cache {
             return;
         }
         cache_model.unwrap().clear_all_dirty();
+    }
+    
+    /// Export a copy of this cache
+    pub fn export_cache(&self) -> HashMap<String, HashMap<u32, CacheModel>> {
+        self.cache.clone()
+    }
+
+    /// Import given cache into the current cache
+    pub fn import_cache(&mut self, cache: HashMap<String, HashMap<u32, CacheModel>>) {
+        self.cache = cache;
     }
 }
 
