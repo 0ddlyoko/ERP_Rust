@@ -61,6 +61,7 @@ impl core::model::Model for SaleOrderTest {
     fn get_data(&self) -> core::model::MapOfFields {
         let mut result = core::model::MapOfFields::default();
         result.insert("name", &self.name);
+        result.insert("age", self.age);
         result
     }
 

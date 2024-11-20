@@ -86,9 +86,6 @@
     // println!("{:?} {:?}", sale_order.title, sale_order.published);
 // }
 
-use core::field::FieldType;
-use core::field::FromType;
-use std::collections::HashMap;
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
 use std::path::Path;

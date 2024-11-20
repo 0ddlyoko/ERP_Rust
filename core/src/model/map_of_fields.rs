@@ -13,41 +13,44 @@ impl MapOfFields {
 
     pub fn get<'a, T>(&'a self, field_name: &str) -> T
     where
-        T: FromType<&'a FieldType> {
+        Option<T>: FromType<&'a FieldType> {
         self.get_option(field_name).unwrap()
     }
 
     pub fn get_option<'a, T>(&'a self, field_name: &str) -> Option<T>
     where
-        T: FromType<&'a FieldType> {
+        Option<T>: FromType<&'a FieldType> {
         let field = self.fields.get(field_name)?;
         let Some(field) = field else {
             return None;
         };
-        T::from_type(field)
+        Option::<T>::from_type(field)
+    }
+
+    pub fn insert_option<T>(&mut self, field_name: &str, value: Option<T>)
+    where
+        FieldType: FromType<T>,
+    {
+        if let Some(value) = value {
+            self.insert(field_name, value);
+        } else {
+            // None
+            self.insert_none(field_name);
+        }
     }
 
     pub fn insert<T>(&mut self, field_name: &str, value: T)
     where
         FieldType: FromType<T> {
-        if let Some(field_type) = FieldType::from_type(value) {
-            self.insert_field_type(field_name, field_type);
-        }
-    }
-
-    pub fn insert_option<T>(&mut self, field_name: &str, value: Option<T>)
-    where
-        FieldType: FromType<T> {
-        if let Some(value) = value {
-            self.insert(field_name, value);
-        } else {
-            // None
-            self.fields.insert(field_name.to_string(), None);
-        }
+        self.insert_field_type(field_name, FieldType::from_type(value));
     }
 
     pub fn insert_field_type(&mut self, field_name: &str, field_type: FieldType) {
         self.fields.insert(field_name.to_string(), Some(field_type));
+    }
+
+    pub fn insert_none(&mut self, field_name: &str) {
+        self.fields.insert(field_name.to_string(), None);
     }
 
     pub fn get_keys(&self) -> Vec<&str> {

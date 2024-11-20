@@ -9,7 +9,7 @@ pub type MyFnResult = Box<dyn Future<Output = Option<FieldType>> + Send>;
 type MyFn = Box<dyn Fn(&HashSet<u64>) -> MyFnResult>;
 
 pub trait FromType<T> where Self: Sized {
-    fn from_type(t: T) -> Option<Self>;
+    fn from_type(t: T) -> Self;
 }
 
 #[derive(Default)]
