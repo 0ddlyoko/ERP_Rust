@@ -1,8 +1,7 @@
 use core::field::FieldDescriptor;
 use core::field::FieldType;
-use core::field::MyFnResult;
-use std::collections::HashSet;
 
+#[derive(Default)]
 pub(crate) struct SaleOrderTest {
     id: u32,
     name: String,
@@ -18,19 +17,18 @@ impl SaleOrderTest {
         &self.name
     }
 
-    fn _compute_age(ids: &HashSet<u64>) -> MyFnResult {
-        Box::new(async {
-            Some(FieldType::Integer(42))
-        })
+    fn _compute_age(&mut self) {
+        self.age = 42;
     }
 }
 
 impl core::model::Model for SaleOrderTest {
+
     fn get_model_name() -> String {
         "sale_order_test".to_string()
     }
 
-    fn get_model_descriptor() -> core::model::ModelDescriptor {
+    fn get_model_descriptor() -> core::model::ModelDescriptor<SaleOrderTest> {
         core::model::ModelDescriptor {
             name: "sale_order_test".to_string(),
             description: Some("A Sale Order!".to_string()),

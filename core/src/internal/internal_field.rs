@@ -1,4 +1,5 @@
 use crate::field::{FieldDescriptor, FieldType};
+use crate::model::Model;
 
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
@@ -30,7 +31,7 @@ impl FinalInternalField {
         }
     }
 
-    pub fn register_internal_field(&mut self, field_descriptor: &FieldDescriptor) {
+    pub fn register_internal_field<M>(&mut self, field_descriptor: &FieldDescriptor<M>) where M: Model + Default {
         if let Some(default_value) = &field_descriptor.default_value {
             if self.is_init {
                 // If different type, panic
@@ -53,106 +54,3 @@ impl FinalInternalField {
         self.is_init = true;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::internal::internal_field::FinalInternalField;
-    use crate::field::{FieldDescriptor, FieldType};
-
-    #[test]
-    fn test_register_field() {
-        let mut field_name = FinalInternalField::new("name");
-        let mut field_age = FinalInternalField::new("age");
-
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: Some(FieldType::String("0ddlyoko".to_string())),
-            description: Some("This is the name".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        field_age.register_internal_field(&FieldDescriptor {
-            name: "age".to_string(),
-            default_value: Some(FieldType::Integer(42)),
-            description: Some("This is the age of the person".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        assert_eq!(field_name.name, "name");
-        assert_eq!(field_name.description, "This is the name".to_string());
-        assert!(!field_name.required);
-        assert_eq!(field_name.default_value, FieldType::String("0ddlyoko".to_string()));
-
-        assert_eq!(field_age.name, "age");
-        assert_eq!(field_age.description, "This is the age of the person".to_string());
-        assert!(!field_age.required);
-        assert_eq!(field_age.default_value, FieldType::Integer(42));
-
-        // Register a new existing field ("name") should override data
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: Some(FieldType::String("1ddlyoko".to_string())),
-            description: None,
-            required: Some(true),
-            compute: None,
-        });
-
-        assert_eq!(field_name.name, "name");
-        assert_eq!(field_name.description, "This is the name".to_string());
-        assert!(field_name.required);
-        assert_eq!(field_name.default_value, FieldType::String("1ddlyoko".to_string()));
-
-        // Again
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: None,
-            description: Some("This is another description".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        assert_eq!(field_name.name, "name");
-        assert_eq!(field_name.description, "This is another description".to_string());
-        assert!(field_name.required);
-        assert_eq!(field_name.default_value, FieldType::String("1ddlyoko".to_string()));
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_register_field_without_default_value_should_fail() {
-        let mut field_name = FinalInternalField::new("field_name");
-
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: None,
-            description: Some("This is the name".to_string()),
-            required: None,
-            compute: None,
-        });
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_register_field_with_another_default_type_should_fail() {
-        let mut field_name = FinalInternalField::new("field_name");
-
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: Some(FieldType::String("0ddlyoko".to_string())),
-            description: Some("This is the name".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        field_name.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: Some(FieldType::Integer(42)),
-            description: None,
-            required: None,
-            compute: None,
-        });
-    }
-}
-

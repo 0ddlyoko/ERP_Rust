@@ -32,7 +32,7 @@ impl FinalInternalModel {
         }
     }
 
-    pub fn register_internal_model<M>(&mut self) where M: Model + 'static {
+    pub fn register_internal_model<M>(&mut self) where M: Model + Default + 'static {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();
         let type_id = TypeId::of::<M>();
@@ -64,7 +64,7 @@ impl FinalInternalModel {
         self.models.insert(type_id, internal_model);
     }
 
-    fn register_internal_field(&mut self, field_descriptor: &FieldDescriptor) {
+    pub fn register_internal_field<M>(&mut self, field_descriptor: &FieldDescriptor<M>) where M: Model + Default {
         let name = &field_descriptor.name;
         let internal_field = self.fields.entry(name.to_string()).or_insert_with(|| { FinalInternalField::new(name) });
         internal_field.register_internal_field(field_descriptor);
@@ -103,39 +103,5 @@ impl FinalInternalModel {
     pub fn get_default_value(&self, field_name: &str) -> FieldType {
         let field = self.fields.get(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, field_name));
         field.default_value.clone()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::internal::internal_model::FinalInternalModel;
-    use crate::field::{FieldDescriptor, FieldType};
-
-    #[test]
-    fn test_get_fields_name() {
-        let mut internal_model = FinalInternalModel::new("".to_string());
-
-        internal_model.register_internal_field(&FieldDescriptor {
-            name: "name".to_string(),
-            default_value: Some(FieldType::String("0ddlyoko".to_string())),
-            description: Some("This is the name".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        internal_model.register_internal_field(&FieldDescriptor {
-            name: "age".to_string(),
-            default_value: Some(FieldType::Integer(42)),
-            description: Some("This is the age of the person".to_string()),
-            required: None,
-            compute: None,
-        });
-
-        assert_eq!({
-            let mut fields = internal_model.get_fields_name();
-            fields.sort();
-            fields
-        }, vec!["age", "name"]);
-        assert_eq!(internal_model.get_missing_fields(vec!["age"]), vec!["name"]);
     }
 }

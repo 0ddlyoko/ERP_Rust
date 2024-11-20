@@ -6,13 +6,13 @@ pub use model_manager::ModelManager;
 
 use crate::field::FieldDescriptor;
 
-pub struct ModelDescriptor {
+pub struct ModelDescriptor<M> where M: Model + Default {
     pub name: String,
     pub description: Option<String>,
-    pub fields: Vec<FieldDescriptor>,
+    pub fields: Vec<FieldDescriptor<M>>,
 }
 
-impl ModelDescriptor {
+impl<M> ModelDescriptor<M> where M: Model + Default {
     pub fn new(name: String) -> Self {
         let description = Some(name.clone());
         ModelDescriptor {
@@ -24,8 +24,12 @@ impl ModelDescriptor {
 }
 
 pub trait Model {
+
     fn get_model_name() -> String where Self: Sized;
-    fn get_model_descriptor() -> ModelDescriptor where Self: Sized;
+    fn get_model_descriptor() -> ModelDescriptor<Self>
+    where
+        Self: Model + Default,
+    ;
 
     /// Returns the id of the current record
     fn get_id(&self) -> u32;

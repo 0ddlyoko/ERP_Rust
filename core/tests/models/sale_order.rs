@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+#[derive(Default)]
 pub struct SaleOrder {
     pub id: u32,
     pub name: String,
@@ -25,7 +24,7 @@ impl core::model::Model for SaleOrder {
         "sale_order".to_string()
     }
 
-    fn get_model_descriptor() -> core::model::ModelDescriptor {
+    fn get_model_descriptor() -> core::model::ModelDescriptor<SaleOrder> {
         core::model::ModelDescriptor {
             name: "sale_order".to_string(),
             description: Some("A Sale Order!".to_string()),

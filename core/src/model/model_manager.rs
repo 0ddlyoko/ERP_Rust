@@ -9,7 +9,7 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    pub fn register_model<M>(&mut self) where M: Model + 'static {
+    pub fn register_model<M>(&mut self) where M: Model + Default + 'static {
         let model_name = M::get_model_name();
 
         self.models.entry(model_name.to_string()).or_insert_with(|| {
