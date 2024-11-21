@@ -1,7 +1,8 @@
 use crate::plugin::Plugin;
 use libloading::{Error, Library, Symbol};
 use std::collections::HashMap;
-use std::{error, fs};
+use std::{env, error, fs};
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use crate::plugin::errors::PluginAlreadyRegisteredError;
 use crate::plugin::{InternalPlugin, InternalPluginType};
@@ -35,10 +36,14 @@ pub struct PluginManager {
 impl PluginManager {
 
     pub fn register_plugins(&mut self, directory_path: &String) -> Result<(), Box<dyn error::Error>> {
+        let dll_extension = env::consts::DLL_EXTENSION;
         let paths = fs::read_dir(directory_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            self.register_plugin_from_file(&path)?;
+            let extension = path.extension();
+            if extension == Some(OsStr::new(dll_extension)) {
+                self.register_plugin_from_file(&path)?;
+            }
         }
         
         Ok(())
