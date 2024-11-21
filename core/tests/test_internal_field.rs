@@ -1,4 +1,5 @@
 
+use core::internal::internal_field::InternalField;
 use core::internal::internal_field::FinalInternalField;
 use core::field::FieldType;
 use core::field::FieldDescriptor;
@@ -9,7 +10,7 @@ fn test_register_field() {
     let mut field_name = FinalInternalField::new("name");
     let mut field_age = FinalInternalField::new("age");
 
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
         description: Some("This is the name".to_string()),
@@ -17,7 +18,7 @@ fn test_register_field() {
         compute: None,
     });
 
-    field_age.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_age.register_internal_field(&InternalField {
         name: "age".to_string(),
         default_value: Some(FieldType::Integer(42)),
         description: Some("This is the age of the person".to_string()),
@@ -36,7 +37,7 @@ fn test_register_field() {
     assert_eq!(field_age.default_value, FieldType::Integer(42));
 
     // Register a new existing field ("name") should override data
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: Some(FieldType::String("1ddlyoko".to_string())),
         description: None,
@@ -50,7 +51,7 @@ fn test_register_field() {
     assert_eq!(field_name.default_value, FieldType::String("1ddlyoko".to_string()));
 
     // Again
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: None,
         description: Some("This is another description".to_string()),
@@ -69,7 +70,7 @@ fn test_register_field() {
 fn test_register_field_without_default_value_should_fail() {
     let mut field_name = FinalInternalField::new("field_name");
 
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: None,
         description: Some("This is the name".to_string()),
@@ -83,7 +84,7 @@ fn test_register_field_without_default_value_should_fail() {
 fn test_register_field_with_another_default_type_should_fail() {
     let mut field_name = FinalInternalField::new("field_name");
 
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
         description: Some("This is the name".to_string()),
@@ -91,7 +92,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         compute: None,
     });
 
-    field_name.register_internal_field(&FieldDescriptor::<TestEmptyModel> {
+    field_name.register_internal_field(&InternalField {
         name: "name".to_string(),
         default_value: Some(FieldType::Integer(42)),
         description: None,

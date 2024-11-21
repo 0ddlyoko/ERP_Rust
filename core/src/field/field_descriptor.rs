@@ -1,7 +1,7 @@
 use crate::field::FieldType;
 use crate::model::Model;
 
-type ComputeFn<M> = Box<dyn Fn(&mut M) + Send + Sync>;
+pub(crate) type ComputeFn<M> = Box<dyn Fn(&mut M) + Send + Sync>;
 
 #[derive(Default)]
 pub struct FieldDescriptor<M> where M: Model + Default {

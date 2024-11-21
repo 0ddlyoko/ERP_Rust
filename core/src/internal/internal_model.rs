@@ -1,10 +1,9 @@
-use crate::model::MapOfFields;
-use std::any::TypeId;
-use std::collections::HashMap;
-use crate::field::FieldDescriptor;
 use crate::field::FieldType;
 use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::Model;
+use crate::model::{MapOfFields, ModelDescriptor};
+use std::any::TypeId;
+use std::collections::HashMap;
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
@@ -39,16 +38,25 @@ impl FinalInternalModel {
         let model_descriptor = M::get_model_descriptor();
         let type_id = TypeId::of::<M>();
 
-        let description = model_descriptor.description;
-        let mut fields = HashMap::new();
-        for field in &model_descriptor.fields {
-            fields.insert(field.name.clone(), InternalField {
-                name: field.name.clone(),
-                default_value: field.default_value.clone(),
-                description: field.description.clone(),
+        let ModelDescriptor { name: _name, description, fields } = model_descriptor;
+
+        if name != _name {
+            panic!("Model name mismatch! {name} != {_name}");
+        }
+
+        let mut final_fields = HashMap::new();
+        for field in fields {
+            let field_name = field.name;
+            let internal_field = InternalField {
+                name: field_name.clone(),
+                default_value: field.default_value,
+                description: field.description,
                 required: field.required,
-            });
-            self.register_internal_field(field);
+                // TODO
+                compute: None,
+            };
+            self.register_internal_field(&internal_field);
+            final_fields.insert(field_name, internal_field);
         }
 
         let create_instance: fn(u32, MapOfFields) -> Box<dyn Model> = |id, data| Box::new(M::create_model(id, data));
@@ -56,7 +64,7 @@ impl FinalInternalModel {
         let internal_model = InternalModel {
             name,
             description,
-            fields,
+            fields: final_fields,
             create_instance,
         };
         
@@ -66,7 +74,7 @@ impl FinalInternalModel {
         self.models.insert(type_id, internal_model);
     }
 
-    pub fn register_internal_field<M>(&mut self, field_descriptor: &FieldDescriptor<M>) where M: Model + Default {
+    pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
         let name = &field_descriptor.name;
         let internal_field = self.fields.entry(name.to_string()).or_insert_with(|| { FinalInternalField::new(name) });
         internal_field.register_internal_field(field_descriptor);

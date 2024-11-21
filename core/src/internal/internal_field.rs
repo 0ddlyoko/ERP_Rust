@@ -1,6 +1,4 @@
-use crate::field::FieldDescriptor;
 use crate::field::FieldType;
-use crate::model::Model;
 
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
@@ -8,6 +6,8 @@ pub struct InternalField {
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,
+    // TODO
+    pub compute: Option<bool>,
 }
 
 /// Final descriptor of a field.
@@ -32,7 +32,7 @@ impl FinalInternalField {
         }
     }
 
-    pub fn register_internal_field<M>(&mut self, field_descriptor: &FieldDescriptor<M>) where M: Model + Default {
+    pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
         if let Some(default_value) = &field_descriptor.default_value {
             if self.is_init {
                 // If different type, panic
