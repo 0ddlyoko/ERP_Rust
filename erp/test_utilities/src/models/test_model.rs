@@ -1,8 +1,8 @@
 
 
-use core::model::MapOfFields;
-use core::model::ModelDescriptor;
-use core::model::Model;
+use erp::model::MapOfFields;
+use erp::model::ModelDescriptor;
+use erp::model::Model;
 
 #[derive(Default)]
 pub struct TestEmptyModel {}

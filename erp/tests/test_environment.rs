@@ -1,8 +1,8 @@
 mod models;
 
-use core::field::FieldType;
-use core::model::{ MapOfFields, ModelManager };
-use core::environment::Environment;
+use erp::field::FieldType;
+use erp::model::{ MapOfFields, ModelManager };
+use erp::environment::Environment;
 use std::collections::HashMap;
 
 use models::sale_order::SaleOrder;
@@ -13,7 +13,7 @@ fn test_fill_default_values_on_map() {
     model_manager.register_model::<SaleOrder>();
     let env = Environment::new(&model_manager);
 
-    let mut map: core::model::MapOfFields = core::model::MapOfFields::new(HashMap::new());
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     env.fill_default_values_on_map("sale_order", &mut map);
 
     let name: Option<String> = map.get_option("name");

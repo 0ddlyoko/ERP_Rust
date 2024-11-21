@@ -1,5 +1,6 @@
-use core::field::FieldDescriptor;
-use core::field::FieldType;
+use erp::field::FieldDescriptor;
+use erp::field::FieldType;
+use erp::model::{MapOfFields, Model, ModelDescriptor};
 
 #[derive(Default)]
 pub(crate) struct SaleOrderTest {
@@ -22,14 +23,14 @@ impl SaleOrderTest {
     }
 }
 
-impl core::model::Model for SaleOrderTest {
+impl Model for SaleOrderTest {
 
     fn get_model_name() -> String {
         "sale_order_test".to_string()
     }
 
-    fn get_model_descriptor() -> core::model::ModelDescriptor<SaleOrderTest> {
-        core::model::ModelDescriptor {
+    fn get_model_descriptor() -> ModelDescriptor<SaleOrderTest> {
+        ModelDescriptor {
             name: "sale_order_test".to_string(),
             description: Some("A Sale Order!".to_string()),
             fields: vec![
@@ -56,14 +57,14 @@ impl core::model::Model for SaleOrderTest {
         self.id
     }
 
-    fn get_data(&self) -> core::model::MapOfFields {
-        let mut result = core::model::MapOfFields::default();
+    fn get_data(&self) -> MapOfFields {
+        let mut result = MapOfFields::default();
         result.insert("name", &self.name);
         result.insert("age", self.age);
         result
     }
 
-    fn create_model(id: u32, data: core::model::MapOfFields) -> Self {
+    fn create_model(id: u32, data: MapOfFields) -> Self {
         Self {
             id,
             name: data.get("name"),

@@ -3,7 +3,7 @@ use std::path::Path;
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
 
-pub(crate) fn build_config() -> Result<core::config::Config, ConfigError> {
+pub(crate) fn build_config() -> Result<erp::config::Config, ConfigError> {
     let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
         panic!("Impossible to have a config");
     };

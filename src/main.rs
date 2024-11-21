@@ -89,8 +89,9 @@
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
 use std::path::Path;
+use erp::app::Application;
 
-fn build_config() -> Result<core::config::Config, ConfigError> {
+fn build_config() -> Result<erp::config::Config, ConfigError> {
     let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
         panic!("Impossible to have a config");
     };
@@ -112,7 +113,7 @@ fn build_config() -> Result<core::config::Config, ConfigError> {
 
 fn main() {
     let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
-    let mut app = core::app::Application::new(config);
+    let mut app = Application::new(config);
 
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));
 

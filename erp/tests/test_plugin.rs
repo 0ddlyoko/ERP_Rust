@@ -3,8 +3,8 @@ extern crate test_utilities;
 mod models;
 
 use std::error::Error;
-use core::plugin::errors::PluginAlreadyRegisteredError;
-use core::app::Application;
+use erp::plugin::errors::PluginAlreadyRegisteredError;
+use erp::app::Application;
 use test_plugin::TestPlugin;
 use test_plugin::TestPlugin2;
 use test_plugin::TestPlugin3;

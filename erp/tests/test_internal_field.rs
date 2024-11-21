@@ -1,9 +1,6 @@
-
-use core::internal::internal_field::InternalField;
-use core::internal::internal_field::FinalInternalField;
-use core::field::FieldType;
-use core::field::FieldDescriptor;
-use test_utilities::models::test_model::TestEmptyModel;
+use erp::field::FieldType;
+use erp::internal::internal_field::FinalInternalField;
+use erp::internal::internal_field::InternalField;
 
 #[test]
 fn test_register_field() {

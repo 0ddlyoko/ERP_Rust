@@ -1,7 +1,7 @@
 
-use core::field::FieldType;
-use core::internal::internal_field::InternalField;
-use core::internal::internal_model::FinalInternalModel;
+use erp::field::FieldType;
+use erp::internal::internal_field::InternalField;
+use erp::internal::internal_model::FinalInternalModel;
 use test_utilities::models::test_model::TestEmptyModel;
 
 #[test]

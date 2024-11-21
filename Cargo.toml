@@ -14,13 +14,13 @@ edition = "2021"
 #rocket = "0.5.0-rc.3"
 #syn = "2.0"
 #diesel = "2.1"
-core = { path = "core" }
+erp = { path = "erp" }
 config = { version = "0.14.1", features = ["toml"] }
 directories = "5.0.1"
 serde = "1.0.214"
 
 [workspace]
 members = [
-    "core",
+    "erp",
     "plugins/test_plugin",
 ]
