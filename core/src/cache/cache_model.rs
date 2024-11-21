@@ -1,7 +1,7 @@
 use crate::cache::CacheField;
-use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
+use crate::field::FieldType;
 
 #[derive(Clone)]
 pub struct CacheModel {

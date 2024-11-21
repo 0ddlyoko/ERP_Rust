@@ -1,8 +1,10 @@
-use crate::field::{FieldDescriptor, FieldType};
-use crate::model::{MapOfFields, Model};
+use crate::model::MapOfFields;
 use std::any::TypeId;
 use std::collections::HashMap;
+use crate::field::FieldDescriptor;
+use crate::field::FieldType;
 use crate::internal::internal_field::{FinalInternalField, InternalField};
+use crate::model::Model;
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {

@@ -1,27 +1,10 @@
-mod model_manager;
 mod map_of_fields;
+mod model_descriptor;
+mod model_manager;
 
-pub use map_of_fields::MapOfFields;
-pub use model_manager::ModelManager;
-
-use crate::field::FieldDescriptor;
-
-pub struct ModelDescriptor<M> where M: Model + Default {
-    pub name: String,
-    pub description: Option<String>,
-    pub fields: Vec<FieldDescriptor<M>>,
-}
-
-impl<M> ModelDescriptor<M> where M: Model + Default {
-    pub fn new(name: String) -> Self {
-        let description = Some(name.clone());
-        ModelDescriptor {
-            name,
-            description,
-            fields: Vec::new(),
-        }
-    }
-}
+pub use map_of_fields::*;
+pub use model_descriptor::*;
+pub use model_manager::*;
 
 pub trait Model {
 

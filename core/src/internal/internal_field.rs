@@ -1,4 +1,5 @@
-use crate::field::{FieldDescriptor, FieldType};
+use crate::field::FieldDescriptor;
+use crate::field::FieldType;
 use crate::model::Model;
 
 /// Field descriptor represented by a single field in a single struct model

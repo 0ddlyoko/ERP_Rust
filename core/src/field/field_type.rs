@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use crate::field::FromType;
 
 #[macro_export]
 macro_rules! make_eq {
@@ -48,6 +47,10 @@ impl PartialEq for FieldType {
 }
 
 // FromType
+
+pub trait FromType<T> where Self: Sized {
+    fn from_type(t: T) -> Self;
+}
 
 impl FromType<&FieldType> for Option<String> {
     fn from_type(t: &FieldType) -> Self {

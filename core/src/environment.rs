@@ -2,10 +2,11 @@ mod savepoint;
 
 use crate::cache;
 use crate::cache::Cache;
-use crate::model::{MapOfFields, Model, ModelManager};
+use crate::model::{MapOfFields, ModelManager};
 use std::error::Error;
 
 pub use savepoint::Savepoint;
+use crate::model::Model;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,

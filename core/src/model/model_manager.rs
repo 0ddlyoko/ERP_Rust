@@ -1,7 +1,8 @@
 use crate::environment::Environment;
-use crate::model::{MapOfFields, Model};
+use crate::model::MapOfFields;
 use std::collections::HashMap;
 use crate::internal::internal_model::FinalInternalModel;
+use crate::model::Model;
 
 #[derive(Default)]
 pub struct ModelManager {
