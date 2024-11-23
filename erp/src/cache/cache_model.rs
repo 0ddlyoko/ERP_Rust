@@ -134,6 +134,6 @@ mod tests {
 
         // Accessing to an invalid field should throw an error
         let field = model.get_field("test2");
-        assert_eq!(field.is_none(), true);
+        assert!(field.is_none());
     }
 }

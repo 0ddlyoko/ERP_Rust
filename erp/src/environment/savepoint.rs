@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use crate::cache::CacheModel;
+use crate::cache::{CacheModel, CacheModels};
 use crate::environment::Environment;
 
 pub struct Savepoint<'a> {
     committed: bool,
     environment: &'a mut Environment<'a>,
-    cache_copy: HashMap<String, HashMap<u32, CacheModel>>,
+    cache_copy: HashMap<String, CacheModels>,
 }
 
 impl<'a> Savepoint<'a> {

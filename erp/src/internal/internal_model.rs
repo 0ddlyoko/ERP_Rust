@@ -108,12 +108,10 @@ impl FinalInternalModel {
     }
 
     pub fn get_internal_field(&self, field_name: &str) -> &FinalInternalField {
-        // TODO Do not panic!
         self.fields.get(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
     }
 
     pub fn get_internal_field_mut(&mut self, field_name: &str) -> &mut FinalInternalField {
-        // TODO Do not panic!
         self.fields.get_mut(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
     }
 

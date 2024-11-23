@@ -1,8 +1,10 @@
 mod cache_field;
+mod cache_models;
 mod cache_model;
 pub mod errors;
 
 pub use cache_field::CacheField;
+pub use cache_models::CacheModels;
 pub use cache_model::CacheModel;
 
 use std::collections::HashMap;
@@ -11,42 +13,41 @@ use crate::model::MapOfFields;
 
 #[derive(Default)]
 pub struct Cache {
-    cache: HashMap<String, HashMap<u32, CacheModel>>,
+    cache: HashMap<String, CacheModels>,
 }
 
 impl Cache {
 
     pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
-        if let Some(model_cache) = self.cache.get(model_name) {
-            model_cache.contains_key(&id)
+        if let Some(cache_models) = self.cache.get(model_name) {
+            cache_models.is_record_present(id)
         } else {
             false
         }
     }
     
     pub fn get_cache_record(&self, model_name: &str, id: u32) -> Option<&CacheModel> {
-        self.cache.get(model_name)?.get(&id)
+        self.cache.get(model_name)?.get_model(id)
     }
 
     pub fn get_cache_record_mut(&mut self, model_name: &str, id: u32) -> Option<&mut CacheModel> {
-        self.cache.get_mut(model_name)?.get_mut(&id)
+        self.cache.get_mut(model_name)?.get_model_mut(id)
     }
 
-    fn get_model_from_name_or_create(&mut self, model_name: &str) -> &mut HashMap<u32, CacheModel> {
+    fn get_model_from_name_or_create(&mut self, model_name: &str) -> &mut CacheModels {
         self.cache.entry(model_name.to_string()).or_default()
     }
 
     pub fn get_record_or_create(&mut self, model_name: &str, id: u32) -> &mut CacheModel {
-        let cached_models = self.get_model_from_name_or_create(model_name);
-        cached_models.entry(id).or_insert_with(|| CacheModel::new(id))
+        self.get_model_from_name_or_create(model_name).get_model_or_create(id)
     }
 
     pub fn get_record_field(&self, model_name: &str, id: u32, field_name: &str) -> Option<&CacheField> {
-        self.cache.get(model_name)?.get(&id)?.get_field(field_name)
+        self.cache.get(model_name)?.get_model(id)?.get_field(field_name)
     }
 
     pub fn get_record_field_mut(&mut self, model_name: &str, id: u32, field_name: &str) -> Option<&mut CacheField> {
-        self.cache.get_mut(model_name)?.get_mut(&id)?.get_field_mut(field_name)
+        self.cache.get_mut(model_name)?.get_model_mut(id)?.get_field_mut(field_name)
     }
 
     pub fn insert_record_field(&mut self, model_name: &str, id: u32, field_name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {
@@ -68,12 +69,12 @@ impl Cache {
     }
     
     /// Export a copy of this cache
-    pub fn export_cache(&self) -> HashMap<String, HashMap<u32, CacheModel>> {
+    pub fn export_cache(&self) -> HashMap<String, CacheModels> {
         self.cache.clone()
     }
 
     /// Import given cache into the current cache
-    pub fn import_cache(&mut self, cache: HashMap<String, HashMap<u32, CacheModel>>) {
+    pub fn import_cache(&mut self, cache: HashMap<String, CacheModels>) {
         self.cache = cache;
     }
 }
