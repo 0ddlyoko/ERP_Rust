@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
-use crate::internal::internal_model::FinalInternalModel;
+use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
 
 #[derive(Default)]
@@ -18,14 +18,17 @@ impl ModelManager {
         }).register_internal_model::<M>();
     }
 
-    pub fn create_instance_from_name(&self, model_name: &str, id: u32, data: MapOfFields) -> Option<Box<dyn Model>> {
-        self.models.get(model_name).and_then(|model| {
-            Option::from((model.first().create_instance)(id, data))
-        })
+    pub fn create_instance_from_name(&self, model_name: &str, id: u32, data: MapOfFields) -> Box<dyn Model> {
+        let model = self.models.get(model_name).unwrap();
+        (model.first().create_instance)(id, data)
     }
 
-    pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> Option<M> where M: Model + 'static {
-        Some(M::create_model(id, data))
+    pub fn create_instance_from_internal_model(&self, id: u32, data: MapOfFields, internal_model: &InternalModel) -> Box<dyn Model> {
+        (internal_model.create_instance)(id, data)
+    }
+
+    pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> M where M: Model + 'static {
+        M::create_model(id, data)
     }
 
     pub fn new_environment(&self) -> Environment {
@@ -38,5 +41,9 @@ impl ModelManager {
     
     pub fn get_model_mut(&mut self, model_name: &str) -> Option<&mut FinalInternalModel> {
         self.models.get_mut(model_name)
+    }
+
+    pub fn is_valid_model(&self, model_name: &str) -> bool {
+        self.models.contains_key(model_name)
     }
 }

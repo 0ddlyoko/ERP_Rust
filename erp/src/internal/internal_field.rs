@@ -1,4 +1,5 @@
 use crate::field::FieldType;
+use std::any::TypeId;
 
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
@@ -6,7 +7,6 @@ pub struct InternalField {
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: Option<bool>,
-    // TODO
     pub compute: Option<bool>,
 }
 
@@ -18,6 +18,7 @@ pub struct FinalInternalField {
     pub description: String,
     pub required: bool,
     pub default_value: FieldType,
+    pub compute: Option<TypeId>,
     is_init: bool,
 }
 
@@ -28,11 +29,12 @@ impl FinalInternalField {
             description: field_name.to_string(),
             required: false,
             default_value: FieldType::String("".to_string()),
+            compute: None,
             is_init: false,
         }
     }
 
-    pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
+    pub fn register_internal_field(&mut self, field_descriptor: &InternalField, type_id: &TypeId) {
         if let Some(default_value) = &field_descriptor.default_value {
             if self.is_init {
                 // If different type, panic
@@ -51,6 +53,11 @@ impl FinalInternalField {
         }
         if let Some(required) = &field_descriptor.required {
             self.required = *required;
+        }
+        if let Some(compute) = &field_descriptor.compute {
+            if *compute {
+                self.compute = Some(*type_id);
+            }
         }
         self.is_init = true;
     }

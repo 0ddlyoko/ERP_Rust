@@ -1,13 +1,12 @@
 use crate::field::FieldDescriptor;
-use crate::model::Model;
 
-pub struct ModelDescriptor<M> where M: Model + Default {
+pub struct ModelDescriptor {
     pub name: String,
     pub description: Option<String>,
-    pub fields: Vec<FieldDescriptor<M>>,
+    pub fields: Vec<FieldDescriptor>,
 }
 
-impl<M> ModelDescriptor<M> where M: Model + Default {
+impl ModelDescriptor {
     pub fn new(name: String) -> Self {
         let description = Some(name.clone());
         ModelDescriptor {

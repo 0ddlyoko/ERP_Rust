@@ -39,7 +39,7 @@ impl CacheModel {
     }
 
     /// Transform this CacheModel into a MapOfFields that contains given fields.
-    pub fn get_map_of_fields(&self, fields: Vec<&str>) -> MapOfFields {
+    pub fn get_map_of_fields(&self, fields: &[&str]) -> MapOfFields {
         let fields = fields.iter().filter_map(|&field_name| {
             let field = self.get_field(field_name)?;
             Some((field_name.to_string(), field.get().cloned()))
@@ -49,14 +49,14 @@ impl CacheModel {
 
     /// Get the list of fields that are dirty
     pub fn get_fields_dirty(&self) -> MapOfFields {
-        let fields = self.fields.iter().filter_map(|(k, v)| {
+        let fields: Vec<&str> = self.fields.iter().filter_map(|(k, v)| {
             if v.is_dirty() {
                 Some(k.as_str())
             } else {
                 None
             }
         }).collect();
-        self.get_map_of_fields(fields)
+        self.get_map_of_fields(&fields)
     }
 
     pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {

@@ -1,3 +1,4 @@
+use erp::environment::Environment;
 use erp::field::FieldDescriptor;
 use erp::field::FieldType;
 use erp::model::{MapOfFields, Model, ModelDescriptor};
@@ -18,7 +19,7 @@ impl SaleOrderTest {
         &self.name
     }
 
-    fn _compute_age(&mut self) {
+    fn _compute_age(&mut self, env: &mut Environment) {
         self.age = 42;
     }
 }
@@ -29,7 +30,7 @@ impl Model for SaleOrderTest {
         "sale_order_test".to_string()
     }
 
-    fn get_model_descriptor() -> ModelDescriptor<SaleOrderTest> {
+    fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
             name: "sale_order_test".to_string(),
             description: Some("A Sale Order!".to_string()),
@@ -46,7 +47,7 @@ impl Model for SaleOrderTest {
                     default_value: Some(FieldType::Integer(0)),
                     description: Some("Age of the logged user".to_string()),
                     required: Some(true),
-                    compute: Some(Box::new(SaleOrderTest::_compute_age)),
+                    compute: Some(true),
                     ..FieldDescriptor::default()
                 },
             ],
@@ -69,6 +70,12 @@ impl Model for SaleOrderTest {
             id,
             name: data.get("name"),
             age: data.get("age"),
+        }
+    }
+
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
+        if field_name == "age" {
+            self._compute_age(env);
         }
     }
 }

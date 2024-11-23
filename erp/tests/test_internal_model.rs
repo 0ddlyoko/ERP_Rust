@@ -1,11 +1,11 @@
-
+use std::any::TypeId;
 use erp::field::FieldType;
 use erp::internal::internal_field::InternalField;
 use erp::internal::internal_model::FinalInternalModel;
-use test_utilities::models::test_model::TestEmptyModel;
 
 #[test]
 fn test_get_fields_name() {
+    let type_id = TypeId::of::<InternalField>();
     let mut internal_model = FinalInternalModel::new("".to_string());
 
     internal_model.register_internal_field(&InternalField {
@@ -14,7 +14,7 @@ fn test_get_fields_name() {
         description: Some("This is the name".to_string()),
         required: None,
         compute: None,
-    });
+    }, &type_id);
 
     internal_model.register_internal_field(&InternalField {
         name: "age".to_string(),
@@ -22,7 +22,7 @@ fn test_get_fields_name() {
         description: Some("This is the age of the person".to_string()),
         required: None,
         compute: None,
-    });
+    }, &type_id);
 
     assert_eq!({
         let mut fields = internal_model.get_fields_name();

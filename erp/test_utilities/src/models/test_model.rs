@@ -1,5 +1,4 @@
-
-
+use erp::environment::Environment;
 use erp::model::MapOfFields;
 use erp::model::ModelDescriptor;
 use erp::model::Model;
@@ -15,7 +14,7 @@ impl Model for TestEmptyModel {
         todo!()
     }
 
-    fn get_model_descriptor() -> ModelDescriptor<Self>
+    fn get_model_descriptor() -> ModelDescriptor
     where
         Self: Model + Default
     {
@@ -34,6 +33,10 @@ impl Model for TestEmptyModel {
     where
         Self: Sized
     {
+        todo!()
+    }
+
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
         todo!()
     }
 }

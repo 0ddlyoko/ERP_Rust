@@ -77,7 +77,8 @@ fn visit<'a>(
 }
 
 mod tests {
-    use super::*;
+    use std::collections::HashMap;
+    use crate::util::dependency::{sort_dependencies, CircularDependencyError, MissingDependencyError};
 
     #[test]
     fn test_sort_dependencies_success() {

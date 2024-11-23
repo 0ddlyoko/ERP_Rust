@@ -1,3 +1,4 @@
+use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 
@@ -5,6 +6,8 @@ use erp::model::{MapOfFields, Model, ModelDescriptor};
 pub struct SaleOrder {
     pub id: u32,
     pub name: String,
+    pub price: i64,
+    pub amount: i64,
     pub total_price: i64,
 }
 
@@ -17,8 +20,20 @@ impl SaleOrder {
         self.name.clone()
     }
 
+    pub fn get_price(&self) -> i64 {
+        self.price
+    }
+
+    pub fn get_amount(&self) -> i64 {
+        self.amount
+    }
+
     pub fn get_total_price(&self) -> i64 {
         self.total_price
+    }
+
+    pub fn compute_total_price(&mut self, _environment: &Environment) {
+        self.total_price = self.price * self.amount;
     }
 }
 
@@ -27,7 +42,7 @@ impl Model for SaleOrder {
         "sale_order".to_string()
     }
 
-    fn get_model_descriptor() -> ModelDescriptor<SaleOrder> {
+    fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
             name: "sale_order".to_string(),
             description: Some("A Sale Order!".to_string()),
@@ -40,9 +55,22 @@ impl Model for SaleOrder {
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
-                    name: "total_price".to_string(),
+                    name: "price".to_string(),
                     default_value: Some(FieldType::Integer(42)),
+                    description: Some("Unit price".to_string()),
+                    ..FieldDescriptor::default()
+                },
+                FieldDescriptor {
+                    name: "amount".to_string(),
+                    default_value: Some(FieldType::Integer(10)),
+                    description: Some("Quantity".to_string()),
+                    ..FieldDescriptor::default()
+                },
+                FieldDescriptor {
+                    name: "total_price".to_string(),
+                    default_value: Some(FieldType::Integer(0)),
                     description: Some("Total price of the SO".to_string()),
+                    compute: Some(true),
                     ..FieldDescriptor::default()
                 },
             ],
@@ -56,6 +84,8 @@ impl Model for SaleOrder {
     fn get_data(&self) -> MapOfFields {
         let mut result = MapOfFields::default();
         result.insert("name", &self.name);
+        result.insert("price", self.price);
+        result.insert("amount", self.amount);
         result.insert("total_price", self.total_price);
         result
     }
@@ -64,7 +94,15 @@ impl Model for SaleOrder {
         Self {
             id,
             name: data.get("name"),
+            price: data.get("price"),
+            amount: data.get("amount"),
             total_price: data.get("total_price"),
+        }
+    }
+
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
+        if field_name == "total_price" {
+            self.compute_total_price(env);
         }
     }
 }
