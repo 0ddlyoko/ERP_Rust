@@ -35,7 +35,7 @@ impl<'model_manager> Environment<'model_manager> {
 
         let map_of_fields = self.get_data_from_db(model_name, id)?;
         self.cache.insert_record_model_with_map(model_name, id, map_of_fields);
-        self.cache.clear_all_dirty_of_model(model_name, id);
+        self.cache.clear_dirty(model_name, id);
         Ok(())
     }
 
@@ -45,13 +45,26 @@ impl<'model_manager> Environment<'model_manager> {
     ///
     /// If the record is not present in cache, do nothing
     pub fn save_record_to_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
-        let cache_model = self.cache.get_cache_record(model_name, id);
-        if cache_model.is_none() {
+        let cache_models = self.cache.get_cache_models(model_name);
+        if cache_models.is_none() {
             // Nothing to update
             return Ok(());
         }
-        let dirty_fields = cache_model.unwrap().get_fields_dirty();
-        self.save_data_to_db(model_name, id, &dirty_fields)?;
+        let cache_models = cache_models.unwrap();
+        let dirty_fields = cache_models.get_dirty(id);
+        if dirty_fields.is_none() {
+            // Nothing to update
+            return Ok(());
+        }
+        let cache_model = cache_models.get_model(id);
+        if cache_model.is_none() {
+            // Model not found in cache
+            return Ok(());
+        }
+        let dirty_fields: Vec<&str> = dirty_fields.unwrap().iter().map(|f| f.as_str()).collect();
+        self.save_data_to_db(model_name, id, &cache_model.unwrap().get_map_of_fields(&dirty_fields))?;
+        // Now that it's saved in db, clear dirty fields
+        self.cache.get_cache_models_mut(model_name).unwrap().clear_dirty(id);
         Ok(())
     }
 

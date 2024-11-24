@@ -39,7 +39,7 @@ fn test_get_record() {
     env.fill_default_values_on_map("sale_order", &mut map);
 
     env.cache.insert_record_model_with_map("sale_order", 1, map);
-    env.cache.clear_all_dirty_of_model("sale_order", 1);
+    env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder>(1);
@@ -56,23 +56,25 @@ fn test_get_record() {
     assert!(price_cache_record.is_some());
     let name_cache_record = name_cache_record.unwrap();
     let price_cache_record = price_cache_record.unwrap();
-    assert!(!name_cache_record.is_dirty());
-    assert!(!price_cache_record.is_dirty());
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
+    // Dirty
+    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    assert!(dirty_fields.is_none());
 
     // Changing the price should not alter the cache (as it's not already saved)
     sale_order.price = 50;
-    assert!(!name_cache_record.is_dirty());
-    assert!(!price_cache_record.is_dirty());
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
+    // Dirty
+    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    assert!(dirty_fields.is_none());
 
     // But saving it should
     env.save_record(&sale_order);
@@ -83,20 +85,26 @@ fn test_get_record() {
     assert!(price_cache_record.is_some());
     let name_cache_record = name_cache_record.unwrap();
     let price_cache_record = price_cache_record.unwrap();
-    assert!(!name_cache_record.is_dirty());
-    assert!(price_cache_record.is_dirty());
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(50));
-
-    let cache_model = env.cache.get_cache_record("sale_order", 1);
-    assert!(cache_model.is_some());
-    let dirty_fields = cache_model.unwrap().get_fields_dirty();
-    assert_eq!(dirty_fields.len(), 1);
-    assert!(!dirty_fields.contains_key("name"));
-    assert!(dirty_fields.contains_key("price"));
+    // Dirty
+    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    assert!(dirty_fields.is_some());
+    assert!(dirty_fields.unwrap().iter().eq(["price".to_string()].iter()));
+    let cache_models = env.cache.get_cache_models_mut("sale_order");
+    assert!(cache_models.is_some());
+    let cache_models = cache_models.unwrap();
+    assert!(cache_models.get_model(1).is_some());
+    let dirty_fields = cache_models.get_dirty(1);
+    assert!(dirty_fields.is_some());
+    assert!(dirty_fields.unwrap().iter().eq(["price".to_string()].iter()));
+    
+    // Clear dirty
+    cache_models.clear_dirty(1);
+    assert!(cache_models.get_dirty(1).is_none());
 }
 
 #[test]
@@ -111,7 +119,7 @@ fn test_get_record_from_xxx() {
     env.fill_default_values_on_map("sale_order", &mut map);
 
     env.cache.insert_record_model_with_map("sale_order", 1, map);
-    env.cache.clear_all_dirty_of_model("sale_order", 1);
+    env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder>(1);
@@ -147,7 +155,7 @@ fn test_compute_method() {
     env.fill_default_values_on_map("sale_order", &mut map);
 
     env.cache.insert_record_model_with_map("sale_order", 1, map);
-    env.cache.clear_all_dirty_of_model("sale_order", 1);
+    env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder>(1);

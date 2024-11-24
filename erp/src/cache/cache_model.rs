@@ -1,7 +1,7 @@
 use crate::cache::CacheField;
+use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
-use crate::field::FieldType;
 
 #[derive(Clone)]
 pub struct CacheModel {
@@ -47,48 +47,39 @@ impl CacheModel {
         MapOfFields::new(fields)
     }
 
-    /// Get the list of fields that are dirty
-    pub fn get_fields_dirty(&self) -> MapOfFields {
-        let fields: Vec<&str> = self.fields.iter().filter_map(|(k, v)| {
-            if v.is_dirty() {
-                Some(k.as_str())
-            } else {
-                None
-            }
-        }).collect();
-        self.get_map_of_fields(&fields)
-    }
-
-    pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<&mut CacheField> {
-        let entry = self.fields.entry(name.to_string());
-        let cache_field = entry.or_default();
+    /// Insert given field to the cache, and return field & true if the field has been updated, false otherwise
+    pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<(&mut CacheField, bool)> {
+        let cache_field = self.fields.entry(name.to_string()).or_default();
+        let mut dirty = false;
         match field_value {
             Some(field) => {
                 if cache_field.get().is_none() || &field != cache_field.get().unwrap() {
-                    cache_field.set_dirty();
+                    dirty = true;
                     cache_field.set(field);
                 }
             }
             None => {
                 if cache_field.is_set() {
-                    cache_field.set_dirty();
+                    dirty = true;
                     cache_field.clear();
                 }
             }
         }
-        self.get_field_mut(name)
+        self.get_field_mut(name).map(|field| (field, dirty))
     }
 
-    pub fn insert_fields(&mut self, fields: MapOfFields) {
+    /// Insert given fields, and return fields that have been modified
+    pub fn insert_fields(&mut self, fields: MapOfFields) -> Vec<String> {
+        let mut dirty_fields = Vec::new();
         for (name, value) in fields.fields {
-            self.insert_field(name.as_str(), value);
+            let result = self.insert_field(name.as_str(), value);
+            if let Some(result) = result {
+                if result.1 {
+                    dirty_fields.push(name);
+                }
+            }
         }
-    }
-
-    pub fn clear_all_dirty(&mut self) {
-        for value in self.fields.values_mut() {
-            value.clear_dirty();
-        }
+        dirty_fields
     }
 
     pub fn transform_into_map_of_fields(&self) -> MapOfFields {

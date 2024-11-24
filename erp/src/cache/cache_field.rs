@@ -4,12 +4,11 @@ use crate::field::FieldType;
 #[derive(Default, Clone)]
 pub struct CacheField {
     value: Option<FieldType>,
-    dirty: bool,
 }
 
 impl CacheField {
     pub fn new_with_value(value: FieldType) -> Self {
-        Self { value: Some(value), dirty: false }
+        Self { value: Some(value) }
     }
 
     pub fn get(&self) -> Option<&FieldType> {
@@ -29,18 +28,6 @@ impl CacheField {
 
     pub fn clear(&mut self) {
         self.value = None;
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-
-    pub fn set_dirty(&mut self) {
-        self.dirty = true;
-    }
-
-    pub fn clear_dirty(&mut self) {
-        self.dirty = false;
     }
 }
 
