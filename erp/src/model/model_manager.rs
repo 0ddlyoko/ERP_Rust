@@ -17,6 +17,10 @@ impl ModelManager {
             FinalInternalModel::new(model_name)
         }).register_internal_model::<M>();
     }
+    
+    pub fn get_models(&self) -> &HashMap<String, FinalInternalModel> {
+        &self.models
+    }
 
     pub fn create_instance_from_name(&self, model_name: &str, id: u32, data: MapOfFields) -> Box<dyn Model> {
         let model = self.models.get(model_name).unwrap();

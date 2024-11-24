@@ -1,11 +1,9 @@
-mod models;
-
 use erp::field::FieldType;
 use erp::model::{ MapOfFields, ModelManager };
 use erp::environment::Environment;
 use std::collections::HashMap;
 
-use models::sale_order::SaleOrder;
+use test_utilities::models::sale_order::SaleOrder;
 
 #[test]
 fn test_fill_default_values_on_map() {
@@ -62,7 +60,7 @@ fn test_get_record() {
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
     // Dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
     assert!(dirty_fields.is_none());
 
     // Changing the price should not alter the cache (as it's not already saved)
@@ -73,7 +71,7 @@ fn test_get_record() {
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
     // Dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
     assert!(dirty_fields.is_none());
 
     // But saving it should
@@ -91,12 +89,10 @@ fn test_get_record() {
     assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(50));
     // Dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order").unwrap().get_dirty(1);
+    let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
     assert!(dirty_fields.is_some());
     assert!(dirty_fields.unwrap().iter().eq(["price".to_string()].iter()));
     let cache_models = env.cache.get_cache_models_mut("sale_order");
-    assert!(cache_models.is_some());
-    let cache_models = cache_models.unwrap();
     assert!(cache_models.get_model(1).is_some());
     let dirty_fields = cache_models.get_dirty(1);
     assert!(dirty_fields.is_some());

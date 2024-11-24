@@ -1,6 +1,5 @@
 extern crate test_plugin;
 extern crate test_utilities;
-mod models;
 
 use std::error::Error;
 use erp::plugin::errors::PluginAlreadyRegisteredError;

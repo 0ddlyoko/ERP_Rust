@@ -19,7 +19,7 @@ pub struct Environment<'model_manager> {
 impl<'model_manager> Environment<'model_manager> {
     pub fn new(model_manager: &'model_manager ModelManager) -> Self {
         Environment {
-            cache: Cache::default(),
+            cache: Cache::new(model_manager),
             model_manager,
             id: 1,
         }
@@ -44,13 +44,10 @@ impl<'model_manager> Environment<'model_manager> {
     /// If the record is already saved, do nothing
     ///
     /// If the record is not present in cache, do nothing
+    ///
+    /// If given model does not exist, panic.
     pub fn save_record_to_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
         let cache_models = self.cache.get_cache_models(model_name);
-        if cache_models.is_none() {
-            // Nothing to update
-            return Ok(());
-        }
-        let cache_models = cache_models.unwrap();
         let dirty_fields = cache_models.get_dirty(id);
         if dirty_fields.is_none() {
             // Nothing to update
@@ -64,7 +61,7 @@ impl<'model_manager> Environment<'model_manager> {
         let dirty_fields: Vec<&str> = dirty_fields.unwrap().iter().map(|f| f.as_str()).collect();
         self.save_data_to_db(model_name, id, &cache_model.unwrap().get_map_of_fields(&dirty_fields))?;
         // Now that it's saved in db, clear dirty fields
-        self.cache.get_cache_models_mut(model_name).unwrap().clear_dirty(id);
+        self.cache.get_cache_models_mut(model_name).clear_dirty(id);
         Ok(())
     }
 
