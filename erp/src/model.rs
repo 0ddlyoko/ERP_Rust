@@ -3,6 +3,7 @@ mod map_of_fields;
 mod model_descriptor;
 mod model_manager;
 
+use std::error::Error;
 pub use errors::*;
 pub use map_of_fields::*;
 pub use model_descriptor::*;
@@ -26,5 +27,5 @@ pub trait Model {
     fn create_model(id: u32, data: MapOfFields) -> Self where Self: Sized;
 
     /// Call computed method
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment);
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>>;
 }

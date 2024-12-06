@@ -27,7 +27,7 @@ impl CacheModels {
     // Dirty methods
 
     pub fn add_dirty(&mut self, id: u32, fields: Vec<String>) {
-        self.dirty.entry(id).or_insert_with(Vec::new).extend(fields);
+        self.dirty.entry(id).or_default().extend(fields);
     }
 
     pub fn is_dirty(&self, id: u32) -> bool {

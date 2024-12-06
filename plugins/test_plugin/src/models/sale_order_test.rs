@@ -1,3 +1,4 @@
+use std::error::Error;
 use erp::environment::Environment;
 use erp::field::FieldDescriptor;
 use erp::field::FieldType;
@@ -19,8 +20,9 @@ impl SaleOrderTest {
         &self.name
     }
 
-    fn _compute_age(&mut self, env: &mut Environment) {
+    fn _compute_age(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         self.age = 42;
+        Ok(())
     }
 }
 
@@ -73,9 +75,10 @@ impl Model for SaleOrderTest {
         }
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         if field_name == "age" {
-            self._compute_age(env);
+            return self._compute_age(env);
         }
+        Ok(())
     }
 }

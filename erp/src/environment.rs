@@ -210,7 +210,12 @@ impl<'model_manager> Environment<'model_manager> {
             }
             let computed_field = compute_field.unwrap();
             let mut record = self.get_record_from_internal_model(computed_field, id)?;
-            record.call_compute_method(field.as_str(), self);
+            let savepoint = Savepoint::new(self);
+            let result = record.call_compute_method(field.as_str(), self);
+            if result.is_err() {
+                savepoint.rollback(self);
+                return result;
+            }
             self.save_record_from_name(model_name, &*record);
         }
         Ok(())

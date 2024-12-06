@@ -1,3 +1,4 @@
+use std::error::Error;
 use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
@@ -32,8 +33,9 @@ impl SaleOrder {
         self.total_price
     }
 
-    pub fn compute_total_price(&mut self, _environment: &Environment) {
+    pub fn compute_total_price(&mut self, _environment: &Environment) -> Result<(), Box<dyn Error>> {
         self.total_price = self.price * self.amount;
+        Ok(())
     }
 }
 
@@ -100,9 +102,10 @@ impl Model for SaleOrder {
         }
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         if field_name == "total_price" {
-            self.compute_total_price(env);
+            return self.compute_total_price(env);
         }
+        Ok(())
     }
 }

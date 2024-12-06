@@ -31,7 +31,7 @@ impl ModelManager {
         (internal_model.create_instance)(id, data)
     }
 
-    pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> M where M: Model + 'static {
+    pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> M where M: Model {
         M::create_model(id, data)
     }
 

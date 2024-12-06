@@ -1,3 +1,4 @@
+use std::error::Error;
 use erp::environment::Environment;
 use erp::model::MapOfFields;
 use erp::model::ModelDescriptor;
@@ -36,7 +37,7 @@ impl Model for TestEmptyModel {
         todo!()
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) {
+    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         todo!()
     }
 }
