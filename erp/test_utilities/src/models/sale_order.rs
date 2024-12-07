@@ -1,7 +1,7 @@
-use std::error::Error;
 use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
+use std::error::Error;
 
 #[derive(Default)]
 pub struct SaleOrder {
@@ -17,8 +17,8 @@ impl SaleOrder {
         self.id
     }
 
-    pub fn get_name(&self) -> String {
-        self.name.clone()
+    pub fn get_name(&self) -> &String {
+        &self.name
     }
 
     pub fn get_price(&self) -> i64 {
@@ -85,10 +85,10 @@ impl Model for SaleOrder {
 
     fn get_data(&self) -> MapOfFields {
         let mut result = MapOfFields::default();
-        result.insert("name", &self.name);
-        result.insert("price", self.price);
-        result.insert("amount", self.amount);
-        result.insert("total_price", self.total_price);
+        result.insert("name", self.get_name());
+        result.insert("price", self.get_price());
+        result.insert("amount", self.get_amount());
+        result.insert("total_price", self.get_total_price());
         result
     }
 

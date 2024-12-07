@@ -21,6 +21,8 @@ pub enum FieldType {
     Integer(i64),
     Float(f64),
     Bool(bool),
+    // TODO Add Ref
+    // Ref(u32),
 }
 
 impl Display for FieldType {
@@ -48,9 +50,14 @@ impl PartialEq for FieldType {
 
 // FromType
 
-pub trait FromType<T> where Self: Sized {
+pub trait FromType<T>
+where
+    Self: Sized,
+{
     fn from_type(t: T) -> Self;
 }
+
+// String
 
 impl FromType<&FieldType> for Option<String> {
     fn from_type(t: &FieldType) -> Self {
@@ -67,6 +74,8 @@ impl FromType<&String> for FieldType {
     }
 }
 
+// i64
+
 impl FromType<&FieldType> for Option<i64> {
     fn from_type(t: &FieldType) -> Self {
         match t {
@@ -82,6 +91,8 @@ impl FromType<i64> for FieldType {
     }
 }
 
+// f64
+
 impl FromType<&FieldType> for Option<f64> {
     fn from_type(t: &FieldType) -> Self {
         match t {
@@ -96,6 +107,8 @@ impl FromType<f64> for FieldType {
         FieldType::Float(t)
     }
 }
+
+// bool
 
 impl FromType<&FieldType> for Option<bool> {
     fn from_type(t: &FieldType) -> Self {

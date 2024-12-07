@@ -20,6 +20,10 @@ impl SaleOrderTest {
         &self.name
     }
 
+    fn get_age(&self) -> i64 {
+        self.age
+    }
+
     fn _compute_age(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         self.age = 42;
         Ok(())
@@ -62,8 +66,8 @@ impl Model for SaleOrderTest {
 
     fn get_data(&self) -> MapOfFields {
         let mut result = MapOfFields::default();
-        result.insert("name", &self.name);
-        result.insert("age", self.age);
+        result.insert("name", self.get_name());
+        result.insert("age", self.get_age());
         result
     }
 

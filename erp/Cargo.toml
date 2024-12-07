@@ -13,5 +13,6 @@ libloading = "0.8.5"
 
 [dev-dependencies]
 test_utilities = { path = "test_utilities" }
+# Temporary solution. To remove later
 test_plugin = { path = "../plugins/test_plugin" }
-
+base = { path = "../plugins/base" }
