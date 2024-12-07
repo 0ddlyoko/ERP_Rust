@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::field::{FieldType, FromType};
+use std::collections::HashMap;
 
 #[derive(Default, Clone)]
 pub struct MapOfFields {
@@ -13,13 +13,15 @@ impl MapOfFields {
 
     pub fn get<'a, T>(&'a self, field_name: &str) -> T
     where
-        Option<T>: FromType<&'a FieldType> {
+        Option<T>: FromType<&'a FieldType>,
+    {
         self.get_option(field_name).unwrap()
     }
 
     pub fn get_option<'a, T>(&'a self, field_name: &str) -> Option<T>
     where
-        Option<T>: FromType<&'a FieldType> {
+        Option<T>: FromType<&'a FieldType>,
+    {
         let field = self.fields.get(field_name)?;
         let Some(field) = field else {
             return None;
@@ -41,7 +43,8 @@ impl MapOfFields {
 
     pub fn insert<T>(&mut self, field_name: &str, value: T)
     where
-        FieldType: FromType<T> {
+        FieldType: FromType<T>,
+    {
         self.insert_field_type(field_name, FieldType::from_type(value));
     }
 

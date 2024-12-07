@@ -7,7 +7,11 @@ pub struct PluginAlreadyRegisteredError {
 
 impl fmt::Display for PluginAlreadyRegisteredError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Plugin \"{}\" is already registered, or a plugin with the same name already exist", self.plugin_name)
+        write!(
+            f,
+            "Plugin \"{}\" is already registered, or a plugin with the same name already exist",
+            self.plugin_name
+        )
     }
 }
 

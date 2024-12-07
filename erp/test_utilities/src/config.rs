@@ -16,7 +16,12 @@ pub(crate) fn build_config() -> Result<erp::config::Config, ConfigError> {
         .set_default("database.name", "erp")?
         .add_source(File::from(config_file).required(false))
         .add_source(File::from(config_test_file).required(false))
-        .add_source(Environment::with_prefix("ERP").try_parsing(true).separator("_").list_separator(" "))
+        .add_source(
+            Environment::with_prefix("ERP")
+                .try_parsing(true)
+                .separator("_")
+                .list_separator(" "),
+        )
         .build()
         .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
 

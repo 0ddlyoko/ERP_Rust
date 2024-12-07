@@ -1,5 +1,5 @@
-use std::{error, fmt};
 use std::collections::{HashMap, HashSet};
+use std::{error, fmt};
 
 #[derive(Debug, Clone)]
 pub struct MissingDependencyError {
@@ -9,12 +9,15 @@ pub struct MissingDependencyError {
 
 impl fmt::Display for MissingDependencyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Missing dependency '{}' for module '{}'", self.dependency_name, self.module_name)
+        write!(
+            f,
+            "Missing dependency '{}' for module '{}'",
+            self.dependency_name, self.module_name
+        )
     }
 }
 
 impl error::Error for MissingDependencyError {}
-
 
 #[derive(Debug, Clone)]
 pub struct CircularDependencyError {
@@ -23,7 +26,11 @@ pub struct CircularDependencyError {
 
 impl fmt::Display for CircularDependencyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Circular dependency detected for module '{}'", self.module_name)
+        write!(
+            f,
+            "Circular dependency detected for module '{}'",
+            self.module_name
+        )
     }
 }
 
@@ -38,7 +45,13 @@ pub fn sort_dependencies<'a>(
 
     for &module in dependencies.keys() {
         if !visited.contains(module) {
-            visit(module, dependencies, &mut sorted, &mut visited, &mut visiting)?;
+            visit(
+                module,
+                dependencies,
+                &mut sorted,
+                &mut visited,
+                &mut visiting,
+            )?;
         }
     }
 
@@ -53,7 +66,9 @@ fn visit<'a>(
     visiting: &mut HashSet<&'a str>,
 ) -> Result<(), Box<dyn error::Error>> {
     if visiting.contains(module) {
-        return Err(Box::new(CircularDependencyError { module_name: module.to_string() }));
+        return Err(Box::new(CircularDependencyError {
+            module_name: module.to_string(),
+        }));
     }
 
     if !visited.contains(module) {
@@ -62,7 +77,10 @@ fn visit<'a>(
         if let Some(deps) = dependencies.get(module) {
             for &dep in deps {
                 if !dependencies.contains_key(dep) {
-                    return Err(Box::new(MissingDependencyError { module_name: module.to_string(), dependency_name: dep.to_string() }));
+                    return Err(Box::new(MissingDependencyError {
+                        module_name: module.to_string(),
+                        dependency_name: dep.to_string(),
+                    }));
                 }
                 visit(dep, dependencies, sorted, visited, visiting)?;
             }
@@ -77,8 +95,10 @@ fn visit<'a>(
 }
 
 mod tests {
+    use crate::util::dependency::{
+        sort_dependencies, CircularDependencyError, MissingDependencyError,
+    };
     use std::collections::HashMap;
-    use crate::util::dependency::{sort_dependencies, CircularDependencyError, MissingDependencyError};
 
     #[test]
     fn test_sort_dependencies_success() {
@@ -94,8 +114,14 @@ mod tests {
         let sorted = result.unwrap();
 
         // Verify the ordering
-        assert!(sorted.iter().position(|&x| x == "module4") < sorted.iter().position(|&x| x == "module2"));
-        assert!(sorted.iter().position(|&x| x == "module3") < sorted.iter().position(|&x| x == "module1"));
+        assert!(
+            sorted.iter().position(|&x| x == "module4")
+                < sorted.iter().position(|&x| x == "module2")
+        );
+        assert!(
+            sorted.iter().position(|&x| x == "module3")
+                < sorted.iter().position(|&x| x == "module1")
+        );
     }
 
     #[test]
@@ -143,9 +169,7 @@ mod tests {
 
     #[test]
     fn test_sort_dependencies_single_module() {
-        let dependencies: HashMap<&str, Vec<&str>> = HashMap::from([
-            ("module1", vec![]),
-        ]);
+        let dependencies: HashMap<&str, Vec<&str>> = HashMap::from([("module1", vec![])]);
 
         let result = sort_dependencies(&dependencies);
         assert!(result.is_ok());

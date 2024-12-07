@@ -1,6 +1,6 @@
-use erp::field::FieldType;
-use erp::model::{ MapOfFields, ModelManager };
 use erp::environment::Environment;
+use erp::field::FieldType;
+use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
 
 use test_utilities::models::sale_order::SaleOrder;
@@ -47,7 +47,10 @@ fn test_get_record() {
     assert_eq!(sale_order.name, "0ddlyoko");
     assert_eq!(sale_order.price, 42);
     assert_eq!(sale_order.amount, 10);
-    assert_eq!(sale_order.total_price, 0, "Should be 0 as \"insert_record_model_with_map\" does not call computed methods");
+    assert_eq!(
+        sale_order.total_price, 0,
+        "Should be 0 as \"insert_record_model_with_map\" does not call computed methods"
+    );
     let name_cache_record = env.cache.get_record_field("sale_order", 1, "name");
     let price_cache_record = env.cache.get_record_field("sale_order", 1, "price");
     assert!(name_cache_record.is_some());
@@ -57,7 +60,10 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(
+        *name_cache_record.get().unwrap(),
+        FieldType::String("0ddlyoko".to_string())
+    );
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
     // Dirty
     let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
@@ -68,7 +74,10 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(
+        *name_cache_record.get().unwrap(),
+        FieldType::String("0ddlyoko".to_string())
+    );
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
     // Dirty
     let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
@@ -86,18 +95,27 @@ fn test_get_record() {
     assert!(name_cache_record.is_set());
     assert!(price_cache_record.is_set());
     assert!(name_cache_record.get().is_some());
-    assert_eq!(*name_cache_record.get().unwrap(), FieldType::String("0ddlyoko".to_string()));
+    assert_eq!(
+        *name_cache_record.get().unwrap(),
+        FieldType::String("0ddlyoko".to_string())
+    );
     assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(50));
     // Dirty
     let dirty_fields = env.cache.get_cache_models("sale_order").get_dirty(1);
     assert!(dirty_fields.is_some());
-    assert!(dirty_fields.unwrap().iter().eq(["price".to_string()].iter()));
+    assert!(dirty_fields
+        .unwrap()
+        .iter()
+        .eq(["price".to_string()].iter()));
     let cache_models = env.cache.get_cache_models_mut("sale_order");
     assert!(cache_models.get_model(1).is_some());
     let dirty_fields = cache_models.get_dirty(1);
     assert!(dirty_fields.is_some());
-    assert!(dirty_fields.unwrap().iter().eq(["price".to_string()].iter()));
-    
+    assert!(dirty_fields
+        .unwrap()
+        .iter()
+        .eq(["price".to_string()].iter()));
+
     // Clear dirty
     cache_models.clear_dirty(1);
     assert!(cache_models.get_dirty(1).is_none());
@@ -161,10 +179,14 @@ fn test_compute_method() {
     assert_eq!(sale_order.name, "0ddlyoko");
     assert_eq!(sale_order.price, 42);
     assert_eq!(sale_order.amount, 10);
-    assert_eq!(sale_order.total_price, 0, "Should be 0 as \"insert_record_model_with_map\" does not call computed methods");
+    assert_eq!(
+        sale_order.total_price, 0,
+        "Should be 0 as \"insert_record_model_with_map\" does not call computed methods"
+    );
 
     // Call the computed method
-    env.call_compute_fields("sale_order", 1, &["total_price".to_string()]).expect("Computed field failed");
+    env.call_compute_fields("sale_order", 1, &["total_price".to_string()])
+        .expect("Computed field failed");
 
     let sale_order = env.get_record::<SaleOrder>(1);
     assert!(sale_order.is_ok());

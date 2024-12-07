@@ -1,6 +1,6 @@
+use crate::models::sale_order_test::SaleOrderTest;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
-use crate::models::sale_order_test::SaleOrderTest;
 
 mod models;
 
@@ -24,13 +24,10 @@ impl Plugin for TestPlugin2 {
         "test_plugin2".to_string()
     }
 
-    fn init_models(&self, _model_manager: &mut ModelManager) {
-    }
+    fn init_models(&self, _model_manager: &mut ModelManager) {}
 
     fn get_depends(&self) -> Vec<String> {
-        vec![
-            "test_plugin".to_string(),
-        ]
+        vec!["test_plugin".to_string()]
     }
 }
 
@@ -41,14 +38,10 @@ impl Plugin for TestPlugin3 {
         "test_plugin3".to_string()
     }
 
-    fn init_models(&self, _model_manager: &mut ModelManager) {
-    }
+    fn init_models(&self, _model_manager: &mut ModelManager) {}
 
     fn get_depends(&self) -> Vec<String> {
-        vec![
-            "test_plugin".to_string(),
-            "test_plugin2".to_string(),
-        ]
+        vec!["test_plugin".to_string(), "test_plugin2".to_string()]
     }
 }
 

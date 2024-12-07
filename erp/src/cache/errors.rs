@@ -8,7 +8,11 @@ pub struct RecordNotFoundError {
 
 impl fmt::Display for RecordNotFoundError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Cache {} not found for model {}", self.id, self.model_name)
+        write!(
+            f,
+            "Cache {} not found for model {}",
+            self.id, self.model_name
+        )
     }
 }
 

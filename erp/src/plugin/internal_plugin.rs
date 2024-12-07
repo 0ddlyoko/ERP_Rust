@@ -1,5 +1,5 @@
-use libloading::Library;
 use crate::plugin::Plugin;
+use libloading::Library;
 
 pub(crate) enum InternalPluginType {
     Dll(Library),

@@ -1,8 +1,8 @@
-use std::error::Error;
 use erp::environment::Environment;
 use erp::model::MapOfFields;
-use erp::model::ModelDescriptor;
 use erp::model::Model;
+use erp::model::ModelDescriptor;
+use std::error::Error;
 
 #[derive(Default)]
 pub struct TestEmptyModel {}
@@ -10,14 +10,14 @@ pub struct TestEmptyModel {}
 impl Model for TestEmptyModel {
     fn get_model_name() -> String
     where
-        Self: Sized
+        Self: Sized,
     {
         todo!()
     }
 
     fn get_model_descriptor() -> ModelDescriptor
     where
-        Self: Model + Default
+        Self: Model + Default,
     {
         todo!()
     }
@@ -32,12 +32,16 @@ impl Model for TestEmptyModel {
 
     fn create_model(_id: u32, _data: MapOfFields) -> Self
     where
-        Self: Sized
+        Self: Sized,
     {
         todo!()
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn call_compute_method(
+        &mut self,
+        field_name: &str,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error>> {
         todo!()
     }
 }

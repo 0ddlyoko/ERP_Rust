@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::environment::Environment;
 use crate::model::ModelManager;
 use crate::plugin::InternalPluginState::Installed;
-use crate::plugin::PluginManager;
 use crate::plugin::Plugin;
+use crate::plugin::PluginManager;
 
 type MyResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -30,7 +30,8 @@ impl Application {
     }
 
     fn register_plugins(&mut self) -> MyResult {
-        self.plugin_manager.register_plugins(&self.config.plugin_path)?;
+        self.plugin_manager
+            .register_plugins(&self.config.plugin_path)?;
         Ok(())
     }
 
@@ -39,7 +40,12 @@ impl Application {
     }
 
     fn load_plugins(&mut self) -> MyResult {
-        let ordered_depends: Vec<String> = self.plugin_manager._get_ordered_dependencies()?.iter().map(|&str| str.to_string()).collect();
+        let ordered_depends: Vec<String> = self
+            .plugin_manager
+            ._get_ordered_dependencies()?
+            .iter()
+            .map(|&str| str.to_string())
+            .collect();
 
         for plugin_name in ordered_depends.iter() {
             self._load_plugin(plugin_name.as_str())?;
@@ -58,9 +64,12 @@ impl Application {
     /// Load given plugin and all plugins that the given one depends.
     /// Do not check if there is a recursion between plugins.
     fn _load_plugin(&mut self, plugin_name: &str) -> MyResult {
-        let plugin = self.plugin_manager.get_plugin(plugin_name).unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
+        let plugin = self
+            .plugin_manager
+            .get_plugin(plugin_name)
+            .unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
         if plugin.state == Installed {
-            return Ok(())
+            return Ok(());
         }
         let depends: Vec<_> = plugin.depends.to_vec();
         for depend in depends {
@@ -74,9 +83,12 @@ impl Application {
     }
 
     fn load_models(&mut self) {
-        self.plugin_manager.plugins.iter().for_each(|(_, internal_plugin)| {
-            internal_plugin.plugin.init_models(&mut self.model_manager);
-        })
+        self.plugin_manager
+            .plugins
+            .iter()
+            .for_each(|(_, internal_plugin)| {
+                internal_plugin.plugin.init_models(&mut self.model_manager);
+            })
     }
 
     pub fn unload(&mut self) {

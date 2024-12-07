@@ -7,7 +7,11 @@ pub struct ModelNotFound {
 
 impl fmt::Display for ModelNotFound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Model \"{}\" is not present in registries!", self.model_name)
+        write!(
+            f,
+            "Model \"{}\" is not present in registries!",
+            self.model_name
+        )
     }
 }
 

@@ -39,7 +39,8 @@ impl Display for FieldType {
 impl PartialEq for FieldType {
     fn eq(&self, other: &Self) -> bool {
         make_eq!(
-            self, other,
+            self,
+            other,
             FieldType::String,
             FieldType::Integer,
             FieldType::Float,

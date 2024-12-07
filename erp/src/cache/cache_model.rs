@@ -40,15 +40,22 @@ impl CacheModel {
 
     /// Transform this CacheModel into a MapOfFields that contains given fields.
     pub fn get_map_of_fields(&self, fields: &[&str]) -> MapOfFields {
-        let fields = fields.iter().filter_map(|&field_name| {
-            let field = self.get_field(field_name)?;
-            Some((field_name.to_string(), field.get().cloned()))
-        }).collect();
+        let fields = fields
+            .iter()
+            .filter_map(|&field_name| {
+                let field = self.get_field(field_name)?;
+                Some((field_name.to_string(), field.get().cloned()))
+            })
+            .collect();
         MapOfFields::new(fields)
     }
 
     /// Insert given field to the cache, and return field & true if the field has been updated, false otherwise
-    pub fn insert_field(&mut self, name: &str, field_value: Option<FieldType>) -> Option<(&mut CacheField, bool)> {
+    pub fn insert_field(
+        &mut self,
+        name: &str,
+        field_value: Option<FieldType>,
+    ) -> Option<(&mut CacheField, bool)> {
         let cache_field = self.fields.entry(name.to_string()).or_default();
         let mut dirty = false;
         match field_value {
@@ -83,7 +90,11 @@ impl CacheModel {
     }
 
     pub fn transform_into_map_of_fields(&self) -> MapOfFields {
-        let fields = self.fields.iter().map(|(k, v)| (k.clone(), v.get().cloned())).collect();
+        let fields = self
+            .fields
+            .iter()
+            .map(|(k, v)| (k.clone(), v.get().cloned()))
+            .collect();
         MapOfFields::new(fields)
     }
 }

@@ -5,7 +5,6 @@
 // use old_code_gen::*;
 // use old_test_lib::*;
 
-
 // model! {
 //     #[derive(Debug)]
 //     #[odd(table_name = "sale_order")]
@@ -54,42 +53,42 @@
 // }
 
 // fn main() {
-    // let a = &"test".to_string();
-    // if a.eq("test") {
-    //
-    // }
-    // let mut global_env = GlobalEnvironment::new();
-    // let model_manager = global_env.models_mut();
-    // model_manager.register::<SaleOrder>("module_a");
-    // // model_manager.register::<SaleOrderCopy>("module_b");
-    //
-    // let mut env = global_env.new_env();
-    // let mut sale_order: SaleOrder = SaleOrder::new(&mut env);
-    // sale_order.title.set("SALUT, JE SUIS AUDD :D".to_string());
-    // sale_order.published.set(false);
-    //
-    //
-    // let name = SaleOrder::_name();
-    // // sale_order.save();
-    //
-    // // let sale_order_copy: SaleOrderCopy = sale_order.convert_to();
-    // // // println!("{:?}", sale_order_copy);
-    // // sale_order_copy.print_author_and_title();
-    //
-    // println!("{:?} {:?}", sale_order.title, sale_order.published);
-    //
-    // sale_order.update(HashMap::from([
-    //     ("title", Some("New title")),
-    //     ("published", Some("true")),
-    // ]));
-    // // sale_order_copy.print_author_and_title();
-    // println!("{:?} {:?}", sale_order.title, sale_order.published);
+// let a = &"test".to_string();
+// if a.eq("test") {
+//
+// }
+// let mut global_env = GlobalEnvironment::new();
+// let model_manager = global_env.models_mut();
+// model_manager.register::<SaleOrder>("module_a");
+// // model_manager.register::<SaleOrderCopy>("module_b");
+//
+// let mut env = global_env.new_env();
+// let mut sale_order: SaleOrder = SaleOrder::new(&mut env);
+// sale_order.title.set("SALUT, JE SUIS AUDD :D".to_string());
+// sale_order.published.set(false);
+//
+//
+// let name = SaleOrder::_name();
+// // sale_order.save();
+//
+// // let sale_order_copy: SaleOrderCopy = sale_order.convert_to();
+// // // println!("{:?}", sale_order_copy);
+// // sale_order_copy.print_author_and_title();
+//
+// println!("{:?} {:?}", sale_order.title, sale_order.published);
+//
+// sale_order.update(HashMap::from([
+//     ("title", Some("New title")),
+//     ("published", Some("true")),
+// ]));
+// // sale_order_copy.print_author_and_title();
+// println!("{:?} {:?}", sale_order.title, sale_order.published);
 // }
 
 use config::{Config, ConfigError, Environment, File};
 use directories::ProjectDirs;
-use std::path::Path;
 use erp::app::Application;
+use std::path::Path;
 
 fn build_config() -> Result<erp::config::Config, ConfigError> {
     let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
@@ -102,17 +101,21 @@ fn build_config() -> Result<erp::config::Config, ConfigError> {
         .set_default("database.port", 5432)?
         .set_default("database.name", "erp")?
         .add_source(File::from(config_file).required(true))
-        .add_source(Environment::with_prefix("ERP").try_parsing(true).separator("_").list_separator(" "))
+        .add_source(
+            Environment::with_prefix("ERP")
+                .try_parsing(true)
+                .separator("_")
+                .list_separator(" "),
+        )
         .build()
         .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
 
     config.try_deserialize()
 }
 
-
-
 fn main() {
-    let config = build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
+    let config =
+        build_config().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
     let mut app = Application::new(config);
 
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));

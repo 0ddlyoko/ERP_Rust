@@ -1,8 +1,8 @@
-use std::error::Error;
 use erp::environment::Environment;
 use erp::field::FieldDescriptor;
 use erp::field::FieldType;
 use erp::model::{MapOfFields, Model, ModelDescriptor};
+use std::error::Error;
 
 #[derive(Default)]
 pub(crate) struct SaleOrderTest {
@@ -31,7 +31,6 @@ impl SaleOrderTest {
 }
 
 impl Model for SaleOrderTest {
-
     fn get_model_name() -> String {
         "sale_order_test".to_string()
     }
@@ -79,7 +78,11 @@ impl Model for SaleOrderTest {
         }
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn call_compute_method(
+        &mut self,
+        field_name: &str,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error>> {
         if field_name == "age" {
             return self._compute_age(env);
         }

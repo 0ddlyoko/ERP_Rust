@@ -1,30 +1,27 @@
 mod cache_field;
-mod cache_models;
 mod cache_model;
+mod cache_models;
 pub mod errors;
 
 pub use cache_field::CacheField;
-pub use cache_models::CacheModels;
 pub use cache_model::CacheModel;
+pub use cache_models::CacheModels;
 
-use std::collections::HashMap;
 use crate::field::FieldType;
 use crate::model::{MapOfFields, ModelManager};
+use std::collections::HashMap;
 
 pub struct Cache {
     cache: HashMap<String, CacheModels>,
 }
 
 impl Cache {
-
     pub fn new(model_manager: &ModelManager) -> Self {
         let mut cache = HashMap::new();
         for model_name in model_manager.get_models().keys() {
             cache.insert(model_name.clone(), CacheModels::default());
         }
-        Cache {
-            cache,
-        }
+        Cache { cache }
     }
 
     pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
@@ -37,12 +34,16 @@ impl Cache {
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models(&self, model_name: &str) -> &CacheModels {
-        self.cache.get(model_name).unwrap_or_else(|| panic!("Model {} not found", model_name))
+        self.cache
+            .get(model_name)
+            .unwrap_or_else(|| panic!("Model {} not found", model_name))
     }
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models_mut(&mut self, model_name: &str) -> &mut CacheModels {
-        self.cache.get_mut(model_name).unwrap_or_else(|| panic!("Model {} not found", model_name))
+        self.cache
+            .get_mut(model_name)
+            .unwrap_or_else(|| panic!("Model {} not found", model_name))
     }
 
     /// Returns CacheModel linked to given model & id.
@@ -59,15 +60,37 @@ impl Cache {
         self.cache.get_mut(model_name)?.get_model_mut(id)
     }
 
-    pub fn get_record_field(&self, model_name: &str, id: u32, field_name: &str) -> Option<&CacheField> {
-        self.cache.get(model_name)?.get_model(id)?.get_field(field_name)
+    pub fn get_record_field(
+        &self,
+        model_name: &str,
+        id: u32,
+        field_name: &str,
+    ) -> Option<&CacheField> {
+        self.cache
+            .get(model_name)?
+            .get_model(id)?
+            .get_field(field_name)
     }
 
-    pub fn get_record_field_mut(&mut self, model_name: &str, id: u32, field_name: &str) -> Option<&mut CacheField> {
-        self.cache.get_mut(model_name)?.get_model_mut(id)?.get_field_mut(field_name)
+    pub fn get_record_field_mut(
+        &mut self,
+        model_name: &str,
+        id: u32,
+        field_name: &str,
+    ) -> Option<&mut CacheField> {
+        self.cache
+            .get_mut(model_name)?
+            .get_model_mut(id)?
+            .get_field_mut(field_name)
     }
 
-    pub fn insert_record_field(&mut self, model_name: &str, id: u32, field_name: &str, field_value: Option<FieldType>) {
+    pub fn insert_record_field(
+        &mut self,
+        model_name: &str,
+        id: u32,
+        field_name: &str,
+        field_value: Option<FieldType>,
+    ) {
         let cache_models = self.get_cache_models_mut(model_name);
         let cache_model = cache_models.get_model_or_create(id);
         let result = cache_model.insert_field(field_name, field_value);

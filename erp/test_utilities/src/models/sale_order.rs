@@ -33,7 +33,10 @@ impl SaleOrder {
         self.total_price
     }
 
-    pub fn compute_total_price(&mut self, _environment: &Environment) -> Result<(), Box<dyn Error>> {
+    pub fn compute_total_price(
+        &mut self,
+        _environment: &Environment,
+    ) -> Result<(), Box<dyn Error>> {
         self.total_price = self.price * self.amount;
         Ok(())
     }
@@ -102,7 +105,11 @@ impl Model for SaleOrder {
         }
     }
 
-    fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn call_compute_method(
+        &mut self,
+        field_name: &str,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error>> {
         if field_name == "total_price" {
             return self.compute_total_price(env);
         }

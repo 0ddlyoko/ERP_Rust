@@ -16,7 +16,6 @@ impl fmt::Display for UselessError {
 
 impl Error for UselessError {}
 
-
 #[test]
 fn test_savepoint_rollback() {
     let mut model_manager = ModelManager::default();

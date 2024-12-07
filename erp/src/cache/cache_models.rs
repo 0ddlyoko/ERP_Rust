@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::cache::CacheModel;
+use std::collections::HashMap;
 
 #[derive(Default, Clone)]
 pub struct CacheModels {
@@ -35,13 +35,15 @@ impl CacheModels {
     }
 
     pub fn is_field_dirty(&self, id: u32, field_name: &str) -> bool {
-        self.dirty.get(&id).map_or(false, |d| d.iter().any(|f| f == field_name))
+        self.dirty
+            .get(&id)
+            .map_or(false, |d| d.iter().any(|f| f == field_name))
     }
 
     pub fn get_dirty(&self, id: u32) -> Option<&Vec<String>> {
         self.dirty.get(&id)
     }
-    
+
     pub fn clear_all_dirty(&mut self) {
         self.dirty.clear();
     }

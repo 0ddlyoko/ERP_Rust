@@ -21,7 +21,7 @@ impl CacheField {
     pub fn set(&mut self, value: FieldType) {
         self.value = Some(value);
     }
-    
+
     pub fn is_set(&self) -> bool {
         self.value.is_some()
     }

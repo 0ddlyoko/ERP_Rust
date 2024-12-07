@@ -33,12 +33,19 @@ impl FinalInternalModel {
         }
     }
 
-    pub fn register_internal_model<M>(&mut self) where M: Model + Default + 'static {
+    pub fn register_internal_model<M>(&mut self)
+    where
+        M: Model + Default + 'static,
+    {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();
         let type_id = TypeId::of::<M>();
 
-        let ModelDescriptor { name: _name, description, fields } = model_descriptor;
+        let ModelDescriptor {
+            name: _name,
+            description,
+            fields,
+        } = model_descriptor;
 
         if name != _name {
             panic!("Model name mismatch! {name} != {_name}");
@@ -58,7 +65,8 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let create_instance: fn(u32, MapOfFields) -> Box<dyn Model> = |id, data| Box::new(M::create_model(id, data));
+        let create_instance: fn(u32, MapOfFields) -> Box<dyn Model> =
+            |id, data| Box::new(M::create_model(id, data));
 
         let internal_model = InternalModel {
             name,
@@ -66,7 +74,7 @@ impl FinalInternalModel {
             fields: final_fields,
             create_instance,
         };
-        
+
         if let Some(description) = &internal_model.description {
             self.description = description.clone();
         }
@@ -75,7 +83,10 @@ impl FinalInternalModel {
 
     pub fn register_internal_field(&mut self, field_descriptor: &InternalField, type_id: &TypeId) {
         let name = &field_descriptor.name;
-        let internal_field = self.fields.entry(name.to_string()).or_insert_with(|| { FinalInternalField::new(name) });
+        let internal_field = self
+            .fields
+            .entry(name.to_string())
+            .or_insert_with(|| FinalInternalField::new(name));
         internal_field.register_internal_field(field_descriptor, type_id);
     }
 
@@ -87,14 +98,24 @@ impl FinalInternalModel {
         }
     }
 
-    pub fn get_internal_model<M>(&self) -> &InternalModel where M: Model + 'static {
+    pub fn get_internal_model<M>(&self) -> &InternalModel
+    where
+        M: Model + 'static,
+    {
         let type_id = TypeId::of::<M>();
-        self.models.get(&type_id).expect("Internal model not registered")
+        self.models
+            .get(&type_id)
+            .expect("Internal model not registered")
     }
 
-    pub fn get_internal_model_mut<M>(&mut self) -> &mut InternalModel where M: Model + 'static {
+    pub fn get_internal_model_mut<M>(&mut self) -> &mut InternalModel
+    where
+        M: Model + 'static,
+    {
         let type_id = TypeId::of::<M>();
-        self.models.get_mut(&type_id).expect("Internal model not registered")
+        self.models
+            .get_mut(&type_id)
+            .expect("Internal model not registered")
     }
 
     /// Get a vector of all registered fields for this model
@@ -104,15 +125,23 @@ impl FinalInternalModel {
 
     /// Get a vector of difference between all registered fields for this model, and given vector
     pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<String> {
-        self.fields.keys().filter(|&x| !current_fields.contains(&x.as_str())).cloned().collect()
+        self.fields
+            .keys()
+            .filter(|&x| !current_fields.contains(&x.as_str()))
+            .cloned()
+            .collect()
     }
 
     pub fn get_internal_field(&self, field_name: &str) -> &FinalInternalField {
-        self.fields.get(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
+        self.fields
+            .get(field_name)
+            .unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
     }
 
     pub fn get_internal_field_mut(&mut self, field_name: &str) -> &mut FinalInternalField {
-        self.fields.get_mut(field_name).unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
+        self.fields
+            .get_mut(field_name)
+            .unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
     }
 
     /// Return default value for given field.
@@ -125,7 +154,9 @@ impl FinalInternalModel {
     /// Return true if given field is a computed field.
     /// If field is not present on this model, return false
     pub fn is_computed_field(&self, field_name: &str) -> bool {
-        self.fields.get(field_name).map_or(false, |field| field.compute.is_some())
+        self.fields
+            .get(field_name)
+            .map_or(false, |field| field.compute.is_some())
     }
 
     /// Return the internal model linked to the computed given field.
