@@ -1,5 +1,3 @@
-mod savepoint;
-
 use crate::cache;
 use crate::cache::Cache;
 use crate::model::{MapOfFields, ModelManager, ModelNotFound};
@@ -8,7 +6,6 @@ use std::error::Error;
 use crate::cache::errors::RecordNotFoundError;
 use crate::internal::internal_model::InternalModel;
 use crate::model::Model;
-pub use savepoint::Savepoint;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -196,6 +193,24 @@ impl<'model_manager> Environment<'model_manager> {
         Some(missing_fields_to_load)
     }
 
+    pub fn savepoint<F, R>(&mut self, func: F) -> Result<R, Box<dyn Error>>
+    where
+        F: FnOnce(&mut Environment) -> Result<R, Box<dyn Error>> {
+        let cache_copy = self.cache.export_cache();
+        // TODO Savepoint db
+
+        let result = func(self);
+        if result.is_ok() {
+            // Commit
+            // TODO Commit db
+        } else {
+            // Rollback
+            // TODO Rollback db
+            self.cache.import_cache(cache_copy);
+        }
+        result
+    }
+
     /// Call computed methods of given fields of given model for given id
     pub fn call_compute_fields(&mut self, model_name: &str, id: u32, fields: &[String]) -> Result<(), Box<dyn Error>> {
         let final_internal_model = self.model_manager.get_model(model_name);
@@ -203,21 +218,18 @@ impl<'model_manager> Environment<'model_manager> {
             return Err(ModelNotFound { model_name: model_name.to_string() }.into());
         }
         let final_internal_model = final_internal_model.unwrap();
-        for field in fields {
-            let compute_field = final_internal_model.get_computed_field(field);
-            if compute_field.is_none() {
-                continue;
+        self.savepoint(|env| {
+            for field in fields {
+                let compute_field = final_internal_model.get_computed_field(field);
+                if compute_field.is_none() {
+                    continue;
+                }
+                let computed_field = compute_field.unwrap();
+                let mut record = env.get_record_from_internal_model(computed_field, id)?;
+                record.call_compute_method(field.as_str(), env)?;
+                env.save_record_from_name(model_name, &*record);
             }
-            let computed_field = compute_field.unwrap();
-            let mut record = self.get_record_from_internal_model(computed_field, id)?;
-            let savepoint = Savepoint::new(self);
-            let result = record.call_compute_method(field.as_str(), self);
-            if result.is_err() {
-                savepoint.rollback(self);
-                return result;
-            }
-            self.save_record_from_name(model_name, &*record);
-        }
-        Ok(())
+            Ok(())
+        })
     }
 }

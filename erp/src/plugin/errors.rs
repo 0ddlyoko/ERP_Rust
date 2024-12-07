@@ -2,7 +2,7 @@ use std::{error, fmt};
 
 #[derive(Debug, Clone)]
 pub struct PluginAlreadyRegisteredError {
-    pub plugin_name: String,
+    pub(crate) plugin_name: String,
 }
 
 impl fmt::Display for PluginAlreadyRegisteredError {
