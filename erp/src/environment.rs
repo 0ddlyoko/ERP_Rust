@@ -193,6 +193,8 @@ impl<'model_manager> Environment<'model_manager> {
         Some(missing_fields_to_load)
     }
 
+    /// Create a new savepoint and commit if the given method doesn't return any error.
+    /// If an error is returned, rollback the commit and put back the cache as it was
     pub fn savepoint<F, R>(&mut self, func: F) -> Result<R, Box<dyn Error>>
     where
         F: FnOnce(&mut Environment) -> Result<R, Box<dyn Error>> {
