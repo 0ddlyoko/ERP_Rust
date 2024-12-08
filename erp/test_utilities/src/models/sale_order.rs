@@ -1,12 +1,43 @@
 use erp::environment::Environment;
-use erp::field::{FieldDescriptor, FieldType};
+use erp::field::{EnumType, FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub enum SaleOrderState {
+    #[default]
+    Draft,
+    Sent,
+    Paid,
+    Cancelled,
+}
+
+impl EnumType for SaleOrderState {
+    fn to_string(&self) -> String {
+        match self {
+            SaleOrderState::Draft => String::from("draft"),
+            SaleOrderState::Sent => String::from("sent"),
+            SaleOrderState::Paid => String::from("paid"),
+            SaleOrderState::Cancelled => String::from("cancelled"),
+        }
+    }
+
+    fn from_string(t: String) -> Self {
+        match t.as_ref() {
+            "draft" => SaleOrderState::Draft,
+            "sent" => SaleOrderState::Sent,
+            "paid" => SaleOrderState::Paid,
+            "cancelled" => SaleOrderState::Cancelled,
+            _ => SaleOrderState::Cancelled,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct SaleOrder {
     pub id: u32,
     pub name: String,
+    pub state: SaleOrderState,
     pub price: i64,
     pub amount: i64,
     pub total_price: i64,
@@ -19,6 +50,10 @@ impl SaleOrder {
 
     pub fn get_name(&self) -> &String {
         &self.name
+    }
+
+    pub fn get_state(&self) -> &SaleOrderState {
+        &self.state
     }
 
     pub fn get_price(&self) -> i64 {
@@ -60,6 +95,13 @@ impl Model for SaleOrder {
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
+                    name: "state".to_string(),
+                    default_value: Some(FieldType::Enum(SaleOrderState::Draft.to_string())),
+                    description: Some("Current state of this SO".to_string()),
+                    required: Some(true),
+                    ..FieldDescriptor::default()
+                },
+                FieldDescriptor {
                     name: "price".to_string(),
                     default_value: Some(FieldType::Integer(42)),
                     description: Some("Unit price".to_string()),
@@ -89,6 +131,7 @@ impl Model for SaleOrder {
     fn get_data(&self) -> MapOfFields {
         let mut result = MapOfFields::default();
         result.insert("name", self.get_name());
+        result.insert("state", self.get_state());
         result.insert("price", self.get_price());
         result.insert("amount", self.get_amount());
         result.insert("total_price", self.get_total_price());
@@ -99,6 +142,7 @@ impl Model for SaleOrder {
         Self {
             id,
             name: data.get("name"),
+            state: data.get("state"),
             price: data.get("price"),
             amount: data.get("amount"),
             total_price: data.get("total_price"),

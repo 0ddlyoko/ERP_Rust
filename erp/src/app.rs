@@ -97,7 +97,7 @@ impl Application {
         self.model_manager = ModelManager::default();
     }
 
-    fn new_env(&self) -> Environment {
+    pub fn new_env(&self) -> Environment {
         Environment::new(&self.model_manager)
     }
 }

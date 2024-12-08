@@ -3,7 +3,7 @@ use erp::model::{MapOfFields, ModelManager};
 use std::error::Error;
 use std::fmt;
 
-use test_utilities::models::sale_order::SaleOrder;
+use test_utilities::models::SaleOrder;
 
 #[derive(Debug, Clone)]
 pub struct UselessError {}

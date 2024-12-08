@@ -1,2 +1,3 @@
-pub mod sale_order;
-pub mod test_model;
+mod sale_order;
+
+pub use sale_order::{SaleOrder, SaleOrderState};

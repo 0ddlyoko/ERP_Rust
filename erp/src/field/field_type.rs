@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 #[macro_export]
 macro_rules! make_eq {
@@ -21,6 +21,7 @@ pub enum FieldType {
     Integer(i64),
     Float(f64),
     Bool(bool),
+    Enum(String),
     // TODO Add Ref
     // Ref(u32),
 }
@@ -32,6 +33,7 @@ impl Display for FieldType {
             FieldType::Integer(i) => write!(f, "{}", i),
             FieldType::Float(fl) => write!(f, "{}", fl),
             FieldType::Bool(b) => write!(f, "{}", b),
+            FieldType::Enum(e) => write!(f, "{}", e),
         }
     }
 }
@@ -44,7 +46,8 @@ impl PartialEq for FieldType {
             FieldType::String,
             FieldType::Integer,
             FieldType::Float,
-            FieldType::Bool
+            FieldType::Bool,
+            FieldType::Enum
         )
     }
 }
@@ -123,5 +126,27 @@ impl FromType<&FieldType> for Option<bool> {
 impl FromType<bool> for FieldType {
     fn from_type(t: bool) -> Self {
         FieldType::Bool(t)
+    }
+}
+
+// Enums
+
+pub trait EnumType: Default + Debug + PartialEq + Eq {
+    fn to_string(&self) -> String;
+    fn from_string(t: String) -> Self;
+}
+
+impl<E: EnumType> FromType<&FieldType> for Option<E> {
+    fn from_type(t: &FieldType) -> Self {
+        match t {
+            FieldType::Enum(s) => Some(E::from_string(s.clone())),
+            _ => None,
+        }
+    }
+}
+
+impl<E> FromType<&E> for FieldType where E: EnumType {
+    fn from_type(t: &E) -> Self {
+        FieldType::Enum(t.to_string())
     }
 }

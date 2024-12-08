@@ -1,6 +1,6 @@
 use erp::environment::Environment;
-use erp::field::FieldDescriptor;
 use erp::field::FieldType;
+use erp::field::FieldDescriptor;
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
 

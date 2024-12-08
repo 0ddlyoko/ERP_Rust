@@ -1,7 +1,31 @@
 use erp::environment::Environment;
-use erp::field::{FieldDescriptor, FieldType};
+use erp::field::{EnumType, FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub enum PluginState {
+    #[default]
+    NotInstalled,
+    Installed,
+}
+
+impl EnumType for PluginState {
+    fn to_string(&self) -> String {
+        match self {
+            PluginState::Installed => String::from("installed"),
+            PluginState::NotInstalled => String::from("not_installed"),
+        }
+    }
+
+    fn from_string(t: String) -> Self {
+        match t.as_ref() {
+            "not_installed" => PluginState::NotInstalled,
+            "installed" => PluginState::Installed,
+            _ => PluginState::NotInstalled,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct Plugin {
@@ -10,7 +34,7 @@ pub struct Plugin {
     description: Option<String>,
     website: Option<String>,
     url: Option<String>,
-    // TODO Add state (+ support for enum)
+    state: PluginState,
     // TODO Add module category
     // TODO Add author
     // TODO Add version (installed, latest, ...) + auto update if new version
@@ -35,6 +59,10 @@ impl Plugin {
 
     fn get_url(&self) -> Option<&String> {
         self.url.as_ref()
+    }
+
+    fn get_state(&self) -> &PluginState {
+        &self.state
     }
 }
 
@@ -76,6 +104,13 @@ impl Model for Plugin {
                     required: Some(false),
                     ..FieldDescriptor::default()
                 },
+                FieldDescriptor {
+                    name: "state".to_string(),
+                    default_value: Some(FieldType::Enum(PluginState::NotInstalled.to_string())),
+                    description: Some("State of the module".to_string()),
+                    required: Some(true),
+                    ..FieldDescriptor::default()
+                },
             ],
         }
     }
@@ -90,6 +125,7 @@ impl Model for Plugin {
         result.insert_option("description", self.get_description());
         result.insert_option("website", self.get_website());
         result.insert_option("url", self.get_url());
+        result.insert("state", self.get_state());
         result
     }
 
@@ -100,6 +136,7 @@ impl Model for Plugin {
             description: data.get_option("description"),
             website: data.get_option("website"),
             url: data.get_option("url"),
+            state: data.get("state"),
         }
     }
 

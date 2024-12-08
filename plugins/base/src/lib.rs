@@ -15,6 +15,7 @@ impl Plugin for ContactsPlugin {
         model_manager.register_model::<models::Contact>();
         model_manager.register_model::<models::Country>();
         model_manager.register_model::<models::Lang>();
+        model_manager.register_model::<models::Plugin>();
     }
 }
 

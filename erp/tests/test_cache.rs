@@ -2,7 +2,7 @@ use erp::cache::Cache;
 use erp::field::FieldType;
 use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
-use test_utilities::models::sale_order::SaleOrder;
+use test_utilities::models::SaleOrder;
 
 #[test]
 fn test_get_and_insert_field() {

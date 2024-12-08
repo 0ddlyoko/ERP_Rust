@@ -241,9 +241,9 @@ impl<'model_manager> Environment<'model_manager> {
         model_name: &str,
         data: &mut MapOfFields,
     ) -> Result<u32, Box<dyn Error>> {
+        let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
         self.load_record_from_db(model_name, id)?;
-        let missing_fields = self.fill_default_values_on_map(model_name, data);
         // Once loaded, we should call all computed methods
         if let Some(missing_fields) = missing_fields {
             let final_internal_model = self.model_manager.get_model(model_name);

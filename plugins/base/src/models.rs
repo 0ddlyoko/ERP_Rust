@@ -8,3 +8,4 @@ pub use company::Company;
 pub use contact::Contact;
 pub use country::Country;
 pub use lang::Lang;
+pub use plugin::{Plugin, PluginState};
