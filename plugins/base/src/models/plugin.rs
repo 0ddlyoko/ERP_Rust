@@ -3,9 +3,8 @@ use erp::field::{EnumType, FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PluginState {
-    #[default]
     NotInstalled,
     Installed,
 }

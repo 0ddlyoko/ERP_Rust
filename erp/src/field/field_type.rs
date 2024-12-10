@@ -131,7 +131,7 @@ impl FromType<bool> for FieldType {
 
 // Enums
 
-pub trait EnumType: Default + Debug + PartialEq + Eq {
+pub trait EnumType: Debug + PartialEq + Eq {
     fn to_string(&self) -> String;
     fn from_string(t: String) -> Self;
 }
