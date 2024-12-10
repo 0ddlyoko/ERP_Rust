@@ -4,7 +4,6 @@ use erp::field::FieldDescriptor;
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
 
-#[derive(Default)]
 pub(crate) struct SaleOrderTest {
     id: u32,
     name: String,

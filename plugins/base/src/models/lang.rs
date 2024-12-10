@@ -3,7 +3,6 @@ use erp::field::{FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
 
-#[derive(Default)]
 pub struct Lang {
     id: u32,
     name: String,

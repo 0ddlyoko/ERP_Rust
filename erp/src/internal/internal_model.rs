@@ -35,7 +35,7 @@ impl FinalInternalModel {
 
     pub fn register_internal_model<M>(&mut self)
     where
-        M: Model + Default + 'static,
+        M: Model + 'static,
     {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();

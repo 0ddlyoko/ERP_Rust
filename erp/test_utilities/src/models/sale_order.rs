@@ -33,7 +33,6 @@ impl EnumType for SaleOrderState {
     }
 }
 
-#[derive(Default)]
 pub struct SaleOrder {
     pub id: u32,
     pub name: String,

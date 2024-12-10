@@ -17,7 +17,7 @@ pub trait Model {
         Self: Sized;
     fn get_model_descriptor() -> ModelDescriptor
     where
-        Self: Model + Default;
+        Self: Sized;
 
     /// Returns the id of the current record
     fn get_id(&self) -> u32;

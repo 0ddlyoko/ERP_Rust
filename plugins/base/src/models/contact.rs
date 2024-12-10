@@ -3,7 +3,6 @@ use erp::field::{FieldDescriptor, FieldType};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
 
-#[derive(Default)]
 pub struct Contact {
     id: u32,
     name: String,
@@ -11,6 +10,8 @@ pub struct Contact {
     phone: Option<String>,
     website: Option<String>,
     // TODO link to lang
+    // TODO Link to country
+    // TODO Link to another contact (company)
 }
 
 impl Contact {

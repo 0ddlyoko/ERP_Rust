@@ -27,7 +27,6 @@ impl EnumType for PluginState {
     }
 }
 
-#[derive(Default)]
 pub struct Plugin {
     id: u32,
     name: String,

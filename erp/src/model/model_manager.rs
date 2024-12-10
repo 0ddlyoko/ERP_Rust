@@ -12,7 +12,7 @@ pub struct ModelManager {
 impl ModelManager {
     pub fn register_model<M>(&mut self)
     where
-        M: Model + Default + 'static,
+        M: Model + 'static,
     {
         let model_name = M::get_model_name();
 
