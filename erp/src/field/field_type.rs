@@ -1,4 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
+use crate::field::Reference;
+use crate::model::Model;
 
 #[macro_export]
 macro_rules! make_eq {
@@ -22,8 +24,7 @@ pub enum FieldType {
     Float(f64),
     Bool(bool),
     Enum(String),
-    // TODO Add Ref
-    // Ref(u32),
+    Ref((String, u32)),
 }
 
 impl Display for FieldType {
@@ -34,6 +35,7 @@ impl Display for FieldType {
             FieldType::Float(fl) => write!(f, "{}", fl),
             FieldType::Bool(b) => write!(f, "{}", b),
             FieldType::Enum(e) => write!(f, "{}", e),
+            FieldType::Ref((model_name, id)) => write!(f, "{}:{}", model_name, id),
         }
     }
 }
@@ -47,7 +49,8 @@ impl PartialEq for FieldType {
             FieldType::Integer,
             FieldType::Float,
             FieldType::Bool,
-            FieldType::Enum
+            FieldType::Enum,
+            FieldType::Ref
         )
     }
 }
@@ -148,5 +151,37 @@ impl<E: EnumType> FromType<&FieldType> for Option<E> {
 impl<E> FromType<&E> for FieldType where E: EnumType {
     fn from_type(t: &E) -> Self {
         FieldType::Enum(t.to_string())
+    }
+}
+
+// Ref
+
+impl FromType<&FieldType> for Option<(String, u32)> {
+    fn from_type(t: &FieldType) -> Self {
+        match t {
+            FieldType::Ref(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl FromType<&(String, u32)> for FieldType {
+    fn from_type(t: &(String, u32)) -> Self {
+        FieldType::Ref(t.clone())
+    }
+}
+
+impl<M: Model> FromType<&FieldType> for Option<Reference<M>> {
+    fn from_type(t: &FieldType) -> Self {
+        match t {
+            FieldType::Ref((_, id)) => Some(id.into()),
+            _ => None,
+        }
+    }
+}
+
+impl<M: Model> FromType<&Reference<M>> for FieldType {
+    fn from_type(t: &Reference<M>) -> Self {
+        FieldType::Ref((M::get_model_name().clone(), t.id))
     }
 }

@@ -1,7 +1,8 @@
 use erp::environment::Environment;
-use erp::field::{FieldDescriptor, FieldType};
+use erp::field::{FieldDescriptor, FieldType, Reference};
 use erp::model::{MapOfFields, Model, ModelDescriptor};
 use std::error::Error;
+use crate::models::Lang;
 
 pub struct Contact {
     id: u32,
@@ -9,7 +10,7 @@ pub struct Contact {
     email: Option<String>,
     phone: Option<String>,
     website: Option<String>,
-    // TODO link to lang
+    lang: Reference<Lang>,
     // TODO Link to country
     // TODO Link to another contact (company)
 }
@@ -33,6 +34,10 @@ impl Contact {
 
     fn get_website(&self) -> Option<&String> {
         self.website.as_ref()
+    }
+
+    fn get_lang(&self) -> &Reference<Lang> {
+        &self.lang
     }
 }
 
@@ -74,6 +79,15 @@ impl Model for Contact {
                     required: Some(false),
                     ..FieldDescriptor::default()
                 },
+                FieldDescriptor {
+                    name: "lang".to_string(),
+                    // TODO Pass the model instead of its name
+                    // TODO Check if the model exists / is loaded (maybe in a post load?)
+                    default_value: Some(FieldType::Ref(("lang".to_string(), 0))),
+                    description: Some("Language of the contact".to_string()),
+                    required: Some(false),
+                    ..FieldDescriptor::default()
+                },
             ],
         }
     }
@@ -88,6 +102,7 @@ impl Model for Contact {
         result.insert_option("email", self.get_email());
         result.insert_option("phone", self.get_phone());
         result.insert_option("website", self.get_website());
+        result.insert("lang", self.get_lang());
         result
     }
 
@@ -98,6 +113,7 @@ impl Model for Contact {
             email: data.get_option("email"),
             phone: data.get_option("phone"),
             website: data.get_option("website"),
+            lang: data.get("lang"),
         }
     }
 

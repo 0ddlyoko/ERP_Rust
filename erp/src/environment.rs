@@ -171,7 +171,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// If the record is not present in cache, loads it from the database
     pub fn get_record<M>(&mut self, id: u32) -> Result<M, Box<dyn Error>>
     where
-        M: Model + 'static,
+        M: Model,
     {
         let model_name = M::get_model_name();
         let map_of_fields = self.get_map_of_field(model_name.as_str(), id)?;
@@ -193,7 +193,7 @@ impl<'model_manager> Environment<'model_manager> {
         self.load_record_from_db(model_name, id)?;
         let cache_record = self.cache.get_cache_record(model_name, id);
         if cache_record.is_none() {
-            return Err(cache::errors::RecordNotFoundError {
+            return Err(RecordNotFoundError {
                 model_name: model_name.to_string(),
                 id,
             }
@@ -208,7 +208,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// The returned model instance will be different that the original one
     pub fn create_new_record<M>(&mut self, model: M) -> Result<M, Box<dyn Error>>
     where
-        M: Model + 'static,
+        M: Model,
     {
         self.create_new_record_from_map::<M>(&mut model.get_data())
     }
@@ -219,7 +219,7 @@ impl<'model_manager> Environment<'model_manager> {
         data: &mut MapOfFields,
     ) -> Result<M, Box<dyn Error>>
     where
-        M: Model + 'static,
+        M: Model,
     {
         let model_name = M::get_model_name();
         let id = self._create_new_record(model_name.as_str(), data)?;
