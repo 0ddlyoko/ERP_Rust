@@ -55,19 +55,10 @@ impl PartialEq for FieldType {
     }
 }
 
-// FromType
-
-pub trait FromType<T>
-where
-    Self: Sized,
-{
-    fn from_type(t: T) -> Self;
-}
-
 // String
 
-impl FromType<&FieldType> for Option<String> {
-    fn from_type(t: &FieldType) -> Self {
+impl From<&FieldType> for Option<String> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::String(s) => Some(s.clone()),
             _ => None,
@@ -75,16 +66,16 @@ impl FromType<&FieldType> for Option<String> {
     }
 }
 
-impl FromType<&String> for FieldType {
-    fn from_type(t: &String) -> Self {
+impl From<&String> for FieldType {
+    fn from(t: &String) -> Self {
         FieldType::String(t.clone())
     }
 }
 
 // i64
 
-impl FromType<&FieldType> for Option<i64> {
-    fn from_type(t: &FieldType) -> Self {
+impl From<&FieldType> for Option<i64> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Integer(s) => Some(*s),
             _ => None,
@@ -92,16 +83,16 @@ impl FromType<&FieldType> for Option<i64> {
     }
 }
 
-impl FromType<i64> for FieldType {
-    fn from_type(t: i64) -> Self {
+impl From<i64> for FieldType {
+    fn from(t: i64) -> Self {
         FieldType::Integer(t)
     }
 }
 
 // f64
 
-impl FromType<&FieldType> for Option<f64> {
-    fn from_type(t: &FieldType) -> Self {
+impl From<&FieldType> for Option<f64> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Float(f) => Some(*f),
             _ => None,
@@ -109,16 +100,16 @@ impl FromType<&FieldType> for Option<f64> {
     }
 }
 
-impl FromType<f64> for FieldType {
-    fn from_type(t: f64) -> Self {
+impl From<f64> for FieldType {
+    fn from(t: f64) -> Self {
         FieldType::Float(t)
     }
 }
 
 // bool
 
-impl FromType<&FieldType> for Option<bool> {
-    fn from_type(t: &FieldType) -> Self {
+impl From<&FieldType> for Option<bool> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Bool(b) => Some(*b),
             _ => None,
@@ -126,8 +117,8 @@ impl FromType<&FieldType> for Option<bool> {
     }
 }
 
-impl FromType<bool> for FieldType {
-    fn from_type(t: bool) -> Self {
+impl From<bool> for FieldType {
+    fn from(t: bool) -> Self {
         FieldType::Bool(t)
     }
 }
@@ -139,8 +130,8 @@ pub trait EnumType: Debug + PartialEq + Eq {
     fn from_string(t: String) -> Self;
 }
 
-impl<E: EnumType> FromType<&FieldType> for Option<E> {
-    fn from_type(t: &FieldType) -> Self {
+impl<E: EnumType> From<&FieldType> for Option<E> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Enum(s) => Some(E::from_string(s.clone())),
             _ => None,
@@ -148,16 +139,16 @@ impl<E: EnumType> FromType<&FieldType> for Option<E> {
     }
 }
 
-impl<E> FromType<&E> for FieldType where E: EnumType {
-    fn from_type(t: &E) -> Self {
+impl<E> From<&E> for FieldType where E: EnumType {
+    fn from(t: &E) -> Self {
         FieldType::Enum(t.to_string())
     }
 }
 
 // Ref
 
-impl FromType<&FieldType> for Option<(String, u32)> {
-    fn from_type(t: &FieldType) -> Self {
+impl From<&FieldType> for Option<(String, u32)> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref(s) => Some(s.clone()),
             _ => None,
@@ -165,14 +156,14 @@ impl FromType<&FieldType> for Option<(String, u32)> {
     }
 }
 
-impl FromType<&(String, u32)> for FieldType {
-    fn from_type(t: &(String, u32)) -> Self {
+impl From<&(String, u32)> for FieldType {
+    fn from(t: &(String, u32)) -> Self {
         FieldType::Ref(t.clone())
     }
 }
 
-impl<M: Model> FromType<&FieldType> for Option<Reference<M>> {
-    fn from_type(t: &FieldType) -> Self {
+impl<M: Model> From<&FieldType> for Option<Reference<M>> {
+    fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref((_, id)) => Some(id.into()),
             _ => None,
@@ -180,8 +171,8 @@ impl<M: Model> FromType<&FieldType> for Option<Reference<M>> {
     }
 }
 
-impl<M: Model> FromType<&Reference<M>> for FieldType {
-    fn from_type(t: &Reference<M>) -> Self {
+impl<M: Model> From<&Reference<M>> for FieldType {
+    fn from(t: &Reference<M>) -> Self {
         FieldType::Ref((M::get_model_name().clone(), t.id))
     }
 }
