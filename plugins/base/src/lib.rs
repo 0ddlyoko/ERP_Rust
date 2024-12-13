@@ -3,9 +3,9 @@ use erp::plugin::Plugin;
 
 pub mod models;
 
-pub struct ContactsPlugin;
+pub struct BasePlugin;
 
-impl Plugin for ContactsPlugin {
+impl Plugin for BasePlugin {
     fn name(&self) -> String {
         "base".to_string()
     }
@@ -21,7 +21,7 @@ impl Plugin for ContactsPlugin {
 
 #[no_mangle]
 pub extern "C" fn _create_plugin() -> *mut Box<dyn Plugin> {
-    let plugin = ContactsPlugin {};
+    let plugin = BasePlugin {};
     let box_plugin = Box::new(plugin);
     Box::into_raw(Box::new(box_plugin))
 }

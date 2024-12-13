@@ -10,15 +10,15 @@ pub struct Country {
 }
 
 impl Country {
-    fn get_id(&self) -> u32 {
+    pub fn get_id(&self) -> u32 {
         self.id
     }
 
-    fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &String {
         &self.name
     }
 
-    fn get_code(&self) -> &String {
+    pub fn get_code(&self) -> &String {
         &self.code
     }
 }

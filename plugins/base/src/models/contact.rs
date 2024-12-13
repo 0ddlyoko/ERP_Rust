@@ -10,34 +10,34 @@ pub struct Contact {
     email: Option<String>,
     phone: Option<String>,
     website: Option<String>,
-    lang: Reference<Lang>,
+    lang: Reference,
     // TODO Link to country
     // TODO Link to another contact (company)
 }
 
 impl Contact {
-    fn get_id(&self) -> u32 {
+    pub fn get_id(&self) -> u32 {
         self.id
     }
 
-    fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &String {
         &self.name
     }
 
-    fn get_email(&self) -> Option<&String> {
+    pub fn get_email(&self) -> Option<&String> {
         self.email.as_ref()
     }
 
-    fn get_phone(&self) -> Option<&String> {
+    pub fn get_phone(&self) -> Option<&String> {
         self.phone.as_ref()
     }
 
-    fn get_website(&self) -> Option<&String> {
+    pub fn get_website(&self) -> Option<&String> {
         self.website.as_ref()
     }
 
-    fn get_lang(&self) -> &Reference<Lang> {
-        &self.lang
+    pub fn get_lang<E: Model>(&mut self, env: &mut Environment) -> Result<Option<E>, Box<dyn Error>> {
+        self.lang.get(env)
     }
 }
 
@@ -81,9 +81,7 @@ impl Model for Contact {
                 },
                 FieldDescriptor {
                     name: "lang".to_string(),
-                    // TODO Pass the model instead of its name
-                    // TODO Check if the model exists / is loaded (maybe in a post load?)
-                    default_value: Some(FieldType::Ref(("lang".to_string(), 0))),
+                    default_value: Some(FieldType::Ref(0)),
                     description: Some("Language of the contact".to_string()),
                     required: Some(false),
                     ..FieldDescriptor::default()
@@ -102,7 +100,7 @@ impl Model for Contact {
         result.insert_option("email", self.get_email());
         result.insert_option("phone", self.get_phone());
         result.insert_option("website", self.get_website());
-        result.insert("lang", self.get_lang());
+        result.insert("lang", &self.lang);
         result
     }
 

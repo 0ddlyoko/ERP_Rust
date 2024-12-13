@@ -39,27 +39,27 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    fn get_id(&self) -> u32 {
+    pub fn get_id(&self) -> u32 {
         self.id
     }
 
-    fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &String {
         &self.name
     }
 
-    fn get_description(&self) -> Option<&String> {
+    pub fn get_description(&self) -> Option<&String> {
         self.description.as_ref()
     }
 
-    fn get_website(&self) -> Option<&String> {
+    pub fn get_website(&self) -> Option<&String> {
         self.website.as_ref()
     }
 
-    fn get_url(&self) -> Option<&String> {
+    pub fn get_url(&self) -> Option<&String> {
         self.url.as_ref()
     }
 
-    fn get_state(&self) -> &PluginState {
+    pub fn get_state(&self) -> &PluginState {
         &self.state
     }
 }

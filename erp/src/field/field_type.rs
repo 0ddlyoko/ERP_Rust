@@ -1,6 +1,5 @@
-use std::fmt::{Debug, Display, Formatter};
 use crate::field::Reference;
-use crate::model::Model;
+use std::fmt::{Debug, Display, Formatter};
 
 #[macro_export]
 macro_rules! make_eq {
@@ -24,7 +23,7 @@ pub enum FieldType {
     Float(f64),
     Bool(bool),
     Enum(String),
-    Ref((String, u32)),
+    Ref(u32),
 }
 
 impl Display for FieldType {
@@ -35,7 +34,7 @@ impl Display for FieldType {
             FieldType::Float(fl) => write!(f, "{}", fl),
             FieldType::Bool(b) => write!(f, "{}", b),
             FieldType::Enum(e) => write!(f, "{}", e),
-            FieldType::Ref((model_name, id)) => write!(f, "{}:{}", model_name, id),
+            FieldType::Ref(id) => write!(f, "{}", id),
         }
     }
 }
@@ -69,6 +68,18 @@ impl From<&FieldType> for Option<String> {
 impl From<&String> for FieldType {
     fn from(t: &String) -> Self {
         FieldType::String(t.clone())
+    }
+}
+
+impl From<String> for FieldType {
+    fn from(t: String) -> Self {
+        FieldType::String(t)
+    }
+}
+
+impl From<&str> for FieldType {
+    fn from(t: &str) -> Self {
+        FieldType::String(t.to_string())
     }
 }
 
@@ -147,32 +158,32 @@ impl<E> From<&E> for FieldType where E: EnumType {
 
 // Ref
 
-impl From<&FieldType> for Option<(String, u32)> {
+impl From<&FieldType> for Option<u32> {
     fn from(t: &FieldType) -> Self {
         match t {
-            FieldType::Ref(s) => Some(s.clone()),
+            FieldType::Ref(r) => Some(*r),
             _ => None,
         }
     }
 }
 
-impl From<&(String, u32)> for FieldType {
-    fn from(t: &(String, u32)) -> Self {
-        FieldType::Ref(t.clone())
+impl From<u32> for FieldType {
+    fn from(t: u32) -> Self {
+        FieldType::Ref(t)
     }
 }
 
-impl<M: Model> From<&FieldType> for Option<Reference<M>> {
+impl From<&FieldType> for Option<Reference> {
     fn from(t: &FieldType) -> Self {
         match t {
-            FieldType::Ref((_, id)) => Some(id.into()),
+            FieldType::Ref(id) => Some(id.into()),
             _ => None,
         }
     }
 }
 
-impl<M: Model> From<&Reference<M>> for FieldType {
-    fn from(t: &Reference<M>) -> Self {
-        FieldType::Ref((M::get_model_name().clone(), t.id))
+impl From<&Reference> for FieldType {
+    fn from(t: &Reference) -> Self {
+        FieldType::Ref(t.id)
     }
 }

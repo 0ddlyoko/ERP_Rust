@@ -10,11 +10,11 @@ pub struct Company {
 }
 
 impl Company {
-    fn get_id(&self) -> u32 {
+    pub fn get_id(&self) -> u32 {
         self.id
     }
 
-    fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &String {
         &self.name
     }
 }
