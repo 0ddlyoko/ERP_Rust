@@ -154,11 +154,12 @@ impl<'model_manager> Environment<'model_manager> {
         ))
     }
 
-    pub fn cast_to<FROM, TO>(&mut self, from: &FROM)
+    pub fn cast_to<FROM, TO, BM>(&mut self, from: &mut FROM) -> Result<TO, Box<dyn Error>>
     where
-    FROM: Model,
-    TO: Model {
-
+    FROM: Model<BaseModel=BM>,
+    TO: Model<BaseModel=BM>,
+    {
+        self.get_record::<TO>(from.get_id())
     }
 
     /// Returns an instance of given model for a specific id
