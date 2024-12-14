@@ -1,4 +1,3 @@
-use crate::cache;
 use crate::cache::Cache;
 use crate::model::{MapOfFields, ModelManager, ModelNotFound};
 use std::error::Error;
@@ -108,15 +107,6 @@ impl<'model_manager> Environment<'model_manager> {
 
     /// Save given model in the cache
     pub fn save_record_from_name(&mut self, model_name: &str, record: &dyn Model) {
-        assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
-        let id = record.get_id();
-        let data = record.get_data();
-        self.cache
-            .insert_record_model_with_map(model_name, id, data);
-    }
-
-    /// Save given model in the cache
-    pub fn save_record_from_box(&mut self, model_name: &str, record: Box<&dyn Model>) {
         assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
         let data = record.get_data();
