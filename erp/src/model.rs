@@ -11,10 +11,22 @@ use std::error::Error;
 
 use crate::environment::Environment;
 
-pub trait Model {
-    fn get_model_name() -> String
+pub trait BaseModel {
+    fn get_model_name() -> &'static str;
+}
+
+pub trait Model: SimplifiedModel {
+    type BaseModel: BaseModel + Sized;
+}
+
+pub trait SimplifiedModel {
+
+    fn get_model_name() -> &'static str
     where
-        Self: Sized;
+        Self: Sized + Model {
+        <Self as Model>::BaseModel::get_model_name()
+    }
+
     fn get_model_descriptor() -> ModelDescriptor
     where
         Self: Sized;
@@ -35,3 +47,38 @@ pub trait Model {
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>;
 }
+
+// impl<T: Model> SimplifiedModel for T {
+//     fn get_model_name() -> &'static str
+//     where
+//         Self: Sized
+//     {
+//         T::get_model_name()
+//     }
+//
+//     fn get_model_descriptor() -> ModelDescriptor
+//     where
+//         Self: Sized
+//     {
+//         T::get_model_descriptor()
+//     }
+//
+//     fn get_id(&self) -> u32 {
+//         T::get_id(self)
+//     }
+//
+//     fn get_data(&self) -> MapOfFields {
+//         T::get_data(self)
+//     }
+//
+//     fn create_model(id: u32, data: MapOfFields) -> Self
+//     where
+//         Self: Sized
+//     {
+//         T::create_model(id, data)
+//     }
+//
+//     fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+//         T::call_compute_method(self, field_name, env)
+//     }
+// }

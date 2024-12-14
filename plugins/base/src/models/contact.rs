@@ -1,8 +1,16 @@
+use crate::models::lang::BaseLang;
 use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType, Reference};
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
-use crate::models::Lang;
+
+pub struct BaseContact;
+
+impl BaseModel for BaseContact {
+    fn get_model_name() -> &'static str {
+        "contact"
+    }
+}
 
 pub struct Contact {
     id: u32,
@@ -10,7 +18,7 @@ pub struct Contact {
     email: Option<String>,
     phone: Option<String>,
     website: Option<String>,
-    lang: Reference,
+    lang: Reference<BaseLang>,
     // TODO Link to country
     // TODO Link to another contact (company)
 }
@@ -36,19 +44,21 @@ impl Contact {
         self.website.as_ref()
     }
 
-    pub fn get_lang<E: Model>(&mut self, env: &mut Environment) -> Result<Option<E>, Box<dyn Error>> {
+    pub fn get_lang<E>(&mut self, env: &mut Environment) -> Result<Option<E>, Box<dyn Error>>
+    where
+        E: Model<BaseModel=BaseLang> {
         self.lang.get(env)
     }
 }
 
 impl Model for Contact {
-    fn get_model_name() -> String {
-        "contact".to_string()
-    }
+    type BaseModel = BaseContact;
+}
 
+impl SimplifiedModel for Contact {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "contact".to_string(),
+            name: Self::get_model_name().to_string(),
             description: Some("Contact".to_string()),
             fields: vec![
                 FieldDescriptor {

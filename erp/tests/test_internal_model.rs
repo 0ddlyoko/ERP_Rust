@@ -6,7 +6,7 @@ use std::any::TypeId;
 #[test]
 fn test_get_fields_name() {
     let type_id = TypeId::of::<InternalField>();
-    let mut internal_model = FinalInternalModel::new("".to_string());
+    let mut internal_model = FinalInternalModel::new("");
 
     internal_model.register_internal_field(
         &InternalField {

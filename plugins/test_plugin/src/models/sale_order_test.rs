@@ -1,8 +1,16 @@
 use erp::environment::Environment;
 use erp::field::FieldType;
 use erp::field::FieldDescriptor;
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
+
+pub struct BaseSaleOrderTest;
+
+impl BaseModel for BaseSaleOrderTest {
+    fn get_model_name() -> &'static str {
+        "sale_order_test"
+    }
+}
 
 pub(crate) struct SaleOrderTest {
     id: u32,
@@ -30,13 +38,13 @@ impl SaleOrderTest {
 }
 
 impl Model for SaleOrderTest {
-    fn get_model_name() -> String {
-        "sale_order_test".to_string()
-    }
+    type BaseModel = BaseSaleOrderTest;
+}
 
+impl SimplifiedModel for SaleOrderTest {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "sale_order_test".to_string(),
+            name: Self::get_model_name().to_string(),
             description: Some("A Sale Order!".to_string()),
             fields: vec![
                 FieldDescriptor {

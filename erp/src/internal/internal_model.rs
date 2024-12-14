@@ -1,7 +1,7 @@
 use crate::field::FieldType;
 use crate::internal::internal_field::{FinalInternalField, InternalField};
-use crate::model::Model;
 use crate::model::{MapOfFields, ModelDescriptor};
+use crate::model::{Model, SimplifiedModel};
 use std::any::TypeId;
 use std::collections::HashMap;
 
@@ -10,7 +10,7 @@ pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub create_instance: fn(u32, MapOfFields) -> Box<dyn Model>,
+    pub create_instance: fn(u32, MapOfFields) -> Box<dyn SimplifiedModel>,
 }
 
 /// Final descriptor of a model.
@@ -24,9 +24,9 @@ pub struct FinalInternalModel {
 }
 
 impl FinalInternalModel {
-    pub fn new(model_name: String) -> FinalInternalModel {
+    pub fn new(model_name: &str) -> FinalInternalModel {
         FinalInternalModel {
-            name: model_name,
+            name: model_name.to_string(),
             description: "".to_string(),
             models: HashMap::new(),
             fields: HashMap::new(),
@@ -65,11 +65,11 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let create_instance: fn(u32, MapOfFields) -> Box<dyn Model> =
+        let create_instance: fn(u32, MapOfFields) -> Box<dyn SimplifiedModel> =
             |id, data| Box::new(M::create_model(id, data));
 
         let internal_model = InternalModel {
-            name,
+            name: name.to_string(),
             description,
             fields: final_fields,
             create_instance,

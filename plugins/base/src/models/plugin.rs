@@ -1,7 +1,15 @@
 use erp::environment::Environment;
 use erp::field::{EnumType, FieldDescriptor, FieldType};
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
+
+pub struct BasePlugin;
+
+impl BaseModel for BasePlugin {
+    fn get_model_name() -> &'static str {
+        "plugin"
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PluginState {
@@ -65,13 +73,13 @@ impl Plugin {
 }
 
 impl Model for Plugin {
-    fn get_model_name() -> String {
-        "country".to_string()
-    }
+    type BaseModel = BasePlugin;
+}
 
+impl SimplifiedModel for Plugin {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "country".to_string(),
+            name: Self::get_model_name().to_string(),
             description: Some("Countries".to_string()),
             fields: vec![
                 FieldDescriptor {

@@ -1,5 +1,6 @@
 use crate::field::Reference;
 use std::fmt::{Debug, Display, Formatter};
+use crate::model::BaseModel;
 
 #[macro_export]
 macro_rules! make_eq {
@@ -173,7 +174,7 @@ impl From<u32> for FieldType {
     }
 }
 
-impl From<&FieldType> for Option<Reference> {
+impl<E: BaseModel> From<&FieldType> for Option<Reference<E>> {
     fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref(id) => Some(id.into()),
@@ -182,8 +183,8 @@ impl From<&FieldType> for Option<Reference> {
     }
 }
 
-impl From<&Reference> for FieldType {
-    fn from(t: &Reference) -> Self {
+impl<E: BaseModel> From<&Reference<E>> for FieldType {
+    fn from(t: &Reference<E>) -> Self {
         FieldType::Ref(t.id)
     }
 }

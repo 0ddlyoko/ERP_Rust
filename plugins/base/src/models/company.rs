@@ -1,7 +1,15 @@
 use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType};
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
+
+pub struct BaseCompany;
+
+impl BaseModel for BaseCompany {
+    fn get_model_name() -> &'static str {
+        "company"
+    }
+}
 
 pub struct Company {
     id: u32,
@@ -20,18 +28,18 @@ impl Company {
 }
 
 impl Model for Company {
-    fn get_model_name() -> String {
-        "country".to_string()
-    }
+    type BaseModel = BaseCompany;
+}
 
+impl SimplifiedModel for Company {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "country".to_string(),
-            description: Some("Countries".to_string()),
+            name: Self::get_model_name().to_string(),
+            description: Some("Companies".to_string()),
             fields: vec![FieldDescriptor {
                 name: "name".to_string(),
                 default_value: Some(FieldType::String("".to_string())),
-                description: Some("Name of the country".to_string()),
+                description: Some("Name of the company".to_string()),
                 required: Some(true),
                 ..FieldDescriptor::default()
             }],
@@ -60,6 +68,7 @@ impl Model for Company {
         field_name: &str,
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>> {
+        env.save_record_from_name("test", self);
         Ok(())
     }
 }

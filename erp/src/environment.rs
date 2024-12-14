@@ -1,5 +1,5 @@
 use crate::cache::Cache;
-use crate::model::{MapOfFields, ModelManager, ModelNotFound};
+use crate::model::{MapOfFields, ModelManager, ModelNotFound, SimplifiedModel};
 use std::error::Error;
 
 use crate::cache::errors::RecordNotFoundError;
@@ -106,12 +106,11 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Save given model in the cache
-    pub fn save_record_from_name(&mut self, model_name: &str, record: &dyn Model) {
+    pub fn save_record_from_name(&mut self, model_name: &str, record: &dyn SimplifiedModel) {
         assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
         let id = record.get_id();
         let data = record.get_data();
-        self.cache
-            .insert_record_model_with_map(model_name, id, data);
+        self.cache.insert_record_model_with_map(model_name, id, data);
     }
 
     /// Save given record to the cache
@@ -122,8 +121,7 @@ impl<'model_manager> Environment<'model_manager> {
         let id = record.get_id();
         let model_name = M::get_model_name();
         let data = record.get_data();
-        self.cache
-            .insert_record_model_with_map(model_name.as_str(), id, data);
+        self.cache.insert_record_model_with_map(model_name, id, data);
     }
 
     /// Returns the first record of given model for a specific id
@@ -133,7 +131,7 @@ impl<'model_manager> Environment<'model_manager> {
         &mut self,
         model_name: &str,
         id: u32,
-    ) -> Result<Box<dyn Model>, Box<dyn Error>> {
+    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
         let map_of_fields = self.get_map_of_field(model_name, id)?;
         Ok(self
             .model_manager
@@ -147,13 +145,20 @@ impl<'model_manager> Environment<'model_manager> {
         &mut self,
         internal_model: &InternalModel,
         id: u32,
-    ) -> Result<Box<dyn Model>, Box<dyn Error>> {
+    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
         let map_of_fields = self.get_map_of_field(internal_model.name.as_str(), id)?;
         Ok(self.model_manager.create_instance_from_internal_model(
             id,
             map_of_fields,
             internal_model,
         ))
+    }
+
+    pub fn cast_to<FROM, TO>(&mut self, from: &FROM)
+    where
+    FROM: Model,
+    TO: Model {
+
     }
 
     /// Returns an instance of given model for a specific id
@@ -164,7 +169,7 @@ impl<'model_manager> Environment<'model_manager> {
         M: Model,
     {
         let model_name = M::get_model_name();
-        let map_of_fields = self.get_map_of_field(model_name.as_str(), id)?;
+        let map_of_fields = self.get_map_of_field(model_name, id)?;
         Ok(self.model_manager.create_instance::<M>(id, map_of_fields))
     }
 
@@ -212,7 +217,7 @@ impl<'model_manager> Environment<'model_manager> {
         M: Model,
     {
         let model_name = M::get_model_name();
-        let id = self._create_new_record(model_name.as_str(), data)?;
+        let id = self._create_new_record(model_name, data)?;
         self.get_record::<M>(id)
     }
 
@@ -221,7 +226,7 @@ impl<'model_manager> Environment<'model_manager> {
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Result<Box<dyn Model>, Box<dyn Error>> {
+    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
         let id = self._create_new_record(model_name, data)?;
         self.get_record_from_name(model_name, id)
     }

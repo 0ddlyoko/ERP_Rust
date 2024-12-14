@@ -1,7 +1,15 @@
 use erp::environment::Environment;
 use erp::field::{FieldDescriptor, FieldType};
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
+
+pub struct BaseLang;
+
+impl BaseModel for BaseLang {
+    fn get_model_name() -> &'static str {
+        "lang"
+    }
+}
 
 pub struct Lang {
     id: u32,
@@ -24,14 +32,13 @@ impl Lang {
 }
 
 impl Model for Lang {
-    fn get_model_name() -> String {
-        "lang".to_string()
-    }
+    type BaseModel = BaseLang;}
 
+impl SimplifiedModel for Lang {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "lang".to_string(),
-            description: Some("Countries".to_string()),
+            name: Self::get_model_name().to_string(),
+            description: Some("Language".to_string()),
             fields: vec![
                 FieldDescriptor {
                     name: "name".to_string(),

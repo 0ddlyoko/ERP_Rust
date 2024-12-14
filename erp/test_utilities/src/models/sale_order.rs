@@ -1,7 +1,15 @@
 use erp::environment::Environment;
 use erp::field::{EnumType, FieldDescriptor, FieldType};
-use erp::model::{MapOfFields, Model, ModelDescriptor};
+use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
 use std::error::Error;
+
+pub struct BaseSaleOrder;
+
+impl BaseModel for BaseSaleOrder {
+    fn get_model_name() -> &'static str {
+        "sale_order"
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SaleOrderState {
@@ -76,13 +84,13 @@ impl SaleOrder {
 }
 
 impl Model for SaleOrder {
-    fn get_model_name() -> String {
-        "sale_order".to_string()
-    }
+    type BaseModel = BaseSaleOrder;
+}
 
+impl SimplifiedModel for SaleOrder {
     fn get_model_descriptor() -> ModelDescriptor {
         ModelDescriptor {
-            name: "sale_order".to_string(),
+            name: Self::get_model_name().to_string(),
             description: Some("A Sale Order!".to_string()),
             fields: vec![
                 FieldDescriptor {

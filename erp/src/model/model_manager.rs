@@ -1,6 +1,6 @@
 use crate::environment::Environment;
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
-use crate::model::MapOfFields;
+use crate::model::{MapOfFields, SimplifiedModel};
 use crate::model::Model;
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ impl ModelManager {
         model_name: &str,
         id: u32,
         data: MapOfFields,
-    ) -> Box<dyn Model> {
+    ) -> Box<dyn SimplifiedModel> {
         let model = self.models.get(model_name).unwrap();
         (model.first().create_instance)(id, data)
     }
@@ -41,7 +41,7 @@ impl ModelManager {
         id: u32,
         data: MapOfFields,
         internal_model: &InternalModel,
-    ) -> Box<dyn Model> {
+    ) -> Box<dyn SimplifiedModel> {
         (internal_model.create_instance)(id, data)
     }
 
