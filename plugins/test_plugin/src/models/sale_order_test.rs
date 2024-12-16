@@ -51,14 +51,14 @@ impl SimplifiedModel for SaleOrderTest {
                     name: "name".to_string(),
                     default_value: Some(FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "age".to_string(),
                     default_value: Some(FieldType::Integer(0)),
                     description: Some("Age of the logged user".to_string()),
-                    required: Some(true),
+                    required: true,
                     compute: Some(true),
                     ..FieldDescriptor::default()
                 },

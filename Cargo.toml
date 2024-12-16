@@ -21,6 +21,7 @@ serde = "1.0.214"
 
 [workspace]
 members = [
+    "code_gen",
     "erp",
     "plugins/base",
     "plugins/test_plugin",

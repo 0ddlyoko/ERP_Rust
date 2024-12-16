@@ -6,7 +6,7 @@ pub struct InternalField {
     pub name: String,
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
-    pub required: Option<bool>,
+    pub required: bool,
     pub compute: Option<bool>,
 }
 
@@ -51,9 +51,7 @@ impl FinalInternalField {
         if let Some(description) = &field_descriptor.description {
             self.description = description.clone();
         }
-        if let Some(required) = &field_descriptor.required {
-            self.required = *required;
-        }
+        self.required = field_descriptor.required;
         if let Some(compute) = &field_descriptor.compute {
             if *compute {
                 self.compute = Some(*type_id);

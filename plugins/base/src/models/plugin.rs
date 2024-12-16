@@ -86,35 +86,35 @@ impl SimplifiedModel for Plugin {
                     name: "name".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Name of the module".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "description".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Description of the module".to_string()),
-                    required: Some(false),
+                    required: false,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "website".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Website of the module".to_string()),
-                    required: Some(false),
+                    required: false,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "url".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("URL of the module".to_string()),
-                    required: Some(false),
+                    required: false,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "state".to_string(),
                     default_value: Some(FieldType::Enum(PluginState::NotInstalled.to_string())),
                     description: Some("State of the module".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
             ],
@@ -127,11 +127,11 @@ impl SimplifiedModel for Plugin {
 
     fn get_data(&self) -> MapOfFields {
         let mut result = MapOfFields::default();
-        result.insert("name", self.get_name());
-        result.insert_option("description", self.get_description());
-        result.insert_option("website", self.get_website());
-        result.insert_option("url", self.get_url());
-        result.insert("state", self.get_state());
+        result.insert("name", &self.name);
+        result.insert_option("description", self.description.as_ref());
+        result.insert_option("website", self.website.as_ref());
+        result.insert_option("url", self.url.as_ref());
+        result.insert("state", &self.state);
         result
     }
 

@@ -45,14 +45,14 @@ impl SimplifiedModel for Country {
                     name: "name".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Name of the country".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "code".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Code of the country".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
             ],

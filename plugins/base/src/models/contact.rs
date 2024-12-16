@@ -1,8 +1,10 @@
 use crate::models::lang::BaseLang;
 use erp::environment::Environment;
-use erp::field::{FieldDescriptor, FieldType, Reference};
-use erp::model::{BaseModel, MapOfFields, Model, ModelDescriptor, SimplifiedModel};
+use erp::field::Reference;
+use erp::model::BaseModel;
+use erp::model::Model;
 use std::error::Error;
+use code_gen::Model;
 
 pub struct BaseContact;
 
@@ -12,6 +14,8 @@ impl BaseModel for BaseContact {
     }
 }
 
+#[derive(Model)]
+#[erp(table_name="contact")]
 pub struct Contact {
     id: u32,
     name: String,
@@ -55,81 +59,84 @@ impl Model for Contact {
     type BaseModel = BaseContact;
 }
 
-impl SimplifiedModel for Contact {
-    fn get_model_descriptor() -> ModelDescriptor {
-        ModelDescriptor {
-            name: Self::get_model_name().to_string(),
-            description: Some("Contact".to_string()),
-            fields: vec![
-                FieldDescriptor {
-                    name: "name".to_string(),
-                    default_value: Some(FieldType::String("".to_string())),
-                    description: Some("Name of the contact".to_string()),
-                    required: Some(false),
-                    ..FieldDescriptor::default()
-                },
-                FieldDescriptor {
-                    name: "email".to_string(),
-                    default_value: Some(FieldType::String("".to_string())),
-                    description: Some("Email of the contact".to_string()),
-                    required: Some(false),
-                    ..FieldDescriptor::default()
-                },
-                FieldDescriptor {
-                    name: "phone".to_string(),
-                    default_value: Some(FieldType::String("".to_string())),
-                    description: Some("Phone number of the contact".to_string()),
-                    required: Some(false),
-                    ..FieldDescriptor::default()
-                },
-                FieldDescriptor {
-                    name: "website".to_string(),
-                    default_value: Some(FieldType::String("".to_string())),
-                    description: Some("Website of the contact".to_string()),
-                    required: Some(false),
-                    ..FieldDescriptor::default()
-                },
-                FieldDescriptor {
-                    name: "lang".to_string(),
-                    default_value: Some(FieldType::Ref(0)),
-                    description: Some("Language of the contact".to_string()),
-                    required: Some(false),
-                    ..FieldDescriptor::default()
-                },
-            ],
-        }
-    }
 
-    fn get_id(&self) -> u32 {
-        self.id
-    }
 
-    fn get_data(&self) -> MapOfFields {
-        let mut result = MapOfFields::default();
-        result.insert("name", self.get_name());
-        result.insert_option("email", self.get_email());
-        result.insert_option("phone", self.get_phone());
-        result.insert_option("website", self.get_website());
-        result.insert("lang", &self.lang);
-        result
-    }
-
-    fn create_model(id: u32, data: MapOfFields) -> Self {
-        Self {
-            id,
-            name: data.get("name"),
-            email: data.get_option("email"),
-            phone: data.get_option("phone"),
-            website: data.get_option("website"),
-            lang: data.get("lang"),
-        }
-    }
-
-    fn call_compute_method(
-        &mut self,
-        field_name: &str,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-}
+// impl SimplifiedModel for Contact {
+//     fn get_model_descriptor() -> ModelDescriptor {
+//         ModelDescriptor {
+//             name: Self::get_model_name().to_string(),
+//             description: Some("Contact".to_string()),
+//             fields: vec![
+//                 FieldDescriptor {
+//                     name: "name".to_string(),
+//                     default_value: Some(FieldType::String("".to_string())),
+//                     description: Some("Name of the contact".to_string()),
+//                     required: false,
+//                     ..FieldDescriptor::default()
+//                 },
+//                 FieldDescriptor {
+//                     name: "email".to_string(),
+//                     default_value: Some(FieldType::String("".to_string())),
+//                     description: Some("Email of the contact".to_string()),
+//                     required: false,
+//                     ..FieldDescriptor::default()
+//                 },
+//                 FieldDescriptor {
+//                     name: "phone".to_string(),
+//                     default_value: Some(FieldType::String("".to_string())),
+//                     description: Some("Phone number of the contact".to_string()),
+//                     required: false,
+//                     ..FieldDescriptor::default()
+//                 },
+//                 FieldDescriptor {
+//                     name: "website".to_string(),
+//                     default_value: Some(FieldType::String("".to_string())),
+//                     description: Some("Website of the contact".to_string()),
+//                     required: false,
+//                     ..FieldDescriptor::default()
+//                 },
+//                 FieldDescriptor {
+//                     name: "lang".to_string(),
+//                     default_value: Some(FieldType::Ref(0)),
+//                     description: Some("Language of the contact".to_string()),
+//                     required: false,
+//                     // TODO As it's a ref, pass the name of the ref table as an argument here
+//                     ..FieldDescriptor::default()
+//                 },
+//             ],
+//         }
+//     }
+//
+//     fn get_id(&self) -> u32 {
+//         self.id
+//     }
+//
+//     fn get_data(&self) -> MapOfFields {
+//         let mut result = MapOfFields::default();
+//         result.insert("name", &self.name);
+//         result.insert_option("email", self.email.as_ref());
+//         result.insert_option("phone", self.phone.as_ref());
+//         result.insert_option("website", self.website.as_ref());
+//         result.insert("lang", &self.lang);
+//         result
+//     }
+//
+//     fn create_model(id: u32, data: MapOfFields) -> Self {
+//         Self {
+//             id,
+//             name: data.get("name"),
+//             email: data.get_option("email"),
+//             phone: data.get_option("phone"),
+//             website: data.get_option("website"),
+//             lang: data.get("lang"),
+//         }
+//     }
+//
+//     fn call_compute_method(
+//         &mut self,
+//         field_name: &str,
+//         env: &mut Environment,
+//     ) -> Result<(), Box<dyn Error>> {
+//         Ok(())
+//     }
+// }

@@ -40,7 +40,7 @@ impl SimplifiedModel for Company {
                 name: "name".to_string(),
                 default_value: Some(FieldType::String("".to_string())),
                 description: Some("Name of the company".to_string()),
-                required: Some(true),
+                required: true,
                 ..FieldDescriptor::default()
             }],
         }

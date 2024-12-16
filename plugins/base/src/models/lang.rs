@@ -32,7 +32,8 @@ impl Lang {
 }
 
 impl Model for Lang {
-    type BaseModel = BaseLang;}
+    type BaseModel = BaseLang;
+}
 
 impl SimplifiedModel for Lang {
     fn get_model_descriptor() -> ModelDescriptor {
@@ -44,14 +45,14 @@ impl SimplifiedModel for Lang {
                     name: "name".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Name of the language".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "code".to_string(),
                     default_value: Some(FieldType::String("".to_string())),
                     description: Some("Code of the language".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
             ],

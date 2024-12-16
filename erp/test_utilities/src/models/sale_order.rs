@@ -97,14 +97,14 @@ impl SimplifiedModel for SaleOrder {
                     name: "name".to_string(),
                     default_value: Some(FieldType::String("0ddlyoko".to_string())),
                     description: Some("Name of the SO".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
                     name: "state".to_string(),
                     default_value: Some(FieldType::Enum(SaleOrderState::Draft.to_string())),
                     description: Some("Current state of this SO".to_string()),
-                    required: Some(true),
+                    required: true,
                     ..FieldDescriptor::default()
                 },
                 FieldDescriptor {
