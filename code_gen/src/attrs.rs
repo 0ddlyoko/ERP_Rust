@@ -1,5 +1,5 @@
 use crate::attrs::AllowedFieldAttrs::{Default};
-use crate::attrs::AllowedModelAttrs::{Description, TableName};
+use crate::attrs::AllowedModelAttrs::{DerivedModel, Description, TableName};
 use crate::util::{gen_unknown_key_error, parse_eq};
 use proc_macro2::{Ident, Span};
 use syn::parse::{Parse, ParseStream, Result};
@@ -22,11 +22,13 @@ pub struct AttributeWrapper<T> {
 pub enum AllowedModelAttrs {
     TableName(Ident, LitStr),
     Description(Ident, LitStr),
+    DerivedModel(Ident, LitStr),
 }
 
 static VALID_MODEL_STRINGS: &[&str] = &[
     "table_name",
     "description",
+    "derived_model",
 ];
 
 impl Parse for AllowedModelAttrs {
@@ -37,6 +39,7 @@ impl Parse for AllowedModelAttrs {
         match name_str.as_str() {
             "table_name" => Ok(TableName(name, parse_eq(input, "table_name = \"my_table_name\"")?)),
             "description" => Ok(Description(name, parse_eq(input, "description = \"Description of the struct\"")?)),
+            "derived_model" => Ok(DerivedModel(name, parse_eq(input, "derived_model = \"base::models::company\"")?)),
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_MODEL_STRINGS))
         }
     }
@@ -47,6 +50,7 @@ impl MySpanned for AllowedModelAttrs {
         match self {
             TableName(ident, _) => ident.span(),
             Description(ident, _) => ident.span(),
+            DerivedModel(ident, _) => ident.span(),
         }
     }
 }

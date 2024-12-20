@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{DeriveInput, Result};
+use syn::{parse_str, DeriveInput, Path, Result};
 use crate::field::FieldGen;
 use crate::model::ModelGen;
 
@@ -11,10 +11,44 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         ..
     } = item;
     let ModelGen {
+        struct_name,
+        table_name,
         description,
+        derived_model,
         fields,
         ..
     } = ModelGen::from_item(&item)?;
+
+    let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
+    let base_model_name = format!("Base{}", table_name);
+    let base_model = if let Some(derived_model) = derived_model {
+        let full_base_model = if derived_model.is_empty() {
+            base_model_name
+        } else {
+            format!("{}::{}", derived_model, base_model_name)
+        };
+        let full_base_model_path: Path = parse_str(&full_base_model)?;
+        quote! {
+            impl erp::model::Model for #struct_name_ident {
+                type BaseModel = #full_base_model_path;
+            }
+        }
+    } else {
+        let base_model_name_ident = Ident::new(base_model_name.as_str(), Span::call_site());
+        quote! {
+            pub struct #base_model_name_ident;
+
+            impl erp::model::BaseModel for #base_model_name_ident {
+                fn get_model_name() -> &'static str {
+                    #table_name
+                }
+            }
+
+            impl erp::model::Model for #struct_name_ident {
+                type BaseModel = #base_model_name_ident;
+            }
+        }
+    };
 
     let description = if let Some(description) = description {
         quote! { Some(#description.to_string()) }
@@ -139,6 +173,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     };
 
     let result = quote! {
+        #base_model
+
         #simplified_model_impl
     };
 
