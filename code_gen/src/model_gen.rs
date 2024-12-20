@@ -50,6 +50,51 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
+    let impl_model_fields = fields.iter().filter_map(|f| {
+        let FieldGen {
+            field_name,
+            is_required,
+            is_reference,
+            field_type_keyword,
+            ..
+        } = f;
+        if field_name == "id" {
+            return None;
+        }
+        let field_ident = Ident::new(field_name, Span::call_site());
+        let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
+        if *is_required {
+            Some(quote! {
+                pub fn #get_field_ident(&self) -> &#field_type_keyword {
+                    &self.#field_ident
+                }
+            })
+        } else if *is_reference {
+            Some(quote! {
+                pub fn #get_field_ident<E>(&mut self, env: &mut erp::environment::Environment) -> Result<Option<E>, Box<dyn std::error::Error>>
+                where
+                    E: erp::model::Model<BaseModel=#field_type_keyword> {
+                    self.#field_ident.get(env)
+                }
+            })
+        } else {
+            Some(quote! {
+                pub fn #get_field_ident(&self) -> Option<&#field_type_keyword> {
+                    self.#field_ident.as_ref()
+                }
+            })
+        }
+    });
+    let impl_model = quote! {
+        impl #struct_name_ident {
+            pub fn get_id(&self) -> u32 {
+                self.id
+            }
+
+            #(#impl_model_fields)*
+        }
+    };
+
     let description = if let Some(description) = description {
         quote! { Some(#description.to_string()) }
     } else {
@@ -174,6 +219,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
     let result = quote! {
         #base_model
+
+        #impl_model
 
         #simplified_model_impl
     };
