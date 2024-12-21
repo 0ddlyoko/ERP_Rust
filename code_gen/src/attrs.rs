@@ -3,7 +3,7 @@ use crate::attrs::AllowedModelAttrs::{DerivedModel, Description, TableName};
 use crate::util::{gen_unknown_key_error, parse_eq};
 use proc_macro2::{Ident, Span};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, LitStr};
+use syn::{Attribute, Lit, LitStr};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
@@ -58,7 +58,7 @@ impl MySpanned for AllowedModelAttrs {
 // Fields
 
 pub enum AllowedFieldAttrs {
-    Default(Ident, LitStr),
+    Default(Ident, Lit),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[

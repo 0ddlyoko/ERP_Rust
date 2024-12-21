@@ -37,12 +37,12 @@ impl EnumType for SaleOrderState {
 #[erp(table_name="sale_order")]
 pub struct SaleOrder {
     pub id: u32,
-    // #[default="0ddlyoko"]
+    #[erp(default="0ddlyoko")]
     pub name: String,
     pub state: SaleOrderState,
-    // #[default=42]
+    #[erp(default=42i64)]
     pub price: i64,
-    // #[default=10]
+    #[erp(default=10)]
     pub amount: i64,
     // TODO Add support for this:
     // #[computed="compute_total_price"]

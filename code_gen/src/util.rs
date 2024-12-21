@@ -30,3 +30,7 @@ pub fn gen_missing_key_error(span: Span, name: &str) -> Error {
 pub fn gen_field_no_field_error(span: Span) -> Error {
     Error::new(span, "Field should be of type")
 }
+
+pub fn gen_wrong_default_value(span: Span, default_value: &str, name: &str) -> Error {
+    Error::new(span, format!("Wrong default value `{}` for field `{}`", default_value, name))
+}

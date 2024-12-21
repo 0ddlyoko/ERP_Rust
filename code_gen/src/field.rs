@@ -1,8 +1,9 @@
 use crate::attrs::{parse_attributes, AllowedFieldAttrs};
-use crate::util::{gen_field_no_field_error, gen_missing_key_error};
+use crate::util::{gen_field_no_field_error, gen_missing_key_error, gen_wrong_default_value};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
-use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Path, PathArguments, PathSegment, Result, Type, TypePath};
+use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment, Result, Type, TypePath};
+use erp::field::FieldType;
 
 pub struct FieldGen {
     pub field_name: String,
@@ -11,8 +12,7 @@ pub struct FieldGen {
     pub is_required: bool,
     pub is_reference: bool,
     pub field_type_keyword: Ident,
-    // TODO Handle default_value
-    // default_value: FieldType,
+    pub default_value: Option<FieldType>,
 }
 
 impl FieldGen {
@@ -36,7 +36,48 @@ impl FieldGen {
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
-                AllowedFieldAttrs::Default(_, default) => default_value = Some(default.value()),
+                AllowedFieldAttrs::Default(ident, default) => {
+                    default_value = Some(match default {
+                        Lit::Str(str) => FieldType::String(str.value()),
+                        Lit::Int(i) => {
+                            let int = i.base10_parse::<i64>();
+                            if int.is_ok() {
+                                FieldType::Integer(int?)
+                            } else {
+                                let int = i.base10_parse::<u32>();
+                                if int.is_ok() {
+                                    FieldType::Ref(int?)
+                                } else {
+                                    return Err(gen_wrong_default_value(i.span(), i.base10_digits(), field_name.as_str()))
+                                }
+                            }
+                        },
+                        Lit::Float(f) => {
+                            let float = f.base10_parse::<f64>();
+                            if float.is_ok() {
+                                FieldType::Float(float?)
+                            } else {
+                                return Err(gen_wrong_default_value(f.span(), f.base10_digits(), field_name.as_str()))
+                            }
+                        }
+                        Lit::Bool(b) => {
+                            if b.value {
+                                FieldType::Bool(true)
+                            } else {
+                                FieldType::Bool(false)
+                            }
+                        }
+                        // TODO Remove the 2 unwrap
+                        Lit::ByteStr(bs) => return Err(gen_wrong_default_value(bs.span(), &String::from_utf8(bs.value()).unwrap(), field_name.as_str())),
+                        Lit::CStr(cs) => return Err(gen_wrong_default_value(cs.span(), &cs.value().into_string().unwrap(), field_name.as_str())),
+                        Lit::Byte(b) => return Err(gen_wrong_default_value(b.span(), &b.value().to_string(), field_name.as_str())),
+                        Lit::Char(c) => return Err(gen_wrong_default_value(c.span(), &c.value().to_string(), field_name.as_str())),
+                        Lit::Verbatim(v) => return Err(gen_wrong_default_value(v.span(), &v.to_string(), field_name.as_str())),
+                        _ => return Err(gen_wrong_default_value(ident.span(), "???", "name")),
+                    });
+                    // TODO Add Enum default value
+                    // default_value = Some(default.value().into());
+                },
             }
         }
 
@@ -96,6 +137,7 @@ impl FieldGen {
             is_required,
             is_reference,
             field_type_keyword: field_type.unwrap(),
+            default_value,
         })
     }
 }

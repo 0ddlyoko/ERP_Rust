@@ -1,6 +1,7 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{parse_str, DeriveInput, Path, Result};
+use erp::field::FieldType;
 use crate::field::FieldGen;
 use crate::model::ModelGen;
 
@@ -107,10 +108,32 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             is_required,
             is_reference,
             field_type_keyword,
+            default_value,
             ..
         } = f;
 
-        let default_value = if *is_reference {
+        let default_value = if let Some(default_value) = default_value {
+            match default_value {
+                FieldType::String(s) => quote! {
+                    Some(erp::field::FieldType::String(#s.to_string()))
+                },
+                FieldType::Integer(i) => quote! {
+                    Some(erp::field::FieldType::Integer(#i))
+                },
+                FieldType::Float(f) => quote! {
+                    Some(erp::field::FieldType::Float(#f))
+                },
+                FieldType::Bool(b) => quote! {
+                    Some(erp::field::FieldType::Bool(#b))
+                },
+                FieldType::Enum(e) => quote! {
+                    Some(erp::field::FieldType::Enum(#e))
+                },
+                FieldType::Ref(r) => quote! {
+                    Some(erp::field::FieldType::Ref(#r))
+                },
+            }
+        } else if *is_reference {
             quote! {
                 Some(erp::field::FieldType::Ref(0))
             }
