@@ -101,6 +101,12 @@ impl From<i64> for FieldType {
     }
 }
 
+impl From<&i64> for FieldType {
+    fn from(t: &i64) -> Self {
+        FieldType::Integer(*t)
+    }
+}
+
 // f64
 
 impl From<&FieldType> for Option<f64> {
@@ -115,6 +121,12 @@ impl From<&FieldType> for Option<f64> {
 impl From<f64> for FieldType {
     fn from(t: f64) -> Self {
         FieldType::Float(t)
+    }
+}
+
+impl From<&f64> for FieldType {
+    fn from(t: &f64) -> Self {
+        FieldType::Float(*t)
     }
 }
 
@@ -135,14 +147,20 @@ impl From<bool> for FieldType {
     }
 }
 
+impl From<&bool> for FieldType {
+    fn from(t: &bool) -> Self {
+        FieldType::Bool(*t)
+    }
+}
+
 // Enums
 
-pub trait EnumType: Debug + PartialEq + Eq {
+pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {
     fn to_string(&self) -> String;
     fn from_string(t: String) -> Self;
 }
 
-impl<E: EnumType> From<&FieldType> for Option<E> {
+impl<E> From<&FieldType> for Option<E> where E: EnumType {
     fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Enum(s) => Some(E::from_string(s.clone())),
@@ -174,7 +192,13 @@ impl From<u32> for FieldType {
     }
 }
 
-impl<E: BaseModel> From<&FieldType> for Option<Reference<E>> {
+impl From<&u32> for FieldType {
+    fn from(t: &u32) -> Self {
+        FieldType::Ref(*t)
+    }
+}
+
+impl<E> From<&FieldType> for Option<Reference<E>> where E: BaseModel {
     fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref(id) => Some(id.into()),
@@ -183,7 +207,7 @@ impl<E: BaseModel> From<&FieldType> for Option<Reference<E>> {
     }
 }
 
-impl<E: BaseModel> From<&Reference<E>> for FieldType {
+impl<E> From<&Reference<E>> for FieldType where E: BaseModel {
     fn from(t: &Reference<E>) -> Self {
         FieldType::Ref(t.id)
     }

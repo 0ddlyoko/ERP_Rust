@@ -7,3 +7,4 @@ edition = "2021"
 config = { version = "0.14.1", features = ["toml"] }
 directories = "5.0.1"
 erp = { path = ".." }
+code_gen = { path = "../../code_gen" }

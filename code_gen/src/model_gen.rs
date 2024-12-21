@@ -116,7 +116,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
         } else {
             quote! {
-                Some(#field_type_keyword::default().into())
+                Some((&#field_type_keyword::default()).into())
             }
         };
 

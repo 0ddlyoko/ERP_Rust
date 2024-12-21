@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 erp = { path = "../../erp" }
+code_gen = { path = "../../code_gen" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

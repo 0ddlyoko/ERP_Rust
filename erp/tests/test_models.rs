@@ -17,8 +17,8 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Create a new SO
     let mut record = MapOfFields::default();
     record.insert("name", "0ddlyoko's SO");
-    record.insert::<i64>("price", 100);
-    record.insert::<i64>("amount", 200);
+    record.insert::<&i64>("price", &100);
+    record.insert::<&i64>("amount", &200);
     let mut record = env.create_new_record_from_map::<SaleOrder>(&mut record)?;
     assert_eq!(record.id, 1);
     assert_eq!(record.name, "0ddlyoko's SO");
@@ -81,7 +81,7 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
     let mut record = MapOfFields::default();
     record.insert("name", "0ddlyoko");
     record.insert("email", "0ddlyoko@test.com");
-    record.insert("lang", lang.get_id());
+    record.insert("lang", &lang.get_id());
     let mut contact = env.create_new_record_from_map::<Contact>(&mut record)?;
     assert_eq!(contact.get_id(), 2);
     assert_eq!(contact.get_name(), "0ddlyoko");
