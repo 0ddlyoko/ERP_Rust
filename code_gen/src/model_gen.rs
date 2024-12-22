@@ -110,6 +110,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             field_type_keyword,
             default_value,
             description,
+            compute,
             ..
         } = f;
 
@@ -150,6 +151,12 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
+        let compute = if let Some(_) = compute {
+            quote! { Some(true) }
+        } else {
+            quote! { None }
+        };
+
         quote! {
             {
                 erp::field::FieldDescriptor {
@@ -157,6 +164,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     default_value: #default_value,
                     description: #description,
                     required: #is_required,
+                    compute: #compute,
                     ..erp::field::FieldDescriptor::default()
                 }
             }
@@ -203,6 +211,21 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     });
 
+    let compute_fields = fields.iter().filter_map(|f| {
+        let FieldGen {
+            field_name,
+            compute,
+            ..
+        } = f;
+        let compute = compute.as_ref()?.to_string();
+        let compute_method_ident = Ident::new(&compute, Span::call_site());
+        Some(quote! {
+            if field_name == #field_name {
+                self.#compute_method_ident(env);
+            }
+        })
+    });
+
     let simplified_model_impl = quote! {
         impl #generics erp::model::SimplifiedModel for #ident #generics {
             fn get_model_descriptor() -> erp::model::ModelDescriptor {
@@ -240,7 +263,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 field_name: &str,
                 env: &mut erp::environment::Environment,
             ) -> Result<(), Box<dyn std::error::Error>> {
-                // TODO Computed methods
+                #(#compute_fields)*
                 Ok(())
             }
         }

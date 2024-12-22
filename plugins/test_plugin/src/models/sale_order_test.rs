@@ -8,11 +8,12 @@ pub(crate) struct SaleOrderTest {
     id: u32,
     #[erp(description="Name of the SO")]
     name: String,
+    #[erp(compute="compute_age")]
     age: i64,
 }
 
 impl SaleOrderTest {
-    fn _compute_age(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn compute_age(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         self.age = 42;
         Ok(())
     }

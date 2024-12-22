@@ -14,6 +14,7 @@ pub struct FieldGen {
     pub field_type_keyword: Ident,
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
+    pub compute: Option<String>,
 }
 
 impl FieldGen {
@@ -35,6 +36,7 @@ impl FieldGen {
         let mut is_reference = false;
         let mut default_value = None;
         let mut description = None;
+        let mut compute = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -82,6 +84,9 @@ impl FieldGen {
                 },
                 AllowedFieldAttrs::Description(_, default) => {
                     description = Some(default.value());
+                }
+                AllowedFieldAttrs::Compute(_, default) => {
+                    compute = Some(default.value());
                 }
             }
         }
@@ -144,6 +149,7 @@ impl FieldGen {
             field_type_keyword: field_type.unwrap(),
             default_value,
             description,
+            compute,
         })
     }
 }

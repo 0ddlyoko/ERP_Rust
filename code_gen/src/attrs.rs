@@ -58,21 +58,24 @@ impl MySpanned for AllowedModelAttrs {
 pub enum AllowedFieldAttrs {
     Default(Ident, Lit),
     Description(Ident, LitStr),
+    Compute(Ident, LitStr),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
     "default",
     "description",
+    "compute",
 ];
 
 impl Parse for AllowedFieldAttrs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let name: Ident = input.parse()?;
         let name_str = name.to_string();
 
         match name_str.as_str() {
             "default" => Ok(AllowedFieldAttrs::Default(name, parse_eq(input, "default = \"default_value\"")?)),
             "description" => Ok(AllowedFieldAttrs::Description(name, parse_eq(input, "description = \"Description of the field\"")?)),
+            "compute" => Ok(AllowedFieldAttrs::Compute(name, parse_eq(input, "compute = \"compute_method\"")?)),
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
         }
     }
@@ -83,6 +86,7 @@ impl MySpanned for AllowedFieldAttrs {
         match self {
             AllowedFieldAttrs::Default(ident, _) => ident.span(),
             AllowedFieldAttrs::Description(ident, _) => ident.span(),
+            AllowedFieldAttrs::Compute(ident, _) => ident.span(),
         }
     }
 }

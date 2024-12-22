@@ -45,7 +45,7 @@ pub struct SaleOrder {
     #[erp(default=10)]
     pub amount: i64,
     // TODO Add support for this:
-    // #[erp(computed="compute_total_price")]
+    #[erp(compute="compute_total_price")]
     pub total_price: i64,
 }
 
