@@ -109,6 +109,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             is_reference,
             field_type_keyword,
             default_value,
+            description,
             ..
         } = f;
 
@@ -143,13 +144,18 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
         };
 
+        let description = if let Some(description) = description {
+            quote! { Some(#description.to_string()) }
+        } else {
+            quote! { None }
+        };
+
         quote! {
             {
                 erp::field::FieldDescriptor {
                     name: #field_name.to_string(),
-                    // TODO Real default value
                     default_value: #default_value,
-                    // TODO description
+                    description: #description,
                     required: #is_required,
                     ..erp::field::FieldDescriptor::default()
                 }

@@ -1,7 +1,10 @@
+use test_plugin::TestPlugin;
 use erp::field::FieldType;
 use erp::internal::internal_field::FinalInternalField;
 use erp::internal::internal_field::InternalField;
 use std::any::TypeId;
+use std::error::Error;
+use erp::app::Application;
 
 #[test]
 fn test_register_field() {
@@ -164,4 +167,30 @@ fn test_register_field_with_another_default_type_should_fail() {
         },
         &type_id,
     );
+}
+
+#[test]
+fn test_register_fields_with_real_model() -> Result<(), Box<dyn Error>> {
+    let mut app = Application::new(test_utilities::default_config()?);
+    app.register_plugin(Box::new(TestPlugin {}))
+        .expect("Plugin should load");
+
+    let model = app.model_manager.get_model("sale_order_test");
+    // Should be none as the plugin is registered but not loaded
+    assert!(model.is_none());
+    app.load_plugin("test_plugin")?;
+
+    let model = app.model_manager.get_model("sale_order_test");
+    // Should exist as the plugin is registered and loaded
+    assert!(model.is_some());
+    let model = model.unwrap();
+    let field = model.get_internal_field("name");
+    assert_eq!(field.name, "name");
+    // Description should be overridden
+    assert_eq!(field.description, "New name of the SO");
+    assert!(field.compute.is_none());
+    assert!(field.required);
+    assert_eq!(field.default_value, FieldType::String("".to_string()));
+
+    Ok(())
 }

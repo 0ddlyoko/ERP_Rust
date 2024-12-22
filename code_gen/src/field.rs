@@ -13,6 +13,7 @@ pub struct FieldGen {
     pub is_reference: bool,
     pub field_type_keyword: Ident,
     pub default_value: Option<FieldType>,
+    pub description: Option<String>,
 }
 
 impl FieldGen {
@@ -33,6 +34,7 @@ impl FieldGen {
         let mut is_required = false;
         let mut is_reference = false;
         let mut default_value = None;
+        let mut description = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -78,6 +80,9 @@ impl FieldGen {
                     // TODO Add Enum default value
                     // default_value = Some(default.value().into());
                 },
+                AllowedFieldAttrs::Description(_, default) => {
+                    description = Some(default.value());
+                }
             }
         }
 
@@ -138,6 +143,7 @@ impl FieldGen {
             is_reference,
             field_type_keyword: field_type.unwrap(),
             default_value,
+            description,
         })
     }
 }

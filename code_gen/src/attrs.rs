@@ -1,5 +1,3 @@
-use crate::attrs::AllowedFieldAttrs::{Default};
-use crate::attrs::AllowedModelAttrs::{DerivedModel, Description, TableName};
 use crate::util::{gen_unknown_key_error, parse_eq};
 use proc_macro2::{Ident, Span};
 use syn::parse::{Parse, ParseStream, Result};
@@ -37,9 +35,9 @@ impl Parse for AllowedModelAttrs {
         let name_str = name.to_string();
 
         match name_str.as_str() {
-            "table_name" => Ok(TableName(name, parse_eq(input, "table_name = \"my_table_name\"")?)),
-            "description" => Ok(Description(name, parse_eq(input, "description = \"Description of the struct\"")?)),
-            "derived_model" => Ok(DerivedModel(name, parse_eq(input, "derived_model = \"base::models::company\"")?)),
+            "table_name" => Ok(AllowedModelAttrs::TableName(name, parse_eq(input, "table_name = \"my_table_name\"")?)),
+            "description" => Ok(AllowedModelAttrs::Description(name, parse_eq(input, "description = \"Description of the struct\"")?)),
+            "derived_model" => Ok(AllowedModelAttrs::DerivedModel(name, parse_eq(input, "derived_model = \"base::models::company\"")?)),
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_MODEL_STRINGS))
         }
     }
@@ -48,9 +46,9 @@ impl Parse for AllowedModelAttrs {
 impl MySpanned for AllowedModelAttrs {
     fn span(&self) -> Span {
         match self {
-            TableName(ident, _) => ident.span(),
-            Description(ident, _) => ident.span(),
-            DerivedModel(ident, _) => ident.span(),
+            AllowedModelAttrs::TableName(ident, _) => ident.span(),
+            AllowedModelAttrs::Description(ident, _) => ident.span(),
+            AllowedModelAttrs::DerivedModel(ident, _) => ident.span(),
         }
     }
 }
@@ -59,10 +57,12 @@ impl MySpanned for AllowedModelAttrs {
 
 pub enum AllowedFieldAttrs {
     Default(Ident, Lit),
+    Description(Ident, LitStr),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
     "default",
+    "description",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -71,7 +71,8 @@ impl Parse for AllowedFieldAttrs {
         let name_str = name.to_string();
 
         match name_str.as_str() {
-            "default" => Ok(Default(name, parse_eq(input, "default = \"default_value\"")?)),
+            "default" => Ok(AllowedFieldAttrs::Default(name, parse_eq(input, "default = \"default_value\"")?)),
+            "description" => Ok(AllowedFieldAttrs::Description(name, parse_eq(input, "description = \"Description of the field\"")?)),
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
         }
     }
@@ -80,7 +81,8 @@ impl Parse for AllowedFieldAttrs {
 impl MySpanned for AllowedFieldAttrs {
     fn span(&self) -> Span {
         match self {
-            Default(ident, _) => ident.span(),
+            AllowedFieldAttrs::Default(ident, _) => ident.span(),
+            AllowedFieldAttrs::Description(ident, _) => ident.span(),
         }
     }
 }

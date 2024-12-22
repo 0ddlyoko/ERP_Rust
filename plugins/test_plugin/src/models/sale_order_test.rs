@@ -6,6 +6,7 @@ use std::error::Error;
 #[erp(table_name="sale_order_test")]
 pub(crate) struct SaleOrderTest {
     id: u32,
+    #[erp(description="Name of the SO")]
     name: String,
     age: i64,
 }
@@ -15,4 +16,14 @@ impl SaleOrderTest {
         self.age = 42;
         Ok(())
     }
+}
+
+
+#[derive(Model)]
+#[erp(table_name="sale_order_test")]
+#[erp(derived_model="")]
+pub(crate) struct SaleOrderTest2 {
+    id: u32,
+    #[erp(description="New name of the SO")]
+    name: String,
 }

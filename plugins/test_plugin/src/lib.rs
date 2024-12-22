@@ -1,4 +1,4 @@
-use crate::models::sale_order_test::SaleOrderTest;
+use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 
@@ -14,6 +14,7 @@ impl Plugin for TestPlugin {
     fn init_models(&self, model_manager: &mut ModelManager) {
         println!("init_models");
         model_manager.register_model::<SaleOrderTest>();
+        model_manager.register_model::<SaleOrderTest2>();
     }
 }
 

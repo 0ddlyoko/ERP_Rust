@@ -14,15 +14,3 @@ pub struct Contact {
     // TODO Link to country
     // TODO Link to another contact (company)
 }
-
-#[derive(Model)]
-#[erp(table_name="contact")]
-#[erp(derived_model = "crate::models::contact")]
-pub struct Contact2 {
-    id: u32,
-    name: String,
-    email: Option<String>,
-    phone: Option<String>,
-    website: Option<String>,
-    lang: Reference<Baselang>,
-}
