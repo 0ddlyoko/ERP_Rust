@@ -44,13 +44,11 @@ pub struct SaleOrder {
     pub price: i64,
     #[erp(default=10)]
     pub amount: i64,
-    // TODO Add support for this:
-    #[erp(compute="compute_total_price")]
+    #[erp(compute="compute_total_price", depends=["price", "amount"])]
     pub total_price: i64,
 }
 
 impl SaleOrder {
-    // TODO Re-add support for computed methods
     pub fn compute_total_price(
         &mut self,
         _environment: &Environment,

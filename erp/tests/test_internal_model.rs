@@ -15,6 +15,7 @@ fn test_get_fields_name() {
             description: Some("This is the name".to_string()),
             required: true,
             compute: None,
+            depends: None,
         },
         &type_id,
     );
@@ -26,6 +27,7 @@ fn test_get_fields_name() {
             description: Some("This is the age of the person".to_string()),
             required: false,
             compute: None,
+            depends: None,
         },
         &type_id,
     );

@@ -12,9 +12,10 @@ pub struct FieldGen {
     pub is_required: bool,
     pub is_reference: bool,
     pub field_type_keyword: Ident,
-    pub default_value: Option<FieldType>,
+    pub default: Option<FieldType>,
     pub description: Option<String>,
     pub compute: Option<String>,
+    pub depends: Option<Vec<String>>,
 }
 
 impl FieldGen {
@@ -34,14 +35,15 @@ impl FieldGen {
 
         let mut is_required = false;
         let mut is_reference = false;
-        let mut default_value = None;
+        let mut default = None;
         let mut description = None;
         let mut compute = None;
+        let mut depends = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
-                AllowedFieldAttrs::Default(ident, default) => {
-                    default_value = Some(match default {
+                AllowedFieldAttrs::Default(ident, default_value) => {
+                    default = Some(match default_value {
                         Lit::Str(str) => FieldType::String(str.value()),
                         Lit::Int(i) => {
                             let int = i.base10_parse::<i64>();
@@ -82,11 +84,14 @@ impl FieldGen {
                     // TODO Add Enum default value
                     // default_value = Some(default.value().into());
                 },
-                AllowedFieldAttrs::Description(_, default) => {
-                    description = Some(default.value());
+                AllowedFieldAttrs::Description(_, description_value) => {
+                    description = Some(description_value.value());
                 }
-                AllowedFieldAttrs::Compute(_, default) => {
-                    compute = Some(default.value());
+                AllowedFieldAttrs::Compute(_, compute_value) => {
+                    compute = Some(compute_value.value());
+                }
+                AllowedFieldAttrs::Depends(_, depends_value) => {
+                    depends = Some(depends_value.iter().map(|s| s.value()).collect());
                 }
             }
         }
@@ -147,9 +152,10 @@ impl FieldGen {
             is_required,
             is_reference,
             field_type_keyword: field_type.unwrap(),
-            default_value,
+            default,
             description,
             compute,
+            depends,
         })
     }
 }

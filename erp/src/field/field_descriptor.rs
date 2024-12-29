@@ -7,4 +7,5 @@ pub struct FieldDescriptor {
     pub description: Option<String>,
     pub required: bool,
     pub compute: Option<bool>,
+    pub depends: Option<Vec<String>>,
 }

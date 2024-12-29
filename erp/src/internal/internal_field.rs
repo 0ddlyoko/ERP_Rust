@@ -1,5 +1,6 @@
 use crate::field::FieldType;
 use std::any::TypeId;
+use std::collections::HashSet;
 
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
@@ -8,6 +9,8 @@ pub struct InternalField {
     pub description: Option<String>,
     pub required: bool,
     pub compute: Option<bool>,
+    // TODO change String to &'static
+    pub depends: Option<Vec<String>>,
 }
 
 /// Final descriptor of a field.
@@ -19,6 +22,7 @@ pub struct FinalInternalField {
     pub required: bool,
     pub default_value: FieldType,
     pub compute: Option<TypeId>,
+    pub depends: Option<Vec<String>>,
     is_init: bool,
 }
 
@@ -30,6 +34,7 @@ impl FinalInternalField {
             required: false,
             default_value: FieldType::String("".to_string()),
             compute: None,
+            depends: None,
             is_init: false,
         }
     }
@@ -55,6 +60,16 @@ impl FinalInternalField {
         if let Some(compute) = &field_descriptor.compute {
             if *compute {
                 self.compute = Some(*type_id);
+            }
+        }
+        if let Some(depends) = &field_descriptor.depends {
+            if let Some(current_depends) = &mut self.depends {
+                current_depends.append(&mut depends.clone());
+                // Remove duplicates
+                let mut seen = HashSet::new();
+                current_depends.retain(|dep| seen.insert(dep.clone()));
+            } else {
+                self.depends = Some(depends.clone());
             }
         }
         self.is_init = true;

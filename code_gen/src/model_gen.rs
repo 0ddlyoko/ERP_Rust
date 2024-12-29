@@ -108,9 +108,10 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             is_required,
             is_reference,
             field_type_keyword,
-            default_value,
+            default: default_value,
             description,
             compute,
+            depends,
             ..
         } = f;
 
@@ -151,8 +152,20 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
-        let compute = if let Some(_) = compute {
+        let compute = if compute.is_some() {
             quote! { Some(true) }
+        } else {
+            quote! { None }
+        };
+
+        let depends = if let Some(depends) = depends {
+            let tokens = depends.iter().map(|dep| quote! { #dep.to_string() });
+            quote! {
+                {
+                    let depends = vec![#(#tokens),*];
+                    Some(depends)
+                }
+            }
         } else {
             quote! { None }
         };
@@ -165,7 +178,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     description: #description,
                     required: #is_required,
                     compute: #compute,
-                    ..erp::field::FieldDescriptor::default()
+                    depends: #depends,
                 }
             }
         }
@@ -221,7 +234,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         let compute_method_ident = Ident::new(&compute, Span::call_site());
         Some(quote! {
             if field_name == #field_name {
-                self.#compute_method_ident(env);
+                return self.#compute_method_ident(env);
             }
         })
     });

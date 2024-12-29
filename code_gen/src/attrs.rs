@@ -1,10 +1,10 @@
 use crate::util::{gen_unknown_key_error, parse_eq};
 use proc_macro2::{Ident, Span};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Lit, LitStr};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::Comma;
+use syn::token::{Comma, Eq};
+use syn::{bracketed, Attribute, Lit, LitStr};
 
 pub trait MySpanned {
     fn span(&self) -> Span;
@@ -59,12 +59,14 @@ pub enum AllowedFieldAttrs {
     Default(Ident, Lit),
     Description(Ident, LitStr),
     Compute(Ident, LitStr),
+    Depends(Ident, Vec<LitStr>),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
     "default",
     "description",
     "compute",
+    "depends",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -76,6 +78,15 @@ impl Parse for AllowedFieldAttrs {
             "default" => Ok(AllowedFieldAttrs::Default(name, parse_eq(input, "default = \"default_value\"")?)),
             "description" => Ok(AllowedFieldAttrs::Description(name, parse_eq(input, "description = \"Description of the field\"")?)),
             "compute" => Ok(AllowedFieldAttrs::Compute(name, parse_eq(input, "compute = \"compute_method\"")?)),
+            "depends" => {
+                input.parse::<Eq>()?;
+
+                let content;
+                bracketed!(content in input);
+                let dependencies: Punctuated<LitStr, Comma> = content.parse_terminated(<LitStr as Parse>::parse, Comma)?;
+                
+                Ok(AllowedFieldAttrs::Depends(name, dependencies.into_iter().collect()))
+            },
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
         }
     }
@@ -87,6 +98,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Default(ident, _) => ident.span(),
             AllowedFieldAttrs::Description(ident, _) => ident.span(),
             AllowedFieldAttrs::Compute(ident, _) => ident.span(),
+            AllowedFieldAttrs::Depends(ident, _) => ident.span(),
         }
     }
 }
