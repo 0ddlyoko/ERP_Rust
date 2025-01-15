@@ -22,13 +22,13 @@ impl EnumType for SaleOrderState {
         }
     }
 
-    fn from_string(t: String) -> Self {
-        match t.as_ref() {
-            "draft" => SaleOrderState::Draft,
-            "sent" => SaleOrderState::Sent,
-            "paid" => SaleOrderState::Paid,
-            "cancelled" => SaleOrderState::Cancelled,
-            _ => SaleOrderState::Cancelled,
+    fn from_string(t: &str) -> &Self {
+        match t {
+            "draft" => &SaleOrderState::Draft,
+            "sent" => &SaleOrderState::Sent,
+            "paid" => &SaleOrderState::Paid,
+            "cancelled" => &SaleOrderState::Cancelled,
+            _ => &SaleOrderState::Cancelled,
         }
     }
 }
@@ -38,22 +38,23 @@ impl EnumType for SaleOrderState {
 pub struct SaleOrder {
     pub id: u32,
     #[erp(default="0ddlyoko")]
-    pub name: String,
-    pub state: SaleOrderState,
-    #[erp(default=42i64)]
-    pub price: i64,
+    name: String,
+    state: SaleOrderState,
+    #[erp(default=42)]
+    price: i32,
     #[erp(default=10)]
-    pub amount: i64,
+    amount: i32,
     #[erp(compute="compute_total_price", depends=["price", "amount"])]
-    pub total_price: i64,
+    total_price: i32,
 }
 
 impl SaleOrder {
     pub fn compute_total_price(
         &mut self,
-        _environment: &Environment,
+        env: &mut Environment,
     ) -> Result<(), Box<dyn Error>> {
-        self.total_price = self.price * self.amount;
-        Ok(())
+        // TODO Pass value and not reference to the value
+        // self.set_total_price(*self.get_price(env)? * *self.get_amount(env)?, env)
+        self.set_total_price(&(*self.get_price(env)? * *self.get_amount(env)?), env)
     }
 }

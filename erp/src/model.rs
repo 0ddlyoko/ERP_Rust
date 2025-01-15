@@ -10,13 +10,112 @@ pub use model_manager::*;
 use std::error::Error;
 
 use crate::environment::Environment;
+use crate::field::{FieldType, Reference, RequiredFieldEmpty};
 
 pub trait BaseModel {
     fn get_model_name() -> &'static str;
 }
 
-pub trait Model: SimplifiedModel {
+pub trait Model: SimplifiedModel + Sized {
     type BaseModel: BaseModel + Sized;
+
+    // Utils
+
+    /// Returns given field of given type.
+    /// If error, returns the error
+    fn get<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<&'a E, Box<dyn Error>>
+    where
+        Option<&'a E>: From<&'a FieldType>,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        if let Some(result) = result {
+            let result: Option<&E> = result.into();
+
+            if let Some(result) = result {
+                Ok(result)
+            } else {
+                Err(RequiredFieldEmpty {
+                    model_name: model_name.to_string(),
+                    field_name: field_name.to_string(),
+                    id,
+                }.into())
+            }
+        } else {
+            Err(RequiredFieldEmpty {
+                model_name: model_name.to_string(),
+                field_name: field_name.to_string(),
+                id,
+            }.into())
+        }
+    }
+
+    /// Returns given optional field of given type.
+    /// If error, returns the error
+    fn get_option<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Option<&'a E>, Box<dyn std::error::Error>>
+    where
+        Option<&'a E>: From<&'a FieldType>,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        Ok(result.and_then(|result| result.into()))
+    }
+
+    /// Returns given optional reference field.
+    /// If error, returns the error
+    fn get_reference<M, BM>(&self, field_name: &str, env: &mut Environment) -> Result<Option<M>, Box<dyn std::error::Error>>
+    where
+        BM: BaseModel,
+        M: Model<BaseModel=BM>,
+        Self: Sized + Model,
+    // Option<erp::field::Reference<BM>>: From<&erp::field::FieldType>,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        let reference: Option<Reference<BM>> = result.and_then(|result| result.into());
+        if let Some(mut reference) = reference {
+            reference.get::<M>(env)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Changes the value of given field to given value
+    fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    where
+        E: Into<FieldType>,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        env.save_field_value(model_name, field_name, id, value)
+    }
+
+    /// Changes the value of given field to given optional value
+    fn set_option<E>(&self, field_name: &str, value: Option<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    where
+        E: Into<FieldType>,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        env.save_option_field_value(model_name, field_name, id, value)
+    }
+
+    /// Changes the value of given field to given reference
+    fn set_reference<E>(&self, field_name: &str, value: Reference<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    where
+        E: BaseModel,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        env.save_field_value(model_name, field_name, id, value)
+    }
 }
 
 pub trait SimplifiedModel {
@@ -34,8 +133,10 @@ pub trait SimplifiedModel {
     /// Returns the id of the current record
     fn get_id(&self) -> u32;
     /// Returns the whole data present in this model
+    /// TODO Not needed anymore
     fn get_data(&self) -> MapOfFields;
     /// Create an instance of this model with given list of data
+    /// TODO Data not needed anymore
     fn create_model(id: u32, data: MapOfFields) -> Self
     where
         Self: Sized;

@@ -20,7 +20,7 @@ macro_rules! make_eq {
 #[derive(Debug, Clone)]
 pub enum FieldType {
     String(String),
-    Integer(i64),
+    Integer(i32),
     Float(f64),
     Bool(bool),
     Enum(String),
@@ -57,10 +57,10 @@ impl PartialEq for FieldType {
 
 // String
 
-impl From<&FieldType> for Option<String> {
-    fn from(t: &FieldType) -> Self {
+impl<'a> From<&'a FieldType> for Option<&'a String> {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::String(s) => Some(s.clone()),
+            FieldType::String(s) => Some(s),
             _ => None,
         }
     }
@@ -84,35 +84,35 @@ impl From<&str> for FieldType {
     }
 }
 
-// i64
+// i32
 
-impl From<&FieldType> for Option<i64> {
-    fn from(t: &FieldType) -> Self {
+impl<'a> From<&'a FieldType> for Option<&'a i32> {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Integer(s) => Some(*s),
+            FieldType::Integer(i) => Some(i),
             _ => None,
         }
     }
 }
 
-impl From<i64> for FieldType {
-    fn from(t: i64) -> Self {
+impl From<i32> for FieldType {
+    fn from(t: i32) -> Self {
         FieldType::Integer(t)
     }
 }
 
-impl From<&i64> for FieldType {
-    fn from(t: &i64) -> Self {
+impl From<&i32> for FieldType {
+    fn from(t: &i32) -> Self {
         FieldType::Integer(*t)
     }
 }
 
 // f64
 
-impl From<&FieldType> for Option<f64> {
-    fn from(t: &FieldType) -> Self {
+impl<'a> From<&'a FieldType> for Option<&'a f64> {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Float(f) => Some(*f),
+            FieldType::Float(f) => Some(f),
             _ => None,
         }
     }
@@ -132,10 +132,10 @@ impl From<&f64> for FieldType {
 
 // bool
 
-impl From<&FieldType> for Option<bool> {
-    fn from(t: &FieldType) -> Self {
+impl<'a> From<&'a FieldType> for Option<&'a bool> {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Bool(b) => Some(*b),
+            FieldType::Bool(b) => Some(b),
             _ => None,
         }
     }
@@ -157,13 +157,13 @@ impl From<&bool> for FieldType {
 
 pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {
     fn to_string(&self) -> String;
-    fn from_string(t: String) -> Self;
+    fn from_string(t: &str) -> &Self;
 }
 
-impl<E> From<&FieldType> for Option<E> where E: EnumType {
-    fn from(t: &FieldType) -> Self {
+impl<'a, E> From<&'a FieldType> for Option<&'a E> where E: EnumType {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Enum(s) => Some(E::from_string(s.clone())),
+            FieldType::Enum(s) => Some(E::from_string(s)),
             _ => None,
         }
     }
@@ -177,10 +177,10 @@ impl<E> From<&E> for FieldType where E: EnumType {
 
 // Ref
 
-impl From<&FieldType> for Option<u32> {
-    fn from(t: &FieldType) -> Self {
+impl<'a> From<&'a FieldType> for Option<&'a u32> {
+    fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Ref(r) => Some(*r),
+            FieldType::Ref(r) => Some(r),
             _ => None,
         }
     }
@@ -209,6 +209,12 @@ impl<E> From<&FieldType> for Option<Reference<E>> where E: BaseModel {
 
 impl<E> From<&Reference<E>> for FieldType where E: BaseModel {
     fn from(t: &Reference<E>) -> Self {
+        FieldType::Ref(t.id)
+    }
+}
+
+impl<E> From<Reference<E>> for FieldType where E: BaseModel {
+    fn from(t: Reference<E>) -> Self {
         FieldType::Ref(t.id)
     }
 }

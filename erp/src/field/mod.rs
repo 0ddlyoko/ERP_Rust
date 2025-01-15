@@ -1,7 +1,9 @@
+mod error;
 mod field_descriptor;
 mod field_type;
 mod reference;
 
-pub use field_descriptor::FieldDescriptor;
-pub use field_type::{ EnumType, FieldType };
-pub use reference::Reference;
+pub use error::*;
+pub use field_descriptor::*;
+pub use field_type::*;
+pub use reference::*;

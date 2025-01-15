@@ -17,7 +17,7 @@ impl fmt::Display for UselessError {
 impl Error for UselessError {}
 
 #[test]
-fn test_savepoint_rollback() {
+fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder>();
     let mut env = Environment::new(&model_manager);
@@ -30,44 +30,43 @@ fn test_savepoint_rollback() {
     env.cache.clear_dirty("sale_order", 1);
 
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let mut sale_order = env.get_record::<SaleOrder>(1)?;
+        let sale_order = env.get_record::<SaleOrder>(1)?;
         // Update the record
-        sale_order.name = "1ddlyoko".to_string();
-        sale_order.price = 420;
-        env.save_record(&sale_order);
+        sale_order.set_name(&"1ddlyoko".to_string(), env)?;
+        sale_order.set_price(&420, env)?;
 
         // Check that it has been updated
-        let sale_order = env.get_record::<SaleOrder>(1).unwrap();
-        assert_eq!(sale_order.name, "1ddlyoko");
-        assert_eq!(sale_order.price, 420);
+        assert_eq!(sale_order.get_name(env)?, "1ddlyoko");
+        assert_eq!(*sale_order.get_price(env)?, 420);
 
         // Throw a random error to rollback what we did here
         Err(Box::new(UselessError {}))
     });
 
     // Check if it has not been committed
-    let sale_order = env.get_record::<SaleOrder>(1).unwrap();
-    assert_eq!(sale_order.name, "0ddlyoko");
-    assert_eq!(sale_order.price, 42);
+    let sale_order = env.get_record::<SaleOrder>(1)?;
+    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
+    assert_eq!(*sale_order.get_price(&mut env)?, 42);
 
     // Do it again, but here commit
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let mut sale_order = env.get_record::<SaleOrder>(1)?;
+        let sale_order = env.get_record::<SaleOrder>(1)?;
         // Update the record
-        sale_order.name = "1ddlyoko".to_string();
-        sale_order.price = 420;
-        env.save_record(&sale_order);
+        sale_order.set_name(&"1ddlyoko".to_string(), env)?;
+        sale_order.set_price(&420, env)?;
 
         // Check that it has been updated
         let sale_order = env.get_record::<SaleOrder>(1).unwrap();
-        assert_eq!(sale_order.name, "1ddlyoko");
-        assert_eq!(sale_order.price, 420);
+        assert_eq!(sale_order.get_name(env)?, "1ddlyoko");
+        assert_eq!(*sale_order.get_price(env)?, 420);
 
         Ok(())
     });
 
     // Check if it has not been committed
     let sale_order = env.get_record::<SaleOrder>(1).unwrap();
-    assert_eq!(sale_order.name, "1ddlyoko");
-    assert_eq!(sale_order.price, 420);
+    assert_eq!(sale_order.get_name(&mut env)?, "1ddlyoko");
+    assert_eq!(*sale_order.get_price(&mut env)?, 420);
+
+    Ok(())
 }

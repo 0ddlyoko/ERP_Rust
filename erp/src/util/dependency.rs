@@ -94,6 +94,7 @@ fn visit<'a>(
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
     use crate::util::dependency::{
         sort_dependencies, CircularDependencyError, MissingDependencyError,

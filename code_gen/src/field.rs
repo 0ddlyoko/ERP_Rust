@@ -46,7 +46,7 @@ impl FieldGen {
                     default = Some(match default_value {
                         Lit::Str(str) => FieldType::String(str.value()),
                         Lit::Int(i) => {
-                            let int = i.base10_parse::<i64>();
+                            let int = i.base10_parse::<i32>();
                             if int.is_ok() {
                                 FieldType::Integer(int?)
                             } else {

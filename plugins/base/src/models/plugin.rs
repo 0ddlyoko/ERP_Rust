@@ -16,11 +16,11 @@ impl EnumType for PluginState {
         }
     }
 
-    fn from_string(t: String) -> Self {
-        match t.as_ref() {
-            "not_installed" => PluginState::NotInstalled,
-            "installed" => PluginState::Installed,
-            _ => PluginState::NotInstalled,
+    fn from_string(t: &str) -> &Self {
+        match t {
+            "not_installed" => &PluginState::NotInstalled,
+            "installed" => &PluginState::Installed,
+            _ => &PluginState::NotInstalled,
         }
     }
 }
@@ -33,7 +33,7 @@ pub struct Plugin {
     description: Option<String>,
     website: Option<String>,
     url: Option<String>,
-    state: PluginState,
+    // state: PluginState,
     // TODO Add module category
     // TODO Add author
     // TODO Add version (installed, latest, ...) + auto update if new version

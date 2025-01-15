@@ -1,6 +1,7 @@
 use crate::field::FieldType;
 use std::collections::HashMap;
 
+// TODO Check if we still need this
 #[derive(Default, Clone)]
 pub struct MapOfFields {
     pub(crate) fields: HashMap<String, Option<FieldType>>,

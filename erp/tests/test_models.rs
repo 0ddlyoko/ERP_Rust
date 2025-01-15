@@ -17,48 +17,46 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Create a new SO
     let mut record = MapOfFields::default();
     record.insert("name", "0ddlyoko's SO");
-    record.insert::<&i64>("price", &100);
-    record.insert::<&i64>("amount", &200);
+    record.insert::<&i32>("price", &100);
+    record.insert::<&i32>("amount", &200);
     let mut record = env.create_new_record_from_map::<SaleOrder>(&mut record)?;
     assert_eq!(record.id, 1);
-    assert_eq!(record.name, "0ddlyoko's SO");
-    assert_eq!(record.price, 100);
-    assert_eq!(record.amount, 200);
-    assert_eq!(record.state, SaleOrderState::Draft);
+    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*record.get_price(&mut env)?, 100);
+    assert_eq!(*record.get_amount(&mut env)?, 200);
+    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
     // Total price should be computed as we haven't passed it
-    assert_eq!(record.total_price, 100 * 200);
+    assert_eq!(*record.get_total_price(&mut env)?, 100 * 200);
 
     // Test if modifying it works
-    record.amount = 20;
-    env.save_record(&record);
+    record.set_amount(&20, &mut env)?;
 
     let record = env.get_record::<SaleOrder>(1)?;
     assert_eq!(record.id, 1);
-    assert_eq!(record.name, "0ddlyoko's SO");
-    assert_eq!(record.price, 100);
-    assert_eq!(record.amount, 20);
-    assert_eq!(record.state, SaleOrderState::Draft);
+    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*record.get_price(&mut env)?, 100);
+    assert_eq!(*record.get_amount(&mut env)?, 20);
+    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
     // For now there is no link between fields, so the computed method is not recomputed
-    assert_eq!(record.total_price, 100 * 200);
+    assert_eq!(*record.get_total_price(&mut env)?, 100 * 200);
 
     // But we can force the computation of total_price
     env.call_compute_fields("sale_order", 1, &["total_price".to_string()])?;
     // TODO Add depends, so that we can check if the computed field is automatically called
 
-    let mut record = env.get_record::<SaleOrder>(1)?;
+    let record = env.get_record::<SaleOrder>(1)?;
     assert_eq!(record.id, 1);
-    assert_eq!(record.name, "0ddlyoko's SO");
-    assert_eq!(record.price, 100);
-    assert_eq!(record.amount, 20);
-    assert_eq!(record.state, SaleOrderState::Draft);
-    assert_eq!(record.total_price, 100 * 20);
+    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*record.get_price(&mut env)?, 100);
+    assert_eq!(*record.get_amount(&mut env)?, 20);
+    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
+    assert_eq!(*record.get_total_price(&mut env)?, 100 * 20);
 
     // Changing the state
-    record.state = SaleOrderState::Paid;
-    env.save_record(&record);
+    record.set_state(&SaleOrderState::Paid, &mut env)?;
 
     let record = env.get_record::<SaleOrder>(1)?;
-    assert_eq!(record.state, SaleOrderState::Paid);
+    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Paid);
     Ok(())
 }
 
@@ -82,16 +80,16 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
     record.insert("name", "0ddlyoko");
     record.insert("email", "0ddlyoko@test.com");
     record.insert("lang", &lang.get_id());
-    let mut contact = env.create_new_record_from_map::<Contact>(&mut record)?;
+    let contact = env.create_new_record_from_map::<Contact>(&mut record)?;
     assert_eq!(contact.get_id(), 2);
-    assert_eq!(contact.get_name(), "0ddlyoko");
-    assert_eq!(contact.get_email(), Some(&"0ddlyoko@test.com".to_string()));
+    assert_eq!(contact.get_name(&mut env)?, "0ddlyoko");
+    assert_eq!(contact.get_email(&mut env)?.clone(), Some(&"0ddlyoko@test.com".to_string()));
     let contact_lang = contact.get_lang::<Lang>(&mut env)?;
     assert!(contact_lang.is_some());
     let contact_lang = contact_lang.unwrap();
     assert_eq!(contact_lang.get_id(), 1);
-    assert_eq!(contact_lang.get_name(), "French");
-    assert_eq!(contact_lang.get_code(), "fr_FR");
+    assert_eq!(contact_lang.get_name(&mut env)?, "French");
+    assert_eq!(contact_lang.get_code(&mut env)?, "fr_FR");
 
     Ok(())
 }

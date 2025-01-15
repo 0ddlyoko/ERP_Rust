@@ -30,8 +30,8 @@ fn test_get_and_insert_field() {
     // Modify it
     cache.insert_record_field(
         "sale_order",
-        1,
         "my_field",
+        1,
         Some(FieldType::String("my_value_2".to_string())),
     );
     let cache_field = cache.get_record_field("sale_order", 1, "my_field");
@@ -43,15 +43,15 @@ fn test_get_and_insert_field() {
     );
 
     // Clear the field
-    cache.insert_record_field("sale_order", 1, "my_field", None);
+    cache.insert_record_field("sale_order", "my_field", 1, None);
     let cache_field = cache.get_record_field("sale_order", 1, "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_none());
     // Put field back
     cache.insert_record_field(
         "sale_order",
-        1,
         "my_field",
+        1,
         Some(FieldType::String("my_value_2".to_string())),
     );
 
@@ -71,8 +71,8 @@ fn test_get_and_insert_field() {
     // Modifying the other model shouldn't modify the other field
     cache.insert_record_field(
         "sale_order",
-        2,
         "my_field",
+        2,
         Some(FieldType::String("my_value_3".to_string())),
     );
     let cache_field = cache.get_record_field("sale_order", 1, "my_field");

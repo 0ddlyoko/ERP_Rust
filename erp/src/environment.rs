@@ -1,10 +1,10 @@
 use crate::cache::Cache;
-use crate::model::{MapOfFields, ModelManager, ModelNotFound, SimplifiedModel};
+use crate::model::{MapOfFields, Model, ModelManager, ModelNotFound, SimplifiedModel};
 use std::error::Error;
 
 use crate::cache::errors::RecordNotFoundError;
+use crate::field::FieldType;
 use crate::internal::internal_model::InternalModel;
-use crate::model::Model;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -100,28 +100,8 @@ impl<'model_manager> Environment<'model_manager> {
         // TODO Insert data to db
         let id = self.id;
         self.id += 1;
-        self.cache
-            .insert_record_model_with_map(model_name, id, data.clone());
+        self.cache.insert_record_model_with_map(model_name, id, data.clone());
         Ok(id)
-    }
-
-    /// Save given model in the cache
-    pub fn save_record_from_name(&mut self, model_name: &str, record: &dyn SimplifiedModel) {
-        assert_ne!(record.get_id(), 0, "Given model doesn't have any id");
-        let id = record.get_id();
-        let data = record.get_data();
-        self.cache.insert_record_model_with_map(model_name, id, data);
-    }
-
-    /// Save given record to the cache
-    pub fn save_record<M>(&mut self, record: &M)
-    where
-        M: Model,
-    {
-        let id = record.get_id();
-        let model_name = M::get_model_name();
-        let data = record.get_data();
-        self.cache.insert_record_model_with_map(model_name, id, data);
     }
 
     /// Returns the first record of given model for a specific id
@@ -196,7 +176,47 @@ impl<'model_manager> Environment<'model_manager> {
             .into());
         }
         let record = cache_record.unwrap();
+        // TODO Add a system to load missing fields / computed fields when needed
         Ok(record.transform_into_map_of_fields())
+    }
+
+    /// Return the value of a specific field
+    /// If record is not loaded, load it
+    /// If field is a computed one and is not already computed, compute it
+    pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: u32) -> Result<Option<&'a FieldType>, Box<dyn Error>> {
+        if !self.model_manager.is_valid_model(model_name) {
+            return Err(ModelNotFound {
+                model_name: model_name.to_string(),
+            }
+                .into());
+        }
+        self.load_record_from_db(model_name, id)?;
+        let cache_record = self.cache.get_cache_record(model_name, id);
+        if cache_record.is_none() {
+            return Err(RecordNotFoundError {
+                model_name: model_name.to_string(),
+                id,
+            }
+                .into());
+        }
+        let record = cache_record.unwrap();
+        Ok(record.get_field(field_name).and_then(|f| f.get()))
+    }
+
+    pub fn save_field_value<E>(&mut self, model_name: &str, field_name: &str, id: u32, value: E) -> Result<(), Box<dyn Error>>
+    where
+        E: Into<FieldType> {
+        let field_type: FieldType = value.into();
+        self.cache.insert_record_field(model_name, field_name, id, Some(field_type));
+        Ok(())
+    }
+
+    pub fn save_option_field_value<E>(&mut self, model_name: &str, field_name: &str, id: u32, value: Option<E>) -> Result<(), Box<dyn Error>>
+    where
+        E: Into<FieldType> {
+        let field_type: Option<FieldType> = value.map(|value| value.into());
+        self.cache.insert_record_field(model_name, field_name, id, field_type);
+        Ok(())
     }
 
     /// Create a new record for a specific model and a given model instance
@@ -315,7 +335,6 @@ impl<'model_manager> Environment<'model_manager> {
                 let computed_field = compute_field.unwrap();
                 let mut record = env.get_record_from_internal_model(computed_field, id)?;
                 record.call_compute_method(field.as_str(), env)?;
-                env.save_record_from_name(model_name, &*record);
             }
             Ok(())
         })

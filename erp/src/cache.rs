@@ -87,8 +87,8 @@ impl Cache {
     pub fn insert_record_field(
         &mut self,
         model_name: &str,
-        id: u32,
         field_name: &str,
+        id: u32,
         field_value: Option<FieldType>,
     ) {
         let cache_models = self.get_cache_models_mut(model_name);
@@ -96,7 +96,7 @@ impl Cache {
         let result = cache_model.insert_field(field_name, field_value);
         if let Some(result) = result {
             if result.1 {
-                cache_models.add_dirty(id, vec![model_name.to_string()]);
+                cache_models.add_dirty(id, vec![field_name.to_string()]);
             }
         }
     }

@@ -4,9 +4,10 @@ use crate::model::{BaseModel, Model};
 use std::error::Error;
 use std::marker::PhantomData;
 
+#[derive(Default)]
 pub struct Reference<E: BaseModel> {
     pub id: u32,
-    pub _phantom_data: PhantomData<E>,
+    _phantom_data: PhantomData<E>,
 }
 
 impl<E: BaseModel> Reference<E> {
