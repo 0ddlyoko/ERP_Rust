@@ -132,9 +132,8 @@ pub trait SimplifiedModel {
 
     /// Returns the id of the current record
     fn get_id(&self) -> u32;
-    /// Create an instance of this model with given list of data
-    /// TODO Data not needed anymore
-    fn create_model(id: u32, data: MapOfFields) -> Self
+    /// Create an instance of this model
+    fn create_model(id: u32) -> Self
     where
         Self: Sized;
 
@@ -145,38 +144,3 @@ pub trait SimplifiedModel {
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>;
 }
-
-// impl<T: Model> SimplifiedModel for T {
-//     fn get_model_name() -> &'static str
-//     where
-//         Self: Sized
-//     {
-//         T::get_model_name()
-//     }
-//
-//     fn get_model_descriptor() -> ModelDescriptor
-//     where
-//         Self: Sized
-//     {
-//         T::get_model_descriptor()
-//     }
-//
-//     fn get_id(&self) -> u32 {
-//         T::get_id(self)
-//     }
-//
-//     fn get_data(&self) -> MapOfFields {
-//         T::get_data(self)
-//     }
-//
-//     fn create_model(id: u32, data: MapOfFields) -> Self
-//     where
-//         Self: Sized
-//     {
-//         T::create_model(id, data)
-//     }
-//
-//     fn call_compute_method(&mut self, field_name: &str, env: &mut Environment) -> Result<(), Box<dyn Error>> {
-//         T::call_compute_method(self, field_name, env)
-//     }
-// }

@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
-use crate::model::{MapOfFields, SimplifiedModel};
 use crate::model::Model;
+use crate::model::SimplifiedModel;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -30,26 +30,24 @@ impl ModelManager {
         &self,
         model_name: &str,
         id: u32,
-        data: MapOfFields,
     ) -> Box<dyn SimplifiedModel> {
         let model = self.models.get(model_name).unwrap();
-        (model.first().create_instance)(id, data)
+        (model.first().create_instance)(id)
     }
 
     pub fn create_instance_from_internal_model(
         &self,
         id: u32,
-        data: MapOfFields,
         internal_model: &InternalModel,
     ) -> Box<dyn SimplifiedModel> {
-        (internal_model.create_instance)(id, data)
+        (internal_model.create_instance)(id)
     }
 
-    pub fn create_instance<M>(&self, id: u32, data: MapOfFields) -> M
+    pub fn create_instance<M>(&self, id: u32) -> M
     where
         M: Model,
     {
-        M::create_model(id, data)
+        M::create_model(id)
     }
 
     pub fn new_environment(&self) -> Environment {

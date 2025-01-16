@@ -246,7 +246,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 self.id
             }
 
-            fn create_model(id: u32, data: erp::model::MapOfFields) -> Self {
+            fn create_model(id: u32) -> Self {
                 Self {
                     id,
                     #(#create_model,)*

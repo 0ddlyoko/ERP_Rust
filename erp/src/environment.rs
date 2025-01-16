@@ -112,10 +112,15 @@ impl<'model_manager> Environment<'model_manager> {
         model_name: &str,
         id: u32,
     ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
-        let map_of_fields = self.get_map_of_field(model_name, id)?;
+        if !self.model_manager.is_valid_model(model_name) {
+            return Err(ModelNotFound {
+                model_name: model_name.to_string(),
+            }
+                .into());
+        }
         Ok(self
             .model_manager
-            .create_instance_from_name(model_name, id, map_of_fields))
+            .create_instance_from_name(model_name, id))
     }
 
     /// Returns the first record of given model for a specific id
@@ -126,10 +131,8 @@ impl<'model_manager> Environment<'model_manager> {
         internal_model: &InternalModel,
         id: u32,
     ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
-        let map_of_fields = self.get_map_of_field(internal_model.name.as_str(), id)?;
         Ok(self.model_manager.create_instance_from_internal_model(
             id,
-            map_of_fields,
             internal_model,
         ))
     }
@@ -150,8 +153,7 @@ impl<'model_manager> Environment<'model_manager> {
         M: Model,
     {
         let model_name = M::get_model_name();
-        let map_of_fields = self.get_map_of_field(model_name, id)?;
-        Ok(self.model_manager.create_instance::<M>(id, map_of_fields))
+        Ok(self.model_manager.create_instance::<M>(id))
     }
 
     /// Returns the MapOfField of given model for given id
