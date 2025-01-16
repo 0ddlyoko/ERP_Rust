@@ -29,7 +29,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     assert_eq!(*record.get_total_price(&mut env)?, 100 * 200);
 
     // Test if modifying it works
-    record.set_amount(&20, &mut env)?;
+    record.set_amount(20, &mut env)?;
 
     let record = env.get_record::<SaleOrder>(1)?;
     assert_eq!(record.id, 1);
@@ -53,7 +53,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     assert_eq!(*record.get_total_price(&mut env)?, 100 * 20);
 
     // Changing the state
-    record.set_state(&SaleOrderState::Paid, &mut env)?;
+    record.set_state(SaleOrderState::Paid, &mut env)?;
 
     let record = env.get_record::<SaleOrder>(1)?;
     assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Paid);

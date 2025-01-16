@@ -53,8 +53,6 @@ impl SaleOrder {
         &mut self,
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>> {
-        // TODO Pass value and not reference to the value
-        // self.set_total_price(*self.get_price(env)? * *self.get_amount(env)?, env)
-        self.set_total_price(&(*self.get_price(env)? * *self.get_amount(env)?), env)
+        self.set_total_price(*self.get_price(env)? * *self.get_amount(env)?, env)
     }
 }

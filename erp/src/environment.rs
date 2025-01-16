@@ -219,16 +219,6 @@ impl<'model_manager> Environment<'model_manager> {
         Ok(())
     }
 
-    /// Create a new record for a specific model and a given model instance
-    ///
-    /// The returned model instance will be different that the original one
-    pub fn create_new_record<M>(&mut self, model: M) -> Result<M, Box<dyn Error>>
-    where
-        M: Model,
-    {
-        self.create_new_record_from_map::<M>(&mut model.get_data())
-    }
-
     /// Create a new record for a specific model and a given list of fields
     pub fn create_new_record_from_map<M>(
         &mut self,

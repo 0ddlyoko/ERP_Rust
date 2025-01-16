@@ -169,8 +169,8 @@ impl<'a, E> From<&'a FieldType> for Option<&'a E> where E: EnumType {
     }
 }
 
-impl<E> From<&E> for FieldType where E: EnumType {
-    fn from(t: &E) -> Self {
+impl<E> From<E> for FieldType where E: EnumType {
+    fn from(t: E) -> Self {
         FieldType::Enum(t.to_string())
     }
 }

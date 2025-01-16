@@ -68,7 +68,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     assert!(dirty_fields.is_none());
 
     // Changing the price should alter the cache
-    sale_order.set_price(&50, &mut env)?;
+    sale_order.set_price(50, &mut env)?;
 
     let name_cache_record = env.cache.get_record_field("sale_order", 1, "name");
     let price_cache_record = env.cache.get_record_field("sale_order", 1, "price");

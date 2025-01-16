@@ -63,7 +63,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         if field_name == "id" {
             return None;
         }
-        let field_ident = Ident::new(field_name, Span::call_site());
         let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
         let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
 
@@ -88,7 +87,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<&'a #field_type_keyword, Box<dyn std::error::Error>> {
                     <Self as erp::model::Model>::get(self, #field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: &#field_type_keyword, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
                     <Self as erp::model::Model>::set(self, #field_name, value, env)
                 }
             })
@@ -97,7 +96,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Option<&'a #field_type_keyword>, Box<dyn std::error::Error>> {
                     <Self as erp::model::Model>::get_option(self, #field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: Option<&#field_type_keyword>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
                     <Self as erp::model::Model>::set_option(self, #field_name, value, env)
                 }
             })
@@ -159,7 +158,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
         } else {
             quote! {
-                Some((&#field_type_keyword::default()).into())
+                Some((#field_type_keyword::default()).into())
             }
         };
 
@@ -197,26 +196,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     compute: #compute,
                     depends: #depends,
                 }
-            }
-        }
-    });
-
-    let get_data = fields.iter().map(|f| {
-        let FieldGen {
-            field_name,
-            is_required,
-            is_reference,
-            ..
-        } = f;
-        let field_ident = Ident::new(field_name, Span::call_site());
-
-        if *is_required || *is_reference {
-            quote! {
-                result.insert(#field_name, &self.#field_ident);
-            }
-        } else {
-            quote! {
-                result.insert_option(#field_name, self.#field_ident.as_ref());
             }
         }
     });
@@ -265,12 +244,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
             fn get_id(&self) -> u32 {
                 self.id
-            }
-
-            fn get_data(&self) -> erp::model::MapOfFields {
-                let mut result = erp::model::MapOfFields::default();
-                #(#get_data;)*
-                result
             }
 
             fn create_model(id: u32, data: erp::model::MapOfFields) -> Self {

@@ -132,9 +132,6 @@ pub trait SimplifiedModel {
 
     /// Returns the id of the current record
     fn get_id(&self) -> u32;
-    /// Returns the whole data present in this model
-    /// TODO Not needed anymore
-    fn get_data(&self) -> MapOfFields;
     /// Create an instance of this model with given list of data
     /// TODO Data not needed anymore
     fn create_model(id: u32, data: MapOfFields) -> Self

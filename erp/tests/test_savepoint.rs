@@ -32,8 +32,8 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
         let sale_order = env.get_record::<SaleOrder>(1)?;
         // Update the record
-        sale_order.set_name(&"1ddlyoko".to_string(), env)?;
-        sale_order.set_price(&420, env)?;
+        sale_order.set_name("1ddlyoko".to_string(), env)?;
+        sale_order.set_price(420, env)?;
 
         // Check that it has been updated
         assert_eq!(sale_order.get_name(env)?, "1ddlyoko");
@@ -52,8 +52,8 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
         let sale_order = env.get_record::<SaleOrder>(1)?;
         // Update the record
-        sale_order.set_name(&"1ddlyoko".to_string(), env)?;
-        sale_order.set_price(&420, env)?;
+        sale_order.set_name("1ddlyoko".to_string(), env)?;
+        sale_order.set_price(420, env)?;
 
         // Check that it has been updated
         let sale_order = env.get_record::<SaleOrder>(1).unwrap();
