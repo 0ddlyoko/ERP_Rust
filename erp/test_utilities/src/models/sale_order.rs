@@ -12,18 +12,20 @@ pub enum SaleOrderState {
     Cancelled,
 }
 
-impl EnumType for SaleOrderState {
-    fn to_string(&self) -> String {
-        match self {
-            SaleOrderState::Draft => String::from("draft"),
-            SaleOrderState::Sent => String::from("sent"),
-            SaleOrderState::Paid => String::from("paid"),
-            SaleOrderState::Cancelled => String::from("cancelled"),
+impl<'a> From<SaleOrderState> for &'a str {
+    fn from(value: SaleOrderState) -> &'a str {
+        match value {
+            SaleOrderState::Draft => "draft",
+            SaleOrderState::Sent => "sent",
+            SaleOrderState::Paid => "paid",
+            SaleOrderState::Cancelled => "cancelled",
         }
     }
+}
 
-    fn from_string(t: &str) -> &Self {
-        match t {
+impl From<&str> for &SaleOrderState {
+    fn from(value: &str) -> Self {
+        match value {
             "draft" => &SaleOrderState::Draft,
             "sent" => &SaleOrderState::Sent,
             "paid" => &SaleOrderState::Paid,
@@ -31,6 +33,9 @@ impl EnumType for SaleOrderState {
             _ => &SaleOrderState::Cancelled,
         }
     }
+}
+
+impl EnumType for SaleOrderState {
 }
 
 #[derive(Model)]
