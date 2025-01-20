@@ -2,6 +2,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{parse_str, DeriveInput, Path, Result};
 use erp::field::FieldType;
+use erp::util::string::StringTransform;
 use crate::field::FieldGen;
 use crate::model::ModelGen;
 
@@ -21,7 +22,8 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     } = ModelGen::from_item(&item)?;
 
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
-    let base_model_name = format!("Base{}", table_name);
+    let camel_case_table_name = table_name.to_camel_case();
+    let base_model_name = format!("Base{}", camel_case_table_name);
     let base_model = if let Some(derived_model) = derived_model {
         let full_base_model = if derived_model.is_empty() {
             base_model_name

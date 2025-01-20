@@ -1,4 +1,5 @@
-use crate::models::lang::Baselang;
+use crate::models::country::BaseCountry;
+use crate::models::lang::BaseLang;
 use code_gen::Model;
 use erp::field::Reference;
 
@@ -10,7 +11,7 @@ pub struct Contact {
     email: Option<String>,
     phone: Option<String>,
     website: Option<String>,
-    lang: Reference<Baselang>,
-    // TODO Link to country
-    // TODO Link to another contact (company)
+    lang: Reference<BaseLang>,
+    country: Reference<BaseCountry>,
+    parent: Reference<BaseContact>,
 }
