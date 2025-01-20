@@ -8,8 +8,8 @@ pub enum PluginState {
     Installed,
 }
 
-impl<'a> From<PluginState> for &'a str {
-    fn from(value: PluginState) -> &'a str {
+impl From<PluginState> for &'static str {
+    fn from(value: PluginState) -> &'static str {
         match value {
             PluginState::Installed => "installed",
             PluginState::NotInstalled => "not_installed",

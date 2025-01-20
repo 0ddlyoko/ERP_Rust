@@ -12,8 +12,8 @@ pub enum SaleOrderState {
     Cancelled,
 }
 
-impl<'a> From<SaleOrderState> for &'a str {
-    fn from(value: SaleOrderState) -> &'a str {
+impl From<SaleOrderState> for &'static str {
+    fn from(value: SaleOrderState) -> &'static str {
         match value {
             SaleOrderState::Draft => "draft",
             SaleOrderState::Sent => "sent",
