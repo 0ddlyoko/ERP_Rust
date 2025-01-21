@@ -10,7 +10,7 @@ pub use model_manager::*;
 use std::error::Error;
 
 use crate::environment::Environment;
-use crate::field::{FieldType, Reference, RequiredFieldEmpty};
+use crate::field::{FieldType, MultipleIds, Reference, RequiredFieldEmpty, SingleId};
 
 pub trait BaseModel {
     fn get_model_name() -> &'static str;
@@ -71,14 +71,32 @@ pub trait Model: SimplifiedModel + Sized {
         BM: BaseModel,
         M: Model<BaseModel=BM>,
         Self: Sized + Model,
-    // Option<erp::field::Reference<BM>>: From<&erp::field::FieldType>,
     {
         let model_name = Self::get_model_name();
         let id = self.get_id();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        let reference: Option<Reference<BM>> = result.and_then(|result| result.into());
-        if let Some(mut reference) = reference {
-            reference.get::<M>(env)
+        let reference: Option<Reference<BM, SingleId>> = result.and_then(|result| result.into());
+        if let Some(reference) = reference {
+            Ok(Some(reference.get::<M>(env)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns given optional reference field.
+    /// If error, returns the error
+    fn get_references<M, BM>(&self, field_name: &str, env: &mut Environment) -> Result<Option<Vec<M>>, Box<dyn std::error::Error>>
+    where
+        BM: BaseModel,
+        M: Model<BaseModel=BM>,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        let reference: Option<Reference<BM, MultipleIds>> = result.and_then(|result| result.into());
+        if let Some(reference) = reference {
+            Ok(Some(reference.get_multiple::<M>(env)))
         } else {
             Ok(None)
         }
@@ -107,7 +125,18 @@ pub trait Model: SimplifiedModel + Sized {
     }
 
     /// Changes the value of given field to given reference
-    fn set_reference<E>(&self, field_name: &str, value: Reference<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    fn set_reference<E>(&self, field_name: &str, value: Reference<E, SingleId>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    where
+        E: BaseModel,
+        Self: Sized + Model,
+    {
+        let model_name = Self::get_model_name();
+        let id = self.get_id();
+        env.save_field_value(model_name, field_name, id, value)
+    }
+
+    /// Changes the value of given field to given reference
+    fn set_references<E>(&self, field_name: &str, value: Reference<E, MultipleIds>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: BaseModel,
         Self: Sized + Model,

@@ -1,5 +1,5 @@
 use crate::attrs::{parse_attributes, AllowedFieldAttrs};
-use crate::util::{gen_field_no_field_error, gen_missing_key_error, gen_wrong_default_value};
+use crate::util::{gen_field_no_field_error, gen_missing_key_error, gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment, Result, Type, TypePath};
@@ -11,6 +11,7 @@ pub struct FieldGen {
     pub field_name_span: Span,
     pub is_required: bool,
     pub is_reference: bool,
+    pub is_reference_multi: bool,
     pub field_type_keyword: Ident,
     pub default: Option<FieldType>,
     pub description: Option<String>,
@@ -35,6 +36,7 @@ impl FieldGen {
 
         let mut is_required = false;
         let mut is_reference = false;
+        let mut is_reference_multi = false;
         let mut default = None;
         let mut description = None;
         let mut compute = None;
@@ -122,8 +124,13 @@ impl FieldGen {
                                                          ..
                                                      }) = arguments {
                     // The <String> in "email: Option<String>"
-                    if args.len() != 1 {
-                        return Err(gen_field_no_field_error(args.span()));
+                    let args_len = args.len();
+                    // Check argument length
+                    if args_len != 1 && !is_reference {
+                        return Err(gen_option_not_one_generic(args.span()))
+                    }
+                    if args_len != 2 && is_reference {
+                        return Err(gen_reference_not_two_generic(args.span()));
                     }
                     if let GenericArgument::Type(Type::Path(TypePath {
                                                                 qself: _,
@@ -136,6 +143,20 @@ impl FieldGen {
                             return Err(gen_field_no_field_error(segments.span()))
                         }
                         field_type = Some(segments[0].ident.clone());
+                    }
+                    if is_reference {
+                        if let GenericArgument::Type(Type::Path(TypePath {
+                                                                    qself: _,
+                                                                    path: Path {
+                                                                        leading_colon: _,
+                                                                        segments,
+                                                                    },
+                                                                })) = &args[1] {
+                            if segments.len() != 1 {
+                                return Err(gen_field_no_field_error(segments.span()))
+                            }
+                            is_reference_multi = segments[0].ident == "MultipleIds";
+                        }
                     }
                 }
             } else {
@@ -151,6 +172,7 @@ impl FieldGen {
             field_name_span: ident.span(),
             is_required,
             is_reference,
+            is_reference_multi,
             field_type_keyword: field_type.unwrap(),
             default,
             description,

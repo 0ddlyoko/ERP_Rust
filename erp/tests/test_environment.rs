@@ -40,7 +40,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
-    let sale_order = env.get_record::<SaleOrder>(1)?;
+    let sale_order = env.get_record::<SaleOrder>(1);
     assert_eq!(sale_order.id, 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);
@@ -121,7 +121,7 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
     env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
-    let sale_order = env.get_record::<SaleOrder>(1)?;
+    let sale_order = env.get_record::<SaleOrder>(1);
     let sale_order_by_name = env.get_record_from_name("sale_order", 1)?;
     let sale_order_by_internal_model = env.get_record_from_internal_model(internal_model, 1)?;
     let sale_order_by_unknown_name = env.get_record_from_name("sale_order_unknown", 1);
@@ -152,7 +152,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     env.cache.clear_dirty("sale_order", 1);
 
     // Get the record
-    let sale_order = env.get_record::<SaleOrder>(1)?;
+    let sale_order = env.get_record::<SaleOrder>(1);
     assert_eq!(sale_order.id, 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);
@@ -166,7 +166,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     env.call_compute_fields("sale_order", 1, &["total_price".to_string()])
         .expect("Computed field should not fail");
 
-    let sale_order = env.get_record::<SaleOrder>(1)?;
+    let sale_order = env.get_record::<SaleOrder>(1);
     assert_eq!(sale_order.id, 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);

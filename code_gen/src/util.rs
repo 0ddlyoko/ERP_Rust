@@ -27,6 +27,14 @@ pub fn gen_missing_key_error(span: Span, name: &str) -> Error {
     Error::new(span, format!("Missing `{}` key!", name))
 }
 
+pub fn gen_option_not_one_generic(span: Span) -> Error {
+    Error::new(span, "Given optional field should only have one generic argument")
+}
+
+pub fn gen_reference_not_two_generic(span: Span) -> Error {
+    Error::new(span, "Given reference field should only have two generic argument")
+}
+
 pub fn gen_field_no_field_error(span: Span) -> Error {
     Error::new(span, "Field should be of type")
 }

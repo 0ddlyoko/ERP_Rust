@@ -1,9 +1,9 @@
 use crate::cache::Cache;
-use crate::model::{MapOfFields, Model, ModelManager, ModelNotFound, SimplifiedModel};
+use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound, SimplifiedModel};
 use std::error::Error;
 
 use crate::cache::errors::RecordNotFoundError;
-use crate::field::FieldType;
+use crate::field::{FieldType, MultipleIds, Reference, SingleId};
 use crate::internal::internal_model::InternalModel;
 
 pub struct Environment<'model_manager> {
@@ -137,23 +137,45 @@ impl<'model_manager> Environment<'model_manager> {
         ))
     }
 
-    pub fn cast_to<FROM, TO, BM>(&mut self, from: &mut FROM) -> Result<TO, Box<dyn Error>>
+    pub fn cast_to<FROM, TO, BM>(&mut self, from: &mut FROM) -> TO
     where
     FROM: Model<BaseModel=BM>,
     TO: Model<BaseModel=BM>,
     {
+        // TODO check if we can use trait "From" instead of this method
         self.get_record::<TO>(from.get_id())
     }
 
     /// Returns an instance of given model for a specific id
-    ///
-    /// If the record is not present in cache, loads it from the database
-    pub fn get_record<M>(&mut self, id: u32) -> Result<M, Box<dyn Error>>
+    pub fn get_record<M>(&mut self, id: u32) -> M
     where
         M: Model,
     {
-        let model_name = M::get_model_name();
-        Ok(self.model_manager.create_instance::<M>(id))
+        self.model_manager.create_instance::<M>(id)
+    }
+
+    /// Returns a reference to given id
+    ///
+    /// Do not check if given id is valid id, or is present in the cache
+    ///
+    /// Do not load those ids to the cache
+    pub fn get_record_ref<BM>(&self, id: u32) -> Reference<BM, SingleId>
+    where
+        BM: BaseModel,
+    {
+        id.into()
+    }
+
+    /// Returns a reference to given ids.
+    ///
+    /// Do not check if given ids are valid ids, or is present in the cache.
+    ///
+    /// Do not load those ids to the cache
+    pub fn get_records_ref<BM>(&self, ids: Vec<u32>) -> Reference<BM, MultipleIds>
+    where
+        BM: BaseModel,
+    {
+        ids.into()
     }
 
     /// Returns the MapOfField of given model for given id
@@ -162,6 +184,7 @@ impl<'model_manager> Environment<'model_manager> {
         model_name: &str,
         id: u32,
     ) -> Result<MapOfFields, Box<dyn Error>> {
+        // TODO Check if this method is still needed
         if !self.model_manager.is_valid_model(model_name) {
             return Err(ModelNotFound {
                 model_name: model_name.to_string(),
@@ -231,7 +254,7 @@ impl<'model_manager> Environment<'model_manager> {
     {
         let model_name = M::get_model_name();
         let id = self._create_new_record(model_name, data)?;
-        self.get_record::<M>(id)
+        Ok(self.get_record::<M>(id))
     }
 
     /// Create a new record for a specific model and a given list of fields

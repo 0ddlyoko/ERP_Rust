@@ -30,7 +30,7 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     env.cache.clear_dirty("sale_order", 1);
 
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let sale_order = env.get_record::<SaleOrder>(1)?;
+        let sale_order = env.get_record::<SaleOrder>(1);
         // Update the record
         sale_order.set_name("1ddlyoko".to_string(), env)?;
         sale_order.set_price(420, env)?;
@@ -44,19 +44,19 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     });
 
     // Check if it has not been committed
-    let sale_order = env.get_record::<SaleOrder>(1)?;
+    let sale_order = env.get_record::<SaleOrder>(1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);
 
     // Do it again, but here commit
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let sale_order = env.get_record::<SaleOrder>(1)?;
+        let sale_order = env.get_record::<SaleOrder>(1);
         // Update the record
         sale_order.set_name("1ddlyoko".to_string(), env)?;
         sale_order.set_price(420, env)?;
 
         // Check that it has been updated
-        let sale_order = env.get_record::<SaleOrder>(1).unwrap();
+        let sale_order = env.get_record::<SaleOrder>(1);
         assert_eq!(sale_order.get_name(env)?, "1ddlyoko");
         assert_eq!(*sale_order.get_price(env)?, 420);
 
@@ -64,7 +64,7 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     });
 
     // Check if it has not been committed
-    let sale_order = env.get_record::<SaleOrder>(1).unwrap();
+    let sale_order = env.get_record::<SaleOrder>(1);
     assert_eq!(sale_order.get_name(&mut env)?, "1ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 420);
 

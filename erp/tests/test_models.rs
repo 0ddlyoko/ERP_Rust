@@ -31,7 +31,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Test if modifying it works
     record.set_amount(20, &mut env)?;
 
-    let record = env.get_record::<SaleOrder>(1)?;
+    let record = env.get_record::<SaleOrder>(1);
     assert_eq!(record.id, 1);
     assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
     assert_eq!(*record.get_price(&mut env)?, 100);
@@ -44,7 +44,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     env.call_compute_fields("sale_order", 1, &["total_price".to_string()])?;
     // TODO Add depends, so that we can check if the computed field is automatically called
 
-    let record = env.get_record::<SaleOrder>(1)?;
+    let record = env.get_record::<SaleOrder>(1);
     assert_eq!(record.id, 1);
     assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
     assert_eq!(*record.get_price(&mut env)?, 100);
@@ -55,7 +55,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Changing the state
     record.set_state(SaleOrderState::Paid, &mut env)?;
 
-    let record = env.get_record::<SaleOrder>(1)?;
+    let record = env.get_record::<SaleOrder>(1);
     assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Paid);
     Ok(())
 }

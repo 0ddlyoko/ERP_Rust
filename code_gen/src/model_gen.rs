@@ -59,6 +59,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             field_name,
             is_required,
             is_reference,
+            is_reference_multi,
             field_type_keyword,
             ..
         } = f;
@@ -69,21 +70,39 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
 
         if *is_reference {
-            Some(quote! {
-                pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Option<M>, Box<dyn std::error::Error>>
-                where
-                    M: erp::model::Model<BaseModel=#field_type_keyword>,
-                {
-                    <Self as erp::model::Model>::get_reference::<M, #field_type_keyword>(self, #field_name, env)
-                }
-                pub fn #set_field_ident(&self, value: Option<erp::field::Reference<#field_type_keyword>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
-                    if let Some(value) = value {
-                        <Self as erp::model::Model>::set_reference(self, #field_name, value, env)
-                    } else {
-                        <Self as erp::model::Model>::set_option::<u32>(self, #field_name, None, env)
+            if *is_reference_multi {
+                Some(quote! {
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Option<Vec<M>>, Box<dyn std::error::Error>>
+                    where
+                        M: erp::model::Model<BaseModel=#field_type_keyword>,
+                    {
+                        <Self as erp::model::Model>::get_references::<M, #field_type_keyword>(self, #field_name, env)
                     }
-                }
-            })
+                    pub fn #set_field_ident(&self, value: Option<erp::field::Reference<#field_type_keyword, erp::field::MultipleIds>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                        if let Some(value) = value {
+                            <Self as erp::model::Model>::set_references(self, #field_name, value, env)
+                        } else {
+                            <Self as erp::model::Model>::set_option::<u32>(self, #field_name, None, env)
+                        }
+                    }
+                })
+            } else {
+                Some(quote! {
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Option<M>, Box<dyn std::error::Error>>
+                    where
+                        M: erp::model::Model<BaseModel=#field_type_keyword>,
+                    {
+                        <Self as erp::model::Model>::get_reference::<M, #field_type_keyword>(self, #field_name, env)
+                    }
+                    pub fn #set_field_ident(&self, value: Option<erp::field::Reference<#field_type_keyword, erp::field::SingleId>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                        if let Some(value) = value {
+                            <Self as erp::model::Model>::set_reference(self, #field_name, value, env)
+                        } else {
+                            <Self as erp::model::Model>::set_option::<u32>(self, #field_name, None, env)
+                        }
+                    }
+                })
+            }
         } else if *is_required {
             Some(quote! {
                 pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<&'a #field_type_keyword, Box<dyn std::error::Error>> {
@@ -152,6 +171,15 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 },
                 FieldType::Ref(r) => quote! {
                     Some(erp::field::FieldType::Ref(#r))
+                },
+                FieldType::Refs(r) => {
+                    let tokens = r.iter().map(|dep| quote! { #dep });
+                    quote! {
+                        {
+                            let refs = vec![#(#tokens),*];
+                            Some(erp::field::FieldType::Refs(refs))
+                        }
+                    }
                 },
             }
         } else if *is_reference {
