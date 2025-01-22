@@ -22,7 +22,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     } = ModelGen::from_item(&item)?;
 
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
-    let camel_case_table_name = table_name.to_camel_case();
+    let camel_case_table_name = table_name.replace("_", " ").to_camel_case();
     let base_model_name = format!("Base{}", camel_case_table_name);
     let base_model = if let Some(derived_model) = derived_model {
         let full_base_model = if derived_model.is_empty() {
@@ -39,7 +39,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     } else {
         let base_model_name_ident = Ident::new(base_model_name.as_str(), Span::call_site());
         quote! {
-            #[derive(Default)]
+            #[derive(Default, Debug)]
             pub struct #base_model_name_ident;
 
             impl erp::model::BaseModel for #base_model_name_ident {
@@ -72,18 +72,14 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         if *is_reference {
             if *is_reference_multi {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Option<Vec<M>>, Box<dyn std::error::Error>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Vec<M>, Box<dyn std::error::Error>>
                     where
                         M: erp::model::Model<BaseModel=#field_type_keyword>,
                     {
                         <Self as erp::model::Model>::get_references::<M, #field_type_keyword>(self, #field_name, env)
                     }
-                    pub fn #set_field_ident(&self, value: Option<erp::field::Reference<#field_type_keyword, erp::field::MultipleIds>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
-                        if let Some(value) = value {
-                            <Self as erp::model::Model>::set_references(self, #field_name, value, env)
-                        } else {
-                            <Self as erp::model::Model>::set_option::<u32>(self, #field_name, None, env)
-                        }
+                    pub fn #set_field_ident(&self, value: erp::field::Reference<#field_type_keyword, erp::field::MultipleIds>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                        <Self as erp::model::Model>::set_references(self, #field_name, value, env)
                     }
                 })
             } else {
@@ -130,6 +126,12 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
 
             #(#impl_model_fields)*
+        }
+
+        impl PartialEq for #struct_name_ident {
+            fn eq(&self, other: &Self) -> bool {
+                self.id == other.id
+            }
         }
     };
 

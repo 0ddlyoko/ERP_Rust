@@ -1,6 +1,7 @@
+use crate::models::BaseSaleOrderLine;
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::field::EnumType;
+use erp::field::{EnumType, MultipleIds, Reference};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -51,6 +52,7 @@ pub struct SaleOrder {
     amount: i32,
     #[erp(compute="compute_total_price", depends=["price", "amount"])]
     total_price: i32,
+    lines: Reference<BaseSaleOrderLine, MultipleIds>,
 }
 
 impl SaleOrder {

@@ -85,7 +85,7 @@ pub trait Model: SimplifiedModel + Sized {
 
     /// Returns given optional reference field.
     /// If error, returns the error
-    fn get_references<M, BM>(&self, field_name: &str, env: &mut Environment) -> Result<Option<Vec<M>>, Box<dyn std::error::Error>>
+    fn get_references<M, BM>(&self, field_name: &str, env: &mut Environment) -> Result<Vec<M>, Box<dyn std::error::Error>>
     where
         BM: BaseModel,
         M: Model<BaseModel=BM>,
@@ -96,9 +96,9 @@ pub trait Model: SimplifiedModel + Sized {
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         let reference: Option<Reference<BM, MultipleIds>> = result.and_then(|result| result.into());
         if let Some(reference) = reference {
-            Ok(Some(reference.get_multiple::<M>(env)))
+            Ok(reference.get_multiple::<M>(env))
         } else {
-            Ok(None)
+            Ok(vec![])
         }
     }
 

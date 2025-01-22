@@ -3,7 +3,8 @@ use erp::app::Application;
 use erp::model::MapOfFields;
 use std::error::Error;
 use base::models::{Contact, Lang};
-use test_utilities::models::{SaleOrder, SaleOrderState};
+use erp::field::{Reference, SingleId};
+use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
 
 #[test]
@@ -15,48 +16,56 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     let mut env = app.new_env();
 
     // Create a new SO
-    let mut record = MapOfFields::default();
-    record.insert("name", "0ddlyoko's SO");
-    record.insert::<&i32>("price", &100);
-    record.insert::<&i32>("amount", &200);
-    let mut record = env.create_new_record_from_map::<SaleOrder>(&mut record)?;
-    assert_eq!(record.id, 1);
-    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
-    assert_eq!(*record.get_price(&mut env)?, 100);
-    assert_eq!(*record.get_amount(&mut env)?, 200);
-    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
+    let mut sale_order_map = MapOfFields::default();
+    sale_order_map.insert("name", "0ddlyoko's SO");
+    sale_order_map.insert::<&i32>("price", &100);
+    sale_order_map.insert::<&i32>("amount", &200);
+    let sale_order = env.create_new_record_from_map::<SaleOrder>(&mut sale_order_map)?;
+    assert_eq!(sale_order.id, 1);
+    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*sale_order.get_price(&mut env)?, 100);
+    assert_eq!(*sale_order.get_amount(&mut env)?, 200);
+    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
     // Total price should be computed as we haven't passed it
-    assert_eq!(*record.get_total_price(&mut env)?, 100 * 200);
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
+    assert_eq!(sale_order.get_lines::<SaleOrderLine>(&mut env)?, vec![]);
+
+    // Create a new SO line
+    let mut sale_order_line_map = MapOfFields::default();
+    sale_order_line_map.insert::<&i32>("price", &100);
+    sale_order_line_map.insert::<&i32>("amount", &200);
+    sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.into());
 
     // Test if modifying it works
-    record.set_amount(20, &mut env)?;
+    sale_order.set_amount(20, &mut env)?;
 
-    let record = env.get_record::<SaleOrder>(1);
-    assert_eq!(record.id, 1);
-    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
-    assert_eq!(*record.get_price(&mut env)?, 100);
-    assert_eq!(*record.get_amount(&mut env)?, 20);
-    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
-    // For now there is no link between fields, so the computed method is not recomputed
-    assert_eq!(*record.get_total_price(&mut env)?, 100 * 200);
+    assert_eq!(sale_order.id, 1);
+    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*sale_order.get_price(&mut env)?, 100);
+    assert_eq!(*sale_order.get_amount(&mut env)?, 20);
+    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
+    // TODO Later, This should not fail if we add a link between sale_order & sale_order_line
+    assert_eq!(sale_order.get_lines::<SaleOrderLine>(&mut env)?, vec![]);
+    // TODO For now there is no link between fields, so the computed method is not recomputed.
+    //  Fix that
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
 
     // But we can force the computation of total_price
     env.call_compute_fields("sale_order", 1, &["total_price".to_string()])?;
     // TODO Add depends, so that we can check if the computed field is automatically called
 
-    let record = env.get_record::<SaleOrder>(1);
-    assert_eq!(record.id, 1);
-    assert_eq!(record.get_name(&mut env)?, "0ddlyoko's SO");
-    assert_eq!(*record.get_price(&mut env)?, 100);
-    assert_eq!(*record.get_amount(&mut env)?, 20);
-    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Draft);
-    assert_eq!(*record.get_total_price(&mut env)?, 100 * 20);
+    assert_eq!(sale_order.id, 1);
+    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*sale_order.get_price(&mut env)?, 100);
+    assert_eq!(*sale_order.get_amount(&mut env)?, 20);
+    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 20);
 
     // Changing the state
-    record.set_state(SaleOrderState::Paid, &mut env)?;
+    sale_order.set_state(SaleOrderState::Paid, &mut env)?;
 
-    let record = env.get_record::<SaleOrder>(1);
-    assert_eq!(*record.get_state(&mut env)?, SaleOrderState::Paid);
+    let sale_order = env.get_record::<SaleOrder>(1);
+    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Paid);
     Ok(())
 }
 

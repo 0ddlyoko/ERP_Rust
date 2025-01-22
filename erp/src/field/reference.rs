@@ -7,11 +7,11 @@ use std::vec::IntoIter;
 use crate::field::reference::sealed::Sealed;
 
 // TODO Move all those in another file
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SingleId {
     pub(crate) id: u32,
 }
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MultipleIds {
     pub(crate) ids: Vec<u32>,
 }
@@ -46,7 +46,7 @@ impl IdMode for MultipleIds {
 }
 impl Sealed for MultipleIds {}
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {
     pub id_mode: Mode,
     _phantom_data: PhantomData<BM>,
