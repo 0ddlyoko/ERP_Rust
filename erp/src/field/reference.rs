@@ -1,50 +1,9 @@
-use crate::environment::Environment;
 use crate::model::{BaseModel, Model};
 use std::marker::PhantomData;
 use std::ops;
 use std::slice::Iter;
 use std::vec::IntoIter;
-use crate::field::reference::sealed::Sealed;
-
-// TODO Move all those in another file
-#[derive(Default, Debug)]
-pub struct SingleId {
-    pub(crate) id: u32,
-}
-#[derive(Default, Debug)]
-pub struct MultipleIds {
-    pub(crate) ids: Vec<u32>,
-}
-
-mod sealed {
-    pub trait Sealed {}
-}
-pub trait IdMode: Sealed {
-    /// Returns a vector containing reference to ids saved in this reference
-    fn get_ids_ref(&self) -> Vec<&u32>;
-    /// Returns a vector containing ids saved in this reference
-    fn get_ids(&self) -> Vec<u32>;
-}
-// TODO Add iter support
-impl IdMode for SingleId {
-    fn get_ids_ref(&self) -> Vec<&u32> {
-        vec![&self.id]
-    }
-    fn get_ids(&self) -> Vec<u32> {
-        vec![self.id]
-    }
-}
-impl Sealed for SingleId {}
-
-impl IdMode for MultipleIds {
-    fn get_ids_ref(&self) -> Vec<&u32> {
-        self.ids.iter().collect()
-    }
-    fn get_ids(&self) -> Vec<u32> {
-        self.ids.clone()
-    }
-}
-impl Sealed for MultipleIds {}
+use crate::field::{IdMode, MultipleIds, SingleId};
 
 #[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {
@@ -57,25 +16,25 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
     /// Retrieves the instance of this ref.
     ///
     /// We don't load the record in cache, neither perform any modification / search to the database.
-    pub fn get<M>(&self, env: &mut Environment) -> M
+    pub fn get<M>(&self) -> M
     where
         M: Model<BaseModel=BM>,
     {
-        // TODO Check if we need to pass "env" here
-        //  If we don't need "env", check if we can use "From" trait
-        //  F::create_model(self.id_mode.id)
-        env.get_record::<M>(self.id_mode.id)
+        M::create_model(self.id_mode.id)
     }
 }
 
 impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
-    pub fn get_multiple<M>(&self, env: &mut Environment) -> Vec<M>
+    pub fn get_multiple<M>(&self) -> Vec<M>
     where
         M: Model<BaseModel=BM>,
     {
-        // TODO Check if we need to pass "env" here
-        //  If we don't need "env", check if we can use "From" trait
-        self.id_mode.get_ids().into_iter().map(|id| env.get_record::<M>(id)).collect()
+        self.id_mode.get_ids().into_iter().map(|id| M::create_model(id)).collect()
+    }
+
+    /// Check if given id is contained in the current reference
+    pub fn contains(&self, id: &u32) -> bool {
+        self.id_mode.contains(id)
     }
 }
 
@@ -132,7 +91,17 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
         vecs.into()
     }
 }
-// TODO Allow removing 2 references together
+
+/// Allow removing some ids from a reference
+impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>> for Reference<BM, Mode2> {
+    type Output = Reference<BM, MultipleIds>;
+
+    fn sub(self, rhs: Reference<BM, Mode1>) -> Self::Output {
+        let mut vecs = self.id_mode.get_ids();
+        vecs.retain(|id| rhs.contains(id));
+        vecs.into()
+    }
+}
 
 // Iterators
 // TODO Add the original list of ids somewhere to also load data of the other ids if we try to

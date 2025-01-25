@@ -43,13 +43,6 @@ impl ModelManager {
         (internal_model.create_instance)(id)
     }
 
-    pub fn create_instance<M>(&self, id: u32) -> M
-    where
-        M: Model,
-    {
-        M::create_model(id)
-    }
-
     pub fn new_environment(&self) -> Environment {
         Environment::new(self)
     }

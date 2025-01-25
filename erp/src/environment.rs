@@ -137,28 +137,23 @@ impl<'model_manager> Environment<'model_manager> {
         ))
     }
 
-    pub fn cast_to<FROM, TO, BM>(&mut self, from: &mut FROM) -> TO
-    where
-    FROM: Model<BaseModel=BM>,
-    TO: Model<BaseModel=BM>,
-    {
-        // TODO check if we can use trait "From" instead of this method
-        self.get_record::<TO>(from.get_id())
-    }
-
     /// Returns an instance of given model for a specific id
-    pub fn get_record<M>(&mut self, id: u32) -> M
+    /// 
+    /// Do not check if given id is valid id, or is present in the cache
+    /// 
+    /// Do not load given id to the cache
+    pub fn get_record<M>(&self, id: u32) -> M
     where
         M: Model,
     {
-        self.model_manager.create_instance::<M>(id)
+        M::create_model(id)
     }
 
     /// Returns a reference to given id
     ///
     /// Do not check if given id is valid id, or is present in the cache
     ///
-    /// Do not load those ids to the cache
+    /// Do not load given id to the cache
     pub fn get_record_ref<BM>(&self, id: u32) -> Reference<BM, SingleId>
     where
         BM: BaseModel,
@@ -178,35 +173,10 @@ impl<'model_manager> Environment<'model_manager> {
         ids.into()
     }
 
-    /// Returns the MapOfField of given model for given id
-    fn get_map_of_field(
-        &mut self,
-        model_name: &str,
-        id: u32,
-    ) -> Result<MapOfFields, Box<dyn Error>> {
-        // TODO Check if this method is still needed
-        if !self.model_manager.is_valid_model(model_name) {
-            return Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }
-            .into());
-        }
-        self.load_record_from_db(model_name, id)?;
-        let cache_record = self.cache.get_cache_record(model_name, id);
-        if cache_record.is_none() {
-            return Err(RecordNotFoundError {
-                model_name: model_name.to_string(),
-                id,
-            }
-            .into());
-        }
-        let record = cache_record.unwrap();
-        // TODO Add a system to load missing fields / computed fields when needed
-        Ok(record.transform_into_map_of_fields())
-    }
-
     /// Return the value of a specific field
+    ///
     /// If record is not loaded, load it
+    ///
     /// If field is a computed one and is not already computed, compute it
     pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: u32) -> Result<Option<&'a FieldType>, Box<dyn Error>> {
         if !self.model_manager.is_valid_model(model_name) {

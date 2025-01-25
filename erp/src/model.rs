@@ -77,7 +77,7 @@ pub trait Model: SimplifiedModel + Sized {
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         let reference: Option<Reference<BM, SingleId>> = result.and_then(|result| result.into());
         if let Some(reference) = reference {
-            Ok(Some(reference.get::<M>(env)))
+            Ok(Some(reference.get::<M>()))
         } else {
             Ok(None)
         }
@@ -96,7 +96,7 @@ pub trait Model: SimplifiedModel + Sized {
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         let reference: Option<Reference<BM, MultipleIds>> = result.and_then(|result| result.into());
         if let Some(reference) = reference {
-            Ok(reference.get_multiple::<M>(env))
+            Ok(reference.get_multiple::<M>())
         } else {
             Ok(vec![])
         }
@@ -144,6 +144,13 @@ pub trait Model: SimplifiedModel + Sized {
         let model_name = Self::get_model_name();
         let id = self.get_id();
         env.save_field_value(model_name, field_name, id, value)
+    }
+
+    fn convert<TO>(&self) -> TO
+    where
+        TO: Model<BaseModel=Self::BaseModel>,
+    {
+        TO::create_model(self.get_id())
     }
 }
 
