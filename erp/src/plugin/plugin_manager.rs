@@ -39,9 +39,9 @@ impl PluginManager {
         directory_path: &String,
     ) -> Result<(), Box<dyn error::Error>> {
         let dll_extension = env::consts::DLL_EXTENSION;
-        let paths = fs::read_dir(directory_path).unwrap();
+        let paths = fs::read_dir(directory_path)?;
         for path in paths {
-            let path = path.unwrap().path();
+            let path = path?.path();
             let extension = path.extension();
             if extension == Some(OsStr::new(dll_extension)) {
                 self.register_plugin_from_file(&path)?;
