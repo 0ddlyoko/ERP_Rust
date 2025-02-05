@@ -13,8 +13,8 @@ impl Plugin for TestPlugin {
 
     fn init_models(&self, model_manager: &mut ModelManager) {
         println!("init_models");
-        model_manager.register_model::<SaleOrderTest>();
-        model_manager.register_model::<SaleOrderTest2>();
+        model_manager.register_model::<SaleOrderTest<_>>();
+        model_manager.register_model::<SaleOrderTest2<_>>();
     }
 }
 

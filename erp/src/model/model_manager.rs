@@ -1,7 +1,7 @@
 use crate::environment::Environment;
-use crate::internal::internal_model::{FinalInternalModel, InternalModel};
-use crate::model::Model;
-use crate::model::SimplifiedModel;
+use crate::field::{IdMode, MultipleIds};
+use crate::internal::internal_model::{FinalInternalModel, InternalModel, ModelFactory};
+use crate::model::{CommonModel, Model};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -12,7 +12,7 @@ pub struct ModelManager {
 impl ModelManager {
     pub fn register_model<M>(&mut self)
     where
-        M: Model + 'static,
+        M: Model<MultipleIds> + 'static,
     {
         let model_name = M::get_model_name();
 
@@ -26,21 +26,28 @@ impl ModelManager {
         &self.models
     }
 
-    pub fn create_instance_from_name(
+    pub fn create_instance_from_name<Mode: IdMode>(
         &self,
         model_name: &str,
-        id: u32,
-    ) -> Box<dyn SimplifiedModel> {
+        id: Mode,
+    ) -> Box<dyn CommonModel<Mode>>
+    where
+        InternalModel: ModelFactory<Mode>,
+    {
         let model = self.models.get(model_name).unwrap();
-        (model.first().create_instance)(id)
+        let internal_model = model.first();
+        self.create_instance_from_internal_model(internal_model, id)
     }
 
-    pub fn create_instance_from_internal_model(
+    pub fn create_instance_from_internal_model<Mode: IdMode>(
         &self,
-        id: u32,
         internal_model: &InternalModel,
-    ) -> Box<dyn SimplifiedModel> {
-        (internal_model.create_instance)(id)
+        id: Mode,
+    ) -> Box<dyn CommonModel<Mode>>
+    where
+        InternalModel: ModelFactory<Mode>,
+    {
+        internal_model.create_instance(id)
     }
 
     pub fn new_environment(&self) -> Environment {

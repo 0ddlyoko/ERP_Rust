@@ -1,16 +1,35 @@
-use crate::field::FieldType;
+use crate::field::{IdMode, MultipleIds};
+use crate::field::{FieldType, SingleId};
 use crate::internal::internal_field::{FinalInternalField, InternalField};
-use crate::model::{Model, SimplifiedModel};
 use crate::model::ModelDescriptor;
+use crate::model::{CommonModel, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
+
+pub trait ModelFactory<Mode: IdMode>{
+    fn create_instance(&self, id: Mode) -> Box<dyn CommonModel<Mode>>;
+}
+
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub create_instance: fn(u32) -> Box<dyn SimplifiedModel>,
+    pub create_single_id_instance: fn(SingleId) -> Box<dyn CommonModel<SingleId>>,
+    pub create_multiple_ids_instance: fn(MultipleIds) -> Box<dyn CommonModel<MultipleIds>>,
+}
+
+impl ModelFactory<SingleId> for InternalModel {
+    fn create_instance(&self, id: SingleId) -> Box<dyn CommonModel<SingleId>> {
+        (self.create_single_id_instance)(id)
+    }
+}
+
+impl ModelFactory<MultipleIds> for InternalModel {
+    fn create_instance(&self, id: MultipleIds) -> Box<dyn CommonModel<MultipleIds>> {
+        (self.create_multiple_ids_instance)(id)
+    }
 }
 
 /// Final descriptor of a model.
@@ -35,7 +54,7 @@ impl FinalInternalModel {
 
     pub fn register_internal_model<M>(&mut self)
     where
-        M: Model + 'static,
+        M: Model<MultipleIds> + 'static,
     {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();
@@ -66,14 +85,17 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let create_instance: fn(u32) -> Box<dyn SimplifiedModel> =
-            |id| Box::new(M::create_model(id));
+        let create_multiple_ids_instance: fn (MultipleIds) -> Box<dyn CommonModel<MultipleIds>> =
+            |id| M::create_multiple_ids_instance(id);
+        let create_single_id_instance: fn (SingleId) -> Box<dyn CommonModel<SingleId>> =
+            |id| M::create_single_id_instance(id);
 
         let internal_model = InternalModel {
             name: name.to_string(),
             description,
             fields: final_fields,
-            create_instance,
+            create_multiple_ids_instance,
+            create_single_id_instance,
         };
 
         if let Some(description) = &internal_model.description {
@@ -101,7 +123,7 @@ impl FinalInternalModel {
 
     pub fn get_internal_model<M>(&self) -> &InternalModel
     where
-        M: Model + 'static,
+        M: CommonModel<MultipleIds> + 'static,
     {
         let type_id = TypeId::of::<M>();
         self.models
@@ -111,7 +133,7 @@ impl FinalInternalModel {
 
     pub fn get_internal_model_mut<M>(&mut self) -> &mut InternalModel
     where
-        M: Model + 'static,
+        M: CommonModel<MultipleIds> + 'static,
     {
         let type_id = TypeId::of::<M>();
         self.models
@@ -146,6 +168,7 @@ impl FinalInternalModel {
     }
 
     /// Return default value for given field.
+    ///
     /// If the first is not present, panic
     pub fn get_default_value(&self, field_name: &str) -> FieldType {
         let field = self.get_internal_field(field_name);
@@ -153,6 +176,7 @@ impl FinalInternalModel {
     }
 
     /// Return true if given field is a computed field.
+    ///
     /// If field is not present on this model, return false
     pub fn is_computed_field(&self, field_name: &str) -> bool {
         self.fields
@@ -161,7 +185,9 @@ impl FinalInternalModel {
     }
 
     /// Return the internal model linked to the computed given field.
+    ///
     /// If field is not present on this model, return None
+    ///
     /// If field is not a computed field, return None
     pub fn get_computed_field(&self, field_name: &str) -> Option<&InternalModel> {
         let field = self.fields.get(field_name)?;
@@ -170,7 +196,9 @@ impl FinalInternalModel {
     }
 
     /// Return the internal model linked to the computed given field.
+    ///
     /// If field is not present on this model, return None
+    ///
     /// If field is not a computed field, return None
     pub fn get_computed_field_mut(&mut self, field_name: &str) -> Option<&mut InternalModel> {
         let field = self.fields.get(field_name)?;

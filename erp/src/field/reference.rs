@@ -18,66 +18,54 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
     /// We don't load the record in cache, neither perform any modification / search to the database.
     pub fn get<M>(&self) -> M
     where
-        M: Model<BaseModel=BM>,
+        M: Model<SingleId, BaseModel=BM>,
     {
-        M::create_model(self.id_mode.id)
+        M::create_instance(self.id_mode.clone())
     }
 }
 
 impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
-    pub fn get_multiple<M>(&self) -> Vec<M>
+    pub fn get_multiple<M>(&self) -> M
     where
-        M: Model<BaseModel=BM>,
+        M: Model<MultipleIds, BaseModel=BM>,
     {
-        self.id_mode.get_ids().into_iter().map(|id| M::create_model(id)).collect()
+        M::create_instance(MultipleIds { ids: self.id_mode.get_ids_ref().clone() })
     }
 
     /// Check if given id is contained in the current reference
     pub fn contains(&self, id: &u32) -> bool {
         self.id_mode.contains(id)
     }
+
+    /// Remove duplicated ids from this reference
+    pub fn remove_dup(&mut self) {
+        self.id_mode.remove_dup();
+    }
 }
 
-impl<BM: BaseModel> From<u32> for Reference<BM, SingleId> {
-    fn from(value: u32) -> Self {
+impl<BM, E> From<E> for Reference<BM, SingleId>
+where
+    BM: BaseModel,
+    SingleId: From<E>,
+{
+    fn from(value: E) -> Self {
         Reference {
-            id_mode: SingleId { id: value },
+            id_mode: value.into(),
             _phantom_data: Default::default(),
         }
     }
 }
 
-impl<BM: BaseModel> From<&u32> for Reference<BM, SingleId> {
-    fn from(value: &u32) -> Self {
-        (*value).into()
-    }
-}
-
-impl<BM: BaseModel> From<Vec<u32>> for Reference<BM, MultipleIds> {
-    fn from(value: Vec<u32>) -> Self {
+impl<BM, E> From<E> for Reference<BM, MultipleIds>
+where
+    BM: BaseModel,
+    MultipleIds: From<E>,
+{
+    fn from(value: E) -> Self {
         Reference {
-            id_mode: MultipleIds { ids: value },
+            id_mode: value.into(),
             _phantom_data: Default::default(),
         }
-    }
-}
-
-impl<BM: BaseModel> From<u32> for Reference<BM, MultipleIds> {
-    fn from(value: u32) -> Self {
-        vec![value].into()
-    }
-}
-
-impl<BM: BaseModel> From<&u32> for Reference<BM, MultipleIds> {
-    fn from(value: &u32) -> Self {
-        vec![*value].into()
-    }
-}
-
-/// Allow SingleId => MultipleIds
-impl<BM: BaseModel> From<Reference<BM, SingleId>> for Reference<BM, MultipleIds> {
-    fn from(value: Reference<BM, SingleId>) -> Self {
-        value.id_mode.id.into()
     }
 }
 
@@ -86,8 +74,8 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
     type Output = Reference<BM, MultipleIds>;
 
     fn add(self, rhs: Reference<BM, Mode1>) -> Self::Output {
-        let mut vecs = self.id_mode.get_ids();
-        vecs.append(&mut rhs.id_mode.get_ids());
+        let mut vecs = self.id_mode.get_ids_ref().clone();
+        vecs.append(&mut rhs.id_mode.get_ids_ref().clone());
         vecs.into()
     }
 }
@@ -97,7 +85,7 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>>
     type Output = Reference<BM, MultipleIds>;
 
     fn sub(self, rhs: Reference<BM, Mode1>) -> Self::Output {
-        let mut vecs = self.id_mode.get_ids();
+        let mut vecs = self.id_mode.get_ids_ref().clone();
         vecs.retain(|id| rhs.contains(id));
         vecs.into()
     }

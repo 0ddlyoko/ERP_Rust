@@ -1,5 +1,5 @@
 use erp::cache::Cache;
-use erp::field::FieldType;
+use erp::field::{FieldType, SingleId};
 use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
 use test_utilities::models::SaleOrder;
@@ -7,8 +7,10 @@ use test_utilities::models::SaleOrder;
 #[test]
 fn test_get_and_insert_field() {
     let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrder>();
+    model_manager.register_model::<SaleOrder<_>>();
     let mut cache = Cache::new(&model_manager);
+    let id_1: SingleId = 1.into();
+    let id_2: SingleId = 2.into();
     let mut cached_fields = HashMap::new();
     cached_fields.insert(
         "my_field".to_string(),
@@ -16,11 +18,11 @@ fn test_get_and_insert_field() {
     );
     cache
         .get_cache_models_mut("sale_order")
-        .get_model_or_create(1)
+        .get_model_or_create(id_1.get_id())
         .insert_fields(MapOfFields::new(cached_fields));
 
     // Check if retrieving the field is correct
-    let cache_field = cache.get_record_field("sale_order", 1, "my_field");
+    let cache_field = cache.get_record_field("sale_order", &id_1.get_id(), "my_field");
     assert!(cache_field.unwrap().get().is_some());
     assert_eq!(
         cache_field.unwrap().get().unwrap(),
@@ -31,10 +33,10 @@ fn test_get_and_insert_field() {
     cache.insert_record_field(
         "sale_order",
         "my_field",
-        1,
+        &id_1,
         Some(FieldType::String("my_value_2".to_string())),
     );
-    let cache_field = cache.get_record_field("sale_order", 1, "my_field");
+    let cache_field = cache.get_record_field("sale_order", &id_1.get_id(), "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_some());
     assert_eq!(
@@ -43,24 +45,24 @@ fn test_get_and_insert_field() {
     );
 
     // Clear the field
-    cache.insert_record_field("sale_order", "my_field", 1, None);
-    let cache_field = cache.get_record_field("sale_order", 1, "my_field");
+    cache.insert_record_field("sale_order", "my_field", &id_1, None);
+    let cache_field = cache.get_record_field("sale_order", &id_1.get_id(), "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_none());
     // Put field back
     cache.insert_record_field(
         "sale_order",
         "my_field",
-        1,
+        &id_1,
         Some(FieldType::String("my_value_2".to_string())),
     );
 
     // Insert another model
     cache
         .get_cache_models_mut("sale_order")
-        .get_model_or_create(2);
+        .get_model_or_create(id_2.get_id());
     // Inserting another model shouldn't have modified the other field
-    let cache_field = cache.get_record_field("sale_order", 1, "my_field");
+    let cache_field = cache.get_record_field("sale_order", &id_1.get_id(), "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_some());
     assert_eq!(
@@ -72,17 +74,17 @@ fn test_get_and_insert_field() {
     cache.insert_record_field(
         "sale_order",
         "my_field",
-        2,
+        &id_2,
         Some(FieldType::String("my_value_3".to_string())),
     );
-    let cache_field = cache.get_record_field("sale_order", 1, "my_field");
+    let cache_field = cache.get_record_field("sale_order", &id_1.get_id(), "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_some());
     assert_eq!(
         cache_field.unwrap().get().unwrap(),
         &FieldType::String("my_value_2".to_string())
     );
-    let cache_field = cache.get_record_field("sale_order", 2, "my_field");
+    let cache_field = cache.get_record_field("sale_order", &id_2.get_id(), "my_field");
     assert!(cache_field.is_some());
     assert!(cache_field.unwrap().get().is_some());
     assert_eq!(

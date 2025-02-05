@@ -1,7 +1,7 @@
 use crate::models::BaseSaleOrderLine;
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::field::{EnumType, MultipleIds, Reference};
+use erp::field::{EnumType, IdMode, MultipleIds, Reference};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -41,8 +41,8 @@ impl EnumType for SaleOrderState {
 
 #[derive(Model)]
 #[erp(table_name="sale_order")]
-pub struct SaleOrder {
-    pub id: u32,
+pub struct SaleOrder<Mode: IdMode> {
+    pub id: Mode,
     #[erp(default="0ddlyoko")]
     name: String,
     state: SaleOrderState,
@@ -52,14 +52,15 @@ pub struct SaleOrder {
     amount: i32,
     #[erp(compute="compute_total_price", depends=["price", "amount"])]
     total_price: i32,
-    lines: Reference<BaseSaleOrderLine, MultipleIds>,
+    // lines: Reference<BaseSaleOrderLine, MultipleIds>,
 }
 
-impl SaleOrder {
+impl<Mode: IdMode> SaleOrder<Mode> {
     pub fn compute_total_price(
         &mut self,
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>> {
-        self.set_total_price(*self.get_price(env)? * *self.get_amount(env)?, env)
+        // self.set_total_price(*self.get_price(env)? * *self.get_amount(env)?, env)
+        Ok(())
     }
 }

@@ -7,7 +7,7 @@ pub use cache_field::CacheField;
 pub use cache_model::CacheModel;
 pub use cache_models::CacheModels;
 
-use crate::field::FieldType;
+use crate::field::{FieldType, IdMode, SingleId};
 use crate::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
 
@@ -24,7 +24,7 @@ impl Cache {
         Cache { cache }
     }
 
-    pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
+    pub fn is_record_present(&self, model_name: &str, id: &u32) -> bool {
         if let Some(cache_models) = self.cache.get(model_name) {
             cache_models.is_record_present(id)
         } else {
@@ -49,21 +49,21 @@ impl Cache {
     /// Returns CacheModel linked to given model & id.
     /// If CacheModels not found, panic.
     /// If id not found, return None
-    pub fn get_cache_record(&self, model_name: &str, id: u32) -> Option<&CacheModel> {
+    pub fn get_cache_record(&self, model_name: &str, id: &u32) -> Option<&CacheModel> {
         self.get_cache_models(model_name).get_model(id)
     }
 
     /// Returns CacheModel linked to given model & id.
     /// If CacheModels not found, panic.
     /// If id not found, return None
-    pub fn get_cache_record_mut(&mut self, model_name: &str, id: u32) -> Option<&mut CacheModel> {
+    pub fn get_cache_record_mut(&mut self, model_name: &str, id: &u32) -> Option<&mut CacheModel> {
         self.cache.get_mut(model_name)?.get_model_mut(id)
     }
 
     pub fn get_record_field(
         &self,
         model_name: &str,
-        id: u32,
+        id: &u32,
         field_name: &str,
     ) -> Option<&CacheField> {
         self.cache
@@ -75,7 +75,7 @@ impl Cache {
     pub fn get_record_field_mut(
         &mut self,
         model_name: &str,
-        id: u32,
+        id: &u32,
         field_name: &str,
     ) -> Option<&mut CacheField> {
         self.cache
@@ -84,24 +84,30 @@ impl Cache {
             .get_field_mut(field_name)
     }
 
-    pub fn insert_record_field(
+    pub fn insert_record_field<'a, Mode: IdMode>(
         &mut self,
         model_name: &str,
         field_name: &str,
-        id: u32,
+        ids: &'a Mode,
         field_value: Option<FieldType>,
-    ) {
+    )
+    where
+        &'a Mode: IntoIterator<Item = SingleId>,
+    {
         let cache_models = self.get_cache_models_mut(model_name);
-        let cache_model = cache_models.get_model_or_create(id);
-        let result = cache_model.insert_field(field_name, field_value);
-        if let Some(result) = result {
-            if result.1 {
-                cache_models.add_dirty(id, vec![field_name.to_string()]);
+        for id in ids {
+            let cache_model = cache_models.get_model_or_create(id.get_id());
+            let result = cache_model.insert_field(field_name, field_value.clone());
+            if let Some(result) = result {
+                if result.1 {
+                    cache_models.add_dirty(id.get_id(), vec![field_name.to_string()]);
+                }
             }
         }
     }
 
     pub fn insert_record_model_with_map(&mut self, model_name: &str, id: u32, fields: MapOfFields) {
+        // TODO Allow IdMode as input
         let cache_models = self.get_cache_models_mut(model_name);
         let cache_model = cache_models.get_model_or_create(id);
         let dirty_fields = cache_model.insert_fields(fields);
@@ -114,7 +120,8 @@ impl Cache {
         self.get_cache_models_mut(model_name).clear_all_dirty();
     }
 
-    pub fn clear_dirty(&mut self, model_name: &str, id: u32) {
+    pub fn clear_dirty(&mut self, model_name: &str, id: &u32) {
+        // TODO Allow IdMode as input
         self.get_cache_models_mut(model_name).clear_dirty(id);
     }
 

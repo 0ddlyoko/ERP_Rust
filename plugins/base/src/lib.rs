@@ -11,11 +11,11 @@ impl Plugin for BasePlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::Company>();
-        model_manager.register_model::<models::Contact>();
-        model_manager.register_model::<models::Country>();
-        model_manager.register_model::<models::Lang>();
-        model_manager.register_model::<models::Plugin>();
+        model_manager.register_model::<models::Company<_>>();
+        model_manager.register_model::<models::Contact<_>>();
+        model_manager.register_model::<models::Country<_>>();
+        model_manager.register_model::<models::Lang<_>>();
+        model_manager.register_model::<models::Plugin<_>>();
     }
 }
 

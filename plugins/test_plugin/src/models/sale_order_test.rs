@@ -1,9 +1,10 @@
 use code_gen::Model;
+use erp::field::IdMode;
 
 #[derive(Model)]
 #[erp(table_name="sale_order_test")]
-pub(crate) struct SaleOrderTest {
-    id: u32,
+pub(crate) struct SaleOrderTest<Mode: IdMode> {
+    id: Mode,
     name: String,
     age: i32,
 }
@@ -11,8 +12,8 @@ pub(crate) struct SaleOrderTest {
 #[derive(Model)]
 #[erp(table_name="sale_order_test")]
 #[erp(derived_model="")]
-pub(crate) struct SaleOrderTest2 {
-    id: u32,
+pub(crate) struct SaleOrderTest2<Mode: IdMode> {
+    id: Mode,
     #[erp(description="New name of the SO")]
     name: String,
 }

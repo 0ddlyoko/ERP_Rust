@@ -1,10 +1,10 @@
 use crate::cache::Cache;
-use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound, SimplifiedModel};
+use crate::model::{BaseModel, CommonModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::error::Error;
 
 use crate::cache::errors::RecordNotFoundError;
-use crate::field::{FieldType, MultipleIds, Reference, SingleId};
-use crate::internal::internal_model::InternalModel;
+use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
+use crate::internal::internal_model::{InternalModel, ModelFactory};
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -21,18 +21,20 @@ impl<'model_manager> Environment<'model_manager> {
         }
     }
 
-    /// Load given record from the database to the cache.
+    /// Load given records from the database to the cache.
     /// If the record is already present in cache, do nothing
     /// Returns true if the record has been found
-    pub fn load_record_from_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
-        if self.cache.is_record_present(model_name, id) {
-            return Ok(());
+    pub fn load_records_from_db<'a, Mode: IdMode + 'a>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>>
+    where &'a Mode: IntoIterator<Item = SingleId>
+    {
+        // TODO Correctly write this method with MultipleIds
+        let ids_to_load: Vec<&u32> = ids.get_ids_ref().iter().filter(|id| !self.cache.is_record_present(model_name, id)).collect();
+        let ids_to_load: MultipleIds = ids_to_load.into();
+        for id in ids_to_load {
+            let map_of_fields = self.get_data_from_db(model_name, &id)?;
+            self.cache.insert_record_model_with_map(model_name, id.get_id(), map_of_fields);
+            self.cache.clear_dirty(model_name, &id.get_id());
         }
-
-        let map_of_fields = self.get_data_from_db(model_name, id)?;
-        self.cache
-            .insert_record_model_with_map(model_name, id, map_of_fields);
-        self.cache.clear_dirty(model_name, id);
         Ok(())
     }
 
@@ -43,7 +45,8 @@ impl<'model_manager> Environment<'model_manager> {
     /// If the record is not present in cache, do nothing
     ///
     /// If given model does not exist, panic.
-    pub fn save_record_to_db(&mut self, model_name: &str, id: u32) -> Result<(), Box<dyn Error>> {
+    /// TODO Use IdMode
+    pub fn save_record_to_db(&mut self, model_name: &str, id: &u32) -> Result<(), Box<dyn Error>> {
         let cache_models = self.cache.get_cache_models(model_name);
         let dirty_fields = cache_models.get_dirty(id);
         if dirty_fields.is_none() {
@@ -58,7 +61,7 @@ impl<'model_manager> Environment<'model_manager> {
         let dirty_fields: Vec<&str> = dirty_fields.unwrap().iter().map(|f| f.as_str()).collect();
         self.save_data_to_db(
             model_name,
-            id,
+            &id.into(),
             &cache_model.unwrap().get_map_of_fields(&dirty_fields),
         )?;
         // Now that it's saved in db, clear dirty fields
@@ -70,12 +73,12 @@ impl<'model_manager> Environment<'model_manager> {
     pub fn get_data_from_db(
         &self,
         model_name: &str,
-        id: u32,
+        id: &SingleId
     ) -> Result<MapOfFields, Box<dyn Error>> {
         // TODO Get data from db
         Err(RecordNotFoundError {
             model_name: model_name.to_string(),
-            id,
+            id: id.get_id(),
         }
         .into())
     }
@@ -84,7 +87,7 @@ impl<'model_manager> Environment<'model_manager> {
     pub fn save_data_to_db(
         &self,
         model_name: &str,
-        id: u32,
+        id: &SingleId,
         data: &MapOfFields,
     ) -> Result<(), Box<dyn Error>> {
         // TODO Save data to db
@@ -92,26 +95,30 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Insert new data to the database
+    /// TODO Allow to call this method with multiple data
     pub fn insert_data_to_db(
         &mut self,
         model_name: &str,
         data: &MapOfFields,
-    ) -> Result<u32, Box<dyn Error>> {
+    ) -> Result<SingleId, Box<dyn Error>> {
         // TODO Insert data to db
         let id = self.id;
         self.id += 1;
         self.cache.insert_record_model_with_map(model_name, id, data.clone());
-        Ok(id)
+        Ok(id.into())
     }
 
     /// Returns the first record of given model for a specific id
     ///
     /// If the record is not present in cache, loads it from the database
-    pub fn get_record_from_name(
+    pub fn get_record_from_name<Mode: IdMode>(
         &mut self,
         model_name: &str,
-        id: u32,
-    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
+        id: Mode,
+    ) -> Result<Box<dyn CommonModel<Mode>>, Box<dyn Error>>
+    where
+        InternalModel: ModelFactory<Mode>,
+    {
         if !self.model_manager.is_valid_model(model_name) {
             return Err(ModelNotFound {
                 model_name: model_name.to_string(),
@@ -125,16 +132,18 @@ impl<'model_manager> Environment<'model_manager> {
 
     /// Returns the first record of given model for a specific id
     ///
-    /// If the record is not present in cache, loads it from the database
-    pub fn get_record_from_internal_model(
+    /// Do not check if given id is valid id, or is present in the cache
+    ///
+    /// Do not load given id to the cache
+    pub fn get_record_from_internal_model<Mode: IdMode>(
         &mut self,
         internal_model: &InternalModel,
-        id: u32,
-    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
-        Ok(self.model_manager.create_instance_from_internal_model(
-            id,
-            internal_model,
-        ))
+        id: Mode,
+    ) -> Result<Box<dyn CommonModel<Mode>>, Box<dyn Error>>
+    where
+        InternalModel: ModelFactory<Mode>,
+    {
+        Ok(self.model_manager.create_instance_from_internal_model(internal_model, id))
     }
 
     /// Returns an instance of given model for a specific id
@@ -142,11 +151,11 @@ impl<'model_manager> Environment<'model_manager> {
     /// Do not check if given id is valid id, or is present in the cache
     /// 
     /// Do not load given id to the cache
-    pub fn get_record<M>(&self, id: u32) -> M
+    pub fn get_record<M, Mode: IdMode>(&self, id: Mode) -> M
     where
-        M: Model,
+        M: Model<Mode>,
     {
-        M::create_model(id)
+        M::create_instance(id)
     }
 
     /// Returns a reference to given id
@@ -178,73 +187,96 @@ impl<'model_manager> Environment<'model_manager> {
     /// If record is not loaded, load it
     ///
     /// If field is a computed one and is not already computed, compute it
-    pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: u32) -> Result<Option<&'a FieldType>, Box<dyn Error>> {
+    pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: &SingleId) -> Result<Option<&'a FieldType>, Box<dyn Error>> {
         if !self.model_manager.is_valid_model(model_name) {
             return Err(ModelNotFound {
                 model_name: model_name.to_string(),
             }
                 .into());
         }
-        self.load_record_from_db(model_name, id)?;
-        let cache_record = self.cache.get_cache_record(model_name, id);
-        if cache_record.is_none() {
-            return Err(RecordNotFoundError {
+        self.load_records_from_db(model_name, id)?;
+        let cache_record = self.cache.get_cache_record(model_name, &id.get_id());
+        if let Some(record) = cache_record {
+            Ok(record.get_field(field_name).and_then(|f| f.get()))
+        } else {
+            Err(RecordNotFoundError {
                 model_name: model_name.to_string(),
-                id,
+                id: id.get_id(),
             }
-                .into());
+                .into())
         }
-        let record = cache_record.unwrap();
-        Ok(record.get_field(field_name).and_then(|f| f.get()))
     }
 
-    pub fn save_field_value<E>(&mut self, model_name: &str, field_name: &str, id: u32, value: E) -> Result<(), Box<dyn Error>>
+    pub fn get_fields_value<'a, Mode: IdMode + 'a>(&'a mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&'a FieldType>>, Box<dyn Error>>
     where
-        E: Into<FieldType> {
+        &'a Mode: IntoIterator<Item = SingleId>,
+    {
+        if !self.model_manager.is_valid_model(model_name) {
+            return Err(ModelNotFound {
+                model_name: model_name.to_string(),
+            }.into());
+        }
+        self.load_records_from_db(model_name, ids)?;
+        Ok(ids.get_ids_ref().iter().map(|id| {
+            let cache_record = self.cache.get_cache_record(model_name, &id);
+            cache_record.and_then(|cache_record| cache_record.get_field(field_name).and_then(|f| f.get()))
+        }).collect())
+    }
+
+    pub fn save_field_value<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<(), Box<dyn Error>>
+    where
+        E: Into<FieldType>,
+        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
+    {
         let field_type: FieldType = value.into();
-        self.cache.insert_record_field(model_name, field_name, id, Some(field_type));
+        self.cache.insert_record_field(model_name, field_name, ids, Some(field_type));
         Ok(())
     }
 
-    pub fn save_option_field_value<E>(&mut self, model_name: &str, field_name: &str, id: u32, value: Option<E>) -> Result<(), Box<dyn Error>>
+    pub fn save_option_field_value<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<(), Box<dyn Error>>
     where
-        E: Into<FieldType> {
+        E: Into<FieldType>,
+        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
+    {
         let field_type: Option<FieldType> = value.map(|value| value.into());
-        self.cache.insert_record_field(model_name, field_name, id, field_type);
+        self.cache.insert_record_field(model_name, field_name, ids, field_type);
         Ok(())
     }
 
     /// Create a new record for a specific model and a given list of fields
+    /// TODO Allow to call this method with multiple data
     pub fn create_new_record_from_map<M>(
         &mut self,
         data: &mut MapOfFields,
     ) -> Result<M, Box<dyn Error>>
     where
-        M: Model,
+        M: Model<SingleId>,
     {
         let model_name = M::get_model_name();
         let id = self._create_new_record(model_name, data)?;
-        Ok(self.get_record::<M>(id))
+        Ok(self.get_record::<M, SingleId>(id))
     }
 
     /// Create a new record for a specific model and a given list of fields
+    /// TODO Allow to call this method with multiple data
     pub fn create_record_from_name(
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Result<Box<dyn SimplifiedModel>, Box<dyn Error>> {
+    ) -> Result<Box<dyn CommonModel<SingleId>>, Box<dyn Error>> {
         let id = self._create_new_record(model_name, data)?;
         self.get_record_from_name(model_name, id)
     }
 
+    /// TODO Allow to call this method with multiple data
     fn _create_new_record(
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Result<u32, Box<dyn Error>> {
+    ) -> Result<SingleId, Box<dyn Error>> {
         let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
-        self.load_record_from_db(model_name, id)?;
+        self.load_records_from_db(model_name, &id)?;
         // Once loaded, we should call all computed methods
         if let Some(missing_fields) = missing_fields {
             let final_internal_model = self.model_manager.get_model(model_name);
@@ -253,7 +285,7 @@ impl<'model_manager> Environment<'model_manager> {
                     .into_iter()
                     .filter(|f| final_internal_model.is_computed_field(f))
                     .collect();
-                self.call_compute_fields(model_name, id, &computed_fields)?;
+                self.call_compute_fields(model_name, &id, &computed_fields)?;
             }
         }
 
@@ -297,12 +329,15 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Call computed methods of given fields of given model for given id
-    pub fn call_compute_fields(
+    pub fn call_compute_fields<Mode: IdMode>(
         &mut self,
         model_name: &str,
-        id: u32,
+        id: &Mode,
         fields: &[String],
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error>>
+    where
+        InternalModel: ModelFactory<Mode>,
+    {
         let final_internal_model = self.model_manager.get_model(model_name);
         if final_internal_model.is_none() {
             return Err(ModelNotFound {
@@ -318,8 +353,10 @@ impl<'model_manager> Environment<'model_manager> {
                     continue;
                 }
                 let computed_field = compute_field.unwrap();
-                let mut record = env.get_record_from_internal_model(computed_field, id)?;
-                record.call_compute_method(field.as_str(), env)?;
+                // TODO Try to find a way to not clone the id
+                let mut record = env.get_record_from_internal_model(computed_field, id.clone())?;
+                // TODO Add again this computed method
+                // record.call_compute_method(field.as_str(), env)?;
             }
             Ok(())
         })

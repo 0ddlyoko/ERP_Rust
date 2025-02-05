@@ -211,13 +211,13 @@ impl<E> From<&FieldType> for Option<Reference<E, SingleId>> where E: BaseModel {
 
 impl<E> From<&Reference<E, SingleId>> for FieldType where E: BaseModel {
     fn from(t: &Reference<E, SingleId>) -> Self {
-        FieldType::Ref(t.id_mode.id)
+        FieldType::Ref(t.id_mode.get_id())
     }
 }
 
 impl<E> From<Reference<E, SingleId>> for FieldType where E: BaseModel {
     fn from(t: Reference<E, SingleId>) -> Self {
-        FieldType::Ref(t.id_mode.id)
+        FieldType::Ref(t.id_mode.get_id())
     }
 }
 
@@ -248,6 +248,7 @@ impl From<&Vec<u32>> for FieldType {
 impl<E> From<&FieldType> for Option<Reference<E, MultipleIds>> where E: BaseModel {
     fn from(t: &FieldType) -> Self {
         match t {
+            FieldType::Ref(id) => Some(vec![*id].into()),
             FieldType::Refs(ids) => Some(ids.clone().into()),
             _ => None,
         }
@@ -256,7 +257,7 @@ impl<E> From<&FieldType> for Option<Reference<E, MultipleIds>> where E: BaseMode
 
 impl<E> From<&Reference<E, MultipleIds>> for FieldType where E: BaseModel {
     fn from(t: &Reference<E, MultipleIds>) -> Self {
-        FieldType::Refs(t.id_mode.get_ids())
+        FieldType::Refs(t.id_mode.get_ids_ref().clone())
     }
 }
 
