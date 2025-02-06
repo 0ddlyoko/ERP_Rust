@@ -235,6 +235,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             field_name,
             is_required,
             is_reference,
+            is_reference_multi,
             field_type_keyword,
             default: default_value,
             description,
@@ -274,8 +275,14 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                 },
             }
         } else if *is_reference {
-            quote! {
-                Some(erp::field::FieldType::Ref(0))
+            if *is_reference_multi {
+                quote! {
+                    Some(erp::field::FieldType::Refs(vec![]))
+                }
+            } else {
+                quote! {
+                    Some(erp::field::FieldType::Ref(0))
+                }
             }
         } else {
             quote! {

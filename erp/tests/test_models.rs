@@ -1,9 +1,9 @@
 use base::BasePlugin;
 use erp::app::Application;
-use erp::model::MapOfFields;
+use erp::model::{CommonModel, MapOfFields};
 use std::error::Error;
 use base::models::{Contact, Lang};
-use erp::field::{Reference, SingleId};
+use erp::field::{IdMode, Reference, SingleId};
 use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
 
@@ -29,15 +29,15 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Total price should be computed as we haven't passed it
     // TODO Bring back computed methods
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
-    // TODO Bring back Ref<MultipleIds>
 
-    // assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?, vec![]);
+    assert!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.get_id_mode().is_empty());
 
     // Create a new SO line
     let mut sale_order_line_map = MapOfFields::default();
     sale_order_line_map.insert::<&i32>("price", &100);
     sale_order_line_map.insert::<&i32>("amount", &200);
     sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.clone().into());
+    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(&mut sale_order_line_map)?;
 
     // Test if modifying it works
     sale_order.set_amount(20, &mut env)?;

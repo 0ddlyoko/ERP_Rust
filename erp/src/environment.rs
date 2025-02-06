@@ -218,7 +218,7 @@ impl<'model_manager> Environment<'model_manager> {
         }
         self.load_records_from_db(model_name, ids)?;
         Ok(ids.get_ids_ref().iter().map(|id| {
-            let cache_record = self.cache.get_cache_record(model_name, &id);
+            let cache_record = self.cache.get_cache_record(model_name, id);
             cache_record.and_then(|cache_record| cache_record.get_field(field_name).and_then(|f| f.get()))
         }).collect())
     }

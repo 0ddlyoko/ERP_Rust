@@ -37,6 +37,8 @@ pub trait IdMode: Sealed + Clone + IntoIterator<Item = SingleId> {
     fn contains(&self, id: &u32) -> bool;
     /// Remove duplicated ids
     fn remove_dup(&mut self);
+    /// Check if ids are empty
+    fn is_empty(&self) -> bool;
 }
 
 impl IdMode for SingleId {
@@ -54,6 +56,9 @@ impl IdMode for SingleId {
     }
     fn remove_dup(&mut self) {
         // Nothing to do here, as it's already a single id
+    }
+    fn is_empty(&self) -> bool {
+        false
     }
 }
 
@@ -75,6 +80,9 @@ impl IdMode for MultipleIds {
     fn remove_dup(&mut self) {
         let mut seen = HashSet::new();
         self.ids.retain(|id| seen.insert(*id));
+    }
+    fn is_empty(&self) -> bool {
+        self.ids.is_empty()
     }
 }
 
