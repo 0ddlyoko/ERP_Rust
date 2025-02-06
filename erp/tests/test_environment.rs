@@ -152,7 +152,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     env.cache.clear_dirty("sale_order", &1);
 
     // Get the record
-    let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
+    let sale_order: SaleOrder<SingleId> = env.get_record(1.into());
     assert_eq!(sale_order.id, 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);

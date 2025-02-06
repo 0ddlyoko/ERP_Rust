@@ -2,6 +2,7 @@ use erp::environment::Environment;
 use erp::model::{MapOfFields, ModelManager};
 use std::error::Error;
 use std::fmt;
+use erp::field::SingleId;
 use test_utilities::models::SaleOrder;
 
 #[derive(Debug, Clone)]
@@ -28,8 +29,8 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     env.cache.insert_record_model_with_map("sale_order", 1, map);
     env.cache.clear_dirty("sale_order", &1);
 
+    let sale_order: SaleOrder<SingleId> = env.get_record(1.into());
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
         // Update the record
         sale_order.set_name("1ddlyoko".to_string(), env)?;
         sale_order.set_price(420, env)?;
@@ -43,19 +44,16 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     });
 
     // Check if it has not been committed
-    let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 42);
 
     // Do it again, but here commit
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
-        let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
         // Update the record
         sale_order.set_name("1ddlyoko".to_string(), env)?;
         sale_order.set_price(420, env)?;
 
         // Check that it has been updated
-        let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
         assert_eq!(sale_order.get_name(env)?, "1ddlyoko");
         assert_eq!(*sale_order.get_price(env)?, 420);
 
@@ -63,7 +61,6 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     });
 
     // Check if it has not been committed
-    let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
     assert_eq!(sale_order.get_name(&mut env)?, "1ddlyoko");
     assert_eq!(*sale_order.get_price(&mut env)?, 420);
 

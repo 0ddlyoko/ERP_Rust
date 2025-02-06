@@ -199,10 +199,11 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: Into<FieldType>,
-        Self: Sized + Model<SingleId>,
+        Self: Sized,
+        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
-        let id_mode: &SingleId = self.get_id_mode();
+        let id_mode = self.get_id_mode();
         env.save_field_value(model_name, field_name, id_mode, value)
     }
 

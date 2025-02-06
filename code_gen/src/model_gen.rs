@@ -59,7 +59,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
-    // TODO Add impl_model_fields_multi
     let impl_model_fields_single = fields.iter().filter_map(|f| {
         let FieldGen {
             field_name,
@@ -126,6 +125,73 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             })
         }
     });
+    let impl_model_fields_multi = fields.iter().filter_map(|f| {
+        let FieldGen {
+            field_name,
+            is_required,
+            is_reference,
+            is_reference_multi,
+            field_type_keyword,
+            ..
+        } = f;
+        if field_name == "id" {
+            return None;
+        }
+        let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
+        // TODO Move the set to another place, as it's not needed to be different between SingleId & MultipleIds
+        let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
+
+        if *is_reference {
+            if *is_reference_multi {
+                Some(quote! {
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error>>
+                    where
+                        M: erp::model::Model<erp::field::MultipleIds, BaseModel=#field_type_keyword>,
+                    {
+                        <Self as erp::model::Model<erp::field::MultipleIds>>::get_references::<M, #field_type_keyword>(self, #field_name, env)
+                    }
+                    pub fn #set_field_ident(&self, value: erp::field::Reference<#field_type_keyword, erp::field::MultipleIds>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                        <Self as erp::model::Model<erp::field::MultipleIds>>::set_references(self, #field_name, value, env)
+                    }
+                })
+            } else {
+                Some(quote! {
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error>>
+                    where
+                        M: erp::model::Model<erp::field::MultipleIds, BaseModel=#field_type_keyword>,
+                    {
+                        <Self as erp::model::Model<erp::field::MultipleIds>>::get_references::<M, #field_type_keyword>(self, #field_name, env)
+                    }
+                    pub fn #set_field_ident(&self, value: Option<erp::field::Reference<#field_type_keyword, erp::field::SingleId>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                        if let Some(value) = value {
+                            <Self as erp::model::Model<erp::field::MultipleIds>>::set_reference(self, #field_name, value, env)
+                        } else {
+                            <Self as erp::model::Model<erp::field::MultipleIds>>::set_option::<u32>(self, #field_name, None, env)
+                        }
+                    }
+                })
+            }
+        } else if *is_required {
+            Some(quote! {
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Vec<&'a #field_type_keyword>, Box<dyn std::error::Error>>
+                {
+                    <Self as erp::model::Model<erp::field::MultipleIds>>::gets(self, #field_name, env)
+                }
+                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                    <Self as erp::model::Model<erp::field::MultipleIds>>::set(self, #field_name, value, env)
+                }
+            })
+        } else {
+            Some(quote! {
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Vec<Option<&'a #field_type_keyword>>, Box<dyn std::error::Error>> {
+                    <Self as erp::model::Model<erp::field::MultipleIds>>::get_options(self, #field_name, env)
+                }
+                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error>> {
+                    <Self as erp::model::Model<erp::field::MultipleIds>>::set_option(self, #field_name, value, env)
+                }
+            })
+        }
+    });
     let impl_model = quote! {
 
         impl #struct_name_ident<erp::field::SingleId> {
@@ -137,6 +203,18 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             }
 
             #(#impl_model_fields_single)*
+        }
+
+        impl #struct_name_ident<erp::field::MultipleIds> {
+            pub fn get_ids(&self) -> Vec<u32> {
+                self.id.get_ids_ref().clone()
+            }
+
+            pub fn get_ids_ref(&self) -> &Vec<u32> {
+                &self.id.get_ids_ref()
+            }
+
+            #(#impl_model_fields_multi)*
         }
 
         impl<Mode: erp::field::IdMode + PartialEq> PartialEq for #struct_name_ident<Mode> {
