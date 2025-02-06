@@ -15,5 +15,5 @@ pub struct Contact<Mode: IdMode> {
     country: Reference<BaseCountry, SingleId>,
     parent: Reference<BaseContact, SingleId>,
     // TODO MultipleIds should not exist without SingleId ref
-    // childrens: Reference<BaseContact, MultipleIds>,
+    childrens: Reference<BaseContact, MultipleIds>,
 }

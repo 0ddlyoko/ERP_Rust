@@ -44,20 +44,6 @@ pub trait CommonModel<Mode: IdMode> {
 pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     type BaseModel: BaseModel + Sized;
 
-    fn get_name<'a>(&self, env: &'a mut Environment) -> Result<&'a String, Box<dyn std::error::Error>>
-    where
-        Self: Model<SingleId>
-    {
-        <Self as Model<Mode>>::get(self, "name", env)
-    }
-
-    fn get_names<'a>(&self, env: &'a mut Environment) -> Result<Vec<&'a String>, Box<dyn std::error::Error>>
-    where
-        Self: Model<MultipleIds>
-    {
-        <Self as Model<Mode>>::gets(self, "name", env)
-    }
-
     // /// Call given computed method
     // /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
     // /// So, when you implement this method in Model<SingleId>, you can return Ok(())
@@ -181,7 +167,7 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     /// Returns given optional references field.
     ///
     /// If error, returns the error
-    fn get_references<'a, M, BM>(&'a self, field_name: &str, env: &'a mut Environment<'a>) -> Result<M, Box<dyn std::error::Error>>
+    fn get_references<'a, M, BM>(&self, field_name: &str, env: &'a mut Environment) -> Result<M, Box<dyn std::error::Error>>
     where
         BM: BaseModel,
         M: Model<MultipleIds, BaseModel=BM>,

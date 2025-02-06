@@ -78,9 +78,9 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         if *is_reference {
             if *is_reference_multi {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Vec<M>, Box<dyn std::error::Error>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error>>
                     where
-                        M: erp::model::Model<erp::field::SingleId, BaseModel=#field_type_keyword>,
+                        M: erp::model::Model<erp::field::MultipleIds, BaseModel=#field_type_keyword>,
                     {
                         <Self as erp::model::Model<erp::field::SingleId>>::get_references::<M, #field_type_keyword>(self, #field_name, env)
                     }
