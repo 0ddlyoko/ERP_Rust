@@ -27,9 +27,7 @@ pub trait CommonModel<Mode: IdMode> {
 
     /// Get a descriptor that represent this model
     /// This method should only be called at startup, to load the model
-    fn get_model_descriptor() -> ModelDescriptor
-    where
-        Self: Sized;
+    fn get_model_descriptor() -> ModelDescriptor where Self: Sized;
 
     /// Get the current id of this model
     fn get_id_mode(&self) -> &Mode;
@@ -41,8 +39,8 @@ pub trait CommonModel<Mode: IdMode> {
     fn create_multiple_ids_instance(id: MultipleIds) -> Box<dyn CommonModel<MultipleIds>> where Self: Sized;
 }
 
-pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
-    type BaseModel: BaseModel + Sized;
+pub trait Model<Mode: IdMode>: CommonModel<Mode> {
+    type BaseModel: BaseModel;
 
     // /// Call given computed method
     // /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
@@ -55,16 +53,19 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     //
     // Utils
 
+}
+
+impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
+
     /// Returns given field of given type.
     ///
     /// If error, returns the error
-    fn get<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<&'a E, Box<dyn Error>>
+    pub fn get<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<&'a E, Box<dyn Error>>
     where
         Option<&'a E>: From<&'a FieldType>,
-        Self: Sized + Model<SingleId>,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
-        let id = self.get_id_mode();
+        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let id: &SingleId = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         if let Some(result) = result {
             let result: Option<&E> = result.into();
@@ -87,15 +88,45 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
         }
     }
 
+    /// Returns given optional field of given type.
+    ///
+    /// If error, returns the error
+    pub fn get_option<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Option<&'a E>, Box<dyn std::error::Error>>
+    where
+        Option<&'a E>: From<&'a FieldType>,
+    {
+        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let id = self.get_id_mode();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        Ok(result.and_then(|result| result.into()))
+    }
+
+    /// Returns given optional reference field.
+    ///
+    /// If error, returns the error
+    pub fn get_reference<M, BM2>(&self, field_name: &str, env: &mut Environment) -> Result<Option<M>, Box<dyn std::error::Error>>
+    where
+        M: Model<SingleId, BaseModel=BM2>,
+        BM2: BaseModel,
+    {
+        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let id = self.get_id_mode();
+        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
+        let reference: Option<Reference<BM2, SingleId>> = result.and_then(|result| result.into());
+        Ok(reference.map(|r| r.get::<M>()))
+    }
+}
+
+impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
+
     /// Returns given field of given type.
     ///
     /// If error, returns the error
-    fn gets<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<&'a E>, Box<dyn Error>>
+    pub fn gets<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<&'a E>, Box<dyn Error>>
     where
         Option<&'a E>: From<&'a FieldType>,
-        Self: Sized + Model<MultipleIds>,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
         let ids: &MultipleIds = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, ids)?;
         result.iter().enumerate().map(|(idx, res)| {
@@ -123,59 +154,30 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     /// Returns given optional field of given type.
     ///
     /// If error, returns the error
-    fn get_option<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Option<&'a E>, Box<dyn std::error::Error>>
+    pub fn get_options<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<Option<&'a E>>, Box<dyn std::error::Error>>
     where
         Option<&'a E>: From<&'a FieldType>,
-        Self: Sized + Model<SingleId>,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
-        let id = self.get_id_mode();
-        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        Ok(result.and_then(|result| result.into()))
-    }
-
-    /// Returns given optional field of given type.
-    ///
-    /// If error, returns the error
-    fn get_options<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<Option<&'a E>>, Box<dyn std::error::Error>>
-    where
-        Option<&'a E>: From<&'a FieldType>,
-        Self: Sized + Model<MultipleIds>,
-    {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
         let id: &MultipleIds = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, id)?;
         Ok(result.iter().map(|res| res.and_then(|res| res.into())).collect())
     }
+}
 
-    /// Returns given optional reference field.
-    ///
-    /// If error, returns the error
-    fn get_reference<M, BM>(&self, field_name: &str, env: &mut Environment) -> Result<Option<M>, Box<dyn std::error::Error>>
-    where
-        BM: BaseModel,
-        M: Model<SingleId, BaseModel=BM>,
-        Self: Sized + Model<SingleId>,
-    {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
-        let id = self.get_id_mode();
-        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        let reference: Option<Reference<BM, SingleId>> = result.and_then(|result| result.into());
-        Ok(reference.map(|r| r.get::<M>()))
-    }
+impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
 
     /// Returns given optional references field.
     ///
     /// If error, returns the error
-    fn get_references<'a, M, BM>(&self, field_name: &str, env: &'a mut Environment) -> Result<M, Box<dyn std::error::Error>>
+    pub fn get_references<'a, M, BM2>(&self, field_name: &str, env: &'a mut Environment) -> Result<M, Box<dyn std::error::Error>>
     where
-        BM: BaseModel,
-        M: Model<MultipleIds, BaseModel=BM>,
-        Self: Sized,
+        M: Model<MultipleIds, BaseModel=BM2>,
+        BM2: BaseModel,
         &'a Mode: IntoIterator<Item = SingleId>,
         Mode: 'a,
     {
-        let model_name = Self::get_model_name();
+        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let ids = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, ids)?;
         let ids: Vec<u32> = result.iter().flat_map(|field_type| {
@@ -190,16 +192,15 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
             }
         }).collect();
         // Remove duplicated ids
-        let mut reference: Reference<BM, MultipleIds> = ids.into();
+        let mut reference: Reference<BM2, MultipleIds> = ids.into();
         reference.remove_dup();
         Ok(reference.get_multiple::<M>())
     }
 
     /// Changes the value of given field to given value
-    fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    pub fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: Into<FieldType>,
-        Self: Sized,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -208,10 +209,9 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     }
 
     /// Changes the value of given field to given optional value
-    fn set_option<E>(&self, field_name: &str, value: Option<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    pub fn set_option<E>(&self, field_name: &str, value: Option<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: Into<FieldType>,
-        Self: Sized,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -220,10 +220,9 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     }
 
     /// Changes the value of given field to given reference
-    fn set_reference<E>(&self, field_name: &str, value: Reference<E, SingleId>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    pub fn set_reference<E>(&self, field_name: &str, value: Reference<E, SingleId>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: BaseModel,
-        Self: Sized,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -232,10 +231,9 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     }
 
     /// Changes the value of given field to given reference
-    fn set_references<E>(&self, field_name: &str, value: Reference<E, MultipleIds>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
+    pub fn set_references<E>(&self, field_name: &str, value: Reference<E, MultipleIds>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: BaseModel,
-        Self: Sized,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -244,9 +242,9 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> + Sized {
     }
 
     /// Convert this model into another one, but from the same base
-    fn convert<TO>(&self) -> TO
+    pub fn convert<TO>(&self) -> TO
     where
-        TO: Model<Mode, BaseModel=Self::BaseModel>,
+        TO: Model<Mode, BaseModel=BM>,
     {
         TO::create_instance(self.get_id_mode().clone())
     }
