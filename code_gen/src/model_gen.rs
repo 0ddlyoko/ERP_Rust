@@ -414,12 +414,40 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         }
     };
 
+    let iterator = quote! {
+        impl<Mode: erp::field::IdMode> IntoIterator for #ident<Mode> {
+            type Item = #ident<erp::field::SingleId>;
+            type IntoIter = erp::model::ModelIntoIterator<Self::Item>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                erp::model::ModelIntoIterator {
+                    ids: self.id.get_ids_ref().clone().into_iter(),
+                    _phantom_data: Default::default(),
+                }
+            }
+        }
+
+        impl<'a, Mode: erp::field::IdMode> IntoIterator for &'a #ident<Mode> {
+            type Item = #ident<erp::field::SingleId>;
+            type IntoIter = erp::model::ModelIterator<'a, Self::Item>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                erp::model::ModelIterator {
+                    ids: self.id.get_ids_ref().iter(),
+                    _phantom_data: Default::default(),
+                }
+            }
+        }
+    };
+
     let result = quote! {
         #base_model
 
         #impl_model
 
         #common_model_impl
+
+        #iterator
     };
 
     Ok(result)

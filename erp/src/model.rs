@@ -1,14 +1,17 @@
 mod errors;
+mod iterator;
 mod map_of_fields;
 mod model_descriptor;
 mod model_manager;
 
-use crate::environment::Environment;
-use crate::field::{FieldType, IdMode, MultipleIds, Reference, RequiredFieldEmpty, SingleId};
 pub use errors::*;
+pub use iterator::*;
 pub use map_of_fields::*;
 pub use model_descriptor::*;
 pub use model_manager::*;
+
+use crate::environment::Environment;
+use crate::field::{FieldType, IdMode, MultipleIds, Reference, RequiredFieldEmpty, SingleId};
 use std::error::Error;
 
 pub trait BaseModel {
