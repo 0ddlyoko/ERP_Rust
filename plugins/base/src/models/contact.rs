@@ -5,6 +5,7 @@ use erp::field::{IdMode, MultipleIds, Reference, SingleId};
 
 #[derive(Model)]
 #[erp(table_name="contact")]
+#[allow(dead_code)]
 pub struct Contact<Mode: IdMode> {
     id: Mode,
     name: String,

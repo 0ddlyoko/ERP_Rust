@@ -5,6 +5,7 @@ use syn::spanned::Spanned;
 use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment, Result, Type, TypePath};
 use erp::field::FieldType;
 
+#[allow(dead_code)]
 pub struct FieldGen {
     pub field_name: String,
     pub field_span: Span,

@@ -20,6 +20,21 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         ..
     } = ModelGen::from_item(&item)?;
 
+    let compute_fields = fields.iter().filter_map(|f| {
+        let FieldGen {
+            field_name,
+            compute,
+            ..
+        } = f;
+        let compute = compute.as_ref()?.to_string();
+        let compute_method_ident = Ident::new(&compute, Span::call_site());
+        Some(quote! {
+            if field_name == #field_name {
+                return self.#compute_method_ident(env);
+            }
+        })
+    });
+
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
     let camel_case_table_name = table_name.replace("_", " ").to_camel_case();
     let base_model_name = format!("Base{}", camel_case_table_name);
@@ -33,9 +48,26 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         quote! {
             impl erp::model::Model<erp::field::SingleId> for #struct_name_ident<erp::field::SingleId> {
                 type BaseModel = #full_base_model_path;
+
+                fn call_compute_method(
+                    &self,
+                    field_name: &str,
+                    env: &mut erp::environment::Environment,
+                ) -> Result<(), Box<dyn std::error::Error>> {
+                    Ok(())
+                }
             }
             impl erp::model::Model<erp::field::MultipleIds> for #struct_name_ident<erp::field::MultipleIds> {
                 type BaseModel = #full_base_model_path;
+
+                fn call_compute_method(
+                    &self,
+                    field_name: &str,
+                    env: &mut erp::environment::Environment,
+                ) -> Result<(), Box<dyn std::error::Error>> {
+                    #(#compute_fields)*
+                    Ok(())
+                }
             }
         }
     } else {
@@ -52,9 +84,26 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
             impl erp::model::Model<erp::field::SingleId> for #struct_name_ident<erp::field::SingleId> {
                 type BaseModel = #base_model_name_ident;
+
+                fn call_compute_method(
+                    &self,
+                    field_name: &str,
+                    env: &mut erp::environment::Environment,
+                ) -> Result<(), Box<dyn std::error::Error>> {
+                    Ok(())
+                }
             }
             impl erp::model::Model<erp::field::MultipleIds> for #struct_name_ident<erp::field::MultipleIds> {
                 type BaseModel = #base_model_name_ident;
+
+                fn call_compute_method(
+                    &self,
+                    field_name: &str,
+                    env: &mut erp::environment::Environment,
+                ) -> Result<(), Box<dyn std::error::Error>> {
+                    #(#compute_fields)*
+                    Ok(())
+                }
             }
         }
     };
@@ -342,20 +391,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let create_model_2 = create_model.clone();
     let create_model_3 = create_model.clone();
 
-    let compute_fields = fields.iter().filter_map(|f| {
-        let FieldGen {
-            field_name,
-            compute,
-            ..
-        } = f;
-        let compute = compute.as_ref()?.to_string();
-        let compute_method_ident = Ident::new(&compute, Span::call_site());
-        Some(quote! {
-            if field_name == #field_name {
-                return self.#compute_method_ident(env);
-            }
-        })
-    });
 
     let common_model_impl = quote! {
         impl<Mode: erp::field::IdMode> erp::model::CommonModel<Mode> for #ident<Mode> where #ident<Mode>: erp::model::Model<Mode> {
@@ -402,15 +437,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     #(#create_model_3,)*
                 })
             }
-
-            // fn call_compute_method(
-            //     &mut self,
-            //     field_name: &str,
-            //     env: &mut erp::environment::Environment,
-            // ) -> Result<(), Box<dyn std::error::Error>> {
-            //     #(#compute_fields)*
-            //     Ok(())
-            // }
         }
     };
 

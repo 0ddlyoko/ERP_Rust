@@ -1,6 +1,7 @@
 use crate::plugin::Plugin;
 use libloading::Library;
 
+#[allow(dead_code)]
 pub(crate) enum InternalPluginType {
     Dll(Library),
     Static(),

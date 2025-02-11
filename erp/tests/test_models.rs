@@ -21,11 +21,9 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     sale_order_map.insert::<&i32>("price", &100);
     sale_order_map.insert::<&i32>("amount", &200);
     let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(&mut sale_order_map)?;
-    assert_eq!(sale_order.id, 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
-    assert_eq!(*sale_order.get_price(&mut env)?, 100);
-    assert_eq!(*sale_order.get_amount(&mut env)?, 200);
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 0, "Total price should be 0, as there is no line");
     // Total price should be computed as we haven't passed it
     // TODO Bring back computed methods
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
@@ -38,15 +36,16 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     sale_order_line_map.insert::<&i32>("amount", &200);
     sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.clone().into());
     let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(&mut sale_order_line_map)?;
+    assert_eq!(*sale_order_line.get_price(&mut env)?, 100);
+    assert_eq!(*sale_order_line.get_amount(&mut env)?, 200);
+    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 200);
 
     // Test if modifying it works
-    sale_order.set_amount(20, &mut env)?;
+    sale_order_line.set_amount(20, &mut env)?;
 
-    assert_eq!(sale_order.id, 1);
-    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
-    assert_eq!(*sale_order.get_price(&mut env)?, 100);
-    assert_eq!(*sale_order.get_amount(&mut env)?, 20);
-    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
+    assert_eq!(*sale_order_line.get_price(&mut env)?, 100);
+    assert_eq!(*sale_order_line.get_amount(&mut env)?, 20);
+    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 20);
     // TODO Later, This should not fail if we add a link between sale_order & sale_order_line
     // assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?, vec![]);
     // TODO For now there is no link between fields, so the computed method is not recomputed.
@@ -54,17 +53,16 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
 
     // But we can force the computation of total_price
-    // env.call_compute_fields("sale_order", &1.into(), &["total_price".to_string()])?;
-    // // TODO Add depends, so that we can check if the computed field is automatically called
+    env.call_compute_method("sale_order_line", &SingleId::from(1), &["total_price".to_string()])?;
+    // TODO Add depends, so that we can check if the computed field is automatically called
     //
-    // assert_eq!(sale_order.id, 1);
-    // assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
-    // assert_eq!(*sale_order.get_price(&mut env)?, 100);
-    // assert_eq!(*sale_order.get_amount(&mut env)?, 20);
-    // assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
+    assert_eq!(sale_order.id, 1);
+    assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 20);
+    assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 20);
 
-    // Changing the state
+    // Change the state
     sale_order.set_state(SaleOrderState::Paid, &mut env)?;
 
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Paid);

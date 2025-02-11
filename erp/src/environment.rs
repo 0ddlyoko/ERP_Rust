@@ -84,11 +84,12 @@ impl<'model_manager> Environment<'model_manager> {
     }
 
     /// Save existing data to the database
+    #[allow(dead_code)]
     pub fn save_data_to_db(
         &self,
-        model_name: &str,
-        id: &SingleId,
-        data: &MapOfFields,
+        _model_name: &str,
+        _id: &SingleId,
+        _data: &MapOfFields,
     ) -> Result<(), Box<dyn Error>> {
         // TODO Save data to db
         Ok(())
@@ -253,27 +254,19 @@ impl<'model_manager> Environment<'model_manager> {
         M: Model<SingleId>,
     {
         let model_name = M::get_model_name();
-        let id = self._create_new_record(model_name, data)?;
+        let id = self._create_new_record::<M>(model_name, data)?;
         Ok(self.get_record::<M, SingleId>(id))
     }
 
-    /// Create a new record for a specific model and a given list of fields
     /// TODO Allow to call this method with multiple data
-    pub fn create_record_from_name(
+    fn _create_new_record<M>(
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Result<Box<dyn CommonModel<SingleId>>, Box<dyn Error>> {
-        let id = self._create_new_record(model_name, data)?;
-        self.get_record_from_name(model_name, id)
-    }
-
-    /// TODO Allow to call this method with multiple data
-    fn _create_new_record(
-        &mut self,
-        model_name: &str,
-        data: &mut MapOfFields,
-    ) -> Result<SingleId, Box<dyn Error>> {
+    ) -> Result<SingleId, Box<dyn Error>>
+    where
+        M: Model<SingleId>,
+    {
         let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
         self.load_records_from_db(model_name, &id)?;
@@ -285,7 +278,7 @@ impl<'model_manager> Environment<'model_manager> {
                     .into_iter()
                     .filter(|f| final_internal_model.is_computed_field(f))
                     .collect();
-                self.call_compute_fields(model_name, &id, &computed_fields)?;
+                self.call_compute_method(model_name, &id, &computed_fields)?;
             }
         }
 
@@ -328,15 +321,13 @@ impl<'model_manager> Environment<'model_manager> {
         result
     }
 
-    /// Call computed methods of given fields of given model for given id
-    pub fn call_compute_fields<Mode: IdMode>(
+    /// Call computed methods of given fields of given model for given ids
+    pub fn call_compute_method<Mode: IdMode>(
         &mut self,
         model_name: &str,
-        id: &Mode,
+        ids: &Mode,
         fields: &[String],
     ) -> Result<(), Box<dyn Error>>
-    where
-        InternalModel: ModelFactory<Mode>,
     {
         let final_internal_model = self.model_manager.get_model(model_name);
         if final_internal_model.is_none() {
@@ -354,7 +345,9 @@ impl<'model_manager> Environment<'model_manager> {
                 }
                 let computed_field = compute_field.unwrap();
                 // TODO Try to find a way to not clone the id
-                let mut record = env.get_record_from_internal_model(computed_field, id.clone())?;
+                let record = env.get_record_from_internal_model::<MultipleIds>(computed_field, ids.get_ids_ref().into())?;
+
+
                 // TODO Add again this computed method
                 // record.call_compute_method(field.as_str(), env)?;
             }

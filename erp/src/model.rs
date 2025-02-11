@@ -45,17 +45,15 @@ pub trait CommonModel<Mode: IdMode> {
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {
     type BaseModel: BaseModel;
 
-    // /// Call given computed method
-    // /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
-    // /// So, when you implement this method in Model<SingleId>, you can return Ok(())
-    // fn call_compute_method(
-    //     &mut self,
-    //     field_name: &str,
-    //     env: &mut Environment,
-    // ) -> Result<(), Box<dyn Error>>;
-    //
-    // Utils
-
+    /// Call given computed method
+    /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
+    /// So, when you implement this method in Model<SingleId>, you can return Ok(()), as this method
+    ///  will never be called on SingleId
+    fn call_compute_method(
+        &self,
+        field_name: &str,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
 impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {

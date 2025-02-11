@@ -6,10 +6,12 @@ use syn::spanned::Spanned;
 use syn::token::{Comma, Eq};
 use syn::{bracketed, Attribute, Lit, LitStr};
 
+#[allow(dead_code)]
 pub trait MySpanned {
     fn span(&self) -> Span;
 }
 
+#[allow(dead_code)]
 pub struct AttributeWrapper<T> {
     pub item: T,
     pub attribute_span: Span,

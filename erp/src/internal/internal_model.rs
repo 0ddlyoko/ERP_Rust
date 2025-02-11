@@ -1,13 +1,14 @@
 use crate::field::{IdMode, MultipleIds};
 use crate::field::{FieldType, SingleId};
 use crate::internal::internal_field::{FinalInternalField, InternalField};
-use crate::model::ModelDescriptor;
+use crate::model::{BaseModel, ModelDescriptor};
 use crate::model::{CommonModel, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
 
 pub trait ModelFactory<Mode: IdMode>{
     fn create_instance(&self, id: Mode) -> Box<dyn CommonModel<Mode>>;
+    // fn create_model_instance<BM: BaseModel>(&self, id: Mode) -> Box<dyn Model<Mode, BaseModel=BM>>;
 }
 
 

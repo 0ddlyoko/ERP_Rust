@@ -32,6 +32,7 @@ impl EnumType for PluginState {
 
 #[derive(Model)]
 #[erp(table_name="plugin")]
+#[allow(dead_code)]
 pub struct Plugin<Mode: IdMode> {
     id: Mode,
     name: String,
