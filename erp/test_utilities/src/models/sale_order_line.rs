@@ -24,7 +24,9 @@ impl SaleOrderLine<MultipleIds> {
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error>> {
         for sale_order_line in self {
-            sale_order_line.set_total_price(*sale_order_line.get_price(env)? * sale_order_line.get_amount(env)?, env)?;
+            let price = *sale_order_line.get_price(env)?;
+            let amount = *sale_order_line.get_amount(env)?;
+            sale_order_line.set_total_price(price * amount, env)?;
         }
 
         Ok(())

@@ -40,20 +40,21 @@ pub trait CommonModel<Mode: IdMode> {
 
     fn create_single_id_instance(id: SingleId) -> Box<dyn CommonModel<SingleId>> where Self: Sized;
     fn create_multiple_ids_instance(id: MultipleIds) -> Box<dyn CommonModel<MultipleIds>> where Self: Sized;
-}
-
-pub trait Model<Mode: IdMode>: CommonModel<Mode> {
-    type BaseModel: BaseModel;
 
     /// Call given computed method
     /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
     /// So, when you implement this method in Model<SingleId>, you can return Ok(()), as this method
     ///  will never be called on SingleId
     fn call_compute_method(
-        &self,
+        // &self,
         field_name: &str,
+        id: MultipleIds,
         env: &mut Environment,
-    ) -> Result<(), Box<dyn Error>>;
+    ) -> Result<(), Box<dyn Error>> where Self: Sized;
+}
+
+pub trait Model<Mode: IdMode>: CommonModel<Mode> {
+    type BaseModel: BaseModel;
 }
 
 impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {

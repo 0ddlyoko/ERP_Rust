@@ -30,7 +30,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         let compute_method_ident = Ident::new(&compute, Span::call_site());
         Some(quote! {
             if field_name == #field_name {
-                return self.#compute_method_ident(env);
+                return record.#compute_method_ident(env);
             }
         })
     });
@@ -48,26 +48,9 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         quote! {
             impl erp::model::Model<erp::field::SingleId> for #struct_name_ident<erp::field::SingleId> {
                 type BaseModel = #full_base_model_path;
-
-                fn call_compute_method(
-                    &self,
-                    field_name: &str,
-                    env: &mut erp::environment::Environment,
-                ) -> Result<(), Box<dyn std::error::Error>> {
-                    Ok(())
-                }
             }
             impl erp::model::Model<erp::field::MultipleIds> for #struct_name_ident<erp::field::MultipleIds> {
                 type BaseModel = #full_base_model_path;
-
-                fn call_compute_method(
-                    &self,
-                    field_name: &str,
-                    env: &mut erp::environment::Environment,
-                ) -> Result<(), Box<dyn std::error::Error>> {
-                    #(#compute_fields)*
-                    Ok(())
-                }
             }
         }
     } else {
@@ -84,26 +67,9 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
 
             impl erp::model::Model<erp::field::SingleId> for #struct_name_ident<erp::field::SingleId> {
                 type BaseModel = #base_model_name_ident;
-
-                fn call_compute_method(
-                    &self,
-                    field_name: &str,
-                    env: &mut erp::environment::Environment,
-                ) -> Result<(), Box<dyn std::error::Error>> {
-                    Ok(())
-                }
             }
             impl erp::model::Model<erp::field::MultipleIds> for #struct_name_ident<erp::field::MultipleIds> {
                 type BaseModel = #base_model_name_ident;
-
-                fn call_compute_method(
-                    &self,
-                    field_name: &str,
-                    env: &mut erp::environment::Environment,
-                ) -> Result<(), Box<dyn std::error::Error>> {
-                    #(#compute_fields)*
-                    Ok(())
-                }
             }
         }
     };
@@ -436,6 +402,16 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     id,
                     #(#create_model_3,)*
                 })
+            }
+
+            fn call_compute_method(
+                field_name: &str,
+                id: erp::field::MultipleIds,
+                env: &mut erp::environment::Environment,
+            ) -> Result<(), Box<dyn std::error::Error>> {
+                let record = #ident::<erp::field::MultipleIds>::create_instance(id);
+                #(#compute_fields)*
+                Ok(())
             }
         }
     };

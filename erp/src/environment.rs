@@ -345,7 +345,8 @@ impl<'model_manager> Environment<'model_manager> {
                 }
                 let computed_field = compute_field.unwrap();
                 // TODO Try to find a way to not clone the id
-                let record = env.get_record_from_internal_model::<MultipleIds>(computed_field, ids.get_ids_ref().into())?;
+                (computed_field.call_computed_method)(field.as_str(), ids.get_ids_ref().into(), env)?;
+                // let record = env.get_record_from_internal_model::<MultipleIds>(computed_field, ids.get_ids_ref().into())?;
 
 
                 // TODO Add again this computed method

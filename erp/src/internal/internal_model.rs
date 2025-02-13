@@ -1,24 +1,27 @@
-use crate::field::{IdMode, MultipleIds};
+use crate::environment::Environment;
 use crate::field::{FieldType, SingleId};
+use crate::field::{IdMode, MultipleIds};
 use crate::internal::internal_field::{FinalInternalField, InternalField};
-use crate::model::{BaseModel, ModelDescriptor};
 use crate::model::{CommonModel, Model};
+use crate::model::ModelDescriptor;
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::error::Error;
 
 pub trait ModelFactory<Mode: IdMode>{
     fn create_instance(&self, id: Mode) -> Box<dyn CommonModel<Mode>>;
-    // fn create_model_instance<BM: BaseModel>(&self, id: Mode) -> Box<dyn Model<Mode, BaseModel=BM>>;
 }
 
 
 /// Model descriptor represented by a single struct model
+type EmptyResult = Result<(), Box<dyn Error>>;
 pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
     pub create_single_id_instance: fn(SingleId) -> Box<dyn CommonModel<SingleId>>,
     pub create_multiple_ids_instance: fn(MultipleIds) -> Box<dyn CommonModel<MultipleIds>>,
+    pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult,
 }
 
 impl ModelFactory<SingleId> for InternalModel {
@@ -90,6 +93,7 @@ impl FinalInternalModel {
             |id| M::create_multiple_ids_instance(id);
         let create_single_id_instance: fn (SingleId) -> Box<dyn CommonModel<SingleId>> =
             |id| M::create_single_id_instance(id);
+        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult = |field_name, id, env| M::call_compute_method(field_name, id, env);
 
         let internal_model = InternalModel {
             name: name.to_string(),
@@ -97,6 +101,7 @@ impl FinalInternalModel {
             fields: final_fields,
             create_multiple_ids_instance,
             create_single_id_instance,
+            call_computed_method,
         };
 
         if let Some(description) = &internal_model.description {
