@@ -221,3 +221,38 @@ impl PartialEq<u32> for SingleId {
         self.id == *other
     }
 }
+
+impl PartialEq<Vec<u32>> for SingleId {
+    fn eq(&self, other: &Vec<u32>) -> bool {
+        other.len() == 1 && self.id == other[0]
+    }
+}
+
+impl<Mode: IdMode> PartialEq<Mode> for SingleId {
+    fn eq(&self, other: &Mode) -> bool {
+        let other_ids = other.get_ids_ref();
+        if other_ids.len() != 1 {
+            false
+        } else {
+            other_ids[0] == self.id
+        }
+    }
+}
+
+impl PartialEq<Vec<u32>> for MultipleIds {
+    fn eq(&self, other: &Vec<u32>) -> bool {
+        &self.ids == other
+    }
+}
+
+impl PartialEq<u32> for MultipleIds {
+    fn eq(&self, other: &u32) -> bool {
+        self.ids.len() == 1 && self.ids[0] == *other
+    }
+}
+
+impl<Mode: IdMode> PartialEq<Mode> for MultipleIds {
+    fn eq(&self, other: &Mode) -> bool {
+        &self.ids == other.get_ids_ref()
+    }
+}
