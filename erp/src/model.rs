@@ -38,9 +38,6 @@ pub trait CommonModel<Mode: IdMode> {
     /// Create a new instance of this model with given id
     fn create_instance(id: Mode) -> Self where Self: Sized;
 
-    fn create_single_id_instance(id: SingleId) -> Box<dyn CommonModel<SingleId>> where Self: Sized;
-    fn create_multiple_ids_instance(id: MultipleIds) -> Box<dyn CommonModel<MultipleIds>> where Self: Sized;
-
     /// Call given computed method
     /// This method will only be called with a Model<MultipleIds>, not with Model<SingleId>
     /// So, when you implement this method in Model<SingleId>, you can return Ok(()), as this method

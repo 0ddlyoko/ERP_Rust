@@ -1,10 +1,9 @@
 use crate::cache::Cache;
-use crate::model::{BaseModel, CommonModel, MapOfFields, Model, ModelManager, ModelNotFound};
+use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::error::Error;
 
 use crate::cache::errors::RecordNotFoundError;
 use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
-use crate::internal::internal_model::{InternalModel, ModelFactory};
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -107,44 +106,6 @@ impl<'model_manager> Environment<'model_manager> {
         self.id += 1;
         self.cache.insert_record_model_with_map(model_name, id, data.clone());
         Ok(id.into())
-    }
-
-    /// Returns the first record of given model for a specific id
-    ///
-    /// If the record is not present in cache, loads it from the database
-    pub fn get_record_from_name<Mode: IdMode>(
-        &mut self,
-        model_name: &str,
-        id: Mode,
-    ) -> Result<Box<dyn CommonModel<Mode>>, Box<dyn Error>>
-    where
-        InternalModel: ModelFactory<Mode>,
-    {
-        if !self.model_manager.is_valid_model(model_name) {
-            return Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }
-                .into());
-        }
-        Ok(self
-            .model_manager
-            .create_instance_from_name(model_name, id))
-    }
-
-    /// Returns the first record of given model for a specific id
-    ///
-    /// Do not check if given id is valid id, or is present in the cache
-    ///
-    /// Do not load given id to the cache
-    pub fn get_record_from_internal_model<Mode: IdMode>(
-        &mut self,
-        internal_model: &InternalModel,
-        id: Mode,
-    ) -> Result<Box<dyn CommonModel<Mode>>, Box<dyn Error>>
-    where
-        InternalModel: ModelFactory<Mode>,
-    {
-        Ok(self.model_manager.create_instance_from_internal_model(internal_model, id))
     }
 
     /// Returns an instance of given model for a specific id

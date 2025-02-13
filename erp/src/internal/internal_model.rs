@@ -1,16 +1,12 @@
 use crate::environment::Environment;
-use crate::field::{FieldType, SingleId};
-use crate::field::{IdMode, MultipleIds};
+use crate::field::FieldType;
+use crate::field::MultipleIds;
 use crate::internal::internal_field::{FinalInternalField, InternalField};
-use crate::model::{CommonModel, Model};
 use crate::model::ModelDescriptor;
+use crate::model::{CommonModel, Model};
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;
-
-pub trait ModelFactory<Mode: IdMode>{
-    fn create_instance(&self, id: Mode) -> Box<dyn CommonModel<Mode>>;
-}
 
 
 /// Model descriptor represented by a single struct model
@@ -19,21 +15,7 @@ pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub create_single_id_instance: fn(SingleId) -> Box<dyn CommonModel<SingleId>>,
-    pub create_multiple_ids_instance: fn(MultipleIds) -> Box<dyn CommonModel<MultipleIds>>,
     pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult,
-}
-
-impl ModelFactory<SingleId> for InternalModel {
-    fn create_instance(&self, id: SingleId) -> Box<dyn CommonModel<SingleId>> {
-        (self.create_single_id_instance)(id)
-    }
-}
-
-impl ModelFactory<MultipleIds> for InternalModel {
-    fn create_instance(&self, id: MultipleIds) -> Box<dyn CommonModel<MultipleIds>> {
-        (self.create_multiple_ids_instance)(id)
-    }
 }
 
 /// Final descriptor of a model.
@@ -89,18 +71,12 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let create_multiple_ids_instance: fn (MultipleIds) -> Box<dyn CommonModel<MultipleIds>> =
-            |id| M::create_multiple_ids_instance(id);
-        let create_single_id_instance: fn (SingleId) -> Box<dyn CommonModel<SingleId>> =
-            |id| M::create_single_id_instance(id);
         let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult = |field_name, id, env| M::call_compute_method(field_name, id, env);
 
         let internal_model = InternalModel {
             name: name.to_string(),
             description,
             fields: final_fields,
-            create_multiple_ids_instance,
-            create_single_id_instance,
             call_computed_method,
         };
 

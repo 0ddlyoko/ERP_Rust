@@ -98,7 +98,6 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
 fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
     let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder<_>>();
-    let internal_model = model_manager.get_model("sale_order").unwrap().first();
     let mut env = Environment::new(&model_manager);
 
     // Insert random data inside
@@ -110,18 +109,9 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
-    let sale_order_by_name = env.get_record_from_name::<SingleId>("sale_order", 1.into())?;
-    let sale_order_by_internal_model = env.get_record_from_internal_model::<SingleId>(internal_model, 1.into())?;
-    let sale_order_by_unknown_name = env.get_record_from_name::<SingleId>("sale_order_unknown", 1.into());
 
     assert_eq!(sale_order.get_id(), 1);
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko");
-
-    assert_eq!(sale_order_by_name.get_id_mode().get_id(), 1);
-
-    assert_eq!(sale_order_by_internal_model.get_id_mode().get_id(), 1);
-
-    assert!(sale_order_by_unknown_name.is_err());
     Ok(())
 }
 

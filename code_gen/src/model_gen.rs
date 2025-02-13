@@ -354,8 +354,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             #field_ident: Default::default()
         }
     });
-    let create_model_2 = create_model.clone();
-    let create_model_3 = create_model.clone();
 
 
     let common_model_impl = quote! {
@@ -382,26 +380,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     id,
                     #(#create_model,)*
                 }
-            }
-
-            fn create_single_id_instance(id: erp::field::SingleId) -> Box<dyn erp::model::CommonModel<erp::field::SingleId>>
-            where
-                Self: Sized
-            {
-                Box::new(#ident {
-                    id,
-                    #(#create_model_2,)*
-                })
-            }
-
-            fn create_multiple_ids_instance(id: erp::field::MultipleIds) -> Box<dyn erp::model::CommonModel<erp::field::MultipleIds>>
-            where
-                Self: Sized
-            {
-                Box::new(#ident {
-                    id,
-                    #(#create_model_3,)*
-                })
             }
 
             fn call_compute_method(

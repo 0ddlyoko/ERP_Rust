@@ -1,7 +1,7 @@
 use crate::environment::Environment;
-use crate::field::{IdMode, MultipleIds};
-use crate::internal::internal_model::{FinalInternalModel, InternalModel, ModelFactory};
-use crate::model::{CommonModel, Model};
+use crate::field::MultipleIds;
+use crate::internal::internal_model::FinalInternalModel;
+use crate::model::Model;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -24,30 +24,6 @@ impl ModelManager {
 
     pub fn get_models(&self) -> &HashMap<String, FinalInternalModel> {
         &self.models
-    }
-
-    pub fn create_instance_from_name<Mode: IdMode>(
-        &self,
-        model_name: &str,
-        id: Mode,
-    ) -> Box<dyn CommonModel<Mode>>
-    where
-        InternalModel: ModelFactory<Mode>,
-    {
-        let model = self.models.get(model_name).unwrap();
-        let internal_model = model.first();
-        self.create_instance_from_internal_model(internal_model, id)
-    }
-
-    pub fn create_instance_from_internal_model<Mode: IdMode>(
-        &self,
-        internal_model: &InternalModel,
-        id: Mode,
-    ) -> Box<dyn CommonModel<Mode>>
-    where
-        InternalModel: ModelFactory<Mode>,
-    {
-        internal_model.create_instance(id)
     }
 
     pub fn new_environment(&self) -> Environment {
