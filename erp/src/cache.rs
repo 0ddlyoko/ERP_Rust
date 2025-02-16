@@ -18,8 +18,8 @@ pub struct Cache {
 impl Cache {
     pub fn new(model_manager: &ModelManager) -> Self {
         let mut cache = HashMap::new();
-        for model_name in model_manager.get_models().keys() {
-            cache.insert(model_name.clone(), CacheModels::default());
+        for (model_name, final_internal_model) in model_manager.get_models() {
+            cache.insert(model_name.clone(), CacheModels::new(final_internal_model));
         }
         Cache { cache }
     }

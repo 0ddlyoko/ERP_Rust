@@ -1,13 +1,30 @@
 use crate::cache::CacheModel;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use crate::field::IdMode;
+use crate::internal::internal_model::FinalInternalModel;
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct CacheModels {
+    name: String,
     models: HashMap<u32, CacheModel>,
     dirty: HashMap<u32, Vec<String>>,
+    to_recompute: HashMap<String, HashSet<u32>>,
 }
 
 impl CacheModels {
+    pub fn new(final_internal_model: &FinalInternalModel) -> Self {
+        let mut to_recompute = HashMap::new();
+        for field_name in final_internal_model.fields.keys() {
+            to_recompute.insert(field_name.clone(), HashSet::new());
+        }
+        Self {
+            name: final_internal_model.name.clone(),
+            models: HashMap::default(),
+            dirty: HashMap::default(),
+            to_recompute,
+        }
+    }
+
     pub fn is_record_present(&self, id: &u32) -> bool {
         self.models.contains_key(id)
     }
@@ -59,5 +76,23 @@ impl CacheModels {
                 self.dirty.remove(id);
             }
         }
+    }
+
+    // Computed methods
+
+    pub fn add_to_recompute<Mode: IdMode>(&mut self, field: &str, ids: Mode) {
+        let set = self.to_recompute.get_mut(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+        set.extend(ids.get_ids_ref());
+    }
+
+    pub fn remove_to_recompute<Mode: IdMode>(&mut self, field: &str, ids: Mode) {
+        let set = self.to_recompute.get_mut(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+        let ids = ids.get_ids_ref();
+        set.retain(|f| ids.contains(f));
+    }
+
+    pub fn is_to_recompute(&self, field: &str, id: &u32) -> bool {
+        let set = &self.to_recompute.get(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+        set.contains(id)
     }
 }
