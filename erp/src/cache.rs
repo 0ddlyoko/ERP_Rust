@@ -24,12 +24,9 @@ impl Cache {
         Cache { cache }
     }
 
+    /// Check if a given record is present in cache. If CacheModels not found, panic
     pub fn is_record_present(&self, model_name: &str, id: &u32) -> bool {
-        if let Some(cache_models) = self.cache.get(model_name) {
-            cache_models.is_record_present(id)
-        } else {
-            false
-        }
+        self.get_cache_models(model_name).is_record_present(id)
     }
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
@@ -46,42 +43,18 @@ impl Cache {
             .unwrap_or_else(|| panic!("Model {} not found", model_name))
     }
 
-    /// Returns CacheModel linked to given model & id.
-    /// If CacheModels not found, panic.
-    /// If id not found, return None
-    pub fn get_cache_record(&self, model_name: &str, id: &u32) -> Option<&CacheModel> {
-        self.get_cache_models(model_name).get_model(id)
-    }
-
-    /// Returns CacheModel linked to given model & id.
-    /// If CacheModels not found, panic.
-    /// If id not found, return None
-    pub fn get_cache_record_mut(&mut self, model_name: &str, id: &u32) -> Option<&mut CacheModel> {
-        self.cache.get_mut(model_name)?.get_model_mut(id)
-    }
-
+    /// Get value of given field for given record
     pub fn get_record_field(
         &self,
         model_name: &str,
-        id: &u32,
         field_name: &str,
-    ) -> Option<&CacheField> {
+        id: &u32,
+    ) -> Option<&FieldType> {
         self.cache
             .get(model_name)?
             .get_model(id)?
             .get_field(field_name)
-    }
-
-    pub fn get_record_field_mut(
-        &mut self,
-        model_name: &str,
-        id: &u32,
-        field_name: &str,
-    ) -> Option<&mut CacheField> {
-        self.cache
-            .get_mut(model_name)?
-            .get_model_mut(id)?
-            .get_field_mut(field_name)
+            .and_then(|f| f.get())
     }
 
     pub fn insert_record_field<'a, Mode: IdMode>(

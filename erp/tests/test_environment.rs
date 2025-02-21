@@ -45,16 +45,14 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     assert_eq!(*sale_order_line.get_price(&mut env)?, 42);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 42 * 10, "Should not be 0 as the computed method is called");
-    let price_cache_record = env.cache.get_record_field("sale_order_line", &1, "price");
-    let amount_cache_record = env.cache.get_record_field("sale_order_line", &1, "amount");
+    let price_cache_record = env.cache.get_record_field("sale_order_line", "price", &1);
+    let amount_cache_record = env.cache.get_record_field("sale_order_line", "amount", &1);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
     let amount_cache_record = amount_cache_record.unwrap();
-    assert!(price_cache_record.is_set());
-    assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(42));
-    assert!(amount_cache_record.is_set());
-    assert_eq!(*amount_cache_record.get().unwrap(), FieldType::Integer(10));
+    assert_eq!(*price_cache_record, FieldType::Integer(42));
+    assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Dirty
     let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&1);
     assert!(dirty_fields.is_none());
@@ -62,16 +60,14 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     // Changing the price should alter the cache
     sale_order_line.set_price(50, &mut env)?;
 
-    let price_cache_record = env.cache.get_record_field("sale_order_line", &1, "amount");
-    let amount_cache_record = env.cache.get_record_field("sale_order_line", &1, "name");
+    let price_cache_record = env.cache.get_record_field("sale_order_line", "amount", &1);
+    let amount_cache_record = env.cache.get_record_field("sale_order_line", "name", &1);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
     let amount_cache_record = amount_cache_record.unwrap();
-    assert!(price_cache_record.is_set());
-    assert_eq!(*price_cache_record.get().unwrap(), FieldType::Integer(50));
-    assert!(amount_cache_record.is_set());
-    assert_eq!(*amount_cache_record.get().unwrap(), FieldType::Integer(10));
+    assert_eq!(*price_cache_record, FieldType::Integer(50));
+    assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Price has been modified, it should be dirty
     let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&1);
     assert!(dirty_fields.is_some());

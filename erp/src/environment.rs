@@ -167,16 +167,7 @@ impl<'model_manager> Environment<'model_manager> {
                 .into());
         }
         self.load_records_from_db(model_name, id)?;
-        let cache_record = self.cache.get_cache_record(model_name, &id.get_id());
-        if let Some(record) = cache_record {
-            Ok(record.get_field(field_name).and_then(|f| f.get()))
-        } else {
-            Err(RecordNotFoundError {
-                model_name: model_name.to_string(),
-                id: id.get_id(),
-            }
-                .into())
-        }
+        Ok(self.cache.get_record_field(model_name, field_name, &id.get_id()))
     }
 
     pub fn get_fields_value<'a, Mode: IdMode + 'a>(&'a mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&'a FieldType>>, Box<dyn Error>>
@@ -190,8 +181,7 @@ impl<'model_manager> Environment<'model_manager> {
         }
         self.load_records_from_db(model_name, ids)?;
         Ok(ids.get_ids_ref().iter().map(|id| {
-            let cache_record = self.cache.get_cache_record(model_name, id);
-            cache_record.and_then(|cache_record| cache_record.get_field(field_name).and_then(|f| f.get()))
+            self.cache.get_record_field(model_name, field_name, id)
         }).collect())
     }
 

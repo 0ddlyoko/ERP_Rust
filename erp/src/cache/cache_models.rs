@@ -4,7 +4,7 @@ use crate::field::IdMode;
 use crate::internal::internal_model::FinalInternalModel;
 
 /// Cache for a specific model type
-/// 
+///
 /// In this struct, you can find:
 /// - All cached models linked to this model type
 /// - Dirty fields
@@ -30,6 +30,8 @@ impl CacheModels {
             to_recompute,
         }
     }
+
+    // Cache methods
 
     pub fn is_record_present(&self, id: &u32) -> bool {
         self.models.contains_key(id)
