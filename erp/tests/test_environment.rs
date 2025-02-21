@@ -36,8 +36,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_record_model_with_map("sale_order_line", 1, map);
-    env.cache.clear_dirty("sale_order_line", &1);
+    env.cache.insert_record_fields("sale_order_line", 1, map, false);
 
     // Get the record
     let sale_order_line = env.get_record::<SaleOrderLine<_>, SingleId>(1.into());
@@ -100,8 +99,7 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_record_model_with_map("sale_order", 1, map);
-    env.cache.clear_dirty("sale_order", &1);
+    env.cache.insert_record_fields("sale_order", 1, map, false);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
@@ -121,8 +119,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_record_model_with_map("sale_order_line", 1, map);
-    env.cache.clear_dirty("sale_order_line", &1);
+    env.cache.insert_record_fields("sale_order_line", 1, map, false);
 
     // Get the record
     let sale_order_line: SaleOrderLine<SingleId> = env.get_record(1.into());

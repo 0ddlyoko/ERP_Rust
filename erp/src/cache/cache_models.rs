@@ -1,7 +1,8 @@
 use crate::cache::CacheModel;
 use std::collections::{HashMap, HashSet};
-use crate::field::IdMode;
+use crate::field::{FieldType, IdMode};
 use crate::internal::internal_model::FinalInternalModel;
+use crate::model::MapOfFields;
 
 /// Cache for a specific model type
 ///
@@ -49,6 +50,26 @@ impl CacheModels {
         self.models.entry(id).or_insert_with(|| CacheModel::new(id))
     }
 
+    pub fn insert_field(&mut self, field_name: &str, id: u32, field_value: Option<FieldType>, update_dirty: bool) {
+        let cache_model = self.get_model_or_create(id);
+        let result = cache_model.insert_field(field_name, field_value.clone());
+        if update_dirty {
+            if let Some((_cache_field, dirty)) = result {
+                if dirty {
+                    self.add_dirty(id, vec![field_name.to_string()]);
+                }
+            }
+        }
+    }
+
+    pub fn insert_fields(&mut self, id: u32, field_values: MapOfFields, update_dirty: bool) {
+        let cache_model = self.get_model_or_create(id);
+        let dirty_fields = cache_model.insert_fields(field_values);
+        if update_dirty && !dirty_fields.is_empty() {
+            self.add_dirty(id, dirty_fields);
+        }
+    }
+
     // Dirty methods
 
     pub fn add_dirty(&mut self, id: u32, fields: Vec<String>) {
@@ -59,7 +80,7 @@ impl CacheModels {
         self.dirty.contains_key(id)
     }
 
-    pub fn is_field_dirty(&self, id: &u32, field_name: &str) -> bool {
+    pub fn is_field_dirty(&self, field_name: &str, id: &u32) -> bool {
         self.dirty
             .get(id)
             .map_or(false, |d| d.iter().any(|f| f == field_name))
@@ -77,7 +98,7 @@ impl CacheModels {
         self.dirty.remove(id);
     }
 
-    pub fn clear_dirty_field(&mut self, id: &u32, field_name: &str) {
+    pub fn clear_dirty_field(&mut self, field_name: &str, id: &u32) {
         if let Some(vec) = self.dirty.get_mut(id) {
             vec.retain(|f| f == field_name);
             if vec.is_empty() {
@@ -88,19 +109,19 @@ impl CacheModels {
 
     // Computed methods
 
-    pub fn add_to_recompute<Mode: IdMode>(&mut self, field: &str, ids: Mode) {
-        let set = self.to_recompute.get_mut(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+    pub fn add_to_recompute<Mode: IdMode>(&mut self, field_name: &str, ids: Mode) {
+        let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
         set.extend(ids.get_ids_ref());
     }
 
-    pub fn remove_to_recompute<Mode: IdMode>(&mut self, field: &str, ids: Mode) {
-        let set = self.to_recompute.get_mut(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+    pub fn remove_to_recompute<Mode: IdMode>(&mut self, field_name: &str, ids: Mode) {
+        let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
         let ids = ids.get_ids_ref();
         set.retain(|f| ids.contains(f));
     }
 
-    pub fn is_to_recompute(&self, field: &str, id: &u32) -> bool {
-        let set = &self.to_recompute.get(field).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field, self.name));
+    pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
+        let set = &self.to_recompute.get(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
         set.contains(id)
     }
 }

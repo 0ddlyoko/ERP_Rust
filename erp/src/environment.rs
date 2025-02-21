@@ -37,8 +37,7 @@ impl<'model_manager> Environment<'model_manager> {
         let ids_to_load: MultipleIds = ids_to_load.into();
         for id in ids_to_load {
             let map_of_fields = self.get_data_from_db(model_name, &id)?;
-            self.cache.insert_record_model_with_map(model_name, id.get_id(), map_of_fields);
-            self.cache.clear_dirty(model_name, &id.get_id());
+            self.cache.insert_record_fields(model_name, id.get_id(), map_of_fields, false);
         }
         Ok(())
     }
@@ -110,7 +109,7 @@ impl<'model_manager> Environment<'model_manager> {
         // TODO Insert data to db
         let id = self.id;
         self.id += 1;
-        self.cache.insert_record_model_with_map(model_name, id, data.clone());
+        self.cache.insert_record_fields(model_name, id, data.clone(), false);
         Ok(id.into())
     }
 
@@ -167,6 +166,7 @@ impl<'model_manager> Environment<'model_manager> {
                 .into());
         }
         self.load_records_from_db(model_name, id)?;
+        // TODO Check if it's a computed field and if we need to compute it
         Ok(self.cache.get_record_field(model_name, field_name, &id.get_id()))
     }
 
@@ -180,6 +180,7 @@ impl<'model_manager> Environment<'model_manager> {
             }.into());
         }
         self.load_records_from_db(model_name, ids)?;
+        // TODO Check if it's a computed field and if we need to compute it
         Ok(ids.get_ids_ref().iter().map(|id| {
             self.cache.get_record_field(model_name, field_name, id)
         }).collect())
@@ -195,7 +196,7 @@ impl<'model_manager> Environment<'model_manager> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: FieldType = value.into();
-        self.cache.insert_record_field(model_name, field_name, ids, Some(field_type));
+        self.cache.insert_record_field(model_name, field_name, ids, Some(field_type), true);
         Ok(())
     }
 
@@ -205,7 +206,7 @@ impl<'model_manager> Environment<'model_manager> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: Option<FieldType> = value.map(|value| value.into());
-        self.cache.insert_record_field(model_name, field_name, ids, field_type);
+        self.cache.insert_record_field(model_name, field_name, ids, field_type, true);
         Ok(())
     }
 

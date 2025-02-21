@@ -26,8 +26,7 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_record_model_with_map("sale_order", 1, map);
-    env.cache.clear_dirty("sale_order", &1);
+    env.cache.insert_record_fields("sale_order", 1, map, false);
 
     let sale_order_line: SaleOrder<SingleId> = env.get_record(1.into());
     let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {

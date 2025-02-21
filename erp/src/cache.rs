@@ -63,39 +63,38 @@ impl Cache {
         field_name: &str,
         ids: &'a Mode,
         field_value: Option<FieldType>,
+        update_dirty: bool,
     )
     where
         &'a Mode: IntoIterator<Item = SingleId>,
     {
         let cache_models = self.get_cache_models_mut(model_name);
         for id in ids {
-            let cache_model = cache_models.get_model_or_create(id.get_id());
-            let result = cache_model.insert_field(field_name, field_value.clone());
-            if let Some((_cache_field, dirty)) = result {
-                if dirty {
-                    cache_models.add_dirty(id.get_id(), vec![field_name.to_string()]);
-                }
-            }
+            cache_models.insert_field(field_name, id.get_id(), field_value.clone(), update_dirty);
         }
     }
 
-    pub fn insert_record_model_with_map(&mut self, model_name: &str, id: u32, fields: MapOfFields) {
+    pub fn insert_record_fields(
+        &mut self,
+        model_name: &str,
+        id: u32,
+        field_values: MapOfFields,
+        update_dirty: bool,
+    ) {
         // TODO Allow IdMode as input
         let cache_models = self.get_cache_models_mut(model_name);
-        let cache_model = cache_models.get_model_or_create(id);
-        let dirty_fields = cache_model.insert_fields(fields);
-        if !dirty_fields.is_empty() {
-            cache_models.add_dirty(id, dirty_fields);
-        }
+        cache_models.insert_fields(id, field_values, update_dirty);
     }
 
     pub fn clear_dirty_model(&mut self, model_name: &str) {
-        self.get_cache_models_mut(model_name).clear_all_dirty();
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.clear_all_dirty();
     }
 
     pub fn clear_dirty(&mut self, model_name: &str, id: &u32) {
         // TODO Allow IdMode as input
-        self.get_cache_models_mut(model_name).clear_dirty(id);
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.clear_dirty(id);
     }
 
     /// Export a copy of this cache
