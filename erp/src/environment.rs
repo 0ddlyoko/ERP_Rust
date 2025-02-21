@@ -20,8 +20,14 @@ impl<'model_manager> Environment<'model_manager> {
         }
     }
 
+    // ------------------------------------------
+    // |             Database Logic             |
+    // ------------------------------------------
+
     /// Load given records from the database to the cache.
+    ///
     /// If the record is already present in cache, do nothing
+    ///
     /// Returns true if the record has been found
     pub fn load_records_from_db<'a, Mode: IdMode + 'a>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>>
     where &'a Mode: IntoIterator<Item = SingleId>
@@ -108,6 +114,10 @@ impl<'model_manager> Environment<'model_manager> {
         Ok(id.into())
     }
 
+    // ------------------------------------------
+    // |             Retrieve Logic             |
+    // ------------------------------------------
+
     /// Returns an instance of given model for a specific id
     /// 
     /// Do not check if given id is valid id, or is present in the cache
@@ -185,6 +195,10 @@ impl<'model_manager> Environment<'model_manager> {
         }).collect())
     }
 
+    // ------------------------------------------
+    // |           Save to Cache Logic          |
+    // ------------------------------------------
+
     pub fn save_field_value<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
@@ -228,10 +242,12 @@ impl<'model_manager> Environment<'model_manager> {
     where
         M: Model<SingleId>,
     {
+        // TODO Change this line to not return anything
         let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
         self.load_records_from_db(model_name, &id)?;
         // Once loaded, we should call all computed methods
+        // TODO Do not call all computed method, but only when needed
         if let Some(missing_fields) = missing_fields {
             let final_internal_model = self.model_manager.get_model(model_name);
             if let Some(final_internal_model) = final_internal_model {
@@ -260,6 +276,10 @@ impl<'model_manager> Environment<'model_manager> {
         }
         Some(missing_fields_to_load)
     }
+
+    // ------------------------------------------
+    // |              Other Logic               |
+    // ------------------------------------------
 
     /// Create a new savepoint and commit if the given method doesn't return any error.
     /// If an error is returned, rollback the commit and put back the cache as it was
@@ -307,11 +327,6 @@ impl<'model_manager> Environment<'model_manager> {
                 let computed_field = compute_field.unwrap();
                 // TODO Try to find a way to not clone the id
                 (computed_field.call_computed_method)(field.as_str(), ids.get_ids_ref().into(), env)?;
-                // let record = env.get_record_from_internal_model::<MultipleIds>(computed_field, ids.get_ids_ref().into())?;
-
-
-                // TODO Add again this computed method
-                // record.call_compute_method(field.as_str(), env)?;
             }
             Ok(())
         })

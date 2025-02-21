@@ -3,11 +3,17 @@ use std::collections::{HashMap, HashSet};
 use crate::field::IdMode;
 use crate::internal::internal_model::FinalInternalModel;
 
+/// Cache for a specific model type
+/// 
+/// In this struct, you can find:
+/// - All cached models linked to this model type
+/// - Dirty fields
+/// - "To recompute" fields
 #[derive(Clone)]
 pub struct CacheModels {
     name: String,
     models: HashMap<u32, CacheModel>,
-    dirty: HashMap<u32, Vec<String>>,
+    dirty: HashMap<u32, HashSet<String>>,
     to_recompute: HashMap<String, HashSet<u32>>,
 }
 
@@ -57,7 +63,7 @@ impl CacheModels {
             .map_or(false, |d| d.iter().any(|f| f == field_name))
     }
 
-    pub fn get_dirty(&self, id: &u32) -> Option<&Vec<String>> {
+    pub fn get_dirty(&self, id: &u32) -> Option<&HashSet<String>> {
         self.dirty.get(id)
     }
 

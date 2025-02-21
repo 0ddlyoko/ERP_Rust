@@ -3,9 +3,9 @@ mod cache_model;
 mod cache_models;
 pub mod errors;
 
-pub use cache_field::CacheField;
-pub use cache_model::CacheModel;
-pub use cache_models::CacheModels;
+pub use cache_field::*;
+pub use cache_model::*;
+pub use cache_models::*;
 
 use crate::field::{FieldType, IdMode, SingleId};
 use crate::model::{MapOfFields, ModelManager};
@@ -98,8 +98,8 @@ impl Cache {
         for id in ids {
             let cache_model = cache_models.get_model_or_create(id.get_id());
             let result = cache_model.insert_field(field_name, field_value.clone());
-            if let Some(result) = result {
-                if result.1 {
+            if let Some((_cache_field, dirty)) = result {
+                if dirty {
                     cache_models.add_dirty(id.get_id(), vec![field_name.to_string()]);
                 }
             }
