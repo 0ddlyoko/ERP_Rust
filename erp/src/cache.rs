@@ -9,7 +9,7 @@ pub use cache_models::*;
 
 use crate::field::{FieldType, IdMode, SingleId};
 use crate::model::{MapOfFields, ModelManager};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub struct Cache {
     cache: HashMap<String, CacheModels>,
@@ -57,6 +57,9 @@ impl Cache {
             .and_then(|f| f.get())
     }
 
+    /// Insert given record to the cache.
+    ///
+    /// Update dirty if update_dirty is set to true, and a modification has been done
     pub fn insert_record_field<'a, Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -74,6 +77,9 @@ impl Cache {
         }
     }
 
+    /// Insert given fields to the cache.
+    ///
+    /// Update dirty if update_dirty is set to true, and a modification has been done
     pub fn insert_record_fields(
         &mut self,
         model_name: &str,
@@ -86,16 +92,36 @@ impl Cache {
         cache_models.insert_fields(id, field_values, update_dirty);
     }
 
+    // Dirty
+
+    /// Retrieve all dirty fields for given record
+    pub fn get_dirty_fields(&self, model_name: &str, id: &u32) -> Option<&HashSet<String>> {
+        let cache_models = self.get_cache_models(model_name);
+        cache_models.get_dirty(id)
+    }
+
+    /// Retrieve all dirty fields for given record
+    pub fn get_dirty_map_of_fields(&self, model_name: &str, id: &u32) -> Option<MapOfFields> {
+        let cache_models = self.get_cache_models(model_name);
+        let cache_model = cache_models.get_model(id)?;
+        let dirty_fields: Vec<&str> = cache_models.get_dirty(id)?.iter().map(|f| f.as_str()).collect();
+        Some(cache_model.get_map_of_fields(&dirty_fields))
+    }
+
+    /// Clear dirty fields of given model
     pub fn clear_dirty_model(&mut self, model_name: &str) {
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_all_dirty();
     }
 
+    /// Clear dirty fields of given record
     pub fn clear_dirty(&mut self, model_name: &str, id: &u32) {
         // TODO Allow IdMode as input
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_dirty(id);
     }
+
+    // Export / Import
 
     /// Export a copy of this cache
     pub fn export_cache(&self) -> HashMap<String, CacheModels> {

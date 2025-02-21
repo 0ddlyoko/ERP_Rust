@@ -51,25 +51,18 @@ impl<'model_manager> Environment<'model_manager> {
     /// If given model does not exist, panic.
     /// TODO Use IdMode
     pub fn save_record_to_db(&mut self, model_name: &str, id: &u32) -> Result<(), Box<dyn Error>> {
-        let cache_models = self.cache.get_cache_models(model_name);
-        let dirty_fields = cache_models.get_dirty(id);
-        if dirty_fields.is_none() {
+        let dirty_map_of_fields = self.cache.get_dirty_map_of_fields(model_name, id);
+        if dirty_map_of_fields.is_none() {
             // Nothing to update
             return Ok(());
         }
-        let cache_model = cache_models.get_model(id);
-        if cache_model.is_none() {
-            // Model not found in cache
-            return Ok(());
-        }
-        let dirty_fields: Vec<&str> = dirty_fields.unwrap().iter().map(|f| f.as_str()).collect();
         self.save_data_to_db(
             model_name,
             &id.into(),
-            &cache_model.unwrap().get_map_of_fields(&dirty_fields),
+            &dirty_map_of_fields.unwrap(),
         )?;
         // Now that it's saved in db, clear dirty fields
-        self.cache.get_cache_models_mut(model_name).clear_dirty(id);
+        self.cache.clear_dirty(model_name, id);
         Ok(())
     }
 
