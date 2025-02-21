@@ -219,20 +219,18 @@ impl<'model_manager> Environment<'model_manager> {
         M: Model<SingleId>,
     {
         let model_name = M::get_model_name();
-        let id = self._create_new_record::<M>(model_name, data)?;
+        let id = self._create_new_record(model_name, data)?;
         Ok(self.get_record::<M, SingleId>(id))
     }
 
     /// TODO Allow to call this method with multiple data
-    fn _create_new_record<M>(
+    fn _create_new_record(
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
     ) -> Result<SingleId, Box<dyn Error>>
-    where
-        M: Model<SingleId>,
     {
-        // TODO Change this line to not return anything
+        // TODO Change this line to not return anything, but instead update the cache
         let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
         self.load_records_from_db(model_name, &id)?;
