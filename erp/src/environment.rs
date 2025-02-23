@@ -158,8 +158,18 @@ impl<'model_manager> Environment<'model_manager> {
             }
                 .into());
         }
-        self.load_records_from_db(model_name, id)?;
-        // TODO Check if it's a computed field and if we need to compute it
+        if !self.cache.is_record_field(model_name, field_name, &id.get_id()) {
+            // TODO Do not load all records if it's already available in cache
+            //  Call a custom method here that will load this field, and this method will check
+            //  if it's a computed method or not
+            self.load_records_from_db(model_name, id)?;
+            //
+            if self.cache.is_to_recompute(model_name, field_name, &id.get_id()) {
+                // We need to compute this field
+                self.call_compute_method(model_name, id, &[field_name.to_string()])?;
+            }
+        }
+
         Ok(self.cache.get_record_field(model_name, field_name, &id.get_id()))
     }
 
@@ -229,7 +239,7 @@ impl<'model_manager> Environment<'model_manager> {
         let id = self.insert_data_to_db(model_name, data)?;
         self.load_records_from_db(model_name, &id)?;
         // Once loaded, we should call all computed methods
-        // TODO Do not call all computed method, but only when needed
+        // TODO Do not call all computed method, but only the ones whe need
         if let Some(missing_fields) = missing_fields {
             let final_internal_model = self.model_manager.get_model(model_name);
             if let Some(final_internal_model) = final_internal_model {
@@ -289,6 +299,7 @@ impl<'model_manager> Environment<'model_manager> {
         &mut self,
         model_name: &str,
         ids: &Mode,
+        // TODO Find a way to pass &[&str] instead of &[String]
         fields: &[String],
     ) -> Result<(), Box<dyn Error>>
     {

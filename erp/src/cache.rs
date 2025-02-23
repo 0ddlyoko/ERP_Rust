@@ -57,6 +57,20 @@ impl Cache {
             .and_then(|f| f.get())
     }
 
+    /// Check if given record field is present in cache
+    pub fn is_record_field(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        id: &u32,
+    ) -> bool {
+        self.cache
+            .get(model_name)
+            .and_then(|cache_models| cache_models.get_model(id))
+            .and_then(|cache_model| cache_model.get_field(field_name))
+            .is_some()
+    }
+
     /// Insert given record to the cache.
     ///
     /// Update dirty if update_dirty is set to true, and a modification has been done
@@ -119,6 +133,23 @@ impl Cache {
         // TODO Allow IdMode as input
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_dirty(id);
+    }
+
+    // Compute
+
+    pub fn add_to_recompute<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: Mode) {
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.add_to_recompute(field_name, ids);
+    }
+
+    pub fn remove_to_recompute<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: Mode) {
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.remove_to_recompute(field_name, ids);
+    }
+
+    pub fn is_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
+        let cache_models = self.get_cache_models(model_name);
+        cache_models.is_to_recompute(field_name, id)
     }
 
     // Export / Import
