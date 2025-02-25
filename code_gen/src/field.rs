@@ -1,5 +1,5 @@
 use crate::attrs::{parse_attributes, AllowedFieldAttrs};
-use crate::util::{gen_field_no_field_error, gen_missing_key_error, gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value};
+use crate::util::{gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error, gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment, Result, Type, TypePath};
@@ -18,6 +18,7 @@ pub struct FieldGen {
     pub description: Option<String>,
     pub compute: Option<String>,
     pub depends: Option<Vec<String>>,
+    pub inverse: Option<String>,
 }
 
 impl FieldGen {
@@ -42,6 +43,7 @@ impl FieldGen {
         let mut description = None;
         let mut compute = None;
         let mut depends = None;
+        let mut inverse = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -95,6 +97,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Depends(_, depends_value) => {
                     depends = Some(depends_value.iter().map(|s| s.value()).collect());
+                }
+                AllowedFieldAttrs::Inverse(ident, inverse_value) => {
+                    inverse = Some((ident, inverse_value.value()));
                 }
             }
         }
@@ -167,6 +172,13 @@ impl FieldGen {
             }
         }
 
+        // "inverse" should only work on MultipleIds
+        if !is_reference_multi {
+            if let Some((inverse_ident, _)) = inverse {
+                return Err(gen_inverse_not_multiple_ids(inverse_ident.span()));
+            }
+        }
+
         Ok(FieldGen {
             field_name,
             field_span: item.span(),
@@ -179,6 +191,7 @@ impl FieldGen {
             description,
             compute,
             depends,
+            inverse: inverse.map(|inv| inv.1),
         })
     }
 }

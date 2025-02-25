@@ -49,7 +49,7 @@ pub struct SaleOrder<Mode: IdMode> {
     state: SaleOrderState,
     #[erp(compute="compute_total_price", depends=["lines.total_price"])]
     total_price: i32,
-    // TODO Add inverse="..."
+    #[erp(inverse="order")]
     lines: Reference<BaseSaleOrderLine, MultipleIds>,
 }
 

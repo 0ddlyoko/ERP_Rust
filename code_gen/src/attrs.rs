@@ -62,6 +62,7 @@ pub enum AllowedFieldAttrs {
     Description(Ident, LitStr),
     Compute(Ident, LitStr),
     Depends(Ident, Vec<LitStr>),
+    Inverse(Ident, LitStr),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -69,6 +70,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "description",
     "compute",
     "depends",
+    "inverse",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -89,6 +91,7 @@ impl Parse for AllowedFieldAttrs {
                 
                 Ok(AllowedFieldAttrs::Depends(name, dependencies.into_iter().collect()))
             },
+            "inverse" => Ok(AllowedFieldAttrs::Inverse(name, parse_eq(input, "inverse = \"inverse\"")?)),
             _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
         }
     }
@@ -101,6 +104,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Description(ident, _) => ident.span(),
             AllowedFieldAttrs::Compute(ident, _) => ident.span(),
             AllowedFieldAttrs::Depends(ident, _) => ident.span(),
+            AllowedFieldAttrs::Inverse(ident, _) => ident.span(),
         }
     }
 }

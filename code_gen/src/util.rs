@@ -42,3 +42,7 @@ pub fn gen_field_no_field_error(span: Span) -> Error {
 pub fn gen_wrong_default_value(span: Span, default_value: &str, name: &str) -> Error {
     Error::new(span, format!("Wrong default value `{}` for field `{}`", default_value, name))
 }
+
+pub fn gen_inverse_not_multiple_ids(span: Span) -> Error {
+    Error::new(span, "Inverse attribute should only work on Reference<..., MultipleIds>")
+}

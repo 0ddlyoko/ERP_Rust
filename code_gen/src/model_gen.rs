@@ -256,6 +256,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             description,
             compute,
             depends,
+            inverse,
             ..
         } = f;
 
@@ -329,6 +330,12 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
+        let inverse = if let Some(inverse) = inverse {
+            quote! { Some(#inverse.to_string()) }
+        } else {
+            quote! { None }
+        };
+
         quote! {
             {
                 erp::field::FieldDescriptor {
@@ -338,6 +345,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     required: #is_required,
                     compute: #compute,
                     depends: #depends,
+                    inverse: #inverse,
                 }
             }
         }
