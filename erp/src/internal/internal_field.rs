@@ -11,6 +11,7 @@ pub struct InternalField {
     pub compute: Option<bool>,
     // TODO change String to &'static
     pub depends: Option<Vec<String>>,
+    pub target_model: Option<String>,
     pub inverse: Option<String>,
 }
 
@@ -24,6 +25,7 @@ pub struct FinalInternalField {
     pub default_value: FieldType,
     pub compute: Option<TypeId>,
     pub depends: Option<Vec<String>>,
+    pub target_model: Option<String>,
     pub inverse: Option<String>,
     is_init: bool,
 }
@@ -37,6 +39,7 @@ impl FinalInternalField {
             default_value: FieldType::String("".to_string()),
             compute: None,
             depends: None,
+            target_model: None,
             inverse: None,
             is_init: false,
         }
@@ -74,6 +77,9 @@ impl FinalInternalField {
             } else {
                 self.depends = Some(depends.clone());
             }
+        }
+        if let Some(target_model) = &field_descriptor.target_model {
+            self.target_model = Some(target_model.clone());
         }
         if let Some(inverse) = &field_descriptor.inverse {
             self.inverse = Some(inverse.clone());

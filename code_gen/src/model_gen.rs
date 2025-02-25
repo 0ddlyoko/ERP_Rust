@@ -336,8 +336,16 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
+        let target_model = if *is_reference {
+            quote! { Some(#field_type_keyword::get_model_name().to_string()) }
+        } else {
+            quote! { None }
+        };
+
         quote! {
             {
+                // Yep, I don't know how to call get_model_name() without this line
+                use erp::model::BaseModel;
                 erp::field::FieldDescriptor {
                     name: #field_name.to_string(),
                     default_value: #default_value,
@@ -345,6 +353,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     required: #is_required,
                     compute: #compute,
                     depends: #depends,
+                    target_model: #target_model,
                     inverse: #inverse,
                 }
             }

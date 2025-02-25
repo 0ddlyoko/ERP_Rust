@@ -66,6 +66,7 @@ impl FinalInternalModel {
                 required: field.required,
                 compute: field.compute,
                 depends: field.depends,
+                target_model: field.target_model,
                 inverse: field.inverse,
             };
             self.register_internal_field(&internal_field, &type_id);
