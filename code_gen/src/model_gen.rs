@@ -87,6 +87,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             return None;
         }
         let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
+        // TODO Move the set to another place, as it's not needed to be different between SingleId & MultipleIds
         let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
 
         if *is_reference {
@@ -313,18 +314,23 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
         };
 
         let compute = if compute.is_some() {
-            quote! { Some(true) }
-        } else {
-            quote! { None }
-        };
-
-        let depends = if let Some(depends) = depends {
-            let tokens = depends.iter().map(|dep| quote! { #dep.to_string() });
-            quote! {
-                {
-                    let depends = vec![#(#tokens),*];
-                    Some(depends)
+            let depends = if let Some(depends) = depends {
+                let tokens = depends.iter().map(|dep| quote! { #dep.to_string() });
+                quote! {
+                    {
+                        vec![#(#tokens),*]
+                    }
                 }
+            } else {
+                quote! { vec![] }
+            };
+
+            quote! {
+                Some(erp::field::FieldCompute {
+                    // We don't care about the "type_id" type here, as it's taken later during the initialization of the erp
+                    type_id: std::any::TypeId::of::<String>(),
+                    depends: #depends,
+                })
             }
         } else {
             quote! { None }
@@ -357,7 +363,6 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     description: #description,
                     required: #is_required,
                     compute: #compute,
-                    depends: #depends,
                     field_ref: #field_reference,
                 }
             }

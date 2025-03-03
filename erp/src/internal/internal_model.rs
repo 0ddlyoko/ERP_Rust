@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::field::FieldType;
+use crate::field::{FieldCompute, FieldType};
 use crate::field::MultipleIds;
 use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::ModelDescriptor;
@@ -65,7 +65,6 @@ impl FinalInternalModel {
                 description: field.description,
                 required: field.required,
                 compute: field.compute,
-                depends: field.depends,
                 field_ref: field.field_ref,
             };
             self.register_internal_field(&internal_field, &type_id);
@@ -174,8 +173,11 @@ impl FinalInternalModel {
     /// If field is not a computed field, return None
     pub fn get_computed_field(&self, field_name: &str) -> Option<&InternalModel> {
         let field = self.fields.get(field_name)?;
-        let computed_type_id = field.compute?;
-        self.models.get(&computed_type_id)
+        if let Some(FieldCompute { type_id, .. }) = field.compute {
+            self.models.get(&type_id)
+        } else {
+            None
+        }
     }
 
     /// Return the internal model linked to the computed given field.
@@ -185,7 +187,10 @@ impl FinalInternalModel {
     /// If field is not a computed field, return None
     pub fn get_computed_field_mut(&mut self, field_name: &str) -> Option<&mut InternalModel> {
         let field = self.fields.get(field_name)?;
-        let computed_type_id = field.compute?;
-        self.models.get_mut(&computed_type_id)
+        if let Some(FieldCompute { type_id, .. }) = field.compute {
+            self.models.get_mut(&type_id)
+        } else {
+            None
+        }
     }
 }

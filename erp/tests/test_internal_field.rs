@@ -1,5 +1,5 @@
 use test_plugin::TestPlugin;
-use erp::field::FieldType;
+use erp::field::{FieldCompute, FieldType};
 use erp::internal::internal_field::FinalInternalField;
 use erp::internal::internal_field::InternalField;
 use std::any::TypeId;
@@ -18,8 +18,10 @@ fn test_register_field() {
             default_value: Some(FieldType::String("0ddlyoko".to_string())),
             description: Some("This is the name".to_string()),
             required: false,
-            compute: None,
-            depends: Some(vec!("age".to_string(), "test".to_string())),
+            compute: Some(FieldCompute {
+                type_id,
+                depends: vec!("age".to_string(), "test".to_string()),
+            }),
             field_ref: None,
         },
         &type_id,
@@ -32,7 +34,6 @@ fn test_register_field() {
             description: Some("This is the age of the person".to_string()),
             required: false,
             compute: None,
-            depends: None,
             field_ref: None,
         },
         &type_id,
@@ -45,9 +46,9 @@ fn test_register_field() {
         field_name.default_value,
         FieldType::String("0ddlyoko".to_string())
     );
-    assert!(field_name.compute.is_none());
-    assert!(field_name.depends.is_some());
-    assert_eq!(field_name.depends, Some(vec!("age".to_string(), "test".to_string())));
+    assert!(field_name.compute.is_some());
+    let field_name_compute = field_name.compute.as_ref().unwrap();
+    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string()));
 
     assert_eq!(field_age.name, "age");
     assert_eq!(
@@ -57,7 +58,6 @@ fn test_register_field() {
     assert!(!field_age.required);
     assert_eq!(field_age.default_value, FieldType::Integer(42));
     assert!(field_age.compute.is_none());
-    assert!(field_age.depends.is_none());
 
     // Register a new existing field ("name") should override data
     field_name.register_internal_field(
@@ -67,7 +67,6 @@ fn test_register_field() {
             description: None,
             required: true,
             compute: None,
-            depends: None,
             field_ref: None,
         },
         &type_id,
@@ -80,9 +79,9 @@ fn test_register_field() {
         field_name.default_value,
         FieldType::String("1ddlyoko".to_string())
     );
-    assert!(field_name.compute.is_none());
-    assert!(field_name.depends.is_some());
-    assert_eq!(field_name.depends, Some(vec!("age".to_string(), "test".to_string())));
+    assert!(field_name.compute.is_some());
+    let field_name_compute = field_name.compute.as_ref().unwrap();
+    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string()));
 
     // Again
     field_name.register_internal_field(
@@ -91,36 +90,10 @@ fn test_register_field() {
             default_value: None,
             description: Some("This is another description".to_string()),
             required: true,
-            compute: None,
-            depends: Some(vec!("age".to_string(), "test2".to_string())),
-            field_ref: None,
-        },
-        &type_id,
-    );
-
-    assert_eq!(field_name.name, "name");
-    assert_eq!(
-        field_name.description,
-        "This is another description".to_string()
-    );
-    assert!(field_name.required);
-    assert_eq!(
-        field_name.default_value,
-        FieldType::String("1ddlyoko".to_string())
-    );
-    assert!(field_name.compute.is_none());
-    assert!(field_name.depends.is_some());
-    assert_eq!(field_name.depends, Some(vec!("age".to_string(), "test".to_string(), "test2".to_string())));
-
-    // Again
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            default_value: None,
-            description: Some("This is another description".to_string()),
-            required: true,
-            compute: Some(true),
-            depends: Some(vec!("age".to_string())),
+            compute: Some(FieldCompute {
+                type_id,
+                depends: vec!("age".to_string(), "test2".to_string()),
+            }),
             field_ref: None,
         },
         &type_id,
@@ -137,8 +110,38 @@ fn test_register_field() {
         FieldType::String("1ddlyoko".to_string())
     );
     assert!(field_name.compute.is_some());
-    assert!(field_name.depends.is_some());
-    assert_eq!(field_name.depends, Some(vec!("age".to_string(), "test".to_string(), "test2".to_string())));
+    let field_name_compute = field_name.compute.as_ref().unwrap();
+    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string(), "test2".to_string()));
+
+    // Again
+    field_name.register_internal_field(
+        &InternalField {
+            name: "name".to_string(),
+            default_value: None,
+            description: Some("This is another description".to_string()),
+            required: true,
+            compute: Some(FieldCompute {
+                type_id,
+                depends: vec!("age".to_string()),
+            }),
+            field_ref: None,
+        },
+        &type_id,
+    );
+
+    assert_eq!(field_name.name, "name");
+    assert_eq!(
+        field_name.description,
+        "This is another description".to_string()
+    );
+    assert!(field_name.required);
+    assert_eq!(
+        field_name.default_value,
+        FieldType::String("1ddlyoko".to_string())
+    );
+    assert!(field_name.compute.is_some());
+    let field_name_compute = field_name.compute.as_ref().unwrap();
+    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string(), "test2".to_string()));
 }
 
 #[test]
@@ -154,7 +157,6 @@ fn test_register_field_without_default_value_should_fail() {
             description: Some("This is the name".to_string()),
             required: true,
             compute: None,
-            depends: None,
             field_ref: None,
         },
         &type_id,
@@ -174,7 +176,6 @@ fn test_register_field_with_another_default_type_should_fail() {
             description: Some("This is the name".to_string()),
             required: true,
             compute: None,
-            depends: None,
             field_ref: None,
         },
         &type_id,
@@ -187,7 +188,6 @@ fn test_register_field_with_another_default_type_should_fail() {
             description: None,
             required: true,
             compute: None,
-            depends: None,
             field_ref: None,
         },
         &type_id,

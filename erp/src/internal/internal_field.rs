@@ -1,4 +1,4 @@
-use crate::field::{FieldType, FieldReference};
+use crate::field::{FieldType, FieldReference, FieldCompute};
 use std::any::TypeId;
 use std::collections::HashSet;
 
@@ -8,10 +8,7 @@ pub struct InternalField {
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: bool,
-    // TODO Merge compute & depends together
-    pub compute: Option<bool>,
-    // TODO change String to &'static
-    pub depends: Option<Vec<String>>,
+    pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
 }
 
@@ -23,8 +20,7 @@ pub struct FinalInternalField {
     pub description: String,
     pub required: bool,
     pub default_value: FieldType,
-    pub compute: Option<TypeId>,
-    pub depends: Option<Vec<String>>,
+    pub compute: Option<FieldCompute>,
     pub inverse: Option<FieldReference>,
     is_init: bool,
 }
@@ -37,7 +33,6 @@ impl FinalInternalField {
             required: false,
             default_value: FieldType::String("".to_string()),
             compute: None,
-            depends: None,
             inverse: None,
             is_init: false,
         }
@@ -61,19 +56,18 @@ impl FinalInternalField {
             self.description = description.clone();
         }
         self.required = field_descriptor.required;
-        if let Some(compute) = &field_descriptor.compute {
-            if *compute {
-                self.compute = Some(*type_id);
-            }
-        }
-        if let Some(depends) = &field_descriptor.depends {
-            if let Some(current_depends) = &mut self.depends {
-                current_depends.append(&mut depends.clone());
+        if let Some(new_compute) = &field_descriptor.compute {
+            if let Some(existing_compute) = &mut self.compute {
+                existing_compute.type_id = *type_id;
+                existing_compute.depends.append(&mut new_compute.depends.clone());
                 // Remove duplicates
                 let mut seen = HashSet::new();
-                current_depends.retain(|dep| seen.insert(dep.clone()));
+                existing_compute.depends.retain(|dep| seen.insert(dep.clone()));
             } else {
-                self.depends = Some(depends.clone());
+                self.compute = Some(FieldCompute {
+                    type_id: *type_id,
+                    depends: new_compute.depends.clone(),
+                });
             }
         }
         if let Some(inverse) = &field_descriptor.field_ref {
