@@ -1,4 +1,4 @@
-use crate::field::FieldType;
+use crate::field::{FieldType, FieldReference};
 
 #[derive(Default)]
 pub struct FieldDescriptor {
@@ -8,6 +8,5 @@ pub struct FieldDescriptor {
     pub required: bool,
     pub compute: Option<bool>,
     pub depends: Option<Vec<String>>,
-    pub target_model: Option<String>,
-    pub inverse: Option<String>,
+    pub field_ref: Option<FieldReference>,
 }

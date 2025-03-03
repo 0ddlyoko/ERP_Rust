@@ -330,14 +330,19 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
-        let inverse = if let Some(inverse) = inverse {
-            quote! { Some(#inverse.to_string()) }
-        } else {
-            quote! { None }
-        };
+        let field_reference = if *is_reference {
+            let inverse_field = if let Some(inverse) = inverse {
+                quote! { Some(#inverse.to_string()) }
+            } else {
+                quote! { None }
+            };
 
-        let target_model = if *is_reference {
-            quote! { Some(#field_type_keyword::get_model_name().to_string()) }
+            quote! {
+                Some(erp::field::FieldReference {
+                    target_model: #field_type_keyword::get_model_name().to_string(),
+                    inverse_field: #inverse_field,
+                })
+            }
         } else {
             quote! { None }
         };
@@ -353,8 +358,7 @@ pub fn derive(item: DeriveInput) -> Result<TokenStream> {
                     required: #is_required,
                     compute: #compute,
                     depends: #depends,
-                    target_model: #target_model,
-                    inverse: #inverse,
+                    field_ref: #field_reference,
                 }
             }
         }

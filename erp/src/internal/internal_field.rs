@@ -1,4 +1,4 @@
-use crate::field::FieldType;
+use crate::field::{FieldType, FieldReference};
 use std::any::TypeId;
 use std::collections::HashSet;
 
@@ -8,11 +8,11 @@ pub struct InternalField {
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: bool,
+    // TODO Merge compute & depends together
     pub compute: Option<bool>,
     // TODO change String to &'static
     pub depends: Option<Vec<String>>,
-    pub target_model: Option<String>,
-    pub inverse: Option<String>,
+    pub field_ref: Option<FieldReference>,
 }
 
 /// Final descriptor of a field.
@@ -25,8 +25,7 @@ pub struct FinalInternalField {
     pub default_value: FieldType,
     pub compute: Option<TypeId>,
     pub depends: Option<Vec<String>>,
-    pub target_model: Option<String>,
-    pub inverse: Option<String>,
+    pub inverse: Option<FieldReference>,
     is_init: bool,
 }
 
@@ -39,7 +38,6 @@ impl FinalInternalField {
             default_value: FieldType::String("".to_string()),
             compute: None,
             depends: None,
-            target_model: None,
             inverse: None,
             is_init: false,
         }
@@ -78,10 +76,7 @@ impl FinalInternalField {
                 self.depends = Some(depends.clone());
             }
         }
-        if let Some(target_model) = &field_descriptor.target_model {
-            self.target_model = Some(target_model.clone());
-        }
-        if let Some(inverse) = &field_descriptor.inverse {
+        if let Some(inverse) = &field_descriptor.field_ref {
             self.inverse = Some(inverse.clone());
         }
         self.is_init = true;

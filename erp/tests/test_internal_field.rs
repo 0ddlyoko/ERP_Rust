@@ -20,8 +20,7 @@ fn test_register_field() {
             required: false,
             compute: None,
             depends: Some(vec!("age".to_string(), "test".to_string())),
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -34,8 +33,7 @@ fn test_register_field() {
             required: false,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -70,8 +68,7 @@ fn test_register_field() {
             required: true,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -96,8 +93,7 @@ fn test_register_field() {
             required: true,
             compute: None,
             depends: Some(vec!("age".to_string(), "test2".to_string())),
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -125,8 +121,7 @@ fn test_register_field() {
             required: true,
             compute: Some(true),
             depends: Some(vec!("age".to_string())),
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -160,8 +155,7 @@ fn test_register_field_without_default_value_should_fail() {
             required: true,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -181,8 +175,7 @@ fn test_register_field_with_another_default_type_should_fail() {
             required: true,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -195,8 +188,7 @@ fn test_register_field_with_another_default_type_should_fail() {
             required: true,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );

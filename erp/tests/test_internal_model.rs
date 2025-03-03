@@ -16,8 +16,7 @@ fn test_get_fields_name() {
             required: true,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
@@ -30,8 +29,7 @@ fn test_get_fields_name() {
             required: false,
             compute: None,
             depends: None,
-            target_model: None,
-            inverse: None,
+            field_ref: None,
         },
         &type_id,
     );
