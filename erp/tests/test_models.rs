@@ -24,10 +24,6 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
     assert_eq!(*sale_order.get_total_price(&mut env)?, 0, "Total price should be 0, as there is no line");
-    // Total price should be computed as we haven't passed it
-    // TODO Bring back computed methods
-    // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
-
     assert!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.get_id_mode().is_empty());
 
     // Create a new SO line
@@ -97,6 +93,37 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
     assert_eq!(contact_lang.get_id(), 1);
     assert_eq!(contact_lang.get_name(&mut env)?, "French");
     assert_eq!(contact_lang.get_code(&mut env)?, "fr_FR");
+
+    Ok(())
+}
+
+#[test]
+fn test_many2one_one2many() -> Result<(), Box<dyn Error>> {
+    let mut app = Application::new(test_utilities::default_config()?);
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+
+    let mut env = app.new_env();
+
+    // Create a new SO
+    let mut sale_order_map = MapOfFields::default();
+    sale_order_map.insert("name", "0ddlyoko's SO");
+    let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(&mut sale_order_map)?;
+
+    // Create a new SO line
+    let mut sale_order_line_map = MapOfFields::default();
+    sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.clone().into());
+    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(&mut sale_order_line_map)?;
+
+    // Check if there is the link from a sale_order_line to a sale_order
+    let sale_order_linked = sale_order_line.get_order::<SaleOrder<_>>(&mut env)?;
+    assert!(sale_order_linked.is_some());
+    assert_eq!(sale_order_linked.unwrap().id, sale_order.id);
+    // Check if there is the opposite link
+    let sale_order_line_linked = sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?;
+    // TODO Once implemented, uncomment this line
+    // assert_eq!(sale_order_line_linked.id, sale_order_line.id);
+
 
     Ok(())
 }
