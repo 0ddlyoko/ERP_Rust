@@ -22,6 +22,7 @@ impl From<&str> for SearchOperator {
             ">=" => SearchOperator::GreaterEqual,
             "<" => SearchOperator::Lower,
             "<=" => SearchOperator::LowerEqual,
+            // TODO Transform this into a "TryForm" to avoid panicking here
             _ => panic!("{}", format!("Invalid search type: {}", str)),
         }
     }
