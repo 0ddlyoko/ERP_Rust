@@ -6,4 +6,5 @@ pub mod field;
 pub mod internal;
 pub mod model;
 pub mod plugin;
+pub mod search;
 pub mod util;

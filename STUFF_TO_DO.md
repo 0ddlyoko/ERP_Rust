@@ -5,3 +5,4 @@
   - Search system required, to search all records that have a link to this field
 - Properly dependencies between computed fields
   - Search system required, to know which records to flag
+- Install lib to handle errors
