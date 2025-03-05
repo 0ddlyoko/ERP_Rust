@@ -42,9 +42,6 @@ where
             let search_key = value.remove(0);
             match search_key {
                 SearchKey::And | SearchKey::Or => {
-                    if value.len() < 2 {
-                        return None
-                    }
                     let left_value = parse_value(value);
                     if let Some((left_search_type, value)) = left_value {
                         // TODO Check if it's possible that "Nothing" is returned here
