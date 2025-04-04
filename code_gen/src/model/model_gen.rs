@@ -6,7 +6,7 @@ use erp::util::string::StringTransform;
 use crate::model::field::FieldGen;
 use crate::model::model::ModelGen;
 
-pub fn derive(item: DeriveInput) -> Result<TokenStream> {
+pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
         ref ident,
         ..

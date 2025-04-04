@@ -67,3 +67,20 @@ fn test_domain() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+fn test_domain_macro() -> Result<(), Box<dyn std::error::Error>> {
+    // Empty
+    let domain = derive_domain!([]);
+    let domain: SearchType = domain.try_into()?;
+    assert_eq!(domain, SearchType::Nothing);
+
+    // Simple one
+    let domain = derive_domain!([("field_1", "=", "var_1")]);
+    let domain: SearchType = domain.try_into()?;
+    assert_eq!(domain, SearchType::Tuple(SearchTuple {
+        left: "field_1".to_string(),
+        operator: SearchOperator::Equal,
+        right: "var_1".to_string(),
+    }));
+    Ok(())
+}

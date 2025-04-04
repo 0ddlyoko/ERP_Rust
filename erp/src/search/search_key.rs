@@ -12,9 +12,9 @@ impl From<&str> for SearchKey {
     fn from(value: &str) -> Self {
         match value {
             "&" => SearchKey::And,
-            "and" => SearchKey::And,
+            // "and" => SearchKey::And,
             "|" => SearchKey::Or,
-            "or" => SearchKey::Or,
+            // "or" => SearchKey::Or,
             _ => SearchKey::Unknown,
         }
     }

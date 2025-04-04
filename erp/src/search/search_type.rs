@@ -1,5 +1,39 @@
 use crate::search::{InvalidDomainError, SearchKey, SearchTuple};
 
+// #[macro_export]
+// macro_rules! domain {
+//     // Empty
+//     ([]) => {
+//         Vec::<SearchKey>::new()
+//     };
+//
+//     // Single expression
+//     (($left:expr, $op:expr, $right:expr)) => {
+//         SearchTuple::from(($left, $op, $right))
+//     };
+//
+//     // AND expression
+//     ("&", $($rest:tt),+) => {
+//         let mut vec = vec![SearchKey::And];
+//         vec.extend(vec![$(domain!($rest)),+]);
+//         vec
+//     };
+//
+//     // OR expression
+//     ("|", $($rest:tt),+) => {
+//         let mut vec = vec![SearchKey::Or];
+//         vec.extend(vec![$(domain!($rest)),+]);
+//         vec
+//     };
+//
+//     // Multiple expression, first is tuple
+//
+//
+//     // Multiple expression
+//     ([$first:tt, $($rest:tt),+]) => {
+//     }
+// }
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum SearchType {
     And(Box<SearchType>, Box<SearchType>),
