@@ -1,5 +1,5 @@
-use crate::attrs::{parse_attributes, AllowedFieldAttrs};
-use crate::util::{gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error, gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value};
+use crate::model::attrs::{parse_attributes, AllowedFieldAttrs};
+use crate::model::util::{gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error, gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment, Result, Type, TypePath};

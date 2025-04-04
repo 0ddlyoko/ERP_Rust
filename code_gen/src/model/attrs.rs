@@ -1,4 +1,4 @@
-use crate::util::{gen_unknown_key_error, parse_eq};
+use crate::model::util::{gen_unknown_key_error, parse_eq};
 use proc_macro2::{Ident, Span};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;

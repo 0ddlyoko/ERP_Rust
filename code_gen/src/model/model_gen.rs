@@ -3,8 +3,8 @@ use quote::quote;
 use syn::{parse_str, DeriveInput, Path, Result};
 use erp::field::FieldType;
 use erp::util::string::StringTransform;
-use crate::field::FieldGen;
-use crate::model::ModelGen;
+use crate::model::field::FieldGen;
+use crate::model::model::ModelGen;
 
 pub fn derive(item: DeriveInput) -> Result<TokenStream> {
     let DeriveInput {

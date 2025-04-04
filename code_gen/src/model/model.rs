@@ -1,9 +1,9 @@
 use syn::{Data, DataStruct, DeriveInput, Field, Fields, Result};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use crate::attrs::{parse_attributes, AllowedModelAttrs};
-use crate::field::FieldGen;
-use crate::util::gen_missing_key_error;
+use crate::model::attrs::{parse_attributes, AllowedModelAttrs};
+use crate::model::field::FieldGen;
+use crate::model::util::gen_missing_key_error;
 
 pub struct ModelGen {
     pub struct_name: String,
