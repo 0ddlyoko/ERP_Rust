@@ -121,9 +121,7 @@ fn test_many2one_one2many() -> Result<(), Box<dyn Error>> {
     assert_eq!(sale_order_linked.unwrap().id, sale_order.id);
     // Check if there is the opposite link
     let sale_order_line_linked = sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?;
-    // TODO Once implemented, uncomment this line
-    // assert_eq!(sale_order_line_linked.id, sale_order_line.id);
-
+    assert_eq!(sale_order_line_linked.id, sale_order_line.id);
 
     Ok(())
 }

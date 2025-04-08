@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-directories = "5.0.1"
-serde_derive = "1.0.214"
-serde = { version = "1.0.214", features = ["derive"] }
-libloading = "0.8.5"
+serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+libloading = "0.8"
+erp_search = { path = "../erp_search" }
+erp_search_code_gen = { path = "../erp_search_code_gen" }
 
 [dev-dependencies]
 test_utilities = { path = "test_utilities" }

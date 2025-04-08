@@ -18,7 +18,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         derived_model,
         fields,
         ..
-    } = ModelGen::from_item(&item)?;
+    } = ModelGen::from_item(item)?;
 
     let compute_fields = fields.iter().filter_map(|f| {
         let FieldGen {
