@@ -22,7 +22,8 @@ directories = "6.0"
 members = [
     "code_gen",
     "erp",
-    "erp_search", "erp_search_code_gen",
+    "erp_search",
+    "erp_search_code_gen",
     "plugins/base",
     "plugins/test_plugin",
 ]

@@ -1,5 +1,5 @@
 use erp::cache::Cache;
-use erp::field::{FieldType, SingleId};
+use erp::field::{FieldType, IdMode, SingleId};
 use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
 use test_utilities::models::SaleOrder;
@@ -22,31 +22,31 @@ fn test_get_and_insert_field() {
         .insert_fields(MapOfFields::new(cached_fields));
 
     // Check if retrieving the field is correct
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(cache_field.unwrap(), &FieldType::String("my_value".to_string()));
 
     // Modify it
-    cache.insert_record_field(
+    cache.insert_field_in_cache(
         "sale_order",
         "my_field",
-        &id_1,
+        id_1.get_ids_ref(),
         Some(FieldType::String("my_value_2".to_string())),
         true,
     );
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(cache_field.unwrap(), &FieldType::String("my_value_2".to_string()));
 
     // Clear the field
-    cache.insert_record_field("sale_order", "my_field", &id_1, None, true);
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_1.get_id());
+    cache.insert_field_in_cache("sale_order", "my_field", id_1.get_ids_ref(), None, true);
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_none());
     // Put field back
-    cache.insert_record_field(
+    cache.insert_field_in_cache(
         "sale_order",
         "my_field",
-        &id_1,
+        id_1.get_ids_ref(),
         Some(FieldType::String("my_value_2".to_string())),
         true,
     );
@@ -56,22 +56,22 @@ fn test_get_and_insert_field() {
         .get_cache_models_mut("sale_order")
         .get_model_or_create(id_2.get_id());
     // Inserting another model shouldn't have modified the other field
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(cache_field.unwrap(), &FieldType::String("my_value_2".to_string()));
 
     // Modifying the other model shouldn't modify the other field
-    cache.insert_record_field(
+    cache.insert_field_in_cache(
         "sale_order",
         "my_field",
-        &id_2,
+        id_2.get_ids_ref(),
         Some(FieldType::String("my_value_3".to_string())),
         true,
     );
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(cache_field.unwrap(), &FieldType::String("my_value_2".to_string()));
-    let cache_field = cache.get_record_field("sale_order", "my_field", &id_2.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_2.get_id());
     assert!(cache_field.is_some());
     assert_eq!(cache_field.unwrap(), &FieldType::String("my_value_3".to_string()));
 }

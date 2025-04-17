@@ -7,7 +7,7 @@ pub use cache_field::*;
 pub use cache_model::*;
 pub use cache_models::*;
 
-use crate::field::{FieldType, IdMode, SingleId};
+use crate::field::FieldType;
 use crate::model::{MapOfFields, ModelManager};
 use std::collections::{HashMap, HashSet};
 
@@ -31,6 +31,7 @@ impl Cache {
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models(&self, model_name: &str) -> &CacheModels {
+        // TODO Do not panic
         self.cache
             .get(model_name)
             .unwrap_or_else(|| panic!("Model {} not found", model_name))
@@ -38,13 +39,14 @@ impl Cache {
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models_mut(&mut self, model_name: &str) -> &mut CacheModels {
+        // TODO Do not panic
         self.cache
             .get_mut(model_name)
             .unwrap_or_else(|| panic!("Model {} not found", model_name))
     }
 
     /// Get value of given field for given record
-    pub fn get_record_field(
+    pub fn get_field_from_cache(
         &self,
         model_name: &str,
         field_name: &str,
@@ -57,8 +59,36 @@ impl Cache {
             .and_then(|f| f.get())
     }
 
+    /// Check if given record field are present in cache, and return those who are not in cache
+    pub fn get_ids_not_in_cache(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        ids: &[u32],
+    ) -> Vec<u32> {
+        let cache_models = self.cache.get(model_name);
+        if cache_models.is_none() {
+            return vec![];
+        }
+        let cache_models = cache_models.unwrap();
+
+        let mut result = vec![];
+        for id in ids {
+            let cache_model = cache_models.get_model(id);
+            if let Some(cache_model) = cache_model {
+                if cache_model.get_field(field_name).is_some() {
+                    result.push(*id);
+                }
+            } else {
+                result.push(*id);
+            }
+        }
+
+        result
+    }
+
     /// Check if given record field is present in cache
-    pub fn is_record_field(
+    pub fn is_field_in_cache(
         &self,
         model_name: &str,
         field_name: &str,
@@ -74,27 +104,25 @@ impl Cache {
     /// Insert given record to the cache.
     ///
     /// Update dirty if update_dirty is set to true, and a modification has been done
-    pub fn insert_record_field<'a, Mode: IdMode>(
+    pub fn insert_field_in_cache(
         &mut self,
         model_name: &str,
         field_name: &str,
-        ids: &'a Mode,
+        ids: &[u32],
         field_value: Option<FieldType>,
         update_dirty: bool,
     )
-    where
-        &'a Mode: IntoIterator<Item = SingleId>,
     {
         let cache_models = self.get_cache_models_mut(model_name);
         for id in ids {
-            cache_models.insert_field(field_name, id.get_id(), field_value.clone(), update_dirty);
+            cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty);
         }
     }
 
     /// Insert given fields to the cache.
     ///
     /// Update dirty if update_dirty is set to true, and a modification has been done
-    pub fn insert_record_fields(
+    pub fn insert_fields_in_cache(
         &mut self,
         model_name: &str,
         id: u32,
@@ -137,19 +165,49 @@ impl Cache {
 
     // Compute
 
-    pub fn add_to_recompute<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: Mode) {
+    pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
+        self.cache
+            .get(model_name)
+            .map_or(false, |cache_models| cache_models.is_to_recompute(field_name, id))
+    }
+
+    /// Check if given record field are present in cache, and return those who are not in cache
+    pub fn get_ids_to_recompute(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        ids: &[u32],
+    ) -> Vec<u32> {
+        let cache_models = self.cache.get(model_name);
+        if cache_models.is_none() {
+            return vec![];
+        }
+        let cache_models = cache_models.unwrap();
+        let ids_to_recompute = &cache_models.get_to_recompute(field_name);
+        if ids_to_recompute.is_none() {
+            return vec![];
+        }
+        let ids_to_recompute = ids_to_recompute.unwrap();
+
+        ids_to_recompute.iter().filter_map(|id| {
+            if ids.contains(id) {
+                Some(*id)
+            } else {
+                None
+            }
+        }).collect()
+    }
+
+    pub fn add_ids_to_recompute(&mut self, model_name: &str, field_name: &str, ids: Vec<u32>) {
+        // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.add_to_recompute(field_name, ids);
     }
 
-    pub fn remove_to_recompute<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: Mode) {
+    pub fn remove_ids_from_recompute(&mut self, model_name: &str, field_name: &str, ids: &[u32]) {
+        // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.remove_to_recompute(field_name, ids);
-    }
-
-    pub fn is_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
-        let cache_models = self.get_cache_models(model_name);
-        cache_models.is_to_recompute(field_name, id)
     }
 
     // Export / Import

@@ -36,7 +36,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_record_fields("sale_order_line", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order_line", 1, map, false);
 
     // Get the record
     let sale_order_line = env.get_record::<SaleOrderLine<_>, SingleId>(1.into());
@@ -44,8 +44,8 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     assert_eq!(*sale_order_line.get_price(&mut env)?, 42);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 42 * 10, "Should not be 0 as the computed method is called");
-    let price_cache_record = env.cache.get_record_field("sale_order_line", "price", &1);
-    let amount_cache_record = env.cache.get_record_field("sale_order_line", "amount", &1);
+    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "price", &1);
+    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &1);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -59,8 +59,8 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     // Changing the price should alter the cache
     sale_order_line.set_price(50, &mut env)?;
 
-    let price_cache_record = env.cache.get_record_field("sale_order_line", "amount", &1);
-    let amount_cache_record = env.cache.get_record_field("sale_order_line", "name", &1);
+    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &1);
+    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "name", &1);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -99,7 +99,7 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_record_fields("sale_order", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order", 1, map, false);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
@@ -119,7 +119,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_record_fields("sale_order_line", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order_line", 1, map, false);
 
     // Get the record
     let sale_order_line: SaleOrderLine<SingleId> = env.get_record(1.into());

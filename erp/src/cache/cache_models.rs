@@ -1,6 +1,6 @@
 use crate::cache::CacheModel;
 use std::collections::{HashMap, HashSet};
-use crate::field::{FieldType, IdMode};
+use crate::field::FieldType;
 use crate::internal::internal_model::FinalInternalModel;
 use crate::model::MapOfFields;
 
@@ -109,19 +109,23 @@ impl CacheModels {
 
     // Computed methods
 
-    pub fn add_to_recompute<Mode: IdMode>(&mut self, field_name: &str, ids: Mode) {
+    pub fn add_to_recompute(&mut self, field_name: &str, ids: Vec<u32>) {
+        // TODO Pass a list of ids instead of IdMode
         let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
-        set.extend(ids.get_ids_ref());
+        set.extend(ids);
     }
 
-    pub fn remove_to_recompute<Mode: IdMode>(&mut self, field_name: &str, ids: Mode) {
+    pub fn remove_to_recompute(&mut self, field_name: &str, ids: &[u32]) {
+        // TODO Pass a list of ids instead of IdMode
         let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
-        let ids = ids.get_ids_ref();
         set.retain(|f| ids.contains(f));
     }
 
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
-        let set = &self.to_recompute.get(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
-        set.contains(id)
+        self.get_to_recompute(field_name).map_or(false, |set| set.contains(id))
+    }
+
+    pub fn get_to_recompute(&self, field_name: &str) -> Option<&HashSet<u32>> {
+        self.to_recompute.get(field_name)
     }
 }

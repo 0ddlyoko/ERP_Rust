@@ -31,7 +31,9 @@ mod sealed {
 pub trait IdMode: Sealed + Clone + IntoIterator<Item = SingleId> {
     /// Returns a vector containing ids saved in this reference
     fn get_ids_ref(&self) -> &Vec<u32>;
-    /// Return the id at given pos. If pos is < 0 or >= len(ids), return u32::MAX
+    /// Return the id at given pos.
+    ///
+    /// If pos is < 0 or >= len(ids), return u32::MAX
     fn get_id_at(&self, pos: usize) -> &u32;
     /// Check if given id is in the list
     fn contains(&self, id: &u32) -> bool;

@@ -1,19 +1,19 @@
 use std::{error, fmt};
 
 #[derive(Debug, Clone)]
-pub struct RecordNotFoundError {
+pub struct RecordsNotFoundError {
     pub(crate) model_name: String,
-    pub(crate) id: u32,
+    pub(crate) ids: Vec<u32>,
 }
 
-impl fmt::Display for RecordNotFoundError {
+impl fmt::Display for RecordsNotFoundError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Cache {} not found for model {}",
-            self.id, self.model_name
+            "Records {:?} not found for model {}",
+            self.ids, self.model_name
         )
     }
 }
 
-impl error::Error for RecordNotFoundError {}
+impl error::Error for RecordsNotFoundError {}

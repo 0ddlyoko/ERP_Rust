@@ -137,12 +137,27 @@ impl FinalInternalModel {
             .collect()
     }
 
+    /// Get a vector of stored fields
+    ///
+    /// TODO Find a way to save this return somewhere, as it should not change when the application
+    ///  is running
+    pub fn get_stored_fields(&self) -> Vec<String> {
+        self.fields.iter()
+            .filter_map(|(field_name, _internal_field)| {
+                // TODO Once we add non-stored field, fix this filter
+                Some(field_name.clone())
+            })
+            .collect()
+    }
+
+    /// TODO Do not panic, but instead return an Option
     pub fn get_internal_field(&self, field_name: &str) -> &FinalInternalField {
         self.fields
             .get(field_name)
             .unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
     }
 
+    /// TODO Do not panic, but instead return an Option
     pub fn get_internal_field_mut(&mut self, field_name: &str) -> &mut FinalInternalField {
         self.fields
             .get_mut(field_name)
