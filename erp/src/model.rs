@@ -177,12 +177,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     /// Returns given optional references field.
     ///
     /// If error, returns the error
-    pub fn get_references<'a, M, BM2>(&self, field_name: &str, env: &'a mut Environment) -> Result<M, Box<dyn std::error::Error>>
+    pub fn get_references<M, BM2>(&self, field_name: &str, env: &mut Environment) -> Result<M, Box<dyn std::error::Error>>
     where
         M: Model<MultipleIds, BaseModel=BM2>,
         BM2: BaseModel,
-        &'a Mode: IntoIterator<Item = SingleId>,
-        Mode: 'a,
+        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let ids = self.get_id_mode();

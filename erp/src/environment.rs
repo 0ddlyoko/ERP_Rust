@@ -27,8 +27,8 @@ impl<'model_manager> Environment<'model_manager> {
     /// Load given records from the database to the cache.
     ///
     /// If the record is already present in cache, do nothing
-    pub fn load_records_from_db<'a, Mode: IdMode + 'a>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>>
-    where &'a Mode: IntoIterator<Item = SingleId>
+    pub fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>>
+    where for<'a> &'a Mode: IntoIterator<Item = SingleId>
     {
         let internal_model = self.model_manager.get_model(model_name);
         if internal_model.is_none() {
@@ -44,7 +44,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// Load fields of given records from the database to the cache.
     ///
     /// If fields are already loaded, they will still be retrieved from the database but not updated
-    pub fn load_records_fields_from_db<'a, Mode: IdMode + 'a>(&mut self, model_name: &str, ids: &Mode, fields: &[String]) -> Result<(), Box<dyn Error>> {
+    pub fn load_records_fields_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode, fields: &[String]) -> Result<(), Box<dyn Error>> {
         let ids_to_load: Vec<&u32> = ids.get_ids_ref().iter().filter(|id| !self.cache.is_record_present(model_name, id)).collect();
         let ids_to_load: MultipleIds = ids_to_load.into();
         let fields_from_db = self.get_fields_from_db(model_name, &ids_to_load, fields);
@@ -180,9 +180,9 @@ impl<'model_manager> Environment<'model_manager> {
         Ok(self.cache.get_field_from_cache(model_name, field_name, &id.get_id()))
     }
 
-    pub fn get_fields_value<'a, Mode: IdMode + 'a>(&'a mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&'a FieldType>>, Box<dyn Error>>
+    pub fn get_fields_value<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&FieldType>>, Box<dyn Error>>
     where
-        &'a Mode: IntoIterator<Item = SingleId>,
+        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         self.ensure_fields_in_cache(model_name, field_name, ids)?;
 
@@ -197,7 +197,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// Ensure given field is in cache for given ids
     ///
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
-    pub fn ensure_fields_in_cache<'a, Mode: IdMode + 'a>(&'a mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
+    pub fn ensure_fields_in_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
         let ids_ref = ids.get_ids_ref();
         let ids_not_in_cache: MultipleIds = self.cache.get_ids_not_in_cache(model_name, field_name, ids_ref).into();
         let ids_to_recompute: MultipleIds = self.cache.get_ids_to_recompute(model_name, field_name, ids_ref).into();
