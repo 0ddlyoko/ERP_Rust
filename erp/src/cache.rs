@@ -7,7 +7,7 @@ pub use cache_field::*;
 pub use cache_model::*;
 pub use cache_models::*;
 
-use crate::field::FieldType;
+use crate::field::{FieldType, IdMode};
 use crate::model::{MapOfFields, ModelManager};
 use std::collections::{HashMap, HashSet};
 
@@ -159,10 +159,9 @@ impl Cache {
     }
 
     /// Clear dirty fields of given record
-    pub fn clear_dirty(&mut self, model_name: &str, id: &u32) {
-        // TODO Allow IdMode as input
+    pub fn clear_dirty<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
         let cache_models = self.get_cache_models_mut(model_name);
-        cache_models.clear_dirty(id);
+        cache_models.clear_dirty(ids.as_ref());
     }
 
     // Compute

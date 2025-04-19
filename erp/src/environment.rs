@@ -67,21 +67,27 @@ impl<'model_manager> Environment<'model_manager> {
     ///
     /// If the record is not present in cache, do nothing
     ///
+    /// TODO If we need to compute fields, compute them
+    ///
     /// If given model does not exist, panic.
     /// TODO Use IdMode
-    pub fn save_record_to_db(&mut self, model_name: &str, id: &u32) -> Result<(), Box<dyn Error>> {
-        let dirty_map_of_fields = self.cache.get_dirty_map_of_fields(model_name, id);
-        if dirty_map_of_fields.is_none() {
-            // Nothing to update
+    pub fn save_records_to_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
+        let mut dirty_map_of_fields: HashMap<SingleId, MapOfFields> = HashMap::new();
+
+        for id in ids.get_ids_ref().iter() {
+            let dirty_map = self.cache.get_dirty_map_of_fields(model_name, id);
+            if let Some(dirty_map) = dirty_map {
+                dirty_map_of_fields.insert(id.into(), dirty_map);
+            }
+        }
+        if dirty_map_of_fields.is_empty() {
             return Ok(());
         }
-        self.save_data_to_db(
-            model_name,
-            &id.into(),
-            &dirty_map_of_fields.unwrap(),
-        )?;
+
+        self.save_data_to_db(model_name, &dirty_map_of_fields)?;
         // Now that it's saved in db, clear dirty fields
-        self.cache.clear_dirty(model_name, id);
+        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<Vec<&SingleId>>().into();
+        self.cache.clear_dirty(model_name, &keys);
         Ok(())
     }
 
@@ -104,8 +110,7 @@ impl<'model_manager> Environment<'model_manager> {
     pub fn save_data_to_db(
         &self,
         _model_name: &str,
-        _id: &SingleId,
-        _data: &MapOfFields,
+        _data: &HashMap<SingleId, MapOfFields>,
     ) -> Result<(), Box<dyn Error>> {
         // TODO Save data to db
         Ok(())

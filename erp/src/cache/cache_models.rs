@@ -107,8 +107,8 @@ impl CacheModels {
         self.dirty.clear();
     }
 
-    pub fn clear_dirty(&mut self, id: &u32) {
-        self.dirty.remove(id);
+    pub fn clear_dirty(&mut self, ids: &[u32]) {
+        self.dirty.retain(|key, _| { ids.contains(key) });
     }
 
     pub fn clear_dirty_field(&mut self, field_name: &str, id: &u32) {

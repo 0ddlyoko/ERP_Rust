@@ -84,7 +84,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
         .eq(["price".to_string()].iter()));
 
     // Clear dirty
-    cache_models.clear_dirty(&1);
+    cache_models.clear_dirty(&[1]);
     assert!(cache_models.get_dirty(&1).is_none());
 
     Ok(())

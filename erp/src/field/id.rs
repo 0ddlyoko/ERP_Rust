@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::slice::Iter;
 use std::vec::IntoIter;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Hash, Eq)]
 pub struct SingleId {
     id: u32,
     ids: Vec<u32>,
@@ -28,7 +28,7 @@ mod sealed {
     pub trait Sealed {}
 }
 
-pub trait IdMode: Sealed + Clone + IntoIterator<Item = SingleId> {
+pub trait IdMode: Sealed + Clone + Into<MultipleIds> + IntoIterator<Item = SingleId> + AsRef<[u32]> {
     /// Returns a vector containing ids saved in this reference
     fn get_ids_ref(&self) -> &Vec<u32>;
     /// Return the id at given pos.
@@ -63,7 +63,16 @@ impl IdMode for SingleId {
         false
     }
 }
-
+impl AsRef<[u32]> for SingleId {
+    fn as_ref(&self) -> &[u32] {
+        &self.ids
+    }
+}
+impl From<SingleId> for MultipleIds {
+    fn from(id: SingleId) -> Self {
+        id.get_id().into()
+    }
+}
 impl Sealed for SingleId {}
 
 impl IdMode for MultipleIds {
@@ -87,7 +96,11 @@ impl IdMode for MultipleIds {
         self.ids.is_empty()
     }
 }
-
+impl AsRef<[u32]> for MultipleIds {
+    fn as_ref(&self) -> &[u32] {
+        &self.ids
+    }
+}
 impl Sealed for MultipleIds {}
 
 // From
@@ -134,15 +147,37 @@ impl From<Vec<&u32>> for MultipleIds {
     }
 }
 
-impl From<SingleId> for MultipleIds {
-    fn from(id: SingleId) -> Self {
-        id.get_id().into()
-    }
-}
+// TODO Find a way to make it work
+// impl<E> From<E> for MultipleIds
+// where
+//     Vec<u32>: From<E>,
+// {
+//     fn from(value: E) -> Self {
+//         todo!()
+//     }
+// }
 
 impl From<&SingleId> for MultipleIds {
     fn from(id: &SingleId) -> Self {
         id.get_id().into()
+    }
+}
+
+impl From<Vec<SingleId>> for MultipleIds {
+    fn from(ids: Vec<SingleId>) -> Self {
+        MultipleIds { ids: ids.iter().map(|id| id.get_id()).collect() }
+    }
+}
+
+impl From<&Vec<SingleId>> for MultipleIds {
+    fn from(ids: &Vec<SingleId>) -> Self {
+        MultipleIds { ids: ids.iter().map(|id| id.get_id()).collect() }
+    }
+}
+
+impl From<Vec<&SingleId>> for MultipleIds {
+    fn from(ids: Vec<&SingleId>) -> Self {
+        MultipleIds { ids: ids.iter().map(|&id| id.get_id()).collect() }
     }
 }
 
