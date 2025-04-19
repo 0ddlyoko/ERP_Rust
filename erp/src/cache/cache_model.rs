@@ -1,4 +1,4 @@
-use crate::cache::CacheField;
+use crate::cache::{CacheField, Update};
 use crate::field::FieldType;
 use crate::model::MapOfFields;
 use std::collections::HashMap;
@@ -20,6 +20,11 @@ impl CacheModel {
 
     pub fn id(&self) -> u32 {
         self.id
+    }
+
+    /// Return true if fields contain given name
+    pub fn contains(&self, name: &str) -> bool {
+        self.fields.contains_key(name)
     }
 
     /// Return given field from this cached model.
@@ -55,7 +60,11 @@ impl CacheModel {
         &mut self,
         name: &str,
         field_value: Option<FieldType>,
+        update_if_exists: &Update,
     ) -> Option<(&mut CacheField, bool)> {
+        if matches!(update_if_exists, Update::NotUpdateIfExists) && self.contains(name) {
+            return None;
+        }
         let cache_field = self.fields.entry(name.to_string()).or_default();
         let mut dirty = false;
         match field_value {
@@ -76,10 +85,14 @@ impl CacheModel {
     }
 
     /// Insert given fields, and return fields that have been modified
-    pub fn insert_fields(&mut self, fields: MapOfFields) -> Vec<String> {
+    pub fn insert_fields(
+        &mut self,
+        fields: MapOfFields,
+        update_if_exists: &Update,
+    ) -> Vec<String> {
         let mut dirty_fields = Vec::new();
         for (name, value) in fields.fields {
-            let result = self.insert_field(name.as_str(), value);
+            let result = self.insert_field(name.as_str(), value, update_if_exists);
             if let Some(result) = result {
                 if result.1 {
                     dirty_fields.push(name);

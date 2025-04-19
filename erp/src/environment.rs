@@ -1,5 +1,5 @@
 use crate::cache::errors::RecordsNotFoundError;
-use crate::cache::Cache;
+use crate::cache::{Cache, Dirty, Update};
 use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::collections::HashMap;
@@ -51,8 +51,7 @@ impl<'model_manager> Environment<'model_manager> {
         match fields_from_db {
             Ok(values) => {
                 for (id, map_of_fields) in values {
-                    // TODO Do not override already loaded fields
-                    self.cache.insert_fields_in_cache(model_name, id.get_id(), map_of_fields, false);
+                    self.cache.insert_fields_in_cache(model_name, id.get_id(), map_of_fields, &Dirty::NotUpdateDirty, &Update::NotUpdateIfExists);
                 }
                 Ok(())
             }
@@ -123,7 +122,7 @@ impl<'model_manager> Environment<'model_manager> {
         // TODO Insert data to db
         let id = self.id;
         self.id += 1;
-        self.cache.insert_fields_in_cache(model_name, id, data.clone(), false);
+        self.cache.insert_fields_in_cache(model_name, id, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
         Ok(id.into())
     }
 
@@ -246,7 +245,7 @@ impl<'model_manager> Environment<'model_manager> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: FieldType = value.into();
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), Some(field_type), true);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), Some(field_type), &Dirty::UpdateDirty, &Update::UpdateIfExists);
         Ok(())
     }
 
@@ -256,7 +255,7 @@ impl<'model_manager> Environment<'model_manager> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: Option<FieldType> = value.map(|value| value.into());
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, true);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists);
         Ok(())
     }
 

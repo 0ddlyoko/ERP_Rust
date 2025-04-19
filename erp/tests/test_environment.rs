@@ -3,6 +3,7 @@ use erp::field::{FieldType, SingleId};
 use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
 use std::error::Error;
+use erp::cache::{Dirty, Update};
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
 #[test]
@@ -36,7 +37,7 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_fields_in_cache("sale_order_line", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order_line", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
     // Get the record
     let sale_order_line = env.get_record::<SaleOrderLine<_>, SingleId>(1.into());
@@ -99,7 +100,7 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_fields_in_cache("sale_order", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
@@ -119,7 +120,7 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order_line", &mut map);
 
-    env.cache.insert_fields_in_cache("sale_order_line", 1, map, false);
+    env.cache.insert_fields_in_cache("sale_order_line", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
     // Get the record
     let sale_order_line: SaleOrderLine<SingleId> = env.get_record(1.into());

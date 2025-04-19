@@ -103,35 +103,37 @@ impl Cache {
 
     /// Insert given record to the cache.
     ///
-    /// Update dirty if update_dirty is set to true, and a modification has been done
+    /// Update dirty if UpdateDirty is given, and a modification has been done
     pub fn insert_field_in_cache(
         &mut self,
         model_name: &str,
         field_name: &str,
         ids: &[u32],
         field_value: Option<FieldType>,
-        update_dirty: bool,
+        update_dirty: &Dirty,
+        update_if_exists: &Update,
     )
     {
         let cache_models = self.get_cache_models_mut(model_name);
         for id in ids {
-            cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty);
+            cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty, update_if_exists);
         }
     }
 
     /// Insert given fields to the cache.
     ///
-    /// Update dirty if update_dirty is set to true, and a modification has been done
+    /// Update dirty if UpdateDirty is given, and a modification has been done
     pub fn insert_fields_in_cache(
         &mut self,
         model_name: &str,
         id: u32,
         field_values: MapOfFields,
-        update_dirty: bool,
+        update_dirty: &Dirty,
+        update_if_exists: &Update,
     ) {
         // TODO Allow IdMode as input
         let cache_models = self.get_cache_models_mut(model_name);
-        cache_models.insert_fields(id, field_values, update_dirty);
+        cache_models.insert_fields(id, field_values, update_dirty, update_if_exists);
     }
 
     // Dirty
@@ -221,4 +223,14 @@ impl Cache {
     pub fn import_cache(&mut self, cache: HashMap<String, CacheModels>) {
         self.cache = cache;
     }
+}
+
+pub enum Dirty {
+    UpdateDirty,
+    NotUpdateDirty,
+}
+
+pub enum Update {
+    UpdateIfExists,
+    NotUpdateIfExists,
 }

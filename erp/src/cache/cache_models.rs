@@ -1,4 +1,4 @@
-use crate::cache::CacheModel;
+use crate::cache::{CacheModel, Dirty, Update};
 use std::collections::{HashMap, HashSet};
 use crate::field::FieldType;
 use crate::internal::internal_model::FinalInternalModel;
@@ -50,10 +50,17 @@ impl CacheModels {
         self.models.entry(id).or_insert_with(|| CacheModel::new(id))
     }
 
-    pub fn insert_field(&mut self, field_name: &str, id: u32, field_value: Option<FieldType>, update_dirty: bool) {
+    pub fn insert_field(
+        &mut self,
+        field_name: &str,
+        id: u32,
+        field_value: Option<FieldType>,
+        update_dirty: &Dirty,
+        update_if_exists: &Update,
+    ) {
         let cache_model = self.get_model_or_create(id);
-        let result = cache_model.insert_field(field_name, field_value.clone());
-        if update_dirty {
+        let result = cache_model.insert_field(field_name, field_value.clone(), update_if_exists);
+        if matches!(update_dirty, Dirty::UpdateDirty) {
             if let Some((_cache_field, dirty)) = result {
                 if dirty {
                     self.add_dirty(id, vec![field_name.to_string()]);
@@ -62,10 +69,16 @@ impl CacheModels {
         }
     }
 
-    pub fn insert_fields(&mut self, id: u32, field_values: MapOfFields, update_dirty: bool) {
+    pub fn insert_fields(
+        &mut self,
+        id: u32,
+        field_values: MapOfFields,
+        update_dirty: &Dirty,
+        update_if_exists: &Update,
+    ) {
         let cache_model = self.get_model_or_create(id);
-        let dirty_fields = cache_model.insert_fields(field_values);
-        if update_dirty && !dirty_fields.is_empty() {
+        let dirty_fields = cache_model.insert_fields(field_values, update_if_exists);
+        if matches!(update_dirty, Dirty::UpdateDirty) && !dirty_fields.is_empty() {
             self.add_dirty(id, dirty_fields);
         }
     }
