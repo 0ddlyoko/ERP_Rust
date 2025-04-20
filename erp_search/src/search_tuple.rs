@@ -11,7 +11,7 @@ pub struct SearchTuple {
 
 impl<E> TryFrom<(&str, E, &str)> for SearchTuple
 where
-    SearchOperator: TryFrom<E, Error=UnknownSearchOperatorError>,
+    E: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 
@@ -26,7 +26,7 @@ where
 
 impl<E> TryFrom<(String, E, String)> for SearchTuple
 where
-    SearchOperator: TryFrom<E, Error=UnknownSearchOperatorError>,
+    E: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 

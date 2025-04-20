@@ -15,14 +15,14 @@ impl MapOfFields {
 
     pub fn get<'a, T>(&'a self, field_name: &str) -> T
     where
-        Option<T>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<T>>,
     {
         self.get_option(field_name).unwrap()
     }
 
     pub fn get_option<'a, T>(&'a self, field_name: &str) -> Option<T>
     where
-        Option<T>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<T>>,
     {
         let field = self.fields.get(field_name)?;
         let Some(field) = field else {
@@ -33,7 +33,7 @@ impl MapOfFields {
 
     pub fn insert_option<T>(&mut self, field_name: &str, value: Option<T>)
     where
-        FieldType: From<T>,
+        T: Into<FieldType>,
     {
         if let Some(value) = value {
             self.insert(field_name, value);
@@ -45,7 +45,7 @@ impl MapOfFields {
 
     pub fn insert<T>(&mut self, field_name: &str, value: T)
     where
-        FieldType: From<T>,
+        T: Into<FieldType>,
     {
         self.insert_field_type(field_name, value.into());
     }

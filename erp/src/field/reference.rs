@@ -46,7 +46,7 @@ impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
 impl<BM, E> From<E> for Reference<BM, SingleId>
 where
     BM: BaseModel,
-    SingleId: From<E>,
+    E: Into<SingleId>,
 {
     fn from(value: E) -> Self {
         Reference {
@@ -59,7 +59,7 @@ where
 impl<BM, E> From<E> for Reference<BM, MultipleIds>
 where
     BM: BaseModel,
-    MultipleIds: From<E>,
+    E: Into<MultipleIds>,
 {
     fn from(value: E) -> Self {
         Reference {

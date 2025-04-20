@@ -17,20 +17,20 @@ impl From<SearchTuple> for SearchType
     }
 }
 
-impl<E> TryFrom<(&str, E, &str)> for SearchType
+impl<'a, E> TryFrom<(&'a str, E, &'a str)> for SearchType
 where
-    SearchTuple: for<'a> TryFrom<(&'a str, E, &'a str), Error = UnknownSearchOperatorError>,
+    (&'a str, E, &'a str): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 
-    fn try_from(value: (&str, E, &str)) -> Result<Self, Self::Error> {
+    fn try_from(value: (&'a str, E, &'a str)) -> Result<Self, Self::Error> {
         Ok(SearchType::Tuple(value.try_into()?))
     }
 }
 
 impl<E> TryFrom<(String, E, String)> for SearchType
 where
-    SearchTuple: TryFrom<(String, E, String), Error = UnknownSearchOperatorError>,
+    (String, E, String): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 
@@ -126,7 +126,7 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
 
 impl<E> TryFrom<Vec<E>> for SearchType
 where
-    SearchKey: TryFrom<E, Error = UnknownSearchOperatorError>,
+    E: TryInto<SearchKey, Error = UnknownSearchOperatorError>,
 {
     type Error = ErrorType;
 

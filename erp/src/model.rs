@@ -69,7 +69,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
     /// If error, returns the error
     pub fn get<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<&'a E, Box<dyn Error>>
     where
-        Option<&'a E>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<&'a E>>,
     {
         let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
         let id: &SingleId = self.get_id_mode();
@@ -100,7 +100,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
     /// If error, returns the error
     pub fn get_option<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Option<&'a E>, Box<dyn std::error::Error>>
     where
-        Option<&'a E>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<&'a E>>,
     {
         let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
         let id = self.get_id_mode();
@@ -131,7 +131,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
     /// If error, returns the error
     pub fn gets<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<&'a E>, Box<dyn Error>>
     where
-        Option<&'a E>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<&'a E>>,
     {
         let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
         let ids: &MultipleIds = self.get_id_mode();
@@ -163,7 +163,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
     /// If error, returns the error
     pub fn get_options<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> Result<Vec<Option<&'a E>>, Box<dyn std::error::Error>>
     where
-        Option<&'a E>: From<&'a FieldType>,
+        &'a FieldType: Into<Option<&'a E>>,
     {
         let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
         let id: &MultipleIds = self.get_id_mode();

@@ -161,7 +161,11 @@ impl From<&bool> for FieldType {
 pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {
 }
 
-impl<'a, E> From<&'a FieldType> for Option<&'a E> where E: EnumType, &'a E: From<&'a str> {
+impl<'a, E> From<&'a FieldType> for Option<&'a E>
+where
+    E: EnumType,
+    &'a str: Into<&'a E>,
+{
     fn from(t: &'a FieldType) -> Self {
         match t {
             FieldType::Enum(s) => Some(s.as_str().into()),
@@ -170,7 +174,10 @@ impl<'a, E> From<&'a FieldType> for Option<&'a E> where E: EnumType, &'a E: From
     }
 }
 
-impl<'a, E> From<E> for FieldType where E: EnumType, &'a str: From<E> {
+impl<'a, E> From<E> for FieldType
+where
+    E: EnumType + Into<&'a str>,
+{
     fn from(t: E) -> Self {
         let result: &str = t.into();
         FieldType::Enum(result.to_string())
@@ -200,7 +207,7 @@ impl From<&u32> for FieldType {
     }
 }
 
-impl<E> From<&FieldType> for Option<Reference<E, SingleId>> where E: BaseModel {
+impl<E: BaseModel> From<&FieldType> for Option<Reference<E, SingleId>> {
     fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref(id) => Some(id.into()),
@@ -209,13 +216,13 @@ impl<E> From<&FieldType> for Option<Reference<E, SingleId>> where E: BaseModel {
     }
 }
 
-impl<E> From<&Reference<E, SingleId>> for FieldType where E: BaseModel {
+impl<E: BaseModel> From<&Reference<E, SingleId>> for FieldType {
     fn from(t: &Reference<E, SingleId>) -> Self {
         FieldType::Ref(t.id_mode.get_id())
     }
 }
 
-impl<E> From<Reference<E, SingleId>> for FieldType where E: BaseModel {
+impl<E: BaseModel> From<Reference<E, SingleId>> for FieldType {
     fn from(t: Reference<E, SingleId>) -> Self {
         FieldType::Ref(t.id_mode.get_id())
     }
@@ -245,7 +252,7 @@ impl From<&Vec<u32>> for FieldType {
     }
 }
 
-impl<E> From<&FieldType> for Option<Reference<E, MultipleIds>> where E: BaseModel {
+impl<E: BaseModel> From<&FieldType> for Option<Reference<E, MultipleIds>> {
     fn from(t: &FieldType) -> Self {
         match t {
             FieldType::Ref(id) => Some(vec![*id].into()),
@@ -255,13 +262,13 @@ impl<E> From<&FieldType> for Option<Reference<E, MultipleIds>> where E: BaseMode
     }
 }
 
-impl<E> From<&Reference<E, MultipleIds>> for FieldType where E: BaseModel {
+impl<E: BaseModel> From<&Reference<E, MultipleIds>> for FieldType {
     fn from(t: &Reference<E, MultipleIds>) -> Self {
         FieldType::Refs(t.id_mode.get_ids_ref().clone())
     }
 }
 
-impl<E> From<Reference<E, MultipleIds>> for FieldType where E: BaseModel {
+impl<E: BaseModel> From<Reference<E, MultipleIds>> for FieldType {
     fn from(t: Reference<E, MultipleIds>) -> Self {
         FieldType::Refs(t.id_mode.ids)
     }
