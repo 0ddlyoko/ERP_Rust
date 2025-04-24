@@ -211,7 +211,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
-        env.save_field_value(model_name, field_name, id_mode, value)
+        env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
 
     /// Changes the value of given field to given optional value
@@ -222,7 +222,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
-        env.save_option_field_value(model_name, field_name, id_mode, value)
+        env.save_option_to_cache(model_name, field_name, id_mode, value)
     }
 
     /// Changes the value of given field to given reference
@@ -233,7 +233,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
-        env.save_field_value(model_name, field_name, id_mode, value)
+        env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
 
     /// Changes the value of given field to given reference
@@ -244,7 +244,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
-        env.save_field_value(model_name, field_name, id_mode, value)
+        env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
 
     /// Convert this model into another one, but from the same base

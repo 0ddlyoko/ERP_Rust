@@ -108,12 +108,12 @@ impl CacheModels {
     }
 
     pub fn clear_dirty(&mut self, ids: &[u32]) {
-        self.dirty.retain(|key, _| { ids.contains(key) });
+        self.dirty.retain(|key, _| { !ids.contains(key) });
     }
 
     pub fn clear_dirty_field(&mut self, field_name: &str, id: &u32) {
         if let Some(vec) = self.dirty.get_mut(id) {
-            vec.retain(|f| f == field_name);
+            vec.retain(|f| f != field_name);
             if vec.is_empty() {
                 self.dirty.remove(id);
             }
@@ -122,16 +122,20 @@ impl CacheModels {
 
     // Computed methods
 
-    pub fn add_to_recompute(&mut self, field_name: &str, ids: Vec<u32>) {
+    pub fn add_to_recompute(&mut self, fields_name: &[&str], ids: &[u32]) {
         // TODO Pass a list of ids instead of IdMode
-        let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
-        set.extend(ids);
+        for &field_name in fields_name {
+            let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
+            set.extend(ids);
+        }
     }
 
-    pub fn remove_to_recompute(&mut self, field_name: &str, ids: &[u32]) {
+    pub fn remove_to_recompute(&mut self, fields_name: &[&str], ids: &[u32]) {
         // TODO Pass a list of ids instead of IdMode
-        let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
-        set.retain(|f| ids.contains(f));
+        for &field_name in fields_name {
+            let set = self.to_recompute.get_mut(field_name).unwrap_or_else(|| panic!("Cached field {} not found for model {}", field_name, self.name));
+            set.retain(|f| !ids.contains(f));
+        }
     }
 
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {

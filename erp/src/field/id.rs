@@ -1,5 +1,6 @@
 use crate::field::id::sealed::Sealed;
 use std::collections::HashSet;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::slice::Iter;
 use std::vec::IntoIter;
 
@@ -291,5 +292,44 @@ impl PartialEq<u32> for MultipleIds {
 impl<Mode: IdMode> PartialEq<Mode> for MultipleIds {
     fn eq(&self, other: &Mode) -> bool {
         &self.ids == other.get_ids_ref()
+    }
+}
+
+// +, -
+
+impl Sub for MultipleIds {
+    type Output = MultipleIds;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            ids: self.ids.into_iter().filter(|id| !rhs.contains(id)).collect(),
+        }
+    }
+}
+
+impl SubAssign for MultipleIds {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.ids.retain(|id| !rhs.contains(id));
+    }
+}
+
+impl Add for MultipleIds {
+    type Output = MultipleIds;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut ids = self.ids.clone();
+        ids.append(rhs.ids.clone().as_mut());
+        let mut result = Self {
+            ids,
+        };
+        result.remove_dup();
+        result
+    }
+}
+
+impl AddAssign for MultipleIds {
+    fn add_assign(&mut self, rhs: Self) {
+        self.ids.append(rhs.ids.clone().as_mut());
+        self.remove_dup();
     }
 }

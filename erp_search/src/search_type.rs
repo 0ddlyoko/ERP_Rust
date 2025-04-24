@@ -10,6 +10,29 @@ pub enum SearchType {
     Nothing,
 }
 
+impl SearchType {
+    /// Retrieve fields in "left" operator of all Tuple related to this field
+    pub fn get_fields(&self) -> Vec<String> {
+        fn handle_search_type(search_type: &SearchType, result: &mut Vec<String>) {
+            match search_type {
+                SearchType::And(left, right) | SearchType::Or(left, right) => {
+                    handle_search_type(left, result);
+                    handle_search_type(right, result);
+                },
+                SearchType::Tuple(tuple) => {
+                    result.push(tuple.left.clone());
+                },
+                SearchType::Nothing => {},
+            }
+        }
+
+        let mut result: Vec<String> = vec![];
+        handle_search_type(self, &mut result);
+
+        result
+    }
+}
+
 impl From<SearchTuple> for SearchType
 {
     fn from(search_type: SearchTuple) -> Self {

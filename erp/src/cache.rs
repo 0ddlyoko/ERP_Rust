@@ -199,16 +199,16 @@ impl Cache {
         }).collect()
     }
 
-    pub fn add_ids_to_recompute(&mut self, model_name: &str, field_name: &str, ids: Vec<u32>) {
+    pub fn add_ids_to_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
         // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
-        cache_models.add_to_recompute(field_name, ids);
+        cache_models.add_to_recompute(fields_name, ids);
     }
 
-    pub fn remove_ids_from_recompute(&mut self, model_name: &str, field_name: &str, ids: &[u32]) {
+    pub fn remove_ids_from_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
         // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
-        cache_models.remove_to_recompute(field_name, ids);
+        cache_models.remove_to_recompute(fields_name, ids);
     }
 
     // Export / Import

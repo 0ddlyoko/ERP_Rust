@@ -124,16 +124,21 @@ impl FinalInternalModel {
     }
 
     /// Get a vector of all registered fields for this model
-    pub fn get_fields_name(&self) -> Vec<String> {
-        self.fields.keys().cloned().collect()
+    pub fn get_fields_name(&self) -> Vec<&str> {
+        self.fields.keys().map(|s| s.as_str()).collect()
     }
 
     /// Get a vector of difference between all registered fields for this model, and given vector
-    pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<String> {
+    pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<&str> {
         self.fields
             .keys()
-            .filter(|&x| !current_fields.contains(&x.as_str()))
-            .cloned()
+            .filter_map(|x| {
+                if !current_fields.contains(&x.as_str()) {
+                    Some(x.as_str())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
@@ -141,11 +146,11 @@ impl FinalInternalModel {
     ///
     /// TODO Find a way to save this return somewhere, as it should not change when the application
     ///  is running
-    pub fn get_stored_fields(&self) -> Vec<String> {
+    pub fn get_stored_fields(&self) -> Vec<&str> {
         self.fields.iter()
             .filter_map(|(field_name, _internal_field)| {
                 // TODO Once we add non-stored field, fix this filter
-                Some(field_name.clone())
+                Some(field_name.as_str())
             })
             .collect()
     }

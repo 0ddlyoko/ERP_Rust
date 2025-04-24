@@ -4,6 +4,7 @@ use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::collections::HashMap;
 use std::error::Error;
+use erp_search::SearchType;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -44,9 +45,8 @@ impl<'model_manager> Environment<'model_manager> {
     /// Load fields of given records from the database to the cache.
     ///
     /// If fields are already loaded, they will still be retrieved from the database but not updated
-    pub fn load_records_fields_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode, fields: &[String]) -> Result<(), Box<dyn Error>> {
-        let ids_to_load: Vec<&u32> = ids.get_ids_ref().iter().filter(|id| !self.cache.is_record_present(model_name, id)).collect();
-        let ids_to_load: MultipleIds = ids_to_load.into();
+    pub fn load_records_fields_from_db<'a, Mode: IdMode>(&'a mut self, model_name: &str, ids: &Mode, fields: &'a [&str]) -> Result<(), Box<dyn Error>> {
+        let ids_to_load: MultipleIds = ids.get_ids_ref().into();
         let fields_from_db = self.get_fields_from_db(model_name, &ids_to_load, fields);
         match fields_from_db {
             Ok(values) => {
@@ -95,8 +95,11 @@ impl<'model_manager> Environment<'model_manager> {
         &self,
         model_name: &str,
         ids: &MultipleIds,
-        _fields: &[String],
+        _fields: &[&str],
     ) -> Result<HashMap<SingleId, MapOfFields>, Box<dyn Error>> {
+        if ids.is_empty() {
+            return Ok(HashMap::new());
+        }
         // TODO Get data from db
         Err(RecordsNotFoundError {
             model_name: model_name.to_string(),
@@ -120,15 +123,18 @@ impl<'model_manager> Environment<'model_manager> {
     ///
     /// TODO Allow to call this method with multiple data
     pub fn insert_data_to_db(
-        &mut self,
+        &self,
         model_name: &str,
         data: &MapOfFields,
     ) -> Result<SingleId, Box<dyn Error>> {
         // TODO Insert data to db
-        let id = self.id;
-        self.id += 1;
-        self.cache.insert_fields_in_cache(model_name, id, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
-        Ok(id.into())
+        // TODO Remove static + unsafe code later, as the id will be returned by the db
+        static mut ID: u32 = 1;
+        unsafe {
+            ID += 1;
+            // self.cache.insert_fields_in_cache(model_name, ID, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
+            Ok(ID.into())
+        }
     }
 
     // ------------------------------------------
@@ -171,6 +177,30 @@ impl<'model_manager> Environment<'model_manager> {
         ids.into()
     }
 
+    /// Search given domain for given model, and return an instance of given model if found
+    ///
+    /// If not found, return an empty recordset
+    ///
+    /// This method does not load in cache any data related to the model.
+    /// It only performs a search, and return the given ids.
+    ///
+    /// Before performing any search, save any data related to any field given in the domain.
+    pub fn search<M>(&mut self, domain: &SearchType) -> Result<M, Box<dyn Error>>
+    where
+        M: Model<MultipleIds>,
+    {
+        if matches!(domain, SearchType::Nothing) {
+            // Special case: return all ids
+            // TODO Get all ids
+            return Ok(M::create_instance(MultipleIds::default()));
+        }
+        let fields_to_save = domain.get_fields();
+        // TODO Save or compute those fields to database
+
+        // TODO Search
+        return Ok(M::create_instance(MultipleIds::default()));
+    }
+
     /// Get the value of given field for given id.
     ///
     /// If field is not in cache, load it
@@ -204,7 +234,7 @@ impl<'model_manager> Environment<'model_manager> {
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
     pub fn ensure_fields_in_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
         let ids_ref = ids.get_ids_ref();
-        let ids_not_in_cache: MultipleIds = self.cache.get_ids_not_in_cache(model_name, field_name, ids_ref).into();
+        let mut ids_not_in_cache: MultipleIds = self.cache.get_ids_not_in_cache(model_name, field_name, ids_ref).into();
         let ids_to_recompute: MultipleIds = self.cache.get_ids_to_recompute(model_name, field_name, ids_ref).into();
 
         // TODO Merge the following 2 methods into a single one
@@ -220,7 +250,12 @@ impl<'model_manager> Environment<'model_manager> {
             let field_info = model_info.get_internal_field(field_name);
             let is_computed_method = field_info.compute.is_some();
             if !ids_to_recompute.is_empty() && is_computed_method {
-                self.call_compute_method(model_name, &ids_to_recompute, &[field_name.to_string()])?;
+                self.call_compute_method(model_name, &ids_to_recompute, &[field_name])?;
+                // Here, we can assume that ids in ids_to_recompute are in cache
+                ids_not_in_cache -= ids_to_recompute;
+            }
+            if ids_not_in_cache.is_empty() {
+                return Ok(());
             }
             // TODO Once we add non-stored field, fix this condition
             if true {
@@ -230,7 +265,7 @@ impl<'model_manager> Environment<'model_manager> {
                 self.load_records_fields_from_db(model_name, &ids_not_in_cache, &fields_to_load)?;
             } else if is_computed_method {
                 // This could be a computed one. Call it
-                self.call_compute_method(model_name, &ids_not_in_cache, &[field_name.to_string()])?;
+                self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else {
                 // State where field is not computed nor stored. This behavior is unexpected
                 // TODO Find what to do in this case
@@ -244,7 +279,7 @@ impl<'model_manager> Environment<'model_manager> {
     // |           Save to Cache Logic          |
     // ------------------------------------------
 
-    pub fn save_field_value<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<(), Box<dyn Error>>
+    pub fn save_value_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
@@ -254,7 +289,7 @@ impl<'model_manager> Environment<'model_manager> {
         Ok(())
     }
 
-    pub fn save_option_field_value<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<(), Box<dyn Error>>
+    pub fn save_option_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
@@ -289,18 +324,30 @@ impl<'model_manager> Environment<'model_manager> {
         // TODO Change this line to not return anything, but instead update the cache
         let missing_fields = self.fill_default_values_on_map(model_name, data);
         let id = self.insert_data_to_db(model_name, data)?;
-        // Once added in database, we should call all stored computed methods
-        // TODO Do not call all computed method, but instead set them as to_recompute
+        // Once added in database, we should set all stored computed methods as to_recompute
         if let Some(missing_fields) = missing_fields {
             let final_internal_model = self.model_manager.get_model(model_name);
             if let Some(final_internal_model) = final_internal_model {
-                let computed_fields: Vec<String> = missing_fields
+                // I need to transform this Vec<&str> to a Vec<String> to a Vec<&str>,
+                // otherwise I had a mutable error in add_ids_to_recompute
+                // If someone has a solution to this, please let me know
+                let computed_fields_string = missing_fields
                     .into_iter()
-                    .filter(|f| final_internal_model.is_computed_field(f))
-                    .collect();
-                self.call_compute_method(model_name, &id, &computed_fields)?;
+                    .filter_map(|f| {
+                        if final_internal_model.is_computed_field(f) {
+                            Some(f.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<String>>();
+                let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
+                self.cache.add_ids_to_recompute(model_name, &computed_fields, &[id.get_id()]);
             }
         }
+
+        // TODO Remove the following line once we have a database, as we should not directly put data in cache
+        self.cache.insert_fields_in_cache(model_name, id.get_id(), data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
         Ok(id)
     }
@@ -310,7 +357,7 @@ impl<'model_manager> Environment<'model_manager> {
         &self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Option<Vec<String>> {
+    ) -> Option<Vec<&str>> {
         let final_internal_model = self.model_manager.get_model(model_name)?;
         let missing_fields_to_load = final_internal_model.get_missing_fields(data.get_keys());
         for missing_field_to_load in &missing_fields_to_load {
@@ -350,8 +397,7 @@ impl<'model_manager> Environment<'model_manager> {
         &mut self,
         model_name: &str,
         ids: &Mode,
-        // TODO Find a way to pass &[&str] instead of &[String]
-        fields: &[String],
+        fields: &[&str],
     ) -> Result<(), Box<dyn Error>>
     {
         let final_internal_model = self.model_manager.get_model(model_name);
@@ -366,7 +412,7 @@ impl<'model_manager> Environment<'model_manager> {
             for field in fields {
                 if let Some(computed_field) = final_internal_model.get_computed_field(field) {
                     // TODO Try to find a way to not clone the id
-                    (computed_field.call_computed_method)(field.as_str(), ids.get_ids_ref().into(), env)?;
+                    (computed_field.call_computed_method)(field, ids.get_ids_ref().into(), env)?;
                 }
             }
             Ok(())

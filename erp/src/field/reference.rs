@@ -86,7 +86,7 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>>
 
     fn sub(self, rhs: Reference<BM, Mode1>) -> Self::Output {
         let mut vecs = self.id_mode.get_ids_ref().clone();
-        vecs.retain(|id| rhs.contains(id));
+        vecs.retain(|id| !rhs.contains(id));
         vecs.into()
     }
 }

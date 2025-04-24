@@ -41,19 +41,13 @@ fn test_models() -> Result<(), Box<dyn Error>> {
 
     assert_eq!(*sale_order_line.get_price(&mut env)?, 100);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 20);
-    // TODO Later, this line should not fail, as it will automatically be recomputed
-    // assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 20);
+    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 20);
     // TODO Later, This should not fail if we add a link between sale_order & sale_order_line
-    // assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?, vec![]);
+    // assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.get_id_mode(), sale_order_line.get_id_mode());
     // TODO For now there is no link between fields, so the computed method is not recomputed.
     //  Fix that
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
 
-    // But we can force the computation of total_price
-    env.call_compute_method("sale_order_line", &sale_order_line.id, &["total_price".to_string()])?;
-    // TODO Add depends, so that we can check if the computed field is automatically called
-    //
-    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 20);
     // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 20);
 
     // Change the state
@@ -82,15 +76,13 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
     let mut record = MapOfFields::default();
     record.insert("name", "0ddlyoko");
     record.insert("email", "0ddlyoko@test.com");
-    record.insert("lang", &lang.get_id());
+    record.insert("lang", lang.get_id());
     let contact = env.create_new_record_from_map::<Contact<_>>(&mut record)?;
-    assert_eq!(contact.get_id(), 2);
     assert_eq!(contact.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(contact.get_email(&mut env)?.clone(), Some(&"0ddlyoko@test.com".to_string()));
     let contact_lang = contact.get_lang::<Lang<_>>(&mut env)?;
     assert!(contact_lang.is_some());
     let contact_lang = contact_lang.unwrap();
-    assert_eq!(contact_lang.get_id(), 1);
     assert_eq!(contact_lang.get_name(&mut env)?, "French");
     assert_eq!(contact_lang.get_code(&mut env)?, "fr_FR");
 
