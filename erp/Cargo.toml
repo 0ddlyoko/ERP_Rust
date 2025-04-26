@@ -17,3 +17,4 @@ test_utilities = { path = "test_utilities" }
 # Temporary solution. To remove later
 test_plugin = { path = "../plugins/test_plugin" }
 base = { path = "../plugins/base" }
+serial_test = "3.2.0"
