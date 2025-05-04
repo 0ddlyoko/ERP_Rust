@@ -15,13 +15,11 @@ edition = "2021"
 #syn = "2.0"
 #diesel = "2.1"
 erp = { path = "erp" }
-config = { version = "0.15", features = ["toml"] }
-directories = "6.0"
 
 [workspace]
 members = [
     "code_gen",
-    "erp",
+    "erp", "erp_database",
     "erp_search",
     "erp_search_code_gen",
     "plugins/base",

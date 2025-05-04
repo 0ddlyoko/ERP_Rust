@@ -1,9 +1,9 @@
-use erp::environment::Environment;
-use erp::model::{MapOfFields, ModelManager};
-use std::error::Error;
-use std::fmt;
+use erp::app::Application;
 use erp::cache::{Dirty, Update};
 use erp::field::SingleId;
+use erp::model::MapOfFields;
+use std::error::Error;
+use std::fmt;
 use test_utilities::models::SaleOrder;
 
 #[derive(Debug, Clone)]
@@ -19,9 +19,9 @@ impl Error for UselessError {}
 
 #[test]
 fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
-    let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrder<_>>();
-    let mut env = Environment::new(&model_manager);
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    let mut env = app.new_env();
 
     // Insert random data inside
     let mut map: MapOfFields = MapOfFields::default();

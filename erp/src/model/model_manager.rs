@@ -1,4 +1,3 @@
-use crate::environment::Environment;
 use crate::field::MultipleIds;
 use crate::internal::internal_model::FinalInternalModel;
 use crate::model::Model;
@@ -24,10 +23,6 @@ impl ModelManager {
 
     pub fn get_models(&self) -> &HashMap<String, FinalInternalModel> {
         &self.models
-    }
-
-    pub fn new_environment(&self) -> Environment {
-        Environment::new(self)
     }
 
     pub fn get_model(&self, model_name: &str) -> Option<&FinalInternalModel> {

@@ -1,0 +1,10 @@
+[package]
+name = "erp_database"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+postgres = "0.19.10"
+
+erp_search = { path = "../erp_search" }
+serde = { version = "1.0.219", features = ["derive"] }

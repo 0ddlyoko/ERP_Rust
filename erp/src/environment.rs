@@ -4,19 +4,22 @@ use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::collections::HashMap;
 use std::error::Error;
+use erp_database::Database;
 use erp_search::SearchType;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
     pub model_manager: &'model_manager ModelManager,
+    pub database: &'model_manager dyn Database,
     id: u32,
 }
 
 impl<'model_manager> Environment<'model_manager> {
-    pub fn new(model_manager: &'model_manager ModelManager) -> Self {
+    pub fn new(model_manager: &'model_manager ModelManager, database: &'model_manager dyn Database) -> Self {
         Environment {
             cache: Cache::new(model_manager),
             model_manager,
+            database,
             id: 1,
         }
     }

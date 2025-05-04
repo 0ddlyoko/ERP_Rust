@@ -1,16 +1,16 @@
-use erp::environment::Environment;
+use erp::app::Application;
+use erp::cache::{Dirty, Update};
 use erp::field::{FieldType, SingleId};
-use erp::model::{MapOfFields, ModelManager};
+use erp::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use erp::cache::{Dirty, Update};
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
 #[test]
-fn test_fill_default_values_on_map() {
-    let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrder<_>>();
-    let env = Environment::new(&model_manager);
+fn test_fill_default_values_on_map() -> Result<(), Box<dyn Error>> {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    let env = app.new_env();
 
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     env.fill_default_values_on_map("sale_order", &mut map);
@@ -25,13 +25,14 @@ fn test_fill_default_values_on_map() {
     let price = total_price.unwrap();
     assert_eq!(name.clone(), "0ddlyoko".to_string());
     assert_eq!(*price, 0);
+    Ok(())
 }
 
 #[test]
 fn test_get_record() -> Result<(), Box<dyn Error>> {
-    let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrderLine<_>>();
-    let mut env = Environment::new(&model_manager);
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
+    let mut env = app.new_env();
 
     // Insert random data inside
     let mut map: MapOfFields = MapOfFields::default();
@@ -92,9 +93,9 @@ fn test_get_record() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
-    let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrder<_>>();
-    let mut env = Environment::new(&model_manager);
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    let mut env = app.new_env();
 
     // Insert random data inside
     let mut map: MapOfFields = MapOfFields::default();
@@ -112,9 +113,9 @@ fn test_get_record_from_xxx() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_compute_method() -> Result<(), Box<dyn Error>> {
-    let mut model_manager = ModelManager::default();
-    model_manager.register_model::<SaleOrderLine<_>>();
-    let mut env = Environment::new(&model_manager);
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
+    let mut env = app.new_env();
 
     // Insert random data inside
     let mut map: MapOfFields = MapOfFields::default();
