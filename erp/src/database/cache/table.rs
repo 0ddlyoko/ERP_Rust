@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::cache::Row;
+use crate::database::cache::Row;
 
 #[derive(Default)]
 pub(crate) struct Table {

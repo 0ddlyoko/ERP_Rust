@@ -252,6 +252,54 @@ impl<'a> Iterator for IdsRefIntoIterator<'a> {
     }
 }
 
+impl FromIterator<SingleId> for MultipleIds {
+    fn from_iter<T: IntoIterator<Item=SingleId>>(iter: T) -> Self {
+        let mut result: Vec<u32> = Vec::new();
+        for item in iter {
+            result.push(item.id);
+        }
+        let mut result: MultipleIds = result.into();
+        result.remove_dup();
+        result
+    }
+}
+
+impl<'a> FromIterator<&'a SingleId> for MultipleIds {
+    fn from_iter<T: IntoIterator<Item=&'a SingleId>>(iter: T) -> Self {
+        let mut result: Vec<u32> = Vec::new();
+        for item in iter {
+            result.push(item.id);
+        }
+        let mut result: MultipleIds = result.into();
+        result.remove_dup();
+        result
+    }
+}
+
+impl FromIterator<MultipleIds> for MultipleIds {
+    fn from_iter<T: IntoIterator<Item=MultipleIds>>(iter: T) -> Self {
+        let mut result: Vec<u32> = Vec::new();
+        for mut item in iter {
+            result.append(item.ids.as_mut())
+        }
+        let mut result: MultipleIds = result.into();
+        result.remove_dup();
+        result
+    }
+}
+
+impl<'a> FromIterator<&'a MultipleIds> for MultipleIds {
+    fn from_iter<T: IntoIterator<Item=&'a MultipleIds>>(iter: T) -> Self {
+        let mut result: Vec<u32> = Vec::new();
+        for item in iter {
+            result.append(item.get_ids_ref().clone().as_mut())
+        }
+        let mut result: MultipleIds = result.into();
+        result.remove_dup();
+        result
+    }
+}
+
 // Eq
 
 impl PartialEq<u32> for SingleId {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use erp_search::SearchType;
 use std::error::Error;
 use postgres::{Client, NoTls};
-use crate::{Database, DatabaseConfig, FieldType};
+use crate::database::{Database, DatabaseConfig, FieldType};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 

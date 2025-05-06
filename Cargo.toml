@@ -19,7 +19,7 @@ erp = { path = "erp" }
 [workspace]
 members = [
     "code_gen",
-    "erp", "erp_database",
+    "erp",
     "erp_search",
     "erp_search_code_gen",
     "plugins/base",

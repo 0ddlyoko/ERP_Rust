@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use erp_search::SearchType;
-use crate::{DatabaseConfig, FieldType};
+use crate::database::{DatabaseConfig, FieldType};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 

@@ -2,7 +2,7 @@ use std::path::Path;
 use config::ConfigError;
 use directories::ProjectDirs;
 use serde_derive::Deserialize;
-use erp_database::DatabaseConfig;
+use crate::database::DatabaseConfig;
 
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]

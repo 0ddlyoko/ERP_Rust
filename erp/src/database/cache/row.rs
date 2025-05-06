@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use erp_search::{SearchOperator, SearchTuple, SearchType};
-use crate::FieldType;
+use crate::database::FieldType;
 
 #[derive(Default)]
 pub(crate) struct Row {

@@ -1,7 +1,7 @@
-use erp_database::cache::CacheDatabase;
-use erp_database::Database;
-use erp_database::postgres::PostgresDatabase;
 use crate::config::Config;
+use crate::database::cache::CacheDatabase;
+use crate::database::Database;
+use crate::database::postgres::PostgresDatabase;
 use crate::environment::Environment;
 use crate::model::ModelManager;
 use crate::plugin::InternalPluginState::Installed;

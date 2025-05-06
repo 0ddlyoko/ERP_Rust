@@ -4,8 +4,8 @@ use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use std::collections::HashMap;
 use std::error::Error;
-use erp_database::Database;
 use erp_search::SearchType;
+use crate::database::Database;
 
 pub struct Environment<'model_manager> {
     pub cache: Cache,
@@ -89,7 +89,7 @@ impl<'model_manager> Environment<'model_manager> {
 
         self.save_data_to_db(model_name, &dirty_map_of_fields)?;
         // Now that it's saved in db, clear dirty fields
-        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<Vec<&SingleId>>().into();
+        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
         self.cache.clear_dirty(model_name, &keys);
         Ok(())
     }
