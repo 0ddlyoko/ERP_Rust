@@ -76,7 +76,7 @@ impl Database for CacheDatabase {
         Ok(result)
     }
 
-    fn get_installed_module(&mut self) -> Result<Vec<String>> {
+    fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
         if !self.installed {
             return Ok(vec![]);
         }

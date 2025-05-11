@@ -34,7 +34,7 @@ impl Database for PostgresDatabase {
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
         let result = self.client.query_one("SELECT EXISTS (
-            SELECT FROM \"pg_tables\" WHERE \"schemaname\"=$1 AND \"tablename\"='module'
+            SELECT FROM \"pg_tables\" WHERE \"schemaname\"=$1 AND \"tablename\"='plugin'
         )", &[&self.schema])?;
         Ok(result.try_get(0)?)
     }
@@ -43,10 +43,13 @@ impl Database for PostgresDatabase {
     fn initialize(&mut self) -> Result<()> {
         // TODO Put this in a file
         self.client.batch_execute("
-            CREATE TABLE module (
+            CREATE TABLE plugin (
                 id              SERIAL PRIMARY KEY,
-                name            TEXT NOT NULL,
-                is_installed    BOOLEAN
+                name            VARCHAR NOT NULL,
+                description     TEXT,
+                website         TEXT,
+                url             TEXT,
+                state           VARCHAR NOT NULL
             )
             ")?;
         Ok(())
@@ -62,7 +65,12 @@ impl Database for PostgresDatabase {
         todo!()
     }
 
-    fn get_installed_module(&mut self) -> Result<Vec<String>> {
-        todo!()
+    fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
+        let mut result = vec![];
+        for row in self.client.query("SELECT \"name\" FROM \"plugin\" WHERE \"state\"=\'installed\'", &[])? {
+            let name: &str = row.get(0);
+            result.push(name.to_string());
+        }
+        Ok(result)
     }
 }

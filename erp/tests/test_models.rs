@@ -60,10 +60,10 @@ fn test_models() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_ref() -> Result<(), Box<dyn Error>> {
     let mut app = Application::new(test_utilities::default_config()?);
-    app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.register_plugin(Box::new(BasePlugin {}))?;
-    app.load_plugin("test_lib_plugin")?;
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("base")?;
+    app.load_plugin("test_lib_plugin")?;
 
     let mut env = app.new_env();
     // Create a new lang

@@ -54,14 +54,13 @@ impl Application {
     pub fn load(&mut self) -> EmptyResult {
         self.register_plugins()?;
         self.initialize_db()?;
+        self.load_base_plugin()?;
         self.load_plugins()?;
-        self.load_models();
         Ok(())
     }
 
     fn register_plugins(&mut self) -> EmptyResult {
-        self.plugin_manager
-            .register_plugins(&self.config.plugin_path)?;
+        self.plugin_manager.register_plugins(&self.config.plugin_path)?;
         Ok(())
     }
 
@@ -76,14 +75,24 @@ impl Application {
         Ok(())
     }
 
+    /// Only load plugin "base"
+    fn load_base_plugin(&mut self) -> EmptyResult {
+        // Only detect if there is a recursion along all the plugins. We don't care about the result
+        self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
+
+        self.load_plugin("base")
+    }
+
+    /// Load all plugins, except "base"
+    ///
+    /// If you want to load "base" plugin, please call load_base_plugin
     fn load_plugins(&mut self) -> EmptyResult {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
         self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
 
-        let mut plugins = self.database.get_installed_module()?;
-        if !plugins.contains(&"base".to_string()) {
-            plugins.push("base".to_string());
-        }
+        let mut plugins = self.database.get_installed_plugins()?;
+        plugins.retain(|plugin_name| plugin_name != "base");
+
         // Vec<String> => Vec<&String>
         let plugins = plugins.iter().collect::<Vec<_>>();
 
@@ -92,7 +101,7 @@ impl Application {
             ._get_ordered_dependencies(plugins)?;
 
         for plugin_name in ordered_depends.iter() {
-            self._load_plugin(plugin_name)?;
+            self.load_plugin(plugin_name)?;
         }
 
         Ok(())
@@ -117,19 +126,19 @@ impl Application {
             self._load_plugin(depend.as_str())?;
         }
 
-        let plugin = self.plugin_manager.load_plugin(plugin_name)?;
-        plugin.plugin.init_models(&mut self.model_manager);
+        let plugin = &mut self.plugin_manager.load_plugin(plugin_name)?.plugin;
+
+        self.model_manager.current_plugin_loading = Some(plugin_name.to_string());
+        plugin.pre_init();
+        // TODO Get all registered models, to update the database
+        plugin.init_models(&mut self.model_manager);
+
+        // Well it looks like this works, but not the call to new_env ...
+        let mut env = Environment::new(&self.model_manager, self.database.as_mut());
+        plugin.post_init(&mut env);
+        self.model_manager.current_plugin_loading = None;
 
         Ok(())
-    }
-
-    fn load_models(&mut self) {
-        self.plugin_manager
-            .plugins
-            .iter()
-            .for_each(|(_, internal_plugin)| {
-                internal_plugin.plugin.init_models(&mut self.model_manager);
-            })
     }
 
     pub fn unload(&mut self) {
@@ -138,7 +147,7 @@ impl Application {
         self.model_manager = ModelManager::default();
     }
 
-    pub fn new_env(&self) -> Environment {
-        Environment::new(&self.model_manager, self.database.as_ref())
+    pub fn new_env(&mut self) -> Environment {
+        Environment::new(&self.model_manager, self.database.as_mut())
     }
 }

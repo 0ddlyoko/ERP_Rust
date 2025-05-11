@@ -1,3 +1,4 @@
+use erp::environment::Environment;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 
@@ -16,6 +17,10 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Country<_>>();
         model_manager.register_model::<models::Lang<_>>();
         model_manager.register_model::<models::Plugin<_>>();
+    }
+
+    fn post_init(&mut self, _env: &mut Environment) {
+        // TODO Insert all plugins in database, if needed
     }
 }
 

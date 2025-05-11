@@ -10,12 +10,12 @@ use crate::database::Database;
 pub struct Environment<'model_manager> {
     pub cache: Cache,
     pub model_manager: &'model_manager ModelManager,
-    pub database: &'model_manager dyn Database,
+    pub database: &'model_manager mut dyn Database,
     id: u32,
 }
 
 impl<'model_manager> Environment<'model_manager> {
-    pub fn new(model_manager: &'model_manager ModelManager, database: &'model_manager dyn Database) -> Self {
+    pub fn new(model_manager: &'model_manager ModelManager, database: &'model_manager mut dyn Database) -> Self {
         Environment {
             cache: Cache::new(model_manager),
             model_manager,

@@ -1,4 +1,4 @@
-use crate::plugin::errors::PluginAlreadyRegisteredError;
+use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginNotFoundError};
 use crate::plugin::InternalPluginState::{Installed, NotInstalled};
 use crate::plugin::Plugin;
 use crate::plugin::{InternalPlugin, InternalPluginType};
@@ -56,6 +56,7 @@ impl PluginManager {
         plugin: Box<dyn Plugin>,
     ) -> Result<(), Box<dyn error::Error>> {
         let plugin_name = plugin.name();
+        println!("Registering plugin: {}", plugin_name);
         if self.plugins.contains_key(&plugin_name) {
             return Err(PluginAlreadyRegisteredError {
                 plugin_name: plugin_name.to_string(),
@@ -79,9 +80,11 @@ impl PluginManager {
         &mut self,
         plugin_path: &PathBuf,
     ) -> Result<(), Box<dyn error::Error>> {
+        // TODO Add a custom exception here with the path, if error
         let internal_plugin = unsafe { read_plugin_from_file(plugin_path)? };
 
         let plugin_name = internal_plugin.plugin.name();
+        println!("Registering plugin: {}", plugin_name);
         if self.plugins.contains_key(&plugin_name) {
             let InternalPlugin {
                 plugin,
@@ -109,8 +112,8 @@ impl PluginManager {
         let plugin = self
             .get_plugin_mut(plugin_name)
             .unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
+        println!("Loading plugin: {}", plugin_name);
         plugin.state = Installed;
-        plugin.plugin.init();
         Ok(plugin)
     }
 
@@ -154,18 +157,26 @@ impl PluginManager {
     }
 
     pub(crate) fn _get_ordered_dependencies<'a>(&self, plugins: Vec<&'a String>) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
-        let dependencies: HashMap<&'a str, Vec<&str>> = plugins
+        let dependencies: Vec<(&'a str, Vec<&str>)> = plugins
             .iter()
             .map(|&plugin_name| {
-                let internal_plugin = self.plugins.get(plugin_name).unwrap();
-                let depends = internal_plugin
-                    .depends
-                    .iter()
-                    .map(|str| str.as_str())
-                    .collect();
-                (plugin_name.as_str(), depends)
+                let internal_plugin = self.plugins.get(plugin_name);
+                if let Some(internal_plugin) = internal_plugin {
+                    let depends = internal_plugin
+                        .depends
+                        .iter()
+                        .map(|str| str.as_str())
+                        .collect::<Vec<&str>>();
+                    Ok((plugin_name.as_str(), depends))
+                } else {
+                    Err(PluginNotFoundError {
+                        plugin_name: plugin_name.to_string(),
+                    })
+                }
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let dependencies = dependencies.into_iter().collect();
 
         let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error>> = dependency::sort_dependencies(&dependencies);
         sorted_dependencies

@@ -40,7 +40,7 @@ pub struct Plugin<Mode: IdMode> {
     website: Option<String>,
     url: Option<String>,
     state: PluginState,
-    // TODO Add module category
+    // TODO Add plugin category
     // TODO Add author
     // TODO Add version (installed, latest, ...) + auto update if new version
 }

@@ -18,6 +18,7 @@ impl Config {
         };
         let config_file = Path::join(config_dir.config_dir(), "config.toml");
 
+        println!("Loading config from {:?}", config_file);
         let config = config::Config::builder()
             .set_default("database.url", "localhost")?
             .set_default("database.name", "erp")?

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub struct ModelManager {
     models: HashMap<String, FinalInternalModel>,
+    pub(crate) current_plugin_loading: Option<String>,
 }
 
 impl ModelManager {
