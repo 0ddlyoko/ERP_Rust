@@ -46,13 +46,7 @@ pub fn sort_dependencies<'a>(
 
     for &module in dependencies.keys() {
         if !visited.contains(module) {
-            visit(
-                module,
-                dependencies,
-                &mut sorted,
-                &mut visited,
-                &mut visiting,
-            )?;
+            visit(module, dependencies, &mut sorted, &mut visited, &mut visiting)?;
         }
     }
 
