@@ -77,25 +77,28 @@ impl Application {
     }
 
     fn load_plugins(&mut self) -> EmptyResult {
-        // TODO Only load plugins if they are installed
-        let ordered_depends: Vec<String> = self
+        // Only detect if there is a recursion along all the plugins. We don't care about the result
+        self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
+
+        let mut plugins = self.database.get_installed_module()?;
+        if !plugins.contains(&"base".to_string()) {
+            plugins.push("base".to_string());
+        }
+        // Vec<String> => Vec<&String>
+        let plugins = plugins.iter().collect::<Vec<_>>();
+
+        let ordered_depends: Vec<&str> = self
             .plugin_manager
-            ._get_ordered_dependencies()?
-            .iter()
-            .map(|&str| str.to_string())
-            .collect();
+            ._get_ordered_dependencies(plugins)?;
 
         for plugin_name in ordered_depends.iter() {
-            self._load_plugin(plugin_name.as_str())?;
+            self._load_plugin(plugin_name)?;
         }
 
         Ok(())
     }
 
     pub fn load_plugin(&mut self, plugin_name: &str) -> EmptyResult {
-        // Only detect if there is a recursion along all the plugins. We don't care about the result
-        self.plugin_manager._get_ordered_dependencies()?;
-
         self._load_plugin(plugin_name)
     }
 

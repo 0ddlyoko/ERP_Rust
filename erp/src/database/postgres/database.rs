@@ -61,4 +61,8 @@ impl Database for PostgresDatabase {
     fn search<'a>(&mut self, model_name: &str, fields: Vec<&'a str>, domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         todo!()
     }
+
+    fn get_installed_module(&mut self) -> Result<Vec<String>> {
+        todo!()
+    }
 }

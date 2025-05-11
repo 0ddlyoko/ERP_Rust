@@ -23,4 +23,7 @@ pub trait Database {
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     fn search<'a>(&mut self, model_name: &str, fields: Vec<&'a str>, domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>>;
+
+    /// Retrieves installed module
+    fn get_installed_module(&mut self) -> Result<Vec<String>>;
 }

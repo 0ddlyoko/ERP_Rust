@@ -75,4 +75,27 @@ impl Database for CacheDatabase {
         }
         Ok(result)
     }
+
+    fn get_installed_module(&mut self) -> Result<Vec<String>> {
+        if !self.installed {
+            return Ok(vec![]);
+        }
+        let table = self.tables.get("plugin");
+        if let Some(table) = table {
+            let mut result = vec![];
+            for row in table.rows.values() {
+                let cell_state = row.get_cell("state");
+                let cell_name = row.get_cell("name");
+                match (cell_state, cell_name) {
+                    (Some(FieldType::String(state)), Some(FieldType::String(name))) if state == "installed" => {
+                        result.push(name.clone());
+                    },
+                    _ => {}
+                }
+            }
+            Ok(result)
+        } else {
+            Ok(vec![])
+        }
+    }
 }

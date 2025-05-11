@@ -148,9 +148,13 @@ impl PluginManager {
         self.plugins.get_mut(plugin_name)
     }
 
-    pub(crate) fn _get_ordered_dependencies(&self) -> Result<Vec<&str>, Box<dyn error::Error>> {
-        let keys = self.plugins.keys().collect::<Vec<_>>();
-        let dependencies: HashMap<&str, Vec<&str>> = keys
+    pub(crate) fn _get_ordered_dependencies_of_all_plugins(&self) -> Result<Vec<&str>, Box<dyn error::Error>> {
+        let plugins = self.plugins.keys().collect::<Vec<_>>();
+        self._get_ordered_dependencies(plugins)
+    }
+
+    pub(crate) fn _get_ordered_dependencies<'a>(&self, plugins: Vec<&'a String>) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
+        let dependencies: HashMap<&'a str, Vec<&str>> = plugins
             .iter()
             .map(|&plugin_name| {
                 let internal_plugin = self.plugins.get(plugin_name).unwrap();
@@ -163,7 +167,8 @@ impl PluginManager {
             })
             .collect();
 
-        dependency::sort_dependencies(&dependencies)
+        let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error>> = dependency::sort_dependencies(&dependencies);
+        sorted_dependencies
     }
 
     pub fn is_installed(&self, plugin_name: &str) -> bool {
