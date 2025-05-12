@@ -14,7 +14,6 @@ fn test_domain_macro() -> Result<(), Box<dyn std::error::Error>> {
 fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     // Simple one
     let domain = make_domain!([("test", "=", "lol")]);
-
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
         left: "test".to_string(),
         operator: SearchOperator::Equal,
@@ -69,6 +68,33 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
             right: RightTuple::String("lol3".to_string()),
         }))
     ));
+
+    // None
+    let domain = make_domain!([("test", "=", None)]);
+    assert_eq!(domain, SearchType::Tuple(SearchTuple {
+        left: "test".to_string(),
+        operator: SearchOperator::Equal,
+        right: RightTuple::None,
+    }));
+
+    // Array
+    let domain = make_domain!([("test", "=", Vec::<u32>::new())]);
+    assert_eq!(domain, SearchType::Tuple(SearchTuple {
+        left: "test".to_string(),
+        operator: SearchOperator::Equal,
+        right: RightTuple::Array(vec![]),
+    }));
+    let domain = make_domain!([("test", "=", vec![1, 2, 3, 4])]);
+    assert_eq!(domain, SearchType::Tuple(SearchTuple {
+        left: "test".to_string(),
+        operator: SearchOperator::Equal,
+        right: RightTuple::Array(vec![
+            RightTuple::Integer(1),
+            RightTuple::Integer(2),
+            RightTuple::Integer(3),
+            RightTuple::Integer(4),
+        ]),
+    }));
 
     // TODO Add more tests
 

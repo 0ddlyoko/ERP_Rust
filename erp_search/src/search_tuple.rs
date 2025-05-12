@@ -86,14 +86,17 @@ impl From<bool> for RightTuple {
     }
 }
 
-impl From<Vec<RightTuple>> for RightTuple {
-    fn from(v: Vec<RightTuple>) -> Self {
-        Self::Array(v)
+impl<E> From<Vec<E>> for RightTuple
+where
+    E: Into<RightTuple>
+{
+    fn from(v: Vec<E>) -> Self {
+        Self::Array(v.into_iter().map(Into::into).collect())
     }
 }
 
 impl From<Option<RightTuple>> for RightTuple {
     fn from(v: Option<RightTuple>) -> Self {
-        v.unwrap_or_else(|| Self::None)
+        v.unwrap_or(Self::None)
     }
 }
