@@ -83,8 +83,6 @@ impl ToTokens for SearchOperator {
                 match operator {
                     erp_search::SearchOperator::Equal => quote! { erp_search::SearchOperator::Equal },
                     erp_search::SearchOperator::NotEqual => quote! { erp_search::SearchOperator::NotEqual },
-                    erp_search::SearchOperator::In => quote! { erp_search::SearchOperator::In },
-                    erp_search::SearchOperator::NotIn => quote! { erp_search::SearchOperator::NotIn },
                     erp_search::SearchOperator::Greater => quote! { erp_search::SearchOperator::Greater },
                     erp_search::SearchOperator::GreaterEqual => quote! { erp_search::SearchOperator::GreaterEqual },
                     erp_search::SearchOperator::Lower => quote! { erp_search::SearchOperator::Lower },

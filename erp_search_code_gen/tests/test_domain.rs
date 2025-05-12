@@ -1,4 +1,4 @@
-use erp_search::{SearchOperator, SearchTuple, SearchType};
+use erp_search::{RightTuple, SearchOperator, SearchTuple, SearchType};
 use erp_search_code_gen::make_domain;
 
 #[test]
@@ -18,7 +18,7 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
         left: "test".to_string(),
         operator: SearchOperator::Equal,
-        right: "lol".to_string(),
+        right: RightTuple::String("lol".to_string()),
     }));
 
     let domain = make_domain!([("test", "=", "lol"), ("test", "=", "lol2")]);
@@ -26,12 +26,12 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(SearchType::Tuple(SearchTuple {
             left: "test".to_string(),
             operator: SearchOperator::Equal,
-            right: "lol".to_string(),
+            right: RightTuple::String("lol".to_string()),
         })),
         Box::new(SearchType::Tuple(SearchTuple {
             left: "test".to_string(),
             operator: SearchOperator::Equal,
-            right: "lol2".to_string(),
+            right: RightTuple::String("lol2".to_string()),
         })),
     ));
 
@@ -40,11 +40,11 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(SearchType::Tuple(SearchTuple {
             left: "test".to_string(),
             operator: SearchOperator::Equal,
-            right: "lol".to_string(),
+            right: RightTuple::String("lol".to_string()),
         })), Box::new(SearchType::Tuple(SearchTuple {
             left: "test".to_string(),
             operator: SearchOperator::Equal,
-            right: "lol2".to_string(),
+            right: RightTuple::String("lol2".to_string()),
         }))
     ));
 
@@ -55,18 +55,18 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(SearchType::Tuple(SearchTuple {
                 left: "test".to_string(),
                 operator: SearchOperator::Equal,
-                right: "lol".to_string(),
+                right: RightTuple::String("lol".to_string()),
             })),
             Box::new(SearchType::Tuple(SearchTuple {
                 left: "test".to_string(),
                 operator: SearchOperator::Equal,
-                right: "lol2".to_string(),
+                right: RightTuple::String("lol2".to_string()),
             }))
         )),
         Box::new(SearchType::Tuple(SearchTuple {
             left: "test".to_string(),
             operator: SearchOperator::Equal,
-            right: "lol3".to_string(),
+            right: RightTuple::String("lol3".to_string()),
         }))
     ));
 

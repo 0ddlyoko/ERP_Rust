@@ -4,8 +4,6 @@ use crate::UnknownSearchOperatorError;
 pub enum SearchOperator {
     Equal,
     NotEqual,
-    In,
-    NotIn,
     Greater,
     GreaterEqual,
     Lower,
@@ -19,8 +17,6 @@ impl TryFrom<&str> for SearchOperator {
         Ok(match str {
             "=" => SearchOperator::Equal,
             "!=" => SearchOperator::NotEqual,
-            "in" => SearchOperator::In,
-            "!in" => SearchOperator::NotIn,
             ">" => SearchOperator::Greater,
             ">=" => SearchOperator::GreaterEqual,
             "<" => SearchOperator::Lower,

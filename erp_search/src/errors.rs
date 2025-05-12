@@ -44,7 +44,7 @@ impl fmt::Display for UnknownSearchOperatorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Unknown search operator \"{:?}\", it should be \"=\", \"!=\", \"in\", \"!in\", \">\", \">=\", \"<\" or \"<=\"",
+            "Unknown search operator \"{:?}\", it should be \"=\", \"!=\", \">\", \">=\", \"<\" or \"<=\"",
             self.search_operator
         )
     }

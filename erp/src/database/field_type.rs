@@ -1,3 +1,5 @@
+use erp_search::RightTuple;
+
 #[derive(Clone)]
 pub enum FieldType {
     String(String),
@@ -47,5 +49,40 @@ impl FieldType {
                 }
             },
         }
+    }
+}
+
+impl From<FieldType> for RightTuple {
+    fn from(other: FieldType) -> Self {
+        match other {
+            FieldType::String(value) => RightTuple::String(value),
+            FieldType::Integer(value) => RightTuple::Integer(value),
+            FieldType::UInteger(value) => RightTuple::UInteger(value),
+            FieldType::Float(value) => RightTuple::Float(value),
+            FieldType::Boolean(value) => RightTuple::Boolean(value),
+        }
+    }
+}
+
+impl PartialEq<RightTuple> for FieldType {
+    fn eq(&self, other: &RightTuple) -> bool {
+        match (self, other) {
+            (FieldType::String(value), RightTuple::String(other_value)) => value == other_value,
+            (FieldType::Integer(value), RightTuple::Integer(other_value)) => value == other_value,
+            (FieldType::UInteger(value), RightTuple::UInteger(other_value)) => value == other_value,
+            (FieldType::Float(value), RightTuple::Float(other_value)) => value == other_value,
+            (FieldType::Boolean(value), RightTuple::Boolean(other_value)) => value == other_value,
+            (value, RightTuple::Array(other_value)) => {
+                other_value.contains(&value.clone().into())
+            },
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<FieldType> for RightTuple {
+    fn eq(&self, other: &FieldType) -> bool {
+        // Call method above
+        other.eq(self)
     }
 }
