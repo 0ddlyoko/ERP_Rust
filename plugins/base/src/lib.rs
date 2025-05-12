@@ -1,3 +1,4 @@
+use std::error::Error;
 use erp::environment::Environment;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
@@ -19,8 +20,10 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Plugin<_>>();
     }
 
-    fn post_init(&mut self, _env: &mut Environment) {
+    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error>> {
         // TODO Insert all plugins in database, if needed
+        
+        Ok(())
     }
 }
 

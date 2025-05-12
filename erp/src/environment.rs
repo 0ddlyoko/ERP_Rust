@@ -1,21 +1,21 @@
 use crate::cache::errors::RecordsNotFoundError;
 use crate::cache::{Cache, Dirty, Update};
+use crate::database::DatabaseType;
 use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
+use erp_search::SearchType;
 use std::collections::HashMap;
 use std::error::Error;
-use erp_search::SearchType;
-use crate::database::Database;
 
-pub struct Environment<'model_manager> {
+pub struct Environment<'app> {
     pub cache: Cache,
-    pub model_manager: &'model_manager ModelManager,
-    pub database: &'model_manager mut dyn Database,
+    pub model_manager: &'app ModelManager,
+    pub database: &'app mut DatabaseType,
     id: u32,
 }
 
-impl<'model_manager> Environment<'model_manager> {
-    pub fn new(model_manager: &'model_manager ModelManager, database: &'model_manager mut dyn Database) -> Self {
+impl<'app> Environment<'app> {
+    pub fn new(model_manager: &'app ModelManager, database: &'app mut DatabaseType) -> Self {
         Environment {
             cache: Cache::new(model_manager),
             model_manager,

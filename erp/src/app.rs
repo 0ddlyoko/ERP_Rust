@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
-use crate::database::Database;
+use crate::database::{Database, DatabaseType};
 use crate::database::postgres::PostgresDatabase;
 use crate::environment::Environment;
 use crate::model::ModelManager;
@@ -14,7 +14,7 @@ pub struct Application {
     config: Config,
     pub model_manager: ModelManager,
     pub plugin_manager: PluginManager,
-    pub database: Box<dyn Database>,
+    pub database: DatabaseType,
 }
 
 impl Application {
@@ -27,7 +27,7 @@ impl Application {
                     config,
                     model_manager: ModelManager::default(),
                     plugin_manager: PluginManager::default(),
-                    database: Box::new(database),
+                    database: database.into(),
                 }
             }
             Err(err) => {
@@ -47,7 +47,7 @@ impl Application {
             config: Config::default(),
             model_manager: ModelManager::default(),
             plugin_manager: PluginManager::default(),
-            database: Box::new(database),
+            database: database.into(),
         }
     }
 
@@ -134,20 +134,22 @@ impl Application {
         plugin.init_models(&mut self.model_manager);
 
         // Well it looks like this works, but not the call to new_env ...
-        let mut env = Environment::new(&self.model_manager, self.database.as_mut());
-        plugin.post_init(&mut env);
+        let mut env = Environment::new(&self.model_manager, &mut self.database);
+        let result = env.savepoint(|env| {
+            plugin.post_init(env)
+        });
         self.model_manager.current_plugin_loading = None;
 
-        Ok(())
+        result
     }
 
-    pub fn unload(&mut self) {
+    pub fn unload(mut self) {
         self.plugin_manager.unload();
         self.plugin_manager = PluginManager::default();
         self.model_manager = ModelManager::default();
     }
 
     pub fn new_env(&mut self) -> Environment {
-        Environment::new(&self.model_manager, self.database.as_mut())
+        Environment::new(&self.model_manager, &mut self.database)
     }
 }

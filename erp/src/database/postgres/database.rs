@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use erp_search::SearchType;
 use std::error::Error;
 use postgres::{Client, NoTls};
-use crate::database::{Database, DatabaseConfig, FieldType};
+use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -14,7 +14,7 @@ pub struct PostgresDatabase {
 impl Database for PostgresDatabase {
 
     /// Make a connection to this database
-    fn connect(config: &DatabaseConfig) -> std::result::Result<Self, postgres::Error>
+    fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
     where
         Self: Sized
     {

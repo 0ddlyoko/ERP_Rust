@@ -9,6 +9,7 @@ pub use plugin_manager::PluginManager;
 
 use crate::model::ModelManager;
 use std::any::Any;
+use std::error::Error;
 use crate::environment::Environment;
 
 pub trait Plugin: Any + Send + Sync {
@@ -26,7 +27,9 @@ pub trait Plugin: Any + Send + Sync {
     /// Post-Initialize this plugin
     ///
     /// This method is called once this plugin is fully initialized (after the call to init_models)
-    fn post_init(&mut self, _env: &mut Environment) {}
+    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
     /// Unload this plugin
     fn unload(&mut self) {}
