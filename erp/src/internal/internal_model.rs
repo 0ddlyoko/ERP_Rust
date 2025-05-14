@@ -16,6 +16,7 @@ pub struct InternalModel {
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
     pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult,
+    pub plugin_name: String,
 }
 
 /// Final descriptor of a model.
@@ -38,7 +39,7 @@ impl FinalInternalModel {
         }
     }
 
-    pub fn register_internal_model<M>(&mut self)
+    pub fn register_internal_model<M>(&mut self, plugin_name: &str)
     where
         M: Model<MultipleIds> + 'static,
     {
@@ -78,6 +79,7 @@ impl FinalInternalModel {
             description,
             fields: final_fields,
             call_computed_method,
+            plugin_name: plugin_name.to_string(),
         };
 
         if let Some(description) = &internal_model.description {
@@ -212,5 +214,16 @@ impl FinalInternalModel {
         } else {
             None
         }
+    }
+
+    /// Retrieves all models created by a specific plugin
+    pub fn get_all_models_for_plugin(&self, plugin_name: &str) -> Vec<&InternalModel> {
+        let mut result = vec![];
+        for model in self.models.values() {
+            if model.plugin_name == plugin_name {
+                result.push(model);
+            }
+        }
+        result
     }
 }
