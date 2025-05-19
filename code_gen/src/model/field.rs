@@ -64,7 +64,7 @@ impl FieldGen {
                             }
                         },
                         Lit::Float(f) => {
-                            let float = f.base10_parse::<f64>();
+                            let float = f.base10_parse::<f32>();
                             if float.is_ok() {
                                 FieldType::Float(float?)
                             } else {

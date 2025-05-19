@@ -3,6 +3,7 @@ pub mod cache;
 pub mod config;
 pub mod database;
 pub mod environment;
+pub mod errors;
 pub mod field;
 pub mod internal;
 pub mod model;

@@ -9,7 +9,7 @@ pub use cache_models::*;
 
 use crate::field::{FieldType, IdMode};
 use crate::model::{MapOfFields, ModelManager};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub struct Cache {
     cache: HashMap<String, CacheModels>,
@@ -138,18 +138,28 @@ impl Cache {
 
     // Dirty
 
-    /// Retrieve all dirty fields for given record
-    pub fn get_dirty_fields(&self, model_name: &str, id: &u32) -> Option<&HashSet<String>> {
+    /// Get dirty fields linked to given model
+    pub fn get_dirty_models(&self, model_name: &str) -> HashMap<u32, MapOfFields> {
         let cache_models = self.get_cache_models(model_name);
-        cache_models.get_dirty(id)
+        cache_models.get_dirty_fields()
     }
 
-    /// Retrieve all dirty fields for given record
-    pub fn get_dirty_map_of_fields(&self, model_name: &str, id: &u32) -> Option<MapOfFields> {
+    /// Get dirty fields from given list of fields
+    pub fn get_dirty_fields(&self, model_name: &str, fields: &[&str]) -> HashMap<u32, MapOfFields> {
         let cache_models = self.get_cache_models(model_name);
-        let cache_model = cache_models.get_model(id)?;
-        let dirty_fields: Vec<&str> = cache_models.get_dirty(id)?.iter().map(|f| f.as_str()).collect();
-        Some(cache_model.get_map_of_fields(&dirty_fields))
+        cache_models.get_dirty_fields_for_fields(fields)
+    }
+
+    /// Get all dirty fields for given records
+    pub fn get_dirty_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields> {
+        let cache_models = self.get_cache_models(model_name);
+        cache_models.get_dirty_records(ids)
+    }
+
+    /// Get all dirty fields for given record
+    pub fn get_dirty_record(&self, model_name: &str, id: u32) -> Option<MapOfFields> {
+        let mut result = self.get_dirty_records(model_name, &[id]);
+        result.remove(&id)
     }
 
     /// Clear dirty fields of given model

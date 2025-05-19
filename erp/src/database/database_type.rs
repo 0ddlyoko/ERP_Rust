@@ -41,7 +41,7 @@ impl Database for DatabaseType {
         }
     }
 
-    fn search<'a>(&mut self, model_name: &str, fields: Vec<&'a str>, domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         match self {
             DatabaseType::Cache(cache) => cache.search(model_name, fields, domain),
             DatabaseType::Postgres(postgres) => postgres.search(model_name, fields, domain),

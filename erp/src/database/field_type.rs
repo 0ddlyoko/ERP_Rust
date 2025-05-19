@@ -1,4 +1,5 @@
 use erp_search::RightTuple;
+use crate::field;
 
 #[derive(Clone)]
 pub enum FieldType {
@@ -84,5 +85,32 @@ impl PartialEq<FieldType> for RightTuple {
     fn eq(&self, other: &FieldType) -> bool {
         // Call method above
         other.eq(self)
+    }
+}
+
+// impl From<field::FieldType> for FieldType {
+//     fn from(value: field::FieldType) -> Self {
+//         match value {
+//             field::FieldType::String(v) => FieldType::String(v),
+//             field::FieldType::Integer(v) => FieldType::Integer(v),
+//             field::FieldType::Float(v) => FieldType::Float(v),
+//             field::FieldType::Bool(v) => FieldType::Boolean(v),
+//             field::FieldType::Enum(v) => FieldType::String(v),
+//             field::FieldType::Ref(v) => FieldType::UInteger(v),
+//             // TODO Maybe add Refs ?
+//             field::FieldType::Refs(v) => FieldType::Refs(v),
+//         }
+//     }
+// }
+
+impl From<FieldType> for field::FieldType {
+    fn from(value: FieldType) -> Self {
+        match value {
+            FieldType::String(v) => field::FieldType::String(v),
+            FieldType::Integer(v) => field::FieldType::Integer(v),
+            FieldType::UInteger(v) => field::FieldType::Ref(v),
+            FieldType::Float(v) => field::FieldType::Float(v),
+            FieldType::Boolean(v) => field::FieldType::Bool(v),
+        }
     }
 }

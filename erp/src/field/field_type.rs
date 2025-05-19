@@ -21,7 +21,7 @@ macro_rules! make_eq {
 pub enum FieldType {
     String(String),
     Integer(i32),
-    Float(f64),
+    Float(f32),
     Bool(bool),
     Enum(String),
     Ref(u32),
@@ -110,9 +110,9 @@ impl From<&i32> for FieldType {
     }
 }
 
-// f64
+// f32
 
-impl<'a> From<&'a FieldType> for Option<&'a f64> {
+impl<'a> From<&'a FieldType> for Option<&'a f32> {
     fn from(t: &'a FieldType) -> Self {
         match t {
             FieldType::Float(f) => Some(f),
@@ -121,14 +121,14 @@ impl<'a> From<&'a FieldType> for Option<&'a f64> {
     }
 }
 
-impl From<f64> for FieldType {
-    fn from(t: f64) -> Self {
+impl From<f32> for FieldType {
+    fn from(t: f32) -> Self {
         FieldType::Float(t)
     }
 }
 
-impl From<&f64> for FieldType {
-    fn from(t: &f64) -> Self {
+impl From<&f32> for FieldType {
+    fn from(t: &f32) -> Self {
         FieldType::Float(*t)
     }
 }

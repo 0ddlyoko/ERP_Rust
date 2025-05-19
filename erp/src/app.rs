@@ -138,11 +138,11 @@ impl Application {
 
         // Well it looks like this works, but not the call to new_env ...
         let mut env = Environment::new(&self.model_manager, &mut self.database);
-        let result = env.savepoint(|env| {
+        env.savepoint(|env| {
             plugin.post_init(env)
-        });
+        })?;
 
-        result
+        Ok(())
     }
 
     pub fn unload(mut self) {

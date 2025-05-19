@@ -12,24 +12,25 @@ pub enum SearchType {
 
 impl SearchType {
     /// Retrieve fields in "left" operator of all Tuple related to this field
-    pub fn get_fields(&self) -> Vec<String> {
-        fn handle_search_type(search_type: &SearchType, result: &mut Vec<String>) {
-            match search_type {
-                SearchType::And(left, right) | SearchType::Or(left, right) => {
-                    handle_search_type(left, result);
-                    handle_search_type(right, result);
-                },
-                SearchType::Tuple(tuple) => {
-                    result.push(tuple.left.clone());
-                },
-                SearchType::Nothing => {},
-            }
-        }
-
-        let mut result: Vec<String> = vec![];
-        handle_search_type(self, &mut result);
+    pub fn get_fields<'a>(&'a self) -> Vec<&'a str> {
+        let mut result: Vec<&'a str> = vec![];
+        SearchType::handle_search_type(self, &mut result);
 
         result
+    }
+
+    fn handle_search_type<'a>(search_type: &'a SearchType, result: &mut Vec<&'a str>)
+    {
+        match search_type {
+            SearchType::And(left, right) | SearchType::Or(left, right) => {
+                SearchType::handle_search_type(left, result);
+                SearchType::handle_search_type(right, result);
+            },
+            SearchType::Tuple(tuple) => {
+                result.push(tuple.left.as_str());
+            },
+            SearchType::Nothing => {},
+        }
     }
 }
 

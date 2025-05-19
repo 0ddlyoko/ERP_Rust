@@ -1,11 +1,16 @@
-use crate::cache::errors::RecordsNotFoundError;
 use crate::cache::{Cache, Dirty, Update};
-use crate::database::DatabaseType;
+use crate::database::{Database, DatabaseType};
+use crate::errors::MaximumRecursionDepthCompute;
 use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
 use erp_search::SearchType;
+use erp_search_code_gen::make_domain;
 use std::collections::HashMap;
 use std::error::Error;
+
+const MAX_NUMBER_OF_RECURSION: i32 = 1024;
+
+type Result<E> = std::result::Result<E, Box<dyn Error>>;
 
 pub struct Environment<'app> {
     pub cache: Cache,
@@ -31,7 +36,7 @@ impl<'app> Environment<'app> {
     /// Load given records from the database to the cache.
     ///
     /// If the record is already present in cache, do nothing
-    pub fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>>
+    pub fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()>
     where for<'a> &'a Mode: IntoIterator<Item = SingleId>
     {
         let internal_model = self.model_manager.get_model(model_name);
@@ -48,7 +53,7 @@ impl<'app> Environment<'app> {
     /// Load fields of given records from the database to the cache.
     ///
     /// If fields are already loaded, they will still be retrieved from the database but not updated
-    pub fn load_records_fields_from_db<'a, Mode: IdMode>(&'a mut self, model_name: &str, ids: &Mode, fields: &'a [&str]) -> Result<(), Box<dyn Error>> {
+    pub fn load_records_fields_from_db<'a, Mode: IdMode>(&'a mut self, model_name: &str, ids: &Mode, fields: &'a [&str]) -> Result<()> {
         let ids_to_load: MultipleIds = ids.get_ids_ref().into();
         let fields_from_db = self.get_fields_from_db(model_name, &ids_to_load, fields);
         match fields_from_db {
@@ -64,51 +69,106 @@ impl<'app> Environment<'app> {
         }
     }
 
-    /// Save given record to the database.
+    /// Save all data related to given model to database.
     ///
-    /// If the record is already saved, do nothing
-    ///
-    /// If the record is not present in cache, do nothing
-    ///
-    /// TODO If we need to compute fields, compute them
-    ///
-    /// If given model does not exist, panic.
-    /// TODO Use IdMode
-    pub fn save_records_to_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
-        let mut dirty_map_of_fields: HashMap<SingleId, MapOfFields> = HashMap::new();
+    /// Compute fields related to this model if needed
+    pub fn save_model_to_db(&mut self, model_name: &str) -> Result<()> {
+        self.call_computed_method_on_all_fields(model_name)?;
 
-        for id in ids.get_ids_ref().iter() {
-            let dirty_map = self.cache.get_dirty_map_of_fields(model_name, id);
-            if let Some(dirty_map) = dirty_map {
-                dirty_map_of_fields.insert(id.into(), dirty_map);
-            }
-        }
+        let dirty_map_of_fields = self.get_dirty_models(model_name);
+
         if dirty_map_of_fields.is_empty() {
             return Ok(());
         }
-
         self.save_data_to_db(model_name, &dirty_map_of_fields)?;
+
         // Now that it's saved in db, clear dirty fields
         let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
         self.cache.clear_dirty(model_name, &keys);
         Ok(())
     }
 
+    /// Save given fields to database.
+    ///
+    /// Compute them if needed
+    pub fn save_fields_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
+        self.call_computed_method_on_fields(model_name, fields)?;
+
+        let dirty_map_of_fields = self.get_dirty_fields(model_name, fields);
+
+        if dirty_map_of_fields.is_empty() {
+            return Ok(());
+        }
+        self.save_data_to_db(model_name, &dirty_map_of_fields)?;
+
+        // Now that it's saved in db, clear dirty fields
+        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty(model_name, &keys);
+        Ok(())
+    }
+
+    /// Save given record to the database.
+    ///
+    /// If the record is already saved, do nothing
+    ///
+    /// If the record is not present in cache, do nothing
+    ///
+    /// If given model does not exist, panic.
+    pub fn save_records_to_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()> {
+        self.call_computed_method_on_ids(model_name, ids.get_ids_ref())?;
+
+        let dirty_map_of_fields = self.get_dirty_records(model_name, ids.get_ids_ref());
+
+        if dirty_map_of_fields.is_empty() {
+            return Ok(());
+        }
+        self.save_data_to_db(model_name, &dirty_map_of_fields)?;
+
+        // Now that it's saved in db, clear dirty fields
+        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty(model_name, &keys);
+        Ok(())
+    }
+
+    /// Get dirty fields linked to given model
+    pub fn get_dirty_models(&self, model_name: &str) -> HashMap<u32, MapOfFields> {
+        self.cache.get_dirty_models(model_name)
+    }
+
+    /// Get dirty fields from given list of fields
+    pub fn get_dirty_fields(&self, model_name: &str, fields: &[&str]) -> HashMap<u32, MapOfFields> {
+        self.cache.get_dirty_fields(model_name, fields)
+    }
+
+    /// Get all dirty fields for given records
+    pub fn get_dirty_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields> {
+        self.cache.get_dirty_records(model_name, ids)
+    }
+
+    /// Get all dirty fields for given record
+    pub fn get_dirty_record(&self, model_name: &str, id: u32) -> Option<MapOfFields> {
+        self.cache.get_dirty_record(model_name, id)
+    }
+
     pub fn get_fields_from_db(
-        &self,
+        &mut self,
         model_name: &str,
         ids: &MultipleIds,
-        _fields: &[&str],
-    ) -> Result<HashMap<SingleId, MapOfFields>, Box<dyn Error>> {
+        fields: &[&str],
+    ) -> Result<HashMap<SingleId, MapOfFields>> {
         if ids.is_empty() {
             return Ok(HashMap::new());
         }
-        // TODO Get data from db
-        Err(RecordsNotFoundError {
-            model_name: model_name.to_string(),
-            ids: ids.get_ids_ref().clone(),
-        }
-            .into())
+        let domain = make_domain!([("id", "=", ids.get_ids_ref().clone())]);
+        let data = self.database.search(model_name, fields, &domain)?;
+        Ok(data.into_iter().map(|(id, map)| {
+            let map: HashMap<String, Option<FieldType>> = map.into_iter().map(|(key, value)| {
+                (key.to_string(), value.map(|v| v.into()))
+            }).collect();
+            let mut map_of_fields = MapOfFields::new(map);
+            map_of_fields.insert("id", id);
+            (id.into(), map_of_fields)
+        }).collect())
     }
 
     /// Save existing data to the database
@@ -116,8 +176,8 @@ impl<'app> Environment<'app> {
     pub fn save_data_to_db(
         &self,
         _model_name: &str,
-        _data: &HashMap<SingleId, MapOfFields>,
-    ) -> Result<(), Box<dyn Error>> {
+        _data: &HashMap<u32, MapOfFields>,
+    ) -> Result<()> {
         // TODO Save data to db
         Ok(())
     }
@@ -129,14 +189,14 @@ impl<'app> Environment<'app> {
         &self,
         model_name: &str,
         data: &MapOfFields,
-    ) -> Result<SingleId, Box<dyn Error>> {
+    ) -> Result<u32> {
         // TODO Insert data to db
         // TODO Remove static + unsafe code later, as the id will be returned by the db
         static mut ID: u32 = 1;
         unsafe {
             ID += 1;
             // self.cache.insert_fields_in_cache(model_name, ID, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
-            Ok(ID.into())
+            Ok(ID)
         }
     }
 
@@ -165,6 +225,7 @@ impl<'app> Environment<'app> {
     where
         BM: BaseModel,
     {
+        // TODO Check if this method is needed
         id.into()
     }
 
@@ -177,6 +238,7 @@ impl<'app> Environment<'app> {
     where
         BM: BaseModel,
     {
+        // TODO Check if this method is needed
         ids.into()
     }
 
@@ -188,20 +250,16 @@ impl<'app> Environment<'app> {
     /// It only performs a search, and return the given ids.
     ///
     /// Before performing any search, save any data related to any field given in the domain.
-    pub fn search<M>(&mut self, domain: &SearchType) -> Result<M, Box<dyn Error>>
+    pub fn search<M>(&mut self, domain: &SearchType) -> Result<M>
     where
         M: Model<MultipleIds>,
     {
-        if matches!(domain, SearchType::Nothing) {
-            // Special case: return all ids
-            // TODO Get all ids
-            return Ok(M::create_instance(MultipleIds::default()));
-        }
         let fields_to_save = domain.get_fields();
-        // TODO Save or compute those fields to database
+        // TODO Handle fields from different models
+        self.save_fields_to_db(M::get_model_name(), &fields_to_save)?;
 
-        // TODO Search
-        return Ok(M::create_instance(MultipleIds::default()));
+        let ids = self.database.browse(M::get_model_name(), domain)?;
+        Ok(M::create_instance(ids.into()))
     }
 
     /// Get the value of given field for given id.
@@ -209,7 +267,7 @@ impl<'app> Environment<'app> {
     /// If field is not in cache, load it
     ///
     /// If field needs to be computed, compute it
-    pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: &SingleId) -> Result<Option<&'a FieldType>, Box<dyn Error>> {
+    pub fn get_field_value<'a>(&'a mut self, model_name: &str, field_name: &str, id: &SingleId) -> Result<Option<&'a FieldType>> {
         self.ensure_fields_in_cache(model_name, field_name, id)?;
 
         // TODO In case of O2M / M2M, cache could be invalid.
@@ -218,7 +276,7 @@ impl<'app> Environment<'app> {
         Ok(self.cache.get_field_from_cache(model_name, field_name, &id.get_id()))
     }
 
-    pub fn get_fields_value<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&FieldType>>, Box<dyn Error>>
+    pub fn get_fields_value<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&FieldType>>>
     where
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
@@ -235,7 +293,7 @@ impl<'app> Environment<'app> {
     /// Ensure given field is in cache for given ids
     ///
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
-    pub fn ensure_fields_in_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<(), Box<dyn Error>> {
+    pub fn ensure_fields_in_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<()> {
         let ids_ref = ids.get_ids_ref();
         let mut ids_not_in_cache: MultipleIds = self.cache.get_ids_not_in_cache(model_name, field_name, ids_ref).into();
         let ids_to_recompute: MultipleIds = self.cache.get_ids_to_recompute(model_name, field_name, ids_ref).into();
@@ -282,7 +340,7 @@ impl<'app> Environment<'app> {
     // |           Save to Cache Logic          |
     // ------------------------------------------
 
-    pub fn save_value_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<(), Box<dyn Error>>
+    pub fn save_value_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<()>
     where
         E: Into<FieldType>,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
@@ -292,7 +350,7 @@ impl<'app> Environment<'app> {
         Ok(())
     }
 
-    pub fn save_option_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<(), Box<dyn Error>>
+    pub fn save_option_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<()>
     where
         E: Into<FieldType>,
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
@@ -308,7 +366,7 @@ impl<'app> Environment<'app> {
     pub fn create_new_record_from_map<M>(
         &mut self,
         data: &mut MapOfFields,
-    ) -> Result<M, Box<dyn Error>>
+    ) -> Result<M>
     where
         M: Model<SingleId>,
     {
@@ -322,7 +380,7 @@ impl<'app> Environment<'app> {
         &mut self,
         model_name: &str,
         data: &mut MapOfFields,
-    ) -> Result<SingleId, Box<dyn Error>>
+    ) -> Result<SingleId>
     {
         // TODO Change this line to not return anything, but instead update the cache
         let missing_fields = self.fill_default_values_on_map(model_name, data);
@@ -345,14 +403,14 @@ impl<'app> Environment<'app> {
                     })
                     .collect::<Vec<String>>();
                 let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
-                self.cache.add_ids_to_recompute(model_name, &computed_fields, &[id.get_id()]);
+                self.cache.add_ids_to_recompute(model_name, &computed_fields, &[id]);
             }
         }
 
         // TODO Remove the following line once we have a database, as we should not directly put data in cache
-        self.cache.insert_fields_in_cache(model_name, id.get_id(), data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
+        self.cache.insert_fields_in_cache(model_name, id, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
-        Ok(id)
+        Ok(id.into())
     }
 
     /// Add default values for a given model on given data
@@ -376,9 +434,9 @@ impl<'app> Environment<'app> {
 
     /// Create a new savepoint and commit if the given method doesn't return any error.
     /// If an error is returned, rollback the commit and put back the cache as it was
-    pub fn savepoint<F, R>(&mut self, func: F) -> Result<R, Box<dyn Error>>
+    pub fn savepoint<F, R>(&mut self, func: F) -> Result<R>
     where
-        F: FnOnce(&mut Environment) -> Result<R, Box<dyn Error>>,
+        F: FnOnce(&mut Environment) -> Result<R>,
     {
         let cache_copy = self.cache.export_cache();
         // TODO Savepoint db
@@ -395,13 +453,115 @@ impl<'app> Environment<'app> {
         result
     }
 
+    // ------------------------------------------
+    // |            Computed methods            |
+    // ------------------------------------------
+
+    /// Call computed method on all fields of given model
+    fn call_computed_method_on_all_fields(
+        &mut self,
+        model_name: &str,
+    ) -> Result<()> {
+        for i in 0..=MAX_NUMBER_OF_RECURSION {
+            let cache_models = self.cache.get_cache_models(model_name);
+            if let Some((key, value)) = cache_models.to_recompute.iter().next() {
+                let ids: MultipleIds = MultipleIds {
+                    ids: value.iter().copied().collect(),
+                };
+                self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
+            }
+            let cache_models = self.cache.get_cache_models(model_name);
+            if cache_models.to_recompute.is_empty() {
+                break;
+            }
+            if i == MAX_NUMBER_OF_RECURSION {
+                return Err(MaximumRecursionDepthCompute {
+                    model_name: model_name.to_string(),
+                    fields_name: cache_models.to_recompute.keys().cloned().collect(),
+                    ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
+                }.into());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Call computed method on given fields of given model
+    fn call_computed_method_on_fields(
+        &mut self,
+        model_name: &str,
+        fields: &[&str],
+    ) -> Result<()> {
+        for i in 0..=MAX_NUMBER_OF_RECURSION {
+            let cache_models = self.cache.get_cache_models(model_name);
+            if let Some((key, value)) = cache_models.to_recompute.iter().find(|(key, _value)| fields.contains(&key.as_str())) {
+                let ids: MultipleIds = MultipleIds {
+                    ids: value.iter().copied().collect(),
+                };
+                self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
+            }
+            let cache_models = self.cache.get_cache_models(model_name);
+            if !cache_models.to_recompute.iter().any(|(key, _value)| fields.contains(&key.as_str())) {
+                break;
+            }
+            if i == MAX_NUMBER_OF_RECURSION {
+                return Err(MaximumRecursionDepthCompute {
+                    model_name: model_name.to_string(),
+                    fields_name: cache_models.to_recompute.keys().cloned().collect(),
+                    ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
+                }.into());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Call computed method on given fields of given model, with given ids
+    fn call_computed_method_on_ids(
+        &mut self,
+        model_name: &str,
+        ids: &[u32],
+    ) -> Result<()> {
+        for i in 0..=MAX_NUMBER_OF_RECURSION {
+            let cache_models = self.cache.get_cache_models(model_name);
+            if let Some((key, value)) = cache_models.to_recompute.iter().find_map(|(key, value)| {
+                let result = value.iter().filter(|id| ids.contains(id)).collect::<Vec<&u32>>();
+                if result.is_empty() {
+                    None
+                } else {
+                    Some((key, result))
+                }
+            }) {
+                let ids: MultipleIds = MultipleIds {
+                    ids: value.into_iter().copied().collect(),
+                };
+                self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
+            }
+            let cache_models = self.cache.get_cache_models(model_name);
+            if !cache_models.to_recompute.iter().any(|(_key, value)| {
+                value.iter().any(|id| ids.contains(id))
+            }) {
+                break;
+            }
+            if i == MAX_NUMBER_OF_RECURSION {
+                return Err(MaximumRecursionDepthCompute {
+                    model_name: model_name.to_string(),
+                    fields_name: cache_models.to_recompute.keys().cloned().collect(),
+                    ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
+                }.into());
+            }
+        }
+
+        Ok(())
+    }
+
     /// Call computed methods of given fields of given model for given ids
     pub fn call_compute_method<Mode: IdMode>(
         &mut self,
         model_name: &str,
         ids: &Mode,
         fields: &[&str],
-    ) -> Result<(), Box<dyn Error>>
+    ) -> Result<()>
     {
         let final_internal_model = self.model_manager.get_model(model_name);
         if final_internal_model.is_none() {

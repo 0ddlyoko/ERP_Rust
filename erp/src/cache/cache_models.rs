@@ -13,9 +13,9 @@ use crate::model::MapOfFields;
 #[derive(Clone)]
 pub struct CacheModels {
     name: String,
-    models: HashMap<u32, CacheModel>,
-    dirty: HashMap<u32, HashSet<String>>,
-    to_recompute: HashMap<String, HashSet<u32>>,
+    pub(crate) models: HashMap<u32, CacheModel>,
+    pub(crate) dirty: HashMap<u32, HashSet<String>>,
+    pub(crate) to_recompute: HashMap<String, HashSet<u32>>,
 }
 
 impl CacheModels {
@@ -58,6 +58,7 @@ impl CacheModels {
         update_dirty: &Dirty,
         update_if_exists: &Update,
     ) {
+        // TODO Add update_compute as parameter, to remove value from computed list
         let cache_model = self.get_model_or_create(id);
         let result = cache_model.insert_field(field_name, field_value.clone(), update_if_exists);
         if matches!(update_dirty, Dirty::UpdateDirty) {
@@ -84,6 +85,66 @@ impl CacheModels {
     }
 
     // Dirty methods
+
+    /// Get dirty data linked to given model
+    pub fn get_dirty_fields(&self) -> HashMap<u32, MapOfFields> {
+        self._get_dirty_map_of_fields_from_filter(|_field_name| { true })
+    }
+
+    /// Get dirty data linked to given model and given fields
+    pub fn get_dirty_fields_for_fields(&self, fields: &[&str]) -> HashMap<u32, MapOfFields> {
+        self._get_dirty_map_of_fields_from_filter(|field_name| {
+            !fields.contains(&field_name)
+        })
+    }
+
+    /// Get all dirty fields for given records
+    pub fn get_dirty_records(&self, ids: &[u32]) -> HashMap<u32, MapOfFields> {
+        let mut result: HashMap<u32, MapOfFields> = HashMap::new();
+        for id in ids {
+            if let Some(cache_model) = self.get_model(id) {
+                if let Some(dirty_fields) = self.dirty.get(id) {
+                    let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
+                        let field = cache_model.get_field(dirty_field)?;
+                        Some((dirty_field.clone(), field.get().cloned()))
+                    }).collect();
+
+                    if !map.is_empty() {
+                        result.insert(*id, MapOfFields::new(map));
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Get dirty data linked to given filter
+    fn _get_dirty_map_of_fields_from_filter<F>(&self, filter: F) -> HashMap<u32, MapOfFields>
+    where
+        F: Fn(&str) -> bool,
+    {
+        let mut result: HashMap<u32, MapOfFields> = HashMap::new();
+        for (id, dirty_fields) in &self.dirty {
+            if let Some(cache_model) = self.get_model(id) {
+                let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
+                    if !filter(&dirty_field.as_str()) {
+                        return None;
+                    }
+
+                    let field = cache_model.get_field(dirty_field)?;
+                    Some((dirty_field.clone(), field.get().cloned()))
+                }).collect();
+
+
+                if !map.is_empty() {
+                    result.insert(*id, MapOfFields::new(map));
+                }
+            }
+        }
+
+        result
+    }
 
     pub fn add_dirty(&mut self, id: u32, fields: Vec<String>) {
         self.dirty.entry(id).or_default().extend(fields);

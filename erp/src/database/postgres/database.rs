@@ -61,7 +61,7 @@ impl Database for PostgresDatabase {
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
-    fn search<'a>(&mut self, model_name: &str, fields: Vec<&'a str>, domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         todo!()
     }
 
