@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::database::cache::Row;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Table {
     last_id: u32,
     pub(crate) rows: HashMap<u32, Row>,

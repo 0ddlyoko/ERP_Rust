@@ -7,6 +7,7 @@ use erp_search::SearchType;
 use erp_search_code_gen::make_domain;
 use std::collections::HashMap;
 use std::error::Error;
+use uuid::Uuid;
 
 const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
@@ -439,16 +440,17 @@ impl<'app> Environment<'app> {
         F: FnOnce(&mut Environment) -> Result<R>,
     {
         let cache_copy = self.cache.export_cache();
-        // TODO Savepoint db
+        let uuid = Uuid::new_v4().to_string();
+        self.database.savepoint(uuid.as_str())?;
 
         let result = func(self);
         if result.is_ok() {
             // Commit
-            // TODO Commit db
+            self.database.savepoint_commit(uuid.as_str())?;
         } else {
             // Rollback
-            // TODO Rollback db
             self.cache.import_cache(cache_copy);
+            self.database.savepoint_rollback(uuid.as_str())?;
         }
         result
     }

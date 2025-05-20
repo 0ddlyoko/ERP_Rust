@@ -54,6 +54,27 @@ impl Database for DatabaseType {
             DatabaseType::Postgres(postgres) => postgres.get_installed_plugins(),
         }
     }
+
+    fn savepoint(&mut self, name: &str) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.savepoint(name),
+            DatabaseType::Postgres(postgres) => postgres.savepoint(name),
+        }
+    }
+
+    fn savepoint_commit(&mut self, name: &str) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.savepoint_commit(name),
+            DatabaseType::Postgres(postgres) => postgres.savepoint_commit(name),
+        }
+    }
+
+    fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.savepoint_rollback(name),
+            DatabaseType::Postgres(postgres) => postgres.savepoint_rollback(name),
+        }
+    }
 }
 
 impl From<CacheDatabase> for DatabaseType {

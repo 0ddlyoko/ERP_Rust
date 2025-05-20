@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use erp_search::{RightTuple, SearchOperator, SearchTuple, SearchType};
 use crate::database::FieldType;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Row {
     id: u32,
     cells: HashMap<String, Option<FieldType>>,

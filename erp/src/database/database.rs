@@ -57,4 +57,13 @@ pub trait Database {
 
     /// Retrieves installed plugins
     fn get_installed_plugins(&mut self) -> Result<Vec<String>>;
+    
+    /// Create a new savepoint
+    fn savepoint(&mut self, name: &str) -> Result<()>;
+    
+    /// Commit previously created savepoint
+    fn savepoint_commit(&mut self, name: &str) -> Result<()>;
+    
+    /// Rollback previously created savepoint
+    fn savepoint_rollback(&mut self, name: &str) -> Result<()>;
 }

@@ -73,4 +73,16 @@ impl Database for PostgresDatabase {
         }
         Ok(result)
     }
+
+    fn savepoint(&mut self, name: &str) -> Result<()> {
+        todo!()
+    }
+
+    fn savepoint_commit(&mut self, name: &str) -> Result<()> {
+        todo!()
+    }
+
+    fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
+        todo!()
+    }
 }

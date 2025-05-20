@@ -10,7 +10,7 @@ use test_plugin::TestPlugin3;
 
 #[test]
 fn test_load_same_plugin_twice() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
 
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
@@ -25,7 +25,7 @@ fn test_load_same_plugin_twice() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_load_plugin_init_models() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 
@@ -45,7 +45,7 @@ fn test_load_plugin_init_models() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_load_plugin_depends() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
 
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
@@ -66,7 +66,7 @@ fn test_load_plugin_depends() -> Result<(), Box<dyn Error>> {
 #[test]
 #[should_panic]
 fn test_load_plugin_with_depend_not_register_should_fail() {
-    let mut app = Application::new(test_utilities::default_config().unwrap());
+    let mut app = Application::new_test();
 
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");

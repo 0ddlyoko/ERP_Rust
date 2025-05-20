@@ -196,7 +196,7 @@ fn test_register_field_with_another_default_type_should_fail() {
 
 #[test]
 fn test_register_fields_with_real_model() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 

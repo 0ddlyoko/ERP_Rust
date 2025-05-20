@@ -9,7 +9,7 @@ use test_utilities::TestLibPlugin;
 
 #[test]
 fn test_models() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
 
@@ -59,7 +59,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_ref() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("base")?;
@@ -91,7 +91,7 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_many2one_one2many() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(test_utilities::default_config()?);
+    let mut app = Application::new_test();
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
 
