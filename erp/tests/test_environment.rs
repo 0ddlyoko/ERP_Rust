@@ -4,7 +4,7 @@ use erp::field::{FieldType, SingleId};
 use erp::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use test_utilities::models::{SaleOrder, SaleOrderLine};
+use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 
 #[test]
 fn test_fill_default_values_on_map() -> Result<(), Box<dyn Error>> {
@@ -130,13 +130,53 @@ fn test_compute_method() -> Result<(), Box<dyn Error>> {
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 42 * 10);
 
-    // Modifying a key should call the computed method
+    // Modifying a key should call the computed method when we need it
     sale_order_line.set_price(50, &mut env)?;
+    let cache_value = env.cache.get_field_from_cache("sale_order_line", "total_price", &1);
+    assert!(cache_value.is_some());
+    assert_eq!(cache_value.unwrap(), &FieldType::Integer(42 * 10), "Total price shouldn't be updated if we don't want the new value");
 
     let sale_order_line = env.get_record::<SaleOrderLine<SingleId>, _>(1.into());
     assert_eq!(sale_order_line.id, 1);
     assert_eq!(*sale_order_line.get_price(&mut env)?, 50);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
+    // Here, it should be updated
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 50 * 100);
+    Ok(())
+}
+
+#[test]
+fn save_fields_to_db() -> Result<(), Box<dyn Error>> {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
+    let mut env = app.new_env();
+
+    let mut map: MapOfFields = MapOfFields::default();
+    let sale_order: SaleOrder<SingleId> = env.create_new_record_from_map(&mut map)?;
+    let id = sale_order.get_id();
+
+    // create_new_record_from_map should create the record, and so this should not be dirty
+    assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("name", &id));
+
+    // Changing the name should set this field as dirty
+    sale_order.set_name("1ddlyoko".to_string(), &mut env)?;
+    sale_order.set_state(SaleOrderState::Paid, &mut env)?;
+    sale_order.set_total_price(42, &mut env)?;
+    assert!(env.cache.get_cache_models("sale_order").is_field_dirty("name", &id));
+    assert!(env.cache.get_cache_models("sale_order").is_field_dirty("state", &id));
+    assert!(env.cache.get_cache_models("sale_order").is_field_dirty("total_price", &id));
+    // To Recompute shouldn't be set for those fields
+    assert!(!env.cache.is_field_to_recompute("sale_order", "name", &id));
+    assert!(!env.cache.is_field_to_recompute("sale_order", "state", &id));
+    // Neither for total_price, as we fixed a value before
+    assert!(!env.cache.is_field_to_recompute("sale_order", "total_price", &id));
+
+    // Calling save_records_to_db should save given records to db, and so only those records should not be dirty anymore
+    env.save_fields_to_db("sale_order", &["name", "state"])?;
+    assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("name", &id));
+    assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("state", &id));
+    assert!(env.cache.get_cache_models("sale_order").is_field_dirty("total_price", &id));
+
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::cache::{Cache, Dirty, Update};
+use crate::cache::{Cache, Compute, Dirty, Update};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
@@ -84,8 +84,8 @@ impl<'app> Environment<'app> {
         self.save_data_to_db(model_name, &dirty_map_of_fields)?;
 
         // Now that it's saved in db, clear dirty fields
-        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
-        self.cache.clear_dirty(model_name, &keys);
+        let dirty_ids: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty_records(model_name, &dirty_ids);
         Ok(())
     }
 
@@ -103,8 +103,8 @@ impl<'app> Environment<'app> {
         self.save_data_to_db(model_name, &dirty_map_of_fields)?;
 
         // Now that it's saved in db, clear dirty fields
-        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
-        self.cache.clear_dirty(model_name, &keys);
+        let dirty_ids: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty_fields(model_name, fields, &dirty_ids);
         Ok(())
     }
 
@@ -126,8 +126,8 @@ impl<'app> Environment<'app> {
         self.save_data_to_db(model_name, &dirty_map_of_fields)?;
 
         // Now that it's saved in db, clear dirty fields
-        let keys: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
-        self.cache.clear_dirty(model_name, &keys);
+        let dirty_ids: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty_records(model_name, &dirty_ids);
         Ok(())
     }
 
@@ -347,7 +347,7 @@ impl<'app> Environment<'app> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: FieldType = value.into();
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), Some(field_type), &Dirty::UpdateDirty, &Update::UpdateIfExists);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), Some(field_type), &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
         Ok(())
     }
 
@@ -357,7 +357,7 @@ impl<'app> Environment<'app> {
         for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: Option<FieldType> = value.map(|value| value.into());
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
         Ok(())
     }
 
@@ -503,7 +503,7 @@ impl<'app> Environment<'app> {
                 self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
             }
             let cache_models = self.cache.get_cache_models(model_name);
-            if !cache_models.to_recompute.iter().any(|(key, _value)| fields.contains(&key.as_str())) {
+            if !cache_models.to_recompute.iter().any(|(key, value)| !value.is_empty() && fields.contains(&key.as_str())) {
                 break;
             }
             if i == MAX_NUMBER_OF_RECURSION {

@@ -18,8 +18,8 @@ pub struct Cache {
 impl Cache {
     pub fn new(model_manager: &ModelManager) -> Self {
         let mut cache = HashMap::new();
-        for (model_name, final_internal_model) in model_manager.get_models() {
-            cache.insert(model_name.clone(), CacheModels::new(final_internal_model));
+        for model_name in model_manager.get_models().keys() {
+            cache.insert(model_name.clone(), CacheModels::new(model_name.clone()));
         }
         Cache { cache }
     }
@@ -112,11 +112,15 @@ impl Cache {
         field_value: Option<FieldType>,
         update_dirty: &Dirty,
         update_if_exists: &Update,
+        update_compute: &Compute,
     )
     {
         let cache_models = self.get_cache_models_mut(model_name);
         for id in ids {
             cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty, update_if_exists);
+        }
+        if matches!(update_compute, Compute::ResetCompute) {
+            cache_models.remove_to_recompute(&[field_name], ids);
         }
     }
 
@@ -162,14 +166,20 @@ impl Cache {
         result.remove(&id)
     }
 
-    /// Clear dirty fields of given model
+    /// Clear dirty data of given model
     pub fn clear_dirty_model(&mut self, model_name: &str) {
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_all_dirty();
     }
 
-    /// Clear dirty fields of given record
-    pub fn clear_dirty<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
+    /// Clear dirty fields of given records
+    pub fn clear_dirty_fields<Mode: IdMode>(&mut self, model_name: &str, fields: &[&str], ids: &Mode) {
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.clear_dirty_records(fields, ids.get_ids_ref())
+    }
+
+    /// Clear dirty fields of given records
+    pub fn clear_dirty_records<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_dirty(ids.as_ref());
     }
@@ -242,4 +252,9 @@ pub enum Dirty {
 pub enum Update {
     UpdateIfExists,
     NotUpdateIfExists,
+}
+
+pub enum Compute {
+    ResetCompute,
+    NotResetCompute,
 }
