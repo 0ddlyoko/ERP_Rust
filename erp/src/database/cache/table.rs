@@ -16,10 +16,15 @@ impl Table {
         self.rows.get_mut(id)
     }
 
-    pub(crate) fn add_row(&mut self, row: Row) {
-        let id = self.last_id;
+    pub(crate) fn add_row(&mut self, row: Row) -> u32 {
         self.last_id += 1;
+        let id = self.last_id;
+        let row = Row {
+            id,
+            cells: row.cells,
+        };
         self.rows.insert(id, row);
+        id
     }
 
     pub(crate) fn delete_row(&mut self, id: &u32) {

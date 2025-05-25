@@ -130,13 +130,14 @@ impl FinalInternalModel {
         self.fields.keys().map(|s| s.as_str()).collect()
     }
 
-    /// Get a vector of difference between all registered fields for this model, and given vector
+    /// Get a vector of difference between all registered fields for this model, and given vector.
+    ///
+    /// Do not add non-stored fields
     pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<&str> {
         self.fields
-            .keys()
-            .filter_map(|x| {
-                if !current_fields.contains(&x.as_str()) {
-                    Some(x.as_str())
+            .iter().filter_map(|(key, value)| {
+                if value.is_stored() && !current_fields.contains(&key.as_str()) {
+                    Some(key.as_str())
                 } else {
                     None
                 }
@@ -150,11 +151,21 @@ impl FinalInternalModel {
     ///  is running
     pub fn get_stored_fields(&self) -> Vec<&str> {
         self.fields.iter()
-            .filter_map(|(field_name, _internal_field)| {
-                // TODO Once we add non-stored field, fix this filter
-                Some(field_name.as_str())
+            .filter_map(|(field_name, internal_field)| {
+                if internal_field.is_stored() {
+                    Some(field_name.as_str())
+                } else {
+                    None
+                }
             })
             .collect()
+    }
+
+    /// Return true if given field is stored.
+    ///
+    /// If field is not present, return false
+    pub fn is_stored(&self, field_name: &str) -> bool {
+        self.fields.get(field_name).is_some_and(|f| f.is_stored())
     }
 
     /// TODO Do not panic, but instead return an Option

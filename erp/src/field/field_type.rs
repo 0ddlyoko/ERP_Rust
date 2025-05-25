@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::model::BaseModel;
 
 #[macro_export]
-macro_rules! make_eq {
+macro_rules! field_type_make_eq {
     ( $self:expr, $other:expr, $( $path:path ),* ) => {
         match $self {
             $($path(ref self_value) => {
@@ -44,7 +44,7 @@ impl Display for FieldType {
 
 impl PartialEq for FieldType {
     fn eq(&self, other: &Self) -> bool {
-        make_eq!(
+        field_type_make_eq!(
             self,
             other,
             FieldType::String,

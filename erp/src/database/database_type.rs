@@ -4,6 +4,7 @@ use erp_search::SearchType;
 use crate::database::cache::CacheDatabase;
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
 use crate::database::postgres::PostgresDatabase;
+use crate::model::MapOfFields;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -45,6 +46,20 @@ impl Database for DatabaseType {
         match self {
             DatabaseType::Cache(cache) => cache.search(model_name, fields, domain),
             DatabaseType::Postgres(postgres) => postgres.search(model_name, fields, domain),
+        }
+    }
+
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
+        match self {
+            DatabaseType::Cache(cache) => cache.create(model_name, data),
+            DatabaseType::Postgres(postgres) => postgres.create(model_name, data),
+        }
+    }
+
+    fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
+        match self {
+            DatabaseType::Cache(cache) => cache.update(model_name, data),
+            DatabaseType::Postgres(postgres) => postgres.update(model_name, data),
         }
     }
 

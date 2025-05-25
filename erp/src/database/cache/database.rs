@@ -1,8 +1,9 @@
-use crate::database::cache::Table;
+use crate::database::cache::{Row, Table};
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
 use erp_search::SearchType;
 use std::collections::HashMap;
 use std::error::Error;
+use crate::model::MapOfFields;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -57,14 +58,17 @@ impl Database for CacheDatabase {
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+        // We don't care about searching 2 times (one to retrieve ids and one to retrieve fields), as it's cache
         let ids = self.browse(model_name, domain)?;
         if ids.is_empty() {
             return Ok(vec![]);
         }
+        // Following error should never occur, as if table doesn't exist then .browse should return an empty list
         let table = self.tables.get(model_name).unwrap_or_else(|| panic!("Table {model_name} should exist in cache"));
         let mut result = vec![];
         for id in ids.iter() {
             let mut fields_result = HashMap::new();
+            // Following error should never occur, as ids returned by "browse" method are ids already present in table
             let row = table.get_row(id).unwrap_or_else(|| panic!("Row with id {id} in table {model_name} should exist in cache"));
             for field_name in fields.iter() {
                 if field_name == &"id" {
@@ -76,6 +80,45 @@ impl Database for CacheDatabase {
             result.push((*id, fields_result));
         }
         Ok(result)
+    }
+
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
+        let table = self.tables.entry(model_name.to_string()).or_default();
+        let mut ids = Vec::with_capacity(data.len());
+        for d in data {
+            let mut cells = d.fields.iter().map(|(k, v)| {
+                let v = v.clone().map(|value| value.into());
+                (k.clone(), v)
+            }).collect::<HashMap<_, _>>();
+            cells.remove("id");
+            let row = Row {
+                id: 0,
+                cells,
+            };
+            let id = table.add_row(row);
+            ids.push(id);
+        }
+        Ok(ids)
+    }
+
+    fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
+        let mut number_of_updates = 0;
+        if let Some(table) = self.tables.get_mut(model_name) {
+            for (id, map_of_field) in data {
+                if let Some(row) = table.get_row_mut(id) {
+                    for (field_name, value) in &map_of_field.fields {
+                        if field_name == "id" {
+                            continue;
+                        }
+                        let result = value.as_ref().map(|field_type| field_type.clone().into());
+                        row.set_cell(field_name, result);
+                    }
+                    number_of_updates += 1;
+                }
+            }
+        }
+        // If model not present in database, do nothing
+        Ok(number_of_updates)
     }
 
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {

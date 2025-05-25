@@ -1,7 +1,23 @@
+use std::fmt::{Display, Formatter};
 use erp_search::RightTuple;
 use crate::field;
 
-#[derive(Clone)]
+#[macro_export]
+macro_rules! database_field_type_make_eq {
+    ( $self:expr, $other:expr, $( $path:path ),* ) => {
+        match $self {
+            $($path(ref self_value) => {
+                if let $path(ref other_value) = $other {
+                    self_value == other_value
+                } else {
+                    false
+                }
+            })*
+        }
+    };
+}
+
+#[derive(Debug, Clone)]
 pub enum FieldType {
     String(String),
     Integer(i32),
@@ -10,46 +26,29 @@ pub enum FieldType {
     Boolean(bool),
 }
 
-impl FieldType {
-    // TODO Remove this method once correctly implemented
-    pub fn is_same(&self, other: &str) -> bool {
+impl Display for FieldType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            FieldType::String(value) => {
-                value == other
-            },
-            FieldType::Integer(value) => {
-                let other = other.parse::<i32>();
-                if let Ok(other) = other {
-                    value == &other
-                } else {
-                    false
-                }
-            },
-            FieldType::UInteger(value) => {
-                let other = other.parse::<u32>();
-                if let Ok(other) = other {
-                    value == &other
-                } else {
-                    false
-                }
-            },
-            FieldType::Float(value) => {
-                let other = other.parse::<f32>();
-                if let Ok(other) = other {
-                    value == &other
-                } else {
-                    false
-                }
-            },
-            FieldType::Boolean(value) => {
-                let other = other.parse::<bool>();
-                if let Ok(other) = other {
-                    value == &other
-                } else {
-                    false
-                }
-            },
+            FieldType::String(s) => write!(f, "{}", s),
+            FieldType::Integer(i) => write!(f, "{}", i),
+            FieldType::UInteger(b) => write!(f, "{}", b),
+            FieldType::Float(fl) => write!(f, "{}", fl),
+            FieldType::Boolean(e) => write!(f, "{}", e),
         }
+    }
+}
+
+impl PartialEq for FieldType {
+    fn eq(&self, other: &Self) -> bool {
+        database_field_type_make_eq!(
+            self,
+            other,
+            FieldType::String,
+            FieldType::Integer,
+            FieldType::UInteger,
+            FieldType::Float,
+            FieldType::Boolean
+        )
     }
 }
 
@@ -88,20 +87,20 @@ impl PartialEq<FieldType> for RightTuple {
     }
 }
 
-// impl From<field::FieldType> for FieldType {
-//     fn from(value: field::FieldType) -> Self {
-//         match value {
-//             field::FieldType::String(v) => FieldType::String(v),
-//             field::FieldType::Integer(v) => FieldType::Integer(v),
-//             field::FieldType::Float(v) => FieldType::Float(v),
-//             field::FieldType::Bool(v) => FieldType::Boolean(v),
-//             field::FieldType::Enum(v) => FieldType::String(v),
-//             field::FieldType::Ref(v) => FieldType::UInteger(v),
-//             // TODO Maybe add Refs ?
-//             field::FieldType::Refs(v) => FieldType::Refs(v),
-//         }
-//     }
-// }
+impl From<field::FieldType> for FieldType {
+    fn from(value: field::FieldType) -> Self {
+        match value {
+            field::FieldType::String(v) => FieldType::String(v),
+            field::FieldType::Integer(v) => FieldType::Integer(v),
+            field::FieldType::Float(v) => FieldType::Float(v),
+            field::FieldType::Bool(v) => FieldType::Boolean(v),
+            field::FieldType::Enum(v) => FieldType::String(v),
+            field::FieldType::Ref(v) => FieldType::UInteger(v),
+            // This should not occur
+            field::FieldType::Refs(_v) => panic!("Cannot convert Refs fields to database objet"),
+        }
+    }
+}
 
 impl From<FieldType> for field::FieldType {
     fn from(value: FieldType) -> Self {

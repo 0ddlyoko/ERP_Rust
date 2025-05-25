@@ -81,25 +81,39 @@ impl CacheModels {
 
     // Dirty methods
 
-    /// Get dirty data linked to given model
-    pub fn get_dirty_fields(&self) -> HashMap<u32, MapOfFields> {
-        self._get_dirty_map_of_fields_from_filter(|_field_name| { true })
+    /// Get dirty data linked to given model.
+    ///
+    /// Do not insert non-stored fields
+    pub fn get_dirty_fields<F>(&self, field_filter: F) -> HashMap<u32, MapOfFields>
+    where
+        F: Fn(&str) -> bool,
+    {
+        self._get_dirty_map_of_fields_from_filter(|field_name| { field_filter(field_name) })
     }
 
-    /// Get dirty data linked to given model and given fields
+    /// Get dirty data linked to given model and given fields.
+    ///
+    /// Do not insert non-stored fields
     pub fn get_dirty_fields_for_fields(&self, fields: &[&str]) -> HashMap<u32, MapOfFields> {
         self._get_dirty_map_of_fields_from_filter(|field_name| {
-            !fields.contains(&field_name)
+            fields.contains(&field_name)
         })
     }
 
-    /// Get all dirty fields for given records
-    pub fn get_dirty_records(&self, ids: &[u32]) -> HashMap<u32, MapOfFields> {
+    /// Get all dirty filtered fields for given records
+    pub fn get_dirty_records<F>(&self, ids: &[u32], field_filter: F) -> HashMap<u32, MapOfFields>
+    where
+        F: Fn(&str) -> bool,
+    {
         let mut result: HashMap<u32, MapOfFields> = HashMap::new();
         for id in ids {
             if let Some(cache_model) = self.get_model(id) {
                 if let Some(dirty_fields) = self.dirty.get(id) {
                     let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
+                        if !field_filter(dirty_field) {
+                            return None;
+                        }
+
                         let field = cache_model.get_field(dirty_field)?;
                         Some((dirty_field.clone(), field.get().cloned()))
                     }).collect();
@@ -115,7 +129,7 @@ impl CacheModels {
     }
 
     /// Get dirty data linked to given filter
-    fn _get_dirty_map_of_fields_from_filter<F>(&self, filter: F) -> HashMap<u32, MapOfFields>
+    fn _get_dirty_map_of_fields_from_filter<F>(&self, field_filter: F) -> HashMap<u32, MapOfFields>
     where
         F: Fn(&str) -> bool,
     {
@@ -123,7 +137,7 @@ impl CacheModels {
         for (id, dirty_fields) in &self.dirty {
             if let Some(cache_model) = self.get_model(id) {
                 let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
-                    if !filter(&dirty_field.as_str()) {
+                    if !field_filter(dirty_field) {
                         return None;
                     }
 

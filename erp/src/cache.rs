@@ -143,9 +143,12 @@ impl Cache {
     // Dirty
 
     /// Get dirty fields linked to given model
-    pub fn get_dirty_models(&self, model_name: &str) -> HashMap<u32, MapOfFields> {
+    pub fn get_dirty_models<F>(&self, model_name: &str, field_filter: F) -> HashMap<u32, MapOfFields>
+    where
+        F: Fn(&str) -> bool,
+    {
         let cache_models = self.get_cache_models(model_name);
-        cache_models.get_dirty_fields()
+        cache_models.get_dirty_fields(field_filter)
     }
 
     /// Get dirty fields from given list of fields
@@ -155,15 +158,12 @@ impl Cache {
     }
 
     /// Get all dirty fields for given records
-    pub fn get_dirty_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields> {
+    pub fn get_dirty_records<F>(&self, model_name: &str, ids: &[u32], field_filter: F) -> HashMap<u32, MapOfFields>
+    where
+        F: Fn(&str) -> bool,
+    {
         let cache_models = self.get_cache_models(model_name);
-        cache_models.get_dirty_records(ids)
-    }
-
-    /// Get all dirty fields for given record
-    pub fn get_dirty_record(&self, model_name: &str, id: u32) -> Option<MapOfFields> {
-        let mut result = self.get_dirty_records(model_name, &[id]);
-        result.remove(&id)
+        cache_models.get_dirty_records(ids, field_filter)
     }
 
     /// Clear dirty data of given model

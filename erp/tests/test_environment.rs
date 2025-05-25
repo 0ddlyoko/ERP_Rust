@@ -4,6 +4,8 @@ use erp::field::{FieldType, SingleId};
 use erp::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
+use erp::database::Database;
+use erp_search_code_gen::make_domain;
 use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 
 #[test]
@@ -156,6 +158,18 @@ fn save_fields_to_db() -> Result<(), Box<dyn Error>> {
     let sale_order: SaleOrder<SingleId> = env.create_new_record_from_map(&mut map)?;
     let id = sale_order.get_id();
 
+    // create_new_record_from_map should create the record in database
+    let sale_order_vec = env.database.search("sale_order", &["name", "state", "total_price"], &make_domain!([("name", "=", "0ddlyoko")]))?;
+    assert!(!sale_order_vec.is_empty());
+    // Default values should be applied here
+    assert_eq!(sale_order_vec.len(), 1);
+    let (a, b) = sale_order_vec.first().unwrap();
+    assert_eq!(*a, id);
+    assert_eq!(b.get("name"), Some(&Some(erp::database::FieldType::String("0ddlyoko".to_string()))));
+    assert_eq!(b.get("state"), Some(&Some(erp::database::FieldType::String("draft".to_string()))));
+    assert_eq!(b.get("total_price"), Some(&Some(erp::database::FieldType::Integer(0))));
+
+
     // create_new_record_from_map should create the record, and so this should not be dirty
     assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("name", &id));
 
@@ -174,9 +188,30 @@ fn save_fields_to_db() -> Result<(), Box<dyn Error>> {
 
     // Calling save_records_to_db should save given records to db, and so only those records should not be dirty anymore
     env.save_fields_to_db("sale_order", &["name", "state"])?;
-    assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("name", &id));
-    assert!(!env.cache.get_cache_models("sale_order").is_field_dirty("state", &id));
-    assert!(env.cache.get_cache_models("sale_order").is_field_dirty("total_price", &id));
+    let cache_models = env.cache.get_cache_models("sale_order");
+    assert!(!cache_models.is_field_dirty("name", &id));
+    assert!(!cache_models.is_field_dirty("state", &id));
+    assert!(cache_models.is_field_dirty("total_price", &id));
+
+    // Those fields should be kept in cache
+    let cache_model = cache_models.get_model(&id);
+    assert!(cache_model.is_some());
+    let cache_model = cache_model.unwrap();
+    assert!(cache_model.get_field("name").is_some());
+    assert_eq!(cache_model.get_field("name").unwrap().get(), Some(&FieldType::String("1ddlyoko".to_string())));
+    assert!(cache_model.get_field("state").is_some());
+    assert_eq!(cache_model.get_field("state").unwrap().get(), Some(&FieldType::Enum("paid".to_string())));
+
+    // They should also be kept in database
+    let sale_order_vec = env.database.search("sale_order", &["name", "state"], &make_domain!([("name", "=", "1ddlyoko")]))?;
+    assert!(!sale_order_vec.is_empty());
+    assert_eq!(sale_order_vec.len(), 1);
+    let (a, b) = sale_order_vec.first().unwrap();
+    assert_eq!(*a, id);
+    assert_eq!(b.get("name"), Some(&Some(erp::database::FieldType::String("1ddlyoko".to_string()))));
+    assert_eq!(b.get("state"), Some(&Some(erp::database::FieldType::String("paid".to_string()))));
+    // We don't retrieve this field, so it should not be in the map
+    assert_eq!(b.get("total_price"), None);
 
     Ok(())
 }

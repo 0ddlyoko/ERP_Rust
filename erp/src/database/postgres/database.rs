@@ -3,6 +3,7 @@ use erp_search::SearchType;
 use std::error::Error;
 use postgres::{Client, NoTls};
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
+use crate::model::MapOfFields;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -56,12 +57,20 @@ impl Database for PostgresDatabase {
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
-    fn browse(&mut self, model_name: &str, domain: &SearchType) -> Result<Vec<u32>> {
+    fn browse(&mut self, _model_name: &str, _domain: &SearchType) -> Result<Vec<u32>> {
         todo!()
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
-    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(&mut self, _model_name: &str, _fields: &[&'a str], _domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+        todo!()
+    }
+
+    fn create(&mut self, _model_name: &str, _data: &[&MapOfFields]) -> Result<Vec<u32>> {
+        todo!()
+    }
+
+    fn update(&mut self, _model_name: &str, _data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
         todo!()
     }
 
@@ -74,15 +83,15 @@ impl Database for PostgresDatabase {
         Ok(result)
     }
 
-    fn savepoint(&mut self, name: &str) -> Result<()> {
+    fn savepoint(&mut self, _name: &str) -> Result<()> {
         todo!()
     }
 
-    fn savepoint_commit(&mut self, name: &str) -> Result<()> {
+    fn savepoint_commit(&mut self, _name: &str) -> Result<()> {
         todo!()
     }
 
-    fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
+    fn savepoint_rollback(&mut self, _name: &str) -> Result<()> {
         todo!()
     }
 }

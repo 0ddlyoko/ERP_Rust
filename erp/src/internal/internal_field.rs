@@ -37,6 +37,10 @@ impl FinalInternalField {
             is_init: false,
         }
     }
+    
+    pub fn is_stored(&self) -> bool {
+        !matches!(self.default_value, FieldType::Refs(_))
+    }
 
     pub fn register_internal_field(&mut self, field_descriptor: &InternalField, type_id: &TypeId) {
         if let Some(default_value) = &field_descriptor.default_value {

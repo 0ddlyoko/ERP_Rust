@@ -3,6 +3,7 @@ use erp_search::SearchType;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
+use crate::model::MapOfFields;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -54,6 +55,12 @@ pub trait Database {
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>>;
+
+    /// Create one new record per given data for given model
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>>;
+
+    /// Update given data for given model
+    fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32>;
 
     /// Retrieves installed plugins
     fn get_installed_plugins(&mut self) -> Result<Vec<String>>;

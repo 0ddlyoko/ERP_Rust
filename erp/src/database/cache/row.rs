@@ -4,8 +4,8 @@ use crate::database::FieldType;
 
 #[derive(Default, Clone)]
 pub(crate) struct Row {
-    id: u32,
-    cells: HashMap<String, Option<FieldType>>,
+    pub(crate) id: u32,
+    pub(crate) cells: HashMap<String, Option<FieldType>>,
 }
 
 impl Row {
@@ -48,40 +48,40 @@ impl Row {
                     SearchOperator::Greater => {
                         match (right, cell_value) {
                             (RightTuple::None, None) => false,
-                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => right > cell_value,
-                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => right > cell_value,
-                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => right > cell_value,
-                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => right > cell_value,
+                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => cell_value > right,
+                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => cell_value > right,
+                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => cell_value > right,
+                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => cell_value > right,
                             _ => false,
                         }
                     },
                     SearchOperator::GreaterEqual => {
                         match (right, cell_value) {
                             (RightTuple::None, None) => false,
-                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => right >= cell_value,
-                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => right >= cell_value,
-                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => right >= cell_value,
-                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => right >= cell_value,
+                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => cell_value >= right,
+                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => cell_value >= right,
+                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => cell_value >= right,
+                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => cell_value >= right,
                             _ => false,
                         }
                     },
                     SearchOperator::Lower => {
                         match (right, cell_value) {
                             (RightTuple::None, None) => false,
-                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => right < cell_value,
-                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => right < cell_value,
-                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => right < cell_value,
-                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => right < cell_value,
+                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => cell_value < right,
+                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => cell_value < right,
+                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => cell_value < right,
+                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => cell_value < right,
                             _ => false,
                         }
                     },
                     SearchOperator::LowerEqual => {
                         match (right, cell_value) {
                             (RightTuple::None, None) => false,
-                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => right <= cell_value,
-                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => right <= cell_value,
-                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => right <= cell_value,
-                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => right <= cell_value,
+                            (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => cell_value <= right,
+                            (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => cell_value <= right,
+                            (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => cell_value <= right,
+                            (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => cell_value <= right,
                             _ => false,
                         }
                     },

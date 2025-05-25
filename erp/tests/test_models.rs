@@ -42,17 +42,10 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     assert_eq!(*sale_order_line.get_price(&mut env)?, 100);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 20);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 20);
-    // TODO Later, This should not fail if we add a link between sale_order & sale_order_line
-    // assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.get_id_mode(), sale_order_line.get_id_mode());
-    // TODO For now there is no link between fields, so the computed method is not recomputed.
-    //  Fix that
-    // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 200);
-
-    // assert_eq!(*sale_order.get_total_price(&mut env)?, 100 * 20);
+    assert_eq!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.get_id_mode(), sale_order_line.get_id_mode());
 
     // Change the state
     sale_order.set_state(SaleOrderState::Paid, &mut env)?;
-
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Paid);
     Ok(())
 }
