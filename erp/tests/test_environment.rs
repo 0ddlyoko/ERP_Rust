@@ -154,8 +154,8 @@ fn save_fields_to_db() -> Result<(), Box<dyn Error>> {
     app.model_manager.register_model::<SaleOrderLine<_>>();
     let mut env = app.new_env();
 
-    let mut map: MapOfFields = MapOfFields::default();
-    let sale_order: SaleOrder<SingleId> = env.create_new_record_from_map(&mut map)?;
+    let map: MapOfFields = MapOfFields::default();
+    let sale_order: SaleOrder<SingleId> = env.create_new_record_from_map(map)?;
     let id = sale_order.get_id();
 
     // create_new_record_from_map should create the record in database
@@ -200,7 +200,7 @@ fn save_fields_to_db() -> Result<(), Box<dyn Error>> {
     assert!(cache_model.get_field("name").is_some());
     assert_eq!(cache_model.get_field("name").unwrap().get(), Some(&FieldType::String("1ddlyoko".to_string())));
     assert!(cache_model.get_field("state").is_some());
-    assert_eq!(cache_model.get_field("state").unwrap().get(), Some(&FieldType::Enum("paid".to_string())));
+    assert_eq!(cache_model.get_field("state").unwrap().get(), Some(&FieldType::String("paid".to_string())));
 
     // They should also be kept in database
     let sale_order_vec = env.database.search("sale_order", &["name", "state"], &make_domain!([("name", "=", "1ddlyoko")]))?;

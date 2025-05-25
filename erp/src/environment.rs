@@ -222,7 +222,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     pub fn insert_data_to_db(
         &mut self,
         model_name: &str,
-        data: &[&MapOfFields],
+        data: Vec<MapOfFields>,
     ) -> Result<Vec<u32>> {
         self.database.create(model_name, data)
     }
@@ -321,12 +321,12 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     ///
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
     pub fn ensure_fields_in_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<()> {
+        // TODO Allow to pass a list of fields
         let ids_ref = ids.get_ids_ref();
         let mut ids_not_in_cache: MultipleIds = self.cache.get_ids_not_in_cache(model_name, field_name, ids_ref).into();
         let ids_to_recompute: MultipleIds = self.cache.get_ids_to_recompute(model_name, field_name, ids_ref).into();
 
-        // TODO Merge the following 2 methods into a single one
-        if !ids_not_in_cache.is_empty() && !ids_to_recompute.is_empty() {
+        if !ids_not_in_cache.is_empty() || !ids_to_recompute.is_empty() {
             // Load given fields
             let model_info = self.model_manager.get_model(model_name);
             if model_info.is_none() {
@@ -346,7 +346,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 return Ok(());
             }
             // TODO Once we add non-stored field, fix this condition
-            if true {
+            if model_info.is_stored(field_name) {
                 // This is a stored field, load it along with all the other stored fields to avoid
                 //  multiple database calls
                 let fields_to_load = model_info.get_stored_fields();
@@ -388,62 +388,80 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     }
 
     /// Create a new record for a specific model and a given list of fields
-    ///
-    /// TODO Allow to call this method with multiple data
     pub fn create_new_record_from_map<M>(
         &mut self,
-        data: &mut MapOfFields,
+        data: MapOfFields,
     ) -> Result<M>
     where
         M: Model<SingleId>,
     {
         let model_name = M::get_model_name();
-        let id = self._create_new_record(model_name, data)?;
-        Ok(self.get_record::<M, SingleId>(id))
+        let ids = self._create_new_records(model_name, vec![data])?;
+        let id = ids.get_id_at(0);
+        Ok(self.get_record::<M, SingleId>(id.into()))
     }
 
-    /// TODO Allow to call this method with multiple data
-    fn _create_new_record(
+    /// Create new records for a specific model and multiple lists of fields
+    pub fn create_new_records_from_maps<M>(
+        &mut self,
+        data: Vec<MapOfFields>,
+    ) -> Result<M>
+    where
+        M: Model<MultipleIds>,
+    {
+        let model_name = M::get_model_name();
+        let ids = self._create_new_records(model_name, data)?;
+        Ok(self.get_record::<M, MultipleIds>(ids))
+    }
+
+    fn _create_new_records(
         &mut self,
         model_name: &str,
-        data: &mut MapOfFields,
-    ) -> Result<SingleId>
+        mut data: Vec<MapOfFields>,
+    ) -> Result<MultipleIds>
     {
         if let Some(final_model) = self.model_manager.get_model(model_name) {
-            // Remove non-stored fields
-            data.fields.retain(|field, _value| final_model.is_stored(field));
+            let mut missing_fields_lst = Vec::new();
 
-            // TODO Change this line to not return anything, but instead update the cache
-            // Method "fill_default_values_on_map" should not add non-stored fields
-            let missing_fields = self.fill_default_values_on_map(model_name, data);
-            let ids = self.insert_data_to_db(model_name, &[data])?;
-            let id = ids[0];
+            for d in &mut data {
+                // Remove non-stored fields
+                d.fields.retain(|field, _value| final_model.is_stored(field));
+
+                // Method "fill_default_values_on_map" should not add non-stored fields
+                let missing_fields = self.fill_default_values_on_map(model_name, d);
+                missing_fields_lst.push(missing_fields)
+            }
+
+            let ids = self.insert_data_to_db(model_name, data)?;
+            // This should not fail
+            assert_eq!(ids.len(), missing_fields_lst.len(), "Len of ids should be equals to len of missing fields. {} != {}. Ids = {:?}", ids.len(), missing_fields_lst.len(), ids);
+
+            missing_fields_lst.reverse();
             // Once added in database, we should set all stored computed methods as to_recompute
-            if let Some(missing_fields) = missing_fields {
-                let final_internal_model = self.model_manager.get_model(model_name);
-                if let Some(final_internal_model) = final_internal_model {
-                    // I need to transform this Vec<&str> to a Vec<String> to a Vec<&str>,
-                    // otherwise I had a mutable error in add_ids_to_recompute
-                    // If someone has a solution to this, please let me know
-                    let computed_fields_string = missing_fields
-                        .into_iter()
-                        .filter_map(|f| {
-                            if final_internal_model.is_computed_field(f) {
-                                Some(f.to_string())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<String>>();
-                    let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
-                    self.cache.add_ids_to_recompute(model_name, &computed_fields, &[id]);
+            for id in &ids {
+                if let Some(missing_fields) = missing_fields_lst.pop().flatten() {
+                    let final_internal_model = self.model_manager.get_model(model_name);
+                    if let Some(final_internal_model) = final_internal_model {
+                        // I need to transform this Vec<&str> to a Vec<String> to a Vec<&str>,
+                        // otherwise I had a mutable error in add_ids_to_recompute
+                        // If someone has a solution to this, please let me know
+                        let computed_fields_string = missing_fields
+                            .into_iter()
+                            .filter_map(|f| {
+                                if final_internal_model.is_computed_field(f) {
+                                    Some(f.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<String>>();
+                        let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
+                        self.cache.add_ids_to_recompute(model_name, &computed_fields, &[*id]);
+                    }
                 }
             }
 
-            // TODO Remove the following line once we have a database, as we should not directly put data in cache
-            self.cache.insert_fields_in_cache(model_name, id, data.clone(), &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
-
-            Ok(id.into())
+            Ok(ids.into())
         } else {
             Err(ModelNotFound {
                 model_name: model_name.to_string(),

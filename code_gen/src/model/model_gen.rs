@@ -275,9 +275,6 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 FieldType::Bool(b) => quote! {
                     Some(erp::field::FieldType::Bool(#b))
                 },
-                FieldType::Enum(e) => quote! {
-                    Some(erp::field::FieldType::Enum(#e))
-                },
                 FieldType::Ref(r) => quote! {
                     Some(erp::field::FieldType::Ref(#r))
                 },

@@ -23,7 +23,6 @@ pub enum FieldType {
     Integer(i32),
     Float(f32),
     Bool(bool),
-    Enum(String),
     Ref(u32),
     Refs(Vec<u32>),
 }
@@ -35,7 +34,6 @@ impl Display for FieldType {
             FieldType::Integer(i) => write!(f, "{}", i),
             FieldType::Float(fl) => write!(f, "{}", fl),
             FieldType::Bool(b) => write!(f, "{}", b),
-            FieldType::Enum(e) => write!(f, "{}", e),
             FieldType::Ref(id) => write!(f, "{}", id),
             FieldType::Refs(ids) => write!(f, "{:?}", ids),
         }
@@ -51,7 +49,6 @@ impl PartialEq for FieldType {
             FieldType::Integer,
             FieldType::Float,
             FieldType::Bool,
-            FieldType::Enum,
             FieldType::Ref,
             FieldType::Refs
         )
@@ -168,7 +165,7 @@ where
 {
     fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Enum(s) => Some(s.as_str().into()),
+            FieldType::String(s) => Some(s.as_str().into()),
             _ => None,
         }
     }
@@ -180,7 +177,7 @@ where
 {
     fn from(t: E) -> Self {
         let result: &str = t.into();
-        FieldType::Enum(result.to_string())
+        FieldType::String(result.to_string())
     }
 }
 

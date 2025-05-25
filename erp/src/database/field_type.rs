@@ -94,7 +94,6 @@ impl From<field::FieldType> for FieldType {
             field::FieldType::Integer(v) => FieldType::Integer(v),
             field::FieldType::Float(v) => FieldType::Float(v),
             field::FieldType::Bool(v) => FieldType::Boolean(v),
-            field::FieldType::Enum(v) => FieldType::String(v),
             field::FieldType::Ref(v) => FieldType::UInteger(v),
             // This should not occur
             field::FieldType::Refs(_v) => panic!("Cannot convert Refs fields to database objet"),

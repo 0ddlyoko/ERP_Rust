@@ -66,7 +66,7 @@ impl Database for PostgresDatabase {
         todo!()
     }
 
-    fn create(&mut self, _model_name: &str, _data: &[&MapOfFields]) -> Result<Vec<u32>> {
+    fn create(&mut self, _model_name: &str, _data: Vec<MapOfFields>) -> Result<Vec<u32>> {
         todo!()
     }
 

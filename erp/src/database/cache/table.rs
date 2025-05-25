@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crate::database::cache::Row;
+use crate::database::FieldType;
 
 #[derive(Default, Clone)]
 pub(crate) struct Table {
@@ -16,9 +17,10 @@ impl Table {
         self.rows.get_mut(id)
     }
 
-    pub(crate) fn add_row(&mut self, row: Row) -> u32 {
+    pub(crate) fn add_row(&mut self, mut row: Row) -> u32 {
         self.last_id += 1;
         let id = self.last_id;
+        row.cells.insert("id".to_string(), Some(FieldType::UInteger(id)));
         let row = Row {
             id,
             cells: row.cells,

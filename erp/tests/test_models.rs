@@ -18,9 +18,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     // Create a new SO
     let mut sale_order_map = MapOfFields::default();
     sale_order_map.insert("name", "0ddlyoko's SO");
-    sale_order_map.insert::<&i32>("price", &100);
-    sale_order_map.insert::<&i32>("amount", &200);
-    let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(&mut sale_order_map)?;
+    let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(sale_order_map)?;
     assert_eq!(sale_order.get_name(&mut env)?, "0ddlyoko's SO");
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
     assert_eq!(*sale_order.get_total_price(&mut env)?, 0, "Total price should be 0, as there is no line");
@@ -31,7 +29,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
     sale_order_line_map.insert::<&i32>("price", &100);
     sale_order_line_map.insert::<&i32>("amount", &200);
     sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.clone().into());
-    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(&mut sale_order_line_map)?;
+    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(sale_order_line_map)?;
     assert_eq!(*sale_order_line.get_price(&mut env)?, 100);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 200);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 100 * 200);
@@ -63,14 +61,14 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
     let mut record = MapOfFields::default();
     record.insert("name", "French");
     record.insert("code", "fr_FR");
-    let lang = env.create_new_record_from_map::<Lang<_>>(&mut record)?;
+    let lang = env.create_new_record_from_map::<Lang<_>>(record)?;
 
     // Create a new contact
     let mut record = MapOfFields::default();
     record.insert("name", "0ddlyoko");
     record.insert("email", "0ddlyoko@test.com");
     record.insert("lang", lang.get_id());
-    let contact = env.create_new_record_from_map::<Contact<_>>(&mut record)?;
+    let contact = env.create_new_record_from_map::<Contact<_>>(record)?;
     assert_eq!(contact.get_name(&mut env)?, "0ddlyoko");
     assert_eq!(contact.get_email(&mut env)?.clone(), Some(&"0ddlyoko@test.com".to_string()));
     let contact_lang = contact.get_lang::<Lang<_>>(&mut env)?;
@@ -93,12 +91,12 @@ fn test_many2one_one2many() -> Result<(), Box<dyn Error>> {
     // Create a new SO
     let mut sale_order_map = MapOfFields::default();
     sale_order_map.insert("name", "0ddlyoko's SO");
-    let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(&mut sale_order_map)?;
+    let sale_order = env.create_new_record_from_map::<SaleOrder<_>>(sale_order_map)?;
 
     // Create a new SO line
     let mut sale_order_line_map = MapOfFields::default();
     sale_order_line_map.insert::<&Reference<BaseSaleOrder, SingleId>>("order", &sale_order.id.clone().into());
-    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(&mut sale_order_line_map)?;
+    let sale_order_line = env.create_new_record_from_map::<SaleOrderLine<_>>(sale_order_line_map)?;
 
     // Check if there is the link from a sale_order_line to a sale_order
     let sale_order_linked = sale_order_line.get_order::<SaleOrder<_>>(&mut env)?;

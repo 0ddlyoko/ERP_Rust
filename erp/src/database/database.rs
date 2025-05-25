@@ -57,7 +57,7 @@ pub trait Database {
     fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>>;
 
     /// Create one new record per given data for given model
-    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>>;
+    fn create(&mut self, model_name: &str, data: Vec<MapOfFields>) -> Result<Vec<u32>>;
 
     /// Update given data for given model
     fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32>;

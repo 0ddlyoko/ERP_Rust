@@ -49,7 +49,7 @@ impl Database for DatabaseType {
         }
     }
 
-    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
+    fn create(&mut self, model_name: &str, data: Vec<MapOfFields>) -> Result<Vec<u32>> {
         match self {
             DatabaseType::Cache(cache) => cache.create(model_name, data),
             DatabaseType::Postgres(postgres) => postgres.create(model_name, data),
