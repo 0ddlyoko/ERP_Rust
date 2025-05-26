@@ -243,32 +243,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         M::create_instance(id)
     }
 
-    /// Returns a reference to given id
-    ///
-    /// Do not check if given id is valid id, or is present in the cache
-    ///
-    /// Do not load given id to the cache
-    pub fn get_record_ref<BM>(&self, id: u32) -> Reference<BM, SingleId>
-    where
-        BM: BaseModel,
-    {
-        // TODO Check if this method is needed
-        id.into()
-    }
-
-    /// Returns a reference to given ids.
-    ///
-    /// Do not check if given ids are valid ids, or is present in the cache.
-    ///
-    /// Do not load those ids to the cache
-    pub fn get_records_ref<BM>(&self, ids: Vec<u32>) -> Reference<BM, MultipleIds>
-    where
-        BM: BaseModel,
-    {
-        // TODO Check if this method is needed
-        ids.into()
-    }
-
     /// Search given domain for given model, and return an instance of given model if found
     ///
     /// If not found, return an empty recordset
