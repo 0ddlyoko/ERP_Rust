@@ -2,40 +2,45 @@ use crate::{SearchOperator, UnknownSearchOperatorError};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SearchTuple {
-    pub left: String,
+    pub left: LeftTuple,
     pub operator: SearchOperator,
     pub right: RightTuple,
 }
 
-impl<E, F> TryFrom<(&str, E, F)> for SearchTuple
+impl<L, OP, R> TryFrom<(L, OP, R)> for SearchTuple
 where
-    E: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
-    F: Into<RightTuple>
+    L: Into<LeftTuple>,
+    OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
+    R: Into<RightTuple>
 {
     type Error = UnknownSearchOperatorError;
 
-    fn try_from(tuple: (&str, E, F)) -> Result<Self, Self::Error> {
+    fn try_from(tuple: (L, OP, R)) -> Result<Self, Self::Error> {
         Ok(Self {
-            left: tuple.0.to_string(),
+            left: tuple.0.into(),
             operator: tuple.1.try_into()?,
             right: tuple.2.into(),
         })
     }
 }
 
-impl<E, F> TryFrom<(String, E, F)> for SearchTuple
-where
-    E: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
-    F: Into<RightTuple>
-{
-    type Error = UnknownSearchOperatorError;
+#[derive(Clone, PartialEq, Debug)]
+pub struct LeftTuple {
+    pub path: Vec<String>,
+}
 
-    fn try_from(tuple: (String, E, F)) -> Result<Self, Self::Error> {
-        Ok(Self {
-            left: tuple.0,
-            operator: tuple.1.try_into()?,
-            right: tuple.2.into(),
-        })
+impl From<&str> for LeftTuple {
+    fn from(value: &str) -> Self {
+        let split = value.split(".").map(|str| str.to_string()).collect::<Vec<_>>();
+        LeftTuple {
+            path: split
+        }
+    }
+}
+
+impl From<String> for LeftTuple {
+    fn from(value: String) -> Self {
+        value.as_str().into()
     }
 }
 

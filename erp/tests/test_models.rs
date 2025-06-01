@@ -7,8 +7,10 @@ use erp::field::{IdMode, Reference, SingleId};
 use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
 #[test]
-fn test_models() -> Result<(), Box<dyn Error>> {
+fn test_models() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
@@ -49,7 +51,7 @@ fn test_models() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_ref() -> Result<(), Box<dyn Error>> {
+fn test_ref() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.register_plugin(Box::new(TestLibPlugin {}))?;
@@ -81,7 +83,7 @@ fn test_ref() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_many2one_one2many() -> Result<(), Box<dyn Error>> {
+fn test_many2one_one2many() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;

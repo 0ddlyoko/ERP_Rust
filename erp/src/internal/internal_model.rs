@@ -8,14 +8,14 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// Model descriptor represented by a single struct model
-type EmptyResult = Result<(), Box<dyn Error>>;
 pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult,
+    pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()>,
     pub plugin_name: String,
 }
 
@@ -72,7 +72,7 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> EmptyResult = |field_name, id, env| M::call_compute_method(field_name, id, env);
+        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()> = |field_name, id, env| M::call_compute_method(field_name, id, env);
 
         let internal_model = InternalModel {
             name: name.to_string(),

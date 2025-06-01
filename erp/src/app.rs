@@ -1,3 +1,4 @@
+use std::error::Error;
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
 use crate::database::{Database, DatabaseType};
@@ -8,7 +9,7 @@ use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
 
-type EmptyResult = Result<(), Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub struct Application {
     config: Config,
@@ -51,7 +52,7 @@ impl Application {
         }
     }
 
-    pub fn load(&mut self) -> EmptyResult {
+    pub fn load(&mut self) -> Result<()> {
         self.register_plugins()?;
         self.initialize_db()?;
         self.load_base_plugin()?;
@@ -59,16 +60,16 @@ impl Application {
         Ok(())
     }
 
-    fn register_plugins(&mut self) -> EmptyResult {
+    fn register_plugins(&mut self) -> Result<()> {
         self.plugin_manager.register_plugins(&self.config.plugin_path)?;
         Ok(())
     }
 
-    pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> EmptyResult {
+    pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<()> {
         self.plugin_manager.register_plugin(plugin)
     }
 
-    fn initialize_db(&mut self) -> EmptyResult {
+    fn initialize_db(&mut self) -> Result<()> {
         if !self.database.is_installed()? {
             self.database.initialize()?;
         }
@@ -76,7 +77,7 @@ impl Application {
     }
 
     /// Only load plugin "base"
-    fn load_base_plugin(&mut self) -> EmptyResult {
+    fn load_base_plugin(&mut self) -> Result<()> {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
         self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
 
@@ -86,7 +87,7 @@ impl Application {
     /// Load all plugins, except "base"
     ///
     /// If you want to load "base" plugin, please call load_base_plugin
-    fn load_plugins(&mut self) -> EmptyResult {
+    fn load_plugins(&mut self) -> Result<()> {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
         self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
 
@@ -107,13 +108,13 @@ impl Application {
         Ok(())
     }
 
-    pub fn load_plugin(&mut self, plugin_name: &str) -> EmptyResult {
+    pub fn load_plugin(&mut self, plugin_name: &str) -> Result<()> {
         self._load_plugin(plugin_name)
     }
 
     /// Load given plugin and all plugins that the given one depends.
     /// Do not check if there is a recursion between plugins.
-    fn _load_plugin(&mut self, plugin_name: &str) -> EmptyResult {
+    fn _load_plugin(&mut self, plugin_name: &str) -> Result<()> {
         let plugin = self
             .plugin_manager
             .get_plugin(plugin_name)

@@ -4,7 +4,7 @@ use erp_search::SearchType;
 use crate::database::cache::CacheDatabase;
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
 use crate::database::postgres::PostgresDatabase;
-use crate::model::MapOfFields;
+use crate::model::{MapOfFields, ModelManager};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -35,17 +35,17 @@ impl Database for DatabaseType {
         }
     }
 
-    fn browse(&mut self, model_name: &str, domain: &SearchType) -> Result<Vec<u32>> {
+    fn browse(&mut self, model_name: &str, domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<u32>> {
         match self {
-            DatabaseType::Cache(cache) => cache.browse(model_name, domain),
-            DatabaseType::Postgres(postgres) => postgres.browse(model_name, domain),
+            DatabaseType::Cache(cache) => cache.browse(model_name, domain, model_manager),
+            DatabaseType::Postgres(postgres) => postgres.browse(model_name, domain, model_manager),
         }
     }
 
-    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         match self {
-            DatabaseType::Cache(cache) => cache.search(model_name, fields, domain),
-            DatabaseType::Postgres(postgres) => postgres.search(model_name, fields, domain),
+            DatabaseType::Cache(cache) => cache.search(model_name, fields, domain, model_manager),
+            DatabaseType::Postgres(postgres) => postgres.search(model_name, fields, domain, model_manager),
         }
     }
 

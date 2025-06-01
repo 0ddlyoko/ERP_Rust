@@ -349,6 +349,22 @@ impl Add for MultipleIds {
     }
 }
 
+impl Add for SingleId {
+    type Output = MultipleIds;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        if self.id != rhs.id {
+            Self::Output {
+                ids: vec![self.id, rhs.id],
+            }
+        } else {
+            Self::Output {
+                ids: vec![self.id],
+            }
+        }
+    }
+}
+
 impl AddAssign for MultipleIds {
     fn add_assign(&mut self, rhs: Self) {
         self.ids.append(rhs.ids.clone().as_mut());

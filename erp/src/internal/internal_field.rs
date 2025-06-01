@@ -21,6 +21,7 @@ pub struct FinalInternalField {
     pub required: bool,
     pub default_value: FieldType,
     pub compute: Option<FieldCompute>,
+    // If type is M2O, O2M or M2M, there is an inverse here (but field could be empty)
     pub inverse: Option<FieldReference>,
     is_init: bool,
 }
@@ -39,6 +40,7 @@ impl FinalInternalField {
     }
     
     pub fn is_stored(&self) -> bool {
+        // TODO Add real stored system
         !matches!(self.default_value, FieldType::Refs(_))
     }
 

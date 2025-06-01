@@ -6,6 +6,8 @@ use std::any::TypeId;
 use std::error::Error;
 use erp::app::Application;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
 #[test]
 fn test_register_field() {
     let type_id = TypeId::of::<InternalField>();
@@ -195,7 +197,7 @@ fn test_register_field_with_another_default_type_should_fail() {
 }
 
 #[test]
-fn test_register_fields_with_real_model() -> Result<(), Box<dyn Error>> {
+fn test_register_fields_with_real_model() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");

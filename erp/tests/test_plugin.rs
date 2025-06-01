@@ -8,8 +8,10 @@ use test_plugin::TestPlugin;
 use test_plugin::TestPlugin2;
 use test_plugin::TestPlugin3;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
 #[test]
-fn test_load_same_plugin_twice() -> Result<(), Box<dyn Error>> {
+fn test_load_same_plugin_twice() -> Result<()> {
     let mut app = Application::new_test();
 
     app.register_plugin(Box::new(TestPlugin {}))
@@ -24,7 +26,7 @@ fn test_load_same_plugin_twice() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_load_plugin_init_models() -> Result<(), Box<dyn Error>> {
+fn test_load_plugin_init_models() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
@@ -44,7 +46,7 @@ fn test_load_plugin_init_models() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_load_plugin_depends() -> Result<(), Box<dyn Error>> {
+fn test_load_plugin_depends() -> Result<()> {
     let mut app = Application::new_test();
 
     app.register_plugin(Box::new(TestPlugin {}))

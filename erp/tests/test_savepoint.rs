@@ -6,6 +6,8 @@ use std::error::Error;
 use std::fmt;
 use test_utilities::models::SaleOrder;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
 #[derive(Debug, Clone)]
 pub struct UselessError {}
 
@@ -18,7 +20,7 @@ impl fmt::Display for UselessError {
 impl Error for UselessError {}
 
 #[test]
-fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
+fn test_savepoint_rollback() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     let mut env = app.new_env();
@@ -30,7 +32,7 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     env.cache.insert_fields_in_cache("sale_order", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
 
     let sale_order_line: SaleOrder<SingleId> = env.get_record(1.into());
-    let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
+    let _result: Result<()> = env.savepoint(|env| {
         // Update the record
         sale_order_line.set_name("1ddlyoko".to_string(), env)?;
         sale_order_line.set_total_price(420, env)?;
@@ -48,7 +50,7 @@ fn test_savepoint_rollback() -> Result<(), Box<dyn Error>> {
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 0);
 
     // Do it again, but here commit
-    let _result: Result<(), Box<dyn Error>> = env.savepoint(|env| {
+    let _result: Result<()> = env.savepoint(|env| {
         // Update the record
         sale_order_line.set_name("1ddlyoko".to_string(), env)?;
         sale_order_line.set_total_price(420, env)?;

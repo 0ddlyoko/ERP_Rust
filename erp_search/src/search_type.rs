@@ -1,6 +1,6 @@
+use crate::{InvalidDomainError, LeftTuple, RightTuple, SearchKey, SearchOperator, SearchTuple, UnknownSearchOperatorError};
 use std::error;
 use std::fmt::Display;
-use crate::{InvalidDomainError, SearchKey, SearchTuple, UnknownSearchOperatorError};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum SearchType {
@@ -12,22 +12,22 @@ pub enum SearchType {
 
 impl SearchType {
     /// Retrieve fields in "left" operator of all Tuple related to this field
-    pub fn get_fields<'a>(&'a self) -> Vec<&'a str> {
-        let mut result: Vec<&'a str> = vec![];
-        SearchType::handle_search_type(self, &mut result);
+    pub fn get_fields(&self) -> Vec<&LeftTuple> {
+        let mut result: Vec<&LeftTuple> = vec![];
+        self.handle_search_type(&mut result);
 
         result
     }
 
-    fn handle_search_type<'a>(search_type: &'a SearchType, result: &mut Vec<&'a str>)
+    fn handle_search_type<'a>(&'a self, result: &mut Vec<&'a LeftTuple>)
     {
-        match search_type {
+        match self {
             SearchType::And(left, right) | SearchType::Or(left, right) => {
                 SearchType::handle_search_type(left, result);
                 SearchType::handle_search_type(right, result);
             },
             SearchType::Tuple(tuple) => {
-                result.push(tuple.left.as_str());
+                result.push(&tuple.left);
             },
             SearchType::Nothing => {},
         }
@@ -41,24 +41,15 @@ impl From<SearchTuple> for SearchType
     }
 }
 
-impl<'a, E> TryFrom<(&'a str, E, &'a str)> for SearchType
+impl<L, OP, R> TryFrom<(L, OP, R)> for SearchType
 where
-    (&'a str, E, &'a str): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
+    L: Into<LeftTuple>,
+    OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
+    R: Into<RightTuple>
 {
     type Error = UnknownSearchOperatorError;
 
-    fn try_from(value: (&'a str, E, &'a str)) -> Result<Self, Self::Error> {
-        Ok(SearchType::Tuple(value.try_into()?))
-    }
-}
-
-impl<E> TryFrom<(String, E, String)> for SearchType
-where
-    (String, E, String): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
-{
-    type Error = UnknownSearchOperatorError;
-
-    fn try_from(value: (String, E, String)) -> Result<Self, Self::Error> {
+    fn try_from(value: (L, OP, R)) -> Result<Self, Self::Error> {
         Ok(SearchType::Tuple(value.try_into()?))
     }
 }

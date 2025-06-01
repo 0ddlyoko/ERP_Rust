@@ -15,7 +15,7 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     // Simple one
     let domain = make_domain!([("test", "=", "lol")]);
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
-        left: "test".to_string(),
+        left: "test".into(),
         operator: SearchOperator::Equal,
         right: RightTuple::String("lol".to_string()),
     }));
@@ -23,12 +23,12 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     let domain = make_domain!([("test", "=", "lol"), ("test", "=", "lol2")]);
     assert_eq!(domain, SearchType::And(
         Box::new(SearchType::Tuple(SearchTuple {
-            left: "test".to_string(),
+            left: "test".into(),
             operator: SearchOperator::Equal,
             right: RightTuple::String("lol".to_string()),
         })),
         Box::new(SearchType::Tuple(SearchTuple {
-            left: "test".to_string(),
+            left: "test".into(),
             operator: SearchOperator::Equal,
             right: RightTuple::String("lol2".to_string()),
         })),
@@ -37,11 +37,11 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     let domain = make_domain!(["|", ("test", "=", "lol"), ("test", "=", "lol2")]);
     assert_eq!(domain, SearchType::Or(
         Box::new(SearchType::Tuple(SearchTuple {
-            left: "test".to_string(),
+            left: "test".into(),
             operator: SearchOperator::Equal,
             right: RightTuple::String("lol".to_string()),
         })), Box::new(SearchType::Tuple(SearchTuple {
-            left: "test".to_string(),
+            left: "test".into(),
             operator: SearchOperator::Equal,
             right: RightTuple::String("lol2".to_string()),
         }))
@@ -52,18 +52,18 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(domain, SearchType::And(
         Box::new(SearchType::Or(
             Box::new(SearchType::Tuple(SearchTuple {
-                left: "test".to_string(),
+                left: "test".into(),
                 operator: SearchOperator::Equal,
                 right: RightTuple::String("lol".to_string()),
             })),
             Box::new(SearchType::Tuple(SearchTuple {
-                left: "test".to_string(),
+                left: "test".into(),
                 operator: SearchOperator::Equal,
                 right: RightTuple::String("lol2".to_string()),
             }))
         )),
         Box::new(SearchType::Tuple(SearchTuple {
-            left: "test".to_string(),
+            left: "test".into(),
             operator: SearchOperator::Equal,
             right: RightTuple::String("lol3".to_string()),
         }))
@@ -72,7 +72,7 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     // None
     let domain = make_domain!([("test", "=", None)]);
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
-        left: "test".to_string(),
+        left: "test".into(),
         operator: SearchOperator::Equal,
         right: RightTuple::None,
     }));
@@ -80,13 +80,13 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
     // Array
     let domain = make_domain!([("test", "=", Vec::<u32>::new())]);
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
-        left: "test".to_string(),
+        left: "test".into(),
         operator: SearchOperator::Equal,
         right: RightTuple::Array(vec![]),
     }));
     let domain = make_domain!([("test", "=", vec![1, 2, 3, 4])]);
     assert_eq!(domain, SearchType::Tuple(SearchTuple {
-        left: "test".to_string(),
+        left: "test".into(),
         operator: SearchOperator::Equal,
         right: RightTuple::Array(vec![
             RightTuple::Integer(1),

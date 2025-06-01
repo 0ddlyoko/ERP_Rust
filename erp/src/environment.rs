@@ -1,17 +1,17 @@
 use crate::cache::{Cache, Compute, Dirty, Update};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
-use crate::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
-use crate::model::{BaseModel, MapOfFields, Model, ModelManager, ModelNotFound};
-use erp_search::SearchType;
+use crate::field::{FieldReference, FieldType, IdMode, MultipleIds, SingleId};
+use crate::model::{MapOfFields, Model, ModelManager, ModelNotFound};
+use erp_search::{LeftTuple, SearchType};
 use erp_search_code_gen::make_domain;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use uuid::Uuid;
 
 const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
-type Result<E> = std::result::Result<E, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub struct Environment<'db, 'mm> {
     pub cache: Cache,
@@ -68,6 +68,62 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         }
     }
 
+    pub fn get_fields_to_save(&self, model_name: &str, fields: &Vec<&LeftTuple>) -> Result<HashMap<&'mm str, Vec<&'mm str>>> {
+        // TODO Save this result somewhere to avoid recomputing it again
+        let mut fields_to_save: HashMap<&str, HashSet<&str>> = HashMap::new();
+        if let Some(model) = self.model_manager.get_model(model_name) {
+            for field in fields {
+                let mut current_model = model;
+                for elem in &field.path {
+                    let final_field = current_model.get_internal_field(elem);
+                    let is_stored = final_field.is_stored();
+                    if is_stored {
+                        // If stored field, we need to save it to the database
+                        fields_to_save.entry(&current_model.name).or_default().insert(&final_field.name);
+                    }
+                    if let Some(FieldReference {target_model, inverse_field}) = &final_field.inverse {
+                        // Get target model to continue the process.
+                        // Also, if this field (or the target one) is a stored field, save it
+                        if let Some(target_model) = self.model_manager.get_model(target_model) {
+                            current_model = target_model;
+                            if !is_stored {
+                                if let Some(inverse_field) = inverse_field {
+                                    // If there is an inverse field, and it's a stored field, save it
+                                    let target_field = target_model.get_internal_field(inverse_field);
+                                    if target_field.is_stored() {
+                                        fields_to_save.entry(&target_model.name).or_default().insert(&target_field.name);
+                                    }
+                                }
+                            }
+                        } else {
+                            // TODO Add the domain in the error message
+                            return Err(ModelNotFound {
+                                model_name: model_name.to_string(),
+                            }.into());
+                        }
+                    }
+                }
+            }
+            // Transform HashMap<&str, HashSet<&str>> => HashMap<&str, Vec<&str>>
+            let map: HashMap<&str, Vec<&str>> = fields_to_save.into_iter().map(|(key, value)| (key, value.into_iter().collect::<Vec<_>>())).collect();
+            Ok(map)
+        } else {
+            Err(ModelNotFound {
+                model_name: model_name.to_string(),
+            }.into())
+        }
+    }
+
+    /// Save fields linked to a specific domain into the database
+    fn save_domain_fields_to_db(&mut self, model_name: &str, domain: &SearchType) -> Result<()> {
+        let fields = domain.get_fields();
+        let fields_to_save = self.get_fields_to_save(model_name, &fields)?;
+        for (model_name, fields) in fields_to_save {
+            self.save_fields_to_db(model_name, &fields)?;
+        }
+        Ok(())
+    }
+
     /// Save all data related to given model to database.
     ///
     /// Compute non-stored fields related to this model if needed.
@@ -99,6 +155,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 if model.is_stored(f) {
                     Some(f)
                 } else {
+                    // We don't save non-stored fields
+                    // TODO Handle related fields (O2M => M2O)
                     None
                 }
             }).collect::<Vec<&str>>();
@@ -189,7 +247,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
             return Ok(HashMap::new());
         }
         let domain = make_domain!([("id", "=", ids.get_ids_ref().clone())]);
-        let data = self.database.search(model_name, fields, &domain)?;
+        let data = self.database.search(model_name, fields, &domain, self.model_manager)?;
         Ok(data.into_iter().map(|(id, map)| {
             let map: HashMap<String, Option<FieldType>> = map.into_iter().map(|(key, value)| {
                 (key.to_string(), value.map(|v| v.into()))
@@ -255,11 +313,11 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     where
         M: Model<MultipleIds>,
     {
-        let fields_to_save = domain.get_fields();
-        // TODO Handle fields from different models
-        self.save_fields_to_db(M::get_model_name(), &fields_to_save)?;
+        // TODO Add limit
+        let model_name = M::get_model_name();
+        self.save_domain_fields_to_db(model_name, domain)?;
 
-        let ids = self.database.browse(M::get_model_name(), domain)?;
+        let ids = self.database.browse(M::get_model_name(), domain, self.model_manager)?;
         Ok(M::create_instance(ids.into()))
     }
 
