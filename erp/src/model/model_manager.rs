@@ -1,7 +1,7 @@
-use crate::field::MultipleIds;
+use crate::field::{FieldReference, FieldReferenceType, MultipleIds};
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
 pub struct ModelManager {
@@ -24,6 +24,37 @@ impl ModelManager {
             .entry(model_name.to_string())
             .or_insert_with(|| FinalInternalModel::new(model_name))
             .register_internal_model::<M>(plugin_name);
+    }
+
+    /// Execute some final modification when models are registered, like:
+    /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
+    pub fn post_register(&mut self) {
+        let mut fields_to_modify: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
+        for model in self.models.values() {
+            for field in model.fields.values() {
+                if let Some(FieldReference { target_model, inverse_field: FieldReferenceType::O2M { inverse_field } }) = &field.inverse {
+                    let model_to_modify = fields_to_modify.entry(target_model.clone()).or_default();
+                    let field_to_modify = model_to_modify.entry(inverse_field.clone()).or_default();
+                    field_to_modify.push(field.name.clone());
+                }
+            }
+        }
+        // Now, modify them
+        for (model_name, model_to_add) in fields_to_modify {
+            // TODO Check if unwrap or not
+            let model = self.get_model_mut(&model_name).unwrap();
+            for (field_name, mut fields_to_add) in model_to_add {
+                let field = model.get_internal_field_mut(&field_name);
+                if let Some(FieldReference { inverse_field: FieldReferenceType::M2O { inverse_fields }, .. }) = &mut field.inverse {
+                    inverse_fields.append(&mut fields_to_add);
+                    // Check uniqueness
+                    let mut seen = HashSet::new();
+                    inverse_fields.retain(|field| seen.insert(field.clone()));
+                } else {
+                    panic!("A field is targeting {}.{} as an inverse field, but this field is not a M2O", model_name, field_name);
+                }
+            }
+        }
     }
 
     pub fn get_models(&self) -> &HashMap<String, FinalInternalModel> {

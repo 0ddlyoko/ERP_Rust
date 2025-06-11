@@ -38,6 +38,12 @@ impl From<&str> for LeftTuple {
     }
 }
 
+impl From<&String> for LeftTuple {
+    fn from(value: &String) -> Self {
+        value.as_str().into()
+    }
+}
+
 impl From<String> for LeftTuple {
     fn from(value: String) -> Self {
         value.as_str().into()

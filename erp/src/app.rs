@@ -132,10 +132,11 @@ impl Application {
         plugin.pre_init();
         self.model_manager.current_plugin_loading = Some(plugin_name.to_string());
         plugin.init_models(&mut self.model_manager);
+        self.model_manager.post_register();
         self.model_manager.current_plugin_loading = None;
 
         // TODO Get all registered models, to update the database
-        let registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
+        let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
 
         // Well it looks like this works, but not the call to new_env ...
         let mut env = Environment::new(&self.model_manager, &mut self.database);

@@ -14,6 +14,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 fn test_fill_default_values_on_map() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.post_register();
     let env = app.new_env();
 
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
@@ -33,10 +34,11 @@ fn test_fill_default_values_on_map() -> Result<()> {
 }
 
 #[test]
-fn get_fields_to_save() -> Result<()> {
+fn test_get_fields_to_save() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
     let env = app.new_env();
 
     // Empty
@@ -94,6 +96,7 @@ fn get_fields_to_save() -> Result<()> {
 fn test_get_record() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     // Insert random data inside
@@ -157,6 +160,7 @@ fn test_get_record() -> Result<()> {
 fn test_get_record_from_xxx() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     // Insert random data inside
@@ -177,6 +181,7 @@ fn test_get_record_from_xxx() -> Result<()> {
 fn test_compute_method() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     // Insert random data inside
@@ -212,6 +217,7 @@ fn save_fields_to_db() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     let map: MapOfFields = MapOfFields::default();
@@ -281,6 +287,7 @@ fn search() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     // SO
@@ -325,7 +332,7 @@ fn search() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", sale_order.id.get_id());
     map.insert("amount", 69);
-    let sale_order_line_2: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    let _sale_order_line_2: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
     assert!(env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 50)]))?.id.is_empty());
     assert_eq!(sale_order_search.id, env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 69)]))?.id);
     assert_eq!(sale_order_search.id, env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 42)]))?.id);
@@ -338,15 +345,15 @@ fn search() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_1.id.get_id());
     map.insert("price", 10);
-    let line_1_1 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_1_1 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_1.id.get_id());
     map.insert("price", 49);
-    let line_1_2 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_1_2 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_1.id.get_id());
     map.insert("price", 10000);
-    let line_1_3 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_1_3 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
 
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("name", "name_2");
@@ -354,15 +361,15 @@ fn search() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_2.id.get_id());
     map.insert("price", 40);
-    let line_2_1 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_2_1 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_2.id.get_id());
     map.insert("price", 25);
-    let line_2_2 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_2_2 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("order", so_2.id.get_id());
     map.insert("price", 98);
-    let line_2_3 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    let _line_2_3 = env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
 
     let mut map: MapOfFields = MapOfFields::default();
     map.insert("name", "name_3");

@@ -1,5 +1,6 @@
+use test_utilities::TestLibPlugin;
 use test_plugin::TestPlugin;
-use erp::field::{FieldCompute, FieldType};
+use erp::field::{FieldCompute, FieldReferenceType, FieldType};
 use erp::internal::internal_field::FinalInternalField;
 use erp::internal::internal_field::InternalField;
 use std::any::TypeId;
@@ -218,6 +219,34 @@ fn test_register_fields_with_real_model() -> Result<()> {
     assert!(field.compute.is_none());
     assert!(field.required);
     assert_eq!(field.default_value, FieldType::String("".to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn test_reference_inverse_link() -> Result<()> {
+    let mut app = Application::new_test();
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+    let so_model = app.model_manager.get_model("sale_order");
+    assert!(so_model.is_some());
+    let so_model = so_model.unwrap();
+    let so_line_model = app.model_manager.get_model("sale_order_line");
+    assert!(so_line_model.is_some());
+    let so_line_model = so_line_model.unwrap();
+
+    let so_field_inverse = &so_model.get_internal_field("lines").inverse;
+    let so_line_field_inverse = &so_line_model.get_internal_field("order").inverse;
+    assert!(so_field_inverse.is_some());
+    assert!(so_line_field_inverse.is_some());
+    let so_field_inverse = so_field_inverse.as_ref().unwrap();
+    let so_line_field_inverse = so_line_field_inverse.as_ref().unwrap();
+
+    assert_eq!(so_field_inverse.target_model, "sale_order_line");
+    assert_eq!(so_line_field_inverse.target_model, "sale_order");
+
+    assert!(matches!(so_field_inverse.inverse_field.clone(), FieldReferenceType::O2M { inverse_field } if inverse_field == "order"));
+    assert!(matches!(so_line_field_inverse.inverse_field.clone(), FieldReferenceType::M2O { inverse_fields } if inverse_fields.contains(&"lines".to_string())));
 
     Ok(())
 }

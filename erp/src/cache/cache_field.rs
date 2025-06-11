@@ -3,7 +3,7 @@ use crate::field::FieldType;
 /// Cache for a single field
 #[derive(Default, Clone)]
 pub struct CacheField {
-    value: Option<FieldType>,
+    pub(crate) value: Option<FieldType>,
 }
 
 impl CacheField {

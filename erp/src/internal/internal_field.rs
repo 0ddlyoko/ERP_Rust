@@ -5,6 +5,7 @@ use std::collections::HashSet;
 /// Field descriptor represented by a single field in a single struct model
 pub struct InternalField {
     pub name: String,
+    // TODO Fix this, by separating default value and type of field
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: bool,

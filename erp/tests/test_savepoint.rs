@@ -23,6 +23,7 @@ impl Error for UselessError {}
 fn test_savepoint_rollback() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.post_register();
     let mut env = app.new_env();
 
     // Insert random data inside

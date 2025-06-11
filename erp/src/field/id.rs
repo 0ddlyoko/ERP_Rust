@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::slice::Iter;
 use std::vec::IntoIter;
+use erp_search::RightTuple;
+use crate::model::Model;
 
 #[derive(Default, Debug, Clone, Hash, Eq)]
 pub struct SingleId {
@@ -29,7 +31,8 @@ mod sealed {
     pub trait Sealed {}
 }
 
-pub trait IdMode: Sealed + Clone + Into<MultipleIds> + IntoIterator<Item = SingleId> + AsRef<[u32]> {
+// TODO Should we transform this into an enum, as we only have 2 structs ?
+pub trait IdMode: Sealed + Clone + Into<MultipleIds> + Into<RightTuple> + IntoIterator<Item = SingleId> + AsRef<[u32]> {
     /// Returns a vector containing ids saved in this reference
     fn get_ids_ref(&self) -> &Vec<u32>;
     /// Return the id at given pos.
@@ -69,11 +72,7 @@ impl AsRef<[u32]> for SingleId {
         &self.ids
     }
 }
-impl From<SingleId> for MultipleIds {
-    fn from(id: SingleId) -> Self {
-        id.get_id().into()
-    }
-}
+
 impl Sealed for SingleId {}
 
 impl IdMode for MultipleIds {
@@ -118,6 +117,18 @@ impl From<&u32> for SingleId {
     }
 }
 
+impl From<SingleId> for RightTuple {
+    fn from(id: SingleId) -> Self {
+        id.id.into()
+    }
+}
+
+impl From<&SingleId> for RightTuple {
+    fn from(id: &SingleId) -> Self {
+        id.id.into()
+    }
+}
+
 impl From<u32> for MultipleIds {
     fn from(id: u32) -> Self {
         MultipleIds { ids: vec![id] }
@@ -151,12 +162,18 @@ impl From<Vec<&u32>> for MultipleIds {
 // TODO Find a way to make it work
 // impl<E> From<E> for MultipleIds
 // where
-//     Vec<u32>: From<E>,
+//     E: Into<Vec<u32>>,
 // {
 //     fn from(value: E) -> Self {
 //         todo!()
 //     }
 // }
+
+impl From<SingleId> for MultipleIds {
+    fn from(id: SingleId) -> Self {
+        id.get_id().into()
+    }
+}
 
 impl From<&SingleId> for MultipleIds {
     fn from(id: &SingleId) -> Self {
@@ -187,6 +204,28 @@ impl From<&MultipleIds> for MultipleIds {
         Self {
             ids: ids.ids.clone(),
         }
+    }
+}
+
+// TODO Find a way to transform an IdMode into a MultipleIds
+impl<M> From<M> for MultipleIds
+where
+    M: Model<MultipleIds>
+{
+    fn from(value: M) -> Self {
+        value.get_id_mode().clone()
+    }
+}
+
+impl From<MultipleIds> for RightTuple {
+    fn from(id: MultipleIds) -> Self {
+        id.ids.into()
+    }
+}
+
+impl From<&MultipleIds> for RightTuple {
+    fn from(id: &MultipleIds) -> Self {
+        id.ids.iter().copied().collect::<Vec<u32>>().into()
     }
 }
 

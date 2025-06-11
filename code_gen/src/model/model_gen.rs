@@ -335,9 +335,9 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
 
         let field_reference = if *is_reference {
             let inverse_field = if let Some(inverse) = inverse {
-                quote! { Some(#inverse.to_string()) }
+                quote! { erp::field::FieldReferenceType::O2M { inverse_field: #inverse.to_string() } }
             } else {
-                quote! { None }
+                quote! { erp::field::FieldReferenceType::M2O { inverse_fields: Vec::new() } }
             };
 
             quote! {

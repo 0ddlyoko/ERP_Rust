@@ -76,7 +76,7 @@ impl Cache {
         for id in ids {
             let cache_model = cache_models.get_model(id);
             if let Some(cache_model) = cache_model {
-                if cache_model.get_field(field_name).is_some() {
+                if cache_model.get_field(field_name).is_none() {
                     result.push(*id);
                 }
             } else {

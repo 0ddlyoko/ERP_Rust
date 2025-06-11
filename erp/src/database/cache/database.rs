@@ -1,6 +1,6 @@
 use crate::database::cache::{Row, Table};
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
-use crate::field::FieldReference;
+use crate::field::{FieldReference, FieldReferenceType};
 use crate::model::{MapOfFields, ModelManager};
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
 use std::collections::{HashMap, HashSet};
@@ -63,13 +63,17 @@ impl CacheDatabase {
         } else {
             let mut result: Vec<u32> = Vec::new();
             let table = self.tables.get(&target_model.name).unwrap();
-            for id in ids {
-                let row = table.get_row(&id).unwrap();
-                if let Some(FieldType::UInteger(id)) = row.get_cell(inverse_field.as_ref().unwrap()) {
-                    result.push(*id)
+            if let FieldReferenceType::O2M { inverse_field } = inverse_field {
+                for id in ids {
+                    let row = table.get_row(&id).unwrap();
+                    if let Some(FieldType::UInteger(id)) = row.get_cell(inverse_field) {
+                        result.push(*id)
+                    }
                 }
+                result
+            } else {
+                panic!("Field {}.{} is of type M2O. This should not be possible here", target_model.name, current_field)
             }
-            result
         };
 
         ids
