@@ -606,9 +606,21 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         if let Some(final_model) = self.model_manager.get_model(model_name) {
             let mut missing_fields_lst = Vec::new();
 
-            for d in &mut data {
+            let mut fields_to_save_later: Vec<MapOfFields> = Vec::with_capacity(data.len());
+            for _ in 0..data.len() {
+                fields_to_save_later.push(MapOfFields::new(HashMap::new()));
+            }
+            for (i, d) in data.iter_mut().enumerate() {
                 // Remove non-stored fields
-                d.fields.retain(|field, _value| final_model.is_stored(field));
+                // TODO We could optimize this method (avoid cloning the value into another list)
+                d.fields.retain(|field, value| {
+                    if final_model.is_stored(field) {
+                        true
+                    } else {
+                        fields_to_save_later[i].insert_option(field, value.clone());
+                        false
+                    }
+                });
 
                 // Method "fill_default_values_on_map" should not add non-stored fields
                 let missing_fields = self.fill_default_values_on_map(model_name, d);
@@ -641,6 +653,13 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                         let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
                         self.cache.add_ids_to_recompute(model_name, &computed_fields, &[*id]);
                     }
+                }
+            }
+            // Now, we can save non-stored fields that have been given by this method
+            for (i, fields_to_save) in fields_to_save_later.into_iter().enumerate() {
+                let id = ids[i];
+                for (field_name, value) in fields_to_save.fields {
+                    self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
                 }
             }
 

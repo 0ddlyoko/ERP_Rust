@@ -135,10 +135,11 @@ fn test_x2x_fields() -> Result<()> {
     // Also, creating a new line that has a direct link to a SO should also have the correct SO
     let mut map: MapOfFields = MapOfFields::default();
     // TODO Clean this, to allow to pass "sale_order" instead of "sale_order.id.get_id()"
-    map.insert("sale_order", sale_order.id.get_id());
+    map.insert("order", sale_order.id.get_id());
     let sale_order_line_3: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
     assert!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.id.contains(sale_order_line.id.get_id_ref()));
     assert!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.id.contains(sale_order_line_2.id.get_id_ref()));
+    // TODO Fix this (save in cache if needed)
     assert!(sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?.id.contains(sale_order_line_3.id.get_id_ref()));
     assert_eq!(sale_order_line.get_order::<SaleOrder<_>>(&mut env)?.map(|order| order.id), Some(sale_order.id.clone()));
     assert_eq!(sale_order_line_2.get_order::<SaleOrder<_>>(&mut env)?.map(|order| order.id), Some(sale_order.id.clone()));
