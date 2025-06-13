@@ -14,6 +14,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 fn test_fill_default_values_on_map() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
     let env = app.new_env();
 
@@ -160,6 +161,7 @@ fn test_get_record() -> Result<()> {
 fn test_get_record_from_xxx() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env();
 
@@ -309,7 +311,7 @@ fn search() -> Result<()> {
 
     assert_eq!(*sale_order.get_name(&mut env)?, "0ddlyoko".to_string());
     assert_eq!(*sale_order.get_state(&mut env)?, SaleOrderState::Draft);
-    assert_eq!(*sale_order.get_total_price(&mut env)?, 0);
+    assert_eq!(*sale_order.get_total_price(&mut env)?, 420);
 
     // Update a record should still return this record
     sale_order.set_name("1ddlyoko".to_string(), &mut env)?;

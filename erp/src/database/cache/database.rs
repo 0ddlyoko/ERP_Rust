@@ -148,12 +148,12 @@ impl Database for CacheDatabase {
         Ok(result)
     }
 
-    fn create(&mut self, model_name: &str, data: Vec<MapOfFields>) -> Result<Vec<u32>> {
+    fn create(&mut self, model_name: &str, data: &Vec<&MapOfFields>) -> Result<Vec<u32>> {
         let table = self.tables.entry(model_name.to_string()).or_default();
         let mut ids = Vec::with_capacity(data.len());
         for d in data {
-            let cells = d.fields.into_iter().map(|(k, v)| {
-                let v = v.map(|value| value.into());
+            let cells = d.fields.iter().map(|(k, v)| {
+                let v = v.clone().map(|value| value.into());
                 (k.clone(), v)
             }).collect::<HashMap<_, _>>();
             let row = Row {

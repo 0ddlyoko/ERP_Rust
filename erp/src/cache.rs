@@ -127,6 +127,8 @@ impl Cache {
     /// Insert given fields to the cache.
     ///
     /// Update dirty if UpdateDirty is given, and a modification has been done
+    /// 
+    /// TODO To remove ?
     pub fn insert_fields_in_cache(
         &mut self,
         model_name: &str,

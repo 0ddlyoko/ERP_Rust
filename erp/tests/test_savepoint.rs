@@ -4,7 +4,7 @@ use erp::field::SingleId;
 use erp::model::MapOfFields;
 use std::error::Error;
 use std::fmt;
-use test_utilities::models::SaleOrder;
+use test_utilities::models::{SaleOrder, SaleOrderLine};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -23,6 +23,7 @@ impl Error for UselessError {}
 fn test_savepoint_rollback() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env();
 

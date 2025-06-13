@@ -13,6 +13,8 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 fn test_get_and_insert_field() {
     let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder<_>>();
+    model_manager.register_model::<SaleOrderLine<_>>();
+    model_manager.post_register();
     let mut cache = Cache::new(&model_manager);
     let id_1: SingleId = 1.into();
     let id_2: SingleId = 2.into();

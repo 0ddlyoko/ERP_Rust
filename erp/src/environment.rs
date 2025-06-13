@@ -52,13 +52,15 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     /// Load fields of given records from the database to the cache.
     ///
     /// If fields are already loaded, they will still be retrieved from the database but not updated
-    pub fn load_records_fields_from_db<'a, Mode: IdMode>(&'a mut self, model_name: &str, ids: &Mode, fields: &'a [&str]) -> Result<()> {
+    pub fn load_records_fields_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode, fields: &[&str]) -> Result<()> {
         let ids_to_load: MultipleIds = ids.get_ids_ref().into();
         let fields_from_db = self.get_fields_from_db(model_name, &ids_to_load, fields);
         match fields_from_db {
             Ok(values) => {
                 for (id, map_of_fields) in values {
-                    self.cache.insert_fields_in_cache(model_name, id.get_id(), map_of_fields, &Dirty::NotUpdateDirty, &Update::NotUpdateIfExists);
+                    for (field_name, field_value) in map_of_fields.fields {
+                        self.save_field_to_cache(model_name, &field_name, &id, field_value, &Dirty::NotUpdateDirty, &Dirty::NotUpdateDirty, &Update::UpdateIfExists, &Compute::NotResetCompute)?;
+                    }
                 }
                 Ok(())
             }
@@ -280,7 +282,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     pub fn insert_data_to_db(
         &mut self,
         model_name: &str,
-        data: Vec<MapOfFields>,
+        data: &Vec<&MapOfFields>,
     ) -> Result<Vec<u32>> {
         self.database.create(model_name, data)
     }
@@ -336,8 +338,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     }
 
     pub fn get_fields_value<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode) -> Result<Vec<Option<&FieldType>>>
-    where
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         self.ensure_fields_in_cache(model_name, field_name, ids)?;
 
@@ -383,6 +383,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 // This is a stored field, load it along with all the other stored fields to avoid
                 //  multiple database calls
                 let fields_to_load = model_info.get_stored_fields();
+                // TODO Shouldn't we save those fields (if they are dirty in cache) to the database ?
                 self.load_records_fields_from_db(model_name, &ids_not_in_cache, &fields_to_load)?;
             } else if is_computed_method {
                 // TODO Check if a O2M computed field is correctly handled here
@@ -392,7 +393,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 // O2M, load the field with related M2O
                 // TODO Add search_group(...)
                 let data = self.database.search(target_model, &[inverse_field], &make_domain!([(inverse_field, "=", ids.clone())]), self.model_manager)?;
-                let mut o2m_ids: HashMap<u32, Vec<u32>> = HashMap::new();
+                let existing_ids= data.iter().map(|(id, _map)| *id).collect::<HashSet<u32>>();
                 for (id, mut map) in data {
                     // Data should exist in database, and should not be empty, so we unwrap 2 times
                     let result = map.remove(inverse_field.as_str()).unwrap().unwrap();
@@ -401,22 +402,11 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                         // Only "UInteger" should be there. If it's not the case, there is an issue somewhere
                         _ => panic!("Only UInteger should return here, and not {result}"),
                     };
-                    o2m_ids.entry(target_id).or_default().push(target_id);
-                    // Save the M2O to the cache
-                    self.cache.insert_field_in_cache(target_model, inverse_field, &[id], Some(FieldType::Ref(target_id)), &Dirty::NotUpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
-                }
-                // Now, save the O2M to the cache
-                for (o2m_id, ids) in &o2m_ids {
-                    self.cache.insert_field_in_cache(model_name, field_name, &[*o2m_id], Some(ids.into()), &Dirty::NotUpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
+                    // Save the M2O to the cache. This will also save the O2M thanks to the save_field_to_cache method
+                    self.save_field_to_cache::<SingleId>(target_model, inverse_field, &id.into(), Some(FieldType::Ref(target_id)), &Dirty::NotUpdateDirty, &Dirty::NotUpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute)?;
                 }
                 // It's possible some ids don't have any value. If that's the case, save it to the cache
-                let ids_not_linked = ids.get_ids_ref().iter().filter_map(|id| {
-                    if o2m_ids.contains_key(id) {
-                        None
-                    } else {
-                        Some(*id)
-                    }
-                }).collect::<Vec<_>>();
+                let ids_not_linked = ids.get_ids_ref().iter().filter(|id| existing_ids.contains(id)).copied().collect::<Vec<u32>>();
                 if !ids_not_linked.is_empty() {
                     self.cache.insert_field_in_cache(model_name, field_name, &ids_not_linked, None, &Dirty::NotUpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
                 }
@@ -436,7 +426,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     pub fn save_value_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: E) -> Result<()>
     where
         E: Into<FieldType>,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         self.save_option_to_cache(model_name, field_name, ids, Some(value))
     }
@@ -444,39 +433,48 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     pub fn save_option_to_cache<Mode: IdMode, E>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<E>) -> Result<()>
     where
         E: Into<FieldType>,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let field_type: Option<FieldType> = value.map(|value| value.into());
 
-        // If it's a O2M, we will transform this call into another call where we modify M2O instead
-        let model_info = self.model_manager.get_model(model_name);
-        if model_info.is_none() {
+        self.save_field_to_cache(model_name, field_name, ids, field_type, &Dirty::UpdateDirty, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute)
+    }
+
+    /// Save given field to cache.
+    ///
+    /// This method ensure M2O & O2M are correctly linked in cache (if those methods are loaded)
+    fn save_field_to_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<FieldType>, update_dirty: &Dirty, update_target_dirty: &Dirty, update_field: &Update, reset_compute: &Compute) -> Result<()> {
+        if field_name == "id" {
+            return Ok(())
+        }
+        let internal_model = self.model_manager.get_model(model_name);
+        if internal_model.is_none() {
             return Err(ModelNotFound {
                 model_name: model_name.to_string(),
             }.into());
         }
-        let model_info = model_info.unwrap();
-        let field_info = model_info.get_internal_field(field_name);
+        let internal_model = internal_model.unwrap();
+        let field_info = internal_model.get_internal_field(field_name);
         if let Some(FieldReference { target_model, inverse_field }) = &field_info.inverse {
             // M2O or O2M
-            match inverse_field {
+            return match inverse_field {
                 // For now, M2M is not handled, so it's a O2M (as there is an inverse field)
                 // Call this method for each field that has been modified.
                 // To be able to do this, we need to retrieve old data, and compare it with the new data
                 //FieldReferenceType::M2M { ... } => { ... }
 
                 FieldReferenceType::O2M { inverse_field } => {
-                    let new_ids = match field_type.clone() {
+                    let new_ids = match value.clone() {
                         None => HashSet::new(),
                         Some(FieldType::Ref(id)) => HashSet::from([id]),
                         Some(FieldType::Refs(ids)) => ids.iter().copied().collect(),
-                        _ => panic!("Only Ref and Refs are accepted field type, and not {:?}", field_type),
+                        _ => panic!("Only Ref and Refs are accepted field type, and not {:?}", value),
                     };
 
                     // First, save existing data in database (in case a modification has been done previously)
                     self.save_fields_to_db(target_model, &[inverse_field])?;
 
                     // Now, load old data to the cache (if it's not already done) and get it
+                    // TODO Do not call get_fields_value, because it will call again this method
                     let data = self.get_fields_value(model_name, field_name, ids)?;
                     // For removed ids, we can batch the save call
                     let mut ids_removed: Vec<u32> = Vec::new();
@@ -487,7 +485,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             None => HashSet::new(),
                             Some(FieldType::Ref(id)) => HashSet::from([*id]),
                             Some(FieldType::Refs(ids)) => ids.iter().copied().collect(),
-                            _ => panic!("Only Ref and Refs are accepted field type, and not {:?}", field_type),
+                            _ => panic!("Only Ref and Refs are accepted field type, and not {:?}", value),
                         };
 
                         ids_removed.extend(old_ids.difference(&new_ids));
@@ -495,30 +493,31 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     }
 
                     if !ids_removed.is_empty() {
-                        self.save_option_to_cache::<MultipleIds, E>(target_model, inverse_field, &ids_removed.into(), None)?;
+                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids_removed.into(), None, update_dirty, update_target_dirty, update_field, reset_compute)?;
                     }
                     for (id, ids) in ids_added {
-                        self.save_option_to_cache::<MultipleIds, FieldType>(target_model, inverse_field, &ids.into(), Some(FieldType::Ref(id)))?;
+                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids.into(), Some(FieldType::Ref(id)), update_dirty, update_target_dirty, update_field, reset_compute)?;
                     }
-                    return Ok(())
+                    Ok(())
                 }
                 FieldReferenceType::M2O { inverse_fields } => {
                     // TODO Later, when we will be able to create a O2M linked to a M2O but with a domain, we need to adapt this code to filter it
 
-                    let new_id = match field_type.clone() {
+                    let new_id = match value.clone() {
                         None => None,
                         Some(FieldType::Ref(id)) => Some(id),
-                        _ => panic!("Only Ref is accepted field type, and not {:?}", field_type),
+                        _ => panic!("Only Ref is accepted field type, and not {:?}", value),
                     };
 
                     // For a M2O, we need to verify the old value compared to the new one, and update the related O2M if it's loaded in cache
                     // Method get_fields_value loads the field in cache, so we don't need to call it again here
+                    // TODO Do not call get_fields_value, because it will call again this method
                     let old_values = self.get_fields_value(model_name, field_name, ids)?;
                     // Transform this Vec<Option<&FieldType>> into a Vec<Option<FieldType>>, so that we can retrieve the &mut cache_model
                     let old_values: Vec<Option<FieldType>> = old_values.into_iter().map(|old_value| old_value.cloned()).collect();
 
                     // Now, remove the old id from the lists
-                    // TODO Pass by another method, so that it also automatically trigger computes
+                    // TODO Pass by another method, so that it also automatically triggers computes
                     let cache_models = self.cache.get_cache_models_mut(target_model);
                     for (i, old_value) in old_values.iter().enumerate() {
                         if let Some(FieldType::Ref(ref_id)) = old_value {
@@ -528,6 +527,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             // If this target is not in cache, we do nothing
                             if let Some(cache_model) = cache_model {
                                 for inverse_field in inverse_fields {
+                                    // TODO Pass by a new method in cache to add / remove values from list
                                     let cache_field = cache_model.get_field_mut(inverse_field);
                                     // If this field is not in cache, we do nothing
                                     if let Some(CacheField { value: Some(FieldType::Refs(vecs)) }) = cache_field {
@@ -539,10 +539,10 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     }
 
                     // Done, now update the id in the cache
-                    self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
+                    self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value, update_dirty, &Update::UpdateIfExists, &Compute::ResetCompute);
 
                     // Finally, add the id to the new list
-                    // TODO Pass by another method, so that it also automatically trigger computes
+                    // TODO Pass by another method, so that it also automatically triggers computes
                     if let Some(new_id) = new_id {
                         let cache_models = self.cache.get_cache_models_mut(target_model);
                         // We only modify if the target model is present in cache
@@ -551,6 +551,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                                 let cache_field = cache_model.get_field_mut(inverse_field);
                                 // If this field is not in cache, we do nothing
                                 if let Some(cache_field) = cache_field {
+                                    // TODO Pass by a new method in cache to add / remove values from list
                                     if let Some(FieldType::Refs(vecs)) = &mut cache_field.value {
                                         vecs.extend(ids.get_ids_ref());
                                     } else {
@@ -561,12 +562,12 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                         }
                     }
 
-                    return Ok(())
+                    Ok(())
                 }
             }
         }
 
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value, update_dirty, &Update::UpdateIfExists, &Compute::ResetCompute);
         Ok(())
     }
 
@@ -606,30 +607,21 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         if let Some(final_model) = self.model_manager.get_model(model_name) {
             let mut missing_fields_lst = Vec::new();
 
-            let mut fields_to_save_later: Vec<MapOfFields> = Vec::with_capacity(data.len());
-            for _ in 0..data.len() {
-                fields_to_save_later.push(MapOfFields::new(HashMap::new()));
-            }
-            for (i, d) in data.iter_mut().enumerate() {
-                // Remove non-stored fields
-                // TODO We could optimize this method (avoid cloning the value into another list)
-                d.fields.retain(|field, value| {
-                    if final_model.is_stored(field) {
-                        true
-                    } else {
-                        fields_to_save_later[i].insert_option(field, value.clone());
-                        false
-                    }
-                });
-
-                // Method "fill_default_values_on_map" should not add non-stored fields
+            // Add missing fields
+            for d in data.iter_mut() {
                 let missing_fields = self.fill_default_values_on_map(model_name, d);
                 missing_fields_lst.push(missing_fields)
             }
+            // Create a list that will only contain stored fields (to save in db)
+            let mut stored_data = data.clone();
+            stored_data.iter_mut().for_each(|map| {
+                map.fields.retain(|field, _value| {
+                    final_model.is_stored(field)
+                });
+            });
 
-            let ids = self.insert_data_to_db(model_name, data)?;
-            // This should not fail
-            assert_eq!(ids.len(), missing_fields_lst.len(), "Len of ids should be equals to len of missing fields. {} != {}. Ids = {:?}", ids.len(), missing_fields_lst.len(), ids);
+
+            let ids = self.insert_data_to_db(model_name, &stored_data.iter().map(|d| d).collect())?;
 
             missing_fields_lst.reverse();
             // Once added in database, we should set all stored computed methods as to_recompute
@@ -637,29 +629,30 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 if let Some(missing_fields) = missing_fields_lst.pop().flatten() {
                     let final_internal_model = self.model_manager.get_model(model_name);
                     if let Some(final_internal_model) = final_internal_model {
-                        // I need to transform this Vec<&str> to a Vec<String> to a Vec<&str>,
-                        // otherwise I had a mutable error in add_ids_to_recompute
-                        // If someone has a solution to this, please let me know
                         let computed_fields_string = missing_fields
                             .into_iter()
                             .filter_map(|f| {
                                 if final_internal_model.is_computed_field(f) {
-                                    Some(f.to_string())
+                                    Some(f)
                                 } else {
                                     None
                                 }
                             })
-                            .collect::<Vec<String>>();
-                        let computed_fields: Vec<&str> = computed_fields_string.iter().map(|s| s.as_str()).collect();
-                        self.cache.add_ids_to_recompute(model_name, &computed_fields, &[*id]);
+                            .collect::<Vec<&str>>();
+                        self.cache.add_ids_to_recompute(model_name, &computed_fields_string, &[*id]);
                     }
                 }
             }
-            // Now, we can save non-stored fields that have been given by this method
-            for (i, fields_to_save) in fields_to_save_later.into_iter().enumerate() {
+            // Now, we can update cache for given fields
+            for (i, d) in data.into_iter().enumerate() {
                 let id = ids[i];
-                for (field_name, value) in fields_to_save.fields {
-                    self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
+                for (field_name, value) in d.fields {
+                    if final_model.is_stored(&field_name) {
+                        // If it's stored, it's already in the database. Load it in cache
+                        self.ensure_fields_in_cache::<SingleId>(model_name, &field_name, &id.into())?;
+                    } else {
+                        self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
+                    }
                 }
             }
 
