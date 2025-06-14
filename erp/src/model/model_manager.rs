@@ -61,6 +61,7 @@ impl ModelManager {
         &self.models
     }
 
+    // TODO Do not return an option
     pub fn get_model(&self, model_name: &str) -> Option<&FinalInternalModel> {
         self.models.get(model_name)
     }
