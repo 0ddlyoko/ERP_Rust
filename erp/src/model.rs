@@ -181,7 +181,6 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     where
         M: Model<MultipleIds, BaseModel=BM2>,
         BM2: BaseModel,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let ids = self.get_id_mode();
@@ -207,7 +206,6 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     pub fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: Into<FieldType>,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
@@ -218,7 +216,6 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     pub fn set_option<E>(&self, field_name: &str, value: Option<E>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: Into<FieldType>,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
@@ -229,7 +226,6 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     pub fn set_reference<E>(&self, field_name: &str, value: Reference<E, SingleId>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: BaseModel,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();
@@ -240,7 +236,6 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     pub fn set_references<E>(&self, field_name: &str, value: Reference<E, MultipleIds>, env: &mut Environment) -> Result<(), Box<dyn std::error::Error>>
     where
         E: BaseModel,
-        for<'a> &'a Mode: IntoIterator<Item = SingleId>,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
         let id_mode = self.get_id_mode();

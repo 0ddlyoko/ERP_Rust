@@ -203,15 +203,10 @@ fn test_register_fields_with_real_model() -> Result<()> {
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 
-    let model = app.model_manager.get_model("sale_order_test");
-    // Should be none as the plugin is registered but not loaded
-    assert!(model.is_none());
     app.load_plugin("test_plugin")?;
 
-    let model = app.model_manager.get_model("sale_order_test");
     // Should exist as the plugin is registered and loaded
-    assert!(model.is_some());
-    let model = model.unwrap();
+    let model = app.model_manager.get_model("sale_order_test");
     let field = model.get_internal_field("name");
     assert_eq!(field.name, "name");
     // Description should be overridden
@@ -229,11 +224,7 @@ fn test_reference_inverse_link() -> Result<()> {
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
     let so_model = app.model_manager.get_model("sale_order");
-    assert!(so_model.is_some());
-    let so_model = so_model.unwrap();
     let so_line_model = app.model_manager.get_model("sale_order_line");
-    assert!(so_line_model.is_some());
-    let so_line_model = so_line_model.unwrap();
 
     let so_field_inverse = &so_model.get_internal_field("lines").inverse;
     let so_line_field_inverse = &so_line_model.get_internal_field("order").inverse;

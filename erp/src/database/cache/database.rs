@@ -50,11 +50,11 @@ impl CacheDatabase {
         if path.is_empty() {
             return self._get_rows(model_name, &current_field, operator, right);
         }
-        let model = model_manager.get_model(model_name).unwrap_or_else(|| panic!("Model {} does not exist. This should not occur, as this is checked in method get_fields_to_save", model_name));
+        let model = model_manager.get_model(model_name);
         let final_field = model.get_internal_field(&current_field);
 
         let FieldReference {target_model, inverse_field} = final_field.inverse.as_ref().unwrap_or_else(|| panic!("Field {}.{} doesn't have any inverse fields. This should not occur, as this is checked in method get_fields_to_save", model_name, current_field));
-        let target_model = model_manager.get_model(target_model).unwrap_or_else(|| panic!("Model {} does not exist. This should not occur, as this is checked in method get_fields_to_save", target_model));
+        let target_model = model_manager.get_model(target_model);
 
         let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
 

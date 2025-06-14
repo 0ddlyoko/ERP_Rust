@@ -31,7 +31,6 @@ impl Cache {
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models(&self, model_name: &str) -> &CacheModels {
-        // TODO Do not panic
         self.cache
             .get(model_name)
             .unwrap_or_else(|| panic!("Model {} not found", model_name))
@@ -39,7 +38,6 @@ impl Cache {
 
     /// Returns CacheModels linked to given model. If CacheModels not found, panic
     pub fn get_cache_models_mut(&mut self, model_name: &str) -> &mut CacheModels {
-        // TODO Do not panic
         self.cache
             .get_mut(model_name)
             .unwrap_or_else(|| panic!("Model {} not found", model_name))
@@ -222,13 +220,11 @@ impl Cache {
     }
 
     pub fn add_ids_to_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
-        // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.add_to_recompute(fields_name, ids);
     }
 
     pub fn remove_ids_from_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
-        // TODO Pass a list of ids instead of IdMode
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.remove_to_recompute(fields_name, ids);
     }

@@ -41,8 +41,7 @@ impl ModelManager {
         }
         // Now, modify them
         for (model_name, model_to_add) in fields_to_modify {
-            // TODO Check if unwrap or not
-            let model = self.get_model_mut(&model_name).unwrap();
+            let model = self.get_model_mut(&model_name);
             for (field_name, mut fields_to_add) in model_to_add {
                 let field = model.get_internal_field_mut(&field_name);
                 if let Some(FieldReference { inverse_field: FieldReferenceType::M2O { inverse_fields }, .. }) = &mut field.inverse {
@@ -61,13 +60,12 @@ impl ModelManager {
         &self.models
     }
 
-    // TODO Do not return an option
-    pub fn get_model(&self, model_name: &str) -> Option<&FinalInternalModel> {
-        self.models.get(model_name)
+    pub fn get_model(&self, model_name: &str) -> &FinalInternalModel {
+        self.models.get(model_name).unwrap()
     }
 
-    pub fn get_model_mut(&mut self, model_name: &str) -> Option<&mut FinalInternalModel> {
-        self.models.get_mut(model_name)
+    pub fn get_model_mut(&mut self, model_name: &str) -> &mut FinalInternalModel {
+        self.models.get_mut(model_name).unwrap()
     }
 
     pub fn is_valid_model(&self, model_name: &str) -> bool {

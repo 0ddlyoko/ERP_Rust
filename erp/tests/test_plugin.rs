@@ -31,13 +31,9 @@ fn test_load_plugin_init_models() -> Result<()> {
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 
-    let model = app.model_manager.get_model("sale_order_test");
-    assert!(model.is_none());
-
-    // Load plugin should create the model
+    // Load plugin should create the model (and so, it should not fail)
     app.load_plugin("test_plugin")?;
-    let model = app.model_manager.get_model("sale_order_test");
-    assert!(model.is_some());
+    app.model_manager.get_model("sale_order_test");
 
     // Load the plugin again shouldn't generate any errors
     app.load_plugin("test_plugin")?;

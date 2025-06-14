@@ -95,12 +95,7 @@ fn main() {
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));
 
     let model = app.model_manager.get_model("sale_order_test");
-    if model.is_none() {
-        println!("No model found");
-    } else {
-        let model = model.unwrap();
-        println!("Models: {}", model.name);
-    }
+    println!("Models: {}", model.name);
 
     app.unload();
 }

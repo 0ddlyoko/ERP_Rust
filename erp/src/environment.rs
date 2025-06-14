@@ -2,7 +2,7 @@ use crate::cache::{Cache, CacheField, Compute, Dirty, Update};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::field::{FieldReference, FieldReferenceType, FieldType, IdMode, MultipleIds, SingleId};
-use crate::model::{MapOfFields, Model, ModelManager, ModelNotFound};
+use crate::model::{MapOfFields, Model, ModelManager};
 use erp_search::{LeftTuple, SearchType};
 use erp_search_code_gen::make_domain;
 use std::collections::{HashMap, HashSet};
@@ -36,15 +36,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     ///
     /// If the record is already present in cache, do nothing
     pub fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()>
-    where for<'a> &'a Mode: IntoIterator<Item = SingleId>
     {
         let internal_model = self.model_manager.get_model(model_name);
-        if internal_model.is_none() {
-            return Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into());
-        }
-        let internal_model = internal_model.unwrap();
         let fields = internal_model.get_stored_fields();
         self.load_records_fields_from_db(model_name, ids, &fields)
     }
@@ -73,47 +66,36 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     pub fn get_fields_to_save(&self, model_name: &str, fields: &Vec<&LeftTuple>) -> Result<HashMap<&'mm str, Vec<&'mm str>>> {
         // TODO Save this result somewhere to avoid recomputing it again
         let mut fields_to_save: HashMap<&str, HashSet<&str>> = HashMap::new();
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            for field in fields {
-                let mut current_model = model;
-                for elem in &field.path {
-                    let final_field = current_model.get_internal_field(elem);
-                    let is_stored = final_field.is_stored();
-                    if is_stored {
-                        // If stored field, we need to save it to the database
-                        fields_to_save.entry(&current_model.name).or_default().insert(&final_field.name);
-                    }
-                    if let Some(FieldReference {target_model, inverse_field}) = &final_field.inverse {
-                        // Get target model to continue the process.
-                        // Also, if this field (or the target one) is a stored field, save it
-                        if let Some(target_model) = self.model_manager.get_model(target_model) {
-                            current_model = target_model;
-                            if !is_stored {
-                                if let FieldReferenceType::O2M { inverse_field } = inverse_field {
-                                    // If there is an inverse field, and it's a stored field, save it
-                                    let target_field = target_model.get_internal_field(inverse_field);
-                                    if target_field.is_stored() {
-                                        fields_to_save.entry(&target_model.name).or_default().insert(&target_field.name);
-                                    }
-                                }
+        let model = self.model_manager.get_model(model_name);
+        for field in fields {
+            let mut current_model = model;
+            for elem in &field.path {
+                let final_field = current_model.get_internal_field(elem);
+                let is_stored = final_field.is_stored();
+                if is_stored {
+                    // If stored field, we need to save it to the database
+                    fields_to_save.entry(&current_model.name).or_default().insert(&final_field.name);
+                }
+                if let Some(FieldReference {target_model, inverse_field}) = &final_field.inverse {
+                    // Get target model to continue the process.
+                    // Also, if this field (or the target one) is a stored field, save it
+                    let target_model = self.model_manager.get_model(target_model);
+                    current_model = target_model;
+                    if !is_stored {
+                        if let FieldReferenceType::O2M { inverse_field } = inverse_field {
+                            // If there is an inverse field, and it's a stored field, save it
+                            let target_field = target_model.get_internal_field(inverse_field);
+                            if target_field.is_stored() {
+                                fields_to_save.entry(&target_model.name).or_default().insert(&target_field.name);
                             }
-                        } else {
-                            // TODO Add the domain in the error message
-                            return Err(ModelNotFound {
-                                model_name: model_name.to_string(),
-                            }.into());
                         }
                     }
                 }
             }
-            // Transform HashMap<&str, HashSet<&str>> => HashMap<&str, Vec<&str>>
-            let map: HashMap<&str, Vec<&str>> = fields_to_save.into_iter().map(|(key, value)| (key, value.into_iter().collect::<Vec<_>>())).collect();
-            Ok(map)
-        } else {
-            Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into())
         }
+        // Transform HashMap<&str, HashSet<&str>> => HashMap<&str, Vec<&str>>
+        let map: HashMap<&str, Vec<&str>> = fields_to_save.into_iter().map(|(key, value)| (key, value.into_iter().collect::<Vec<_>>())).collect();
+        Ok(map)
     }
 
     /// Save fields linked to a specific domain into the database
@@ -152,36 +134,31 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     ///
     /// Remove from the original list non-stored fields
     pub fn save_fields_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            let fields = fields.iter().filter_map(|&f| {
-                if model.is_stored(f) {
-                    Some(f)
-                } else {
-                    // We don't save non-stored fields
-                    // TODO Handle related fields (O2M => M2O)
-                    None
-                }
-            }).collect::<Vec<&str>>();
-
-            self.call_computed_method_on_fields(model_name, &fields)?;
-
-            let dirty_map_of_fields = self.get_dirty_fields(model_name, &fields);
-
-            if dirty_map_of_fields.is_empty() {
-                return Ok(());
+        let model = self.model_manager.get_model(model_name);
+        let fields = fields.iter().filter_map(|&f| {
+            if model.is_stored(f) {
+                Some(f)
+            } else {
+                // We don't save non-stored fields
+                // TODO Handle related fields (O2M => M2O)
+                None
             }
-            let dirty_map_of_fields_ref = dirty_map_of_fields.iter().map(|(&key, value)| (key, value)).collect();
-            self.save_data_to_db(model_name, &dirty_map_of_fields_ref)?;
+        }).collect::<Vec<&str>>();
 
-            // Now that it's saved in db, clear dirty fields
-            let dirty_ids: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
-            self.cache.clear_dirty_fields(model_name, &fields, &dirty_ids);
-            Ok(())
-        } else {
-            Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into())
+        self.call_computed_method_on_fields(model_name, &fields)?;
+
+        let dirty_map_of_fields = self.get_dirty_fields(model_name, &fields);
+
+        if dirty_map_of_fields.is_empty() {
+            return Ok(());
         }
+        let dirty_map_of_fields_ref = dirty_map_of_fields.iter().map(|(&key, value)| (key, value)).collect();
+        self.save_data_to_db(model_name, &dirty_map_of_fields_ref)?;
+
+        // Now that it's saved in db, clear dirty fields
+        let dirty_ids: MultipleIds = dirty_map_of_fields.keys().collect::<MultipleIds>();
+        self.cache.clear_dirty_fields(model_name, &fields, &dirty_ids);
+        Ok(())
     }
 
     /// Save given record to the database.
@@ -210,11 +187,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
 
     /// Get all dirty stored fields for given model
     pub fn get_dirty_stored_models(&self, model_name: &str) -> HashMap<u32, MapOfFields> {
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            self.cache.get_dirty_models(model_name, |field_name| model.is_stored(field_name))
-        } else {
-            HashMap::new()
-        }
+        let model = self.model_manager.get_model(model_name);
+        self.cache.get_dirty_models(model_name, |field_name| model.is_stored(field_name))
     }
 
     /// Get dirty fields from given list of fields
@@ -224,11 +198,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
 
     /// Get all dirty stored fields for given records
     pub fn get_dirty_stored_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields> {
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            self.get_dirty_filtered_records(model_name, ids, |field_name| model.is_stored(field_name))
-        } else {
-            HashMap::new()
-        }
+        let model = self.model_manager.get_model(model_name);
+        self.get_dirty_filtered_records(model_name, ids, |field_name| model.is_stored(field_name))
     }
 
     /// Get all dirty filtered fields for given records
@@ -363,12 +334,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         if !ids_not_in_cache.is_empty() || !ids_to_recompute.is_empty() {
             // Load given fields
             let model_info = self.model_manager.get_model(model_name);
-            if model_info.is_none() {
-                return Err(ModelNotFound {
-                    model_name: model_name.to_string(),
-                }.into());
-            }
-            let model_info = model_info.unwrap();
             let field_info = model_info.get_internal_field(field_name);
             let is_computed_method = field_info.compute.is_some();
             if !ids_to_recompute.is_empty() && is_computed_method {
@@ -473,13 +438,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
 
         if !ids_not_in_cache.is_empty() {
             let model_info = self.model_manager.get_model(model_name);
-            if model_info.is_none() {
-                return Err(ModelNotFound {
-                    model_name: model_name.to_string(),
-                }.into());
-            }
 
-            let field_info = model_info.unwrap().get_internal_field(field_name);
+            let field_info = model_info.get_internal_field(field_name);
             if field_info.is_stored() {
                 // Load from database
                 let database_result = self.database.search(model_name, &[field_name], &make_domain!([("id", "=", ids_not_in_cache)]), self.model_manager)?;
@@ -559,12 +519,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
             return Ok(())
         }
         let internal_model = self.model_manager.get_model(model_name);
-        if internal_model.is_none() {
-            return Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into());
-        }
-        let internal_model = internal_model.unwrap();
         let field_info = internal_model.get_internal_field(field_name);
         if let Some(FieldReference { target_model, inverse_field }) = &field_info.inverse {
             // M2O or O2M
@@ -709,64 +663,57 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         mut data: Vec<MapOfFields>,
     ) -> Result<MultipleIds>
     {
-        if let Some(final_model) = self.model_manager.get_model(model_name) {
-            let mut missing_fields_lst = Vec::new();
+        let final_model = self.model_manager.get_model(model_name);
+        let mut missing_fields_lst = Vec::new();
 
-            // Add missing fields
-            for d in data.iter_mut() {
-                let missing_fields = self.fill_default_values_on_map(model_name, d);
-                missing_fields_lst.push(missing_fields)
-            }
-            // Create a list that will only contain stored fields (to save in db)
-            let mut stored_data = data.clone();
-            stored_data.iter_mut().for_each(|map| {
-                map.fields.retain(|field, _value| {
-                    final_model.is_stored(field)
-                });
-            });
-
-
-            let ids = self.insert_data_to_db(model_name, &stored_data.iter().map(|d| d).collect())?;
-
-            missing_fields_lst.reverse();
-            // Once added in database, we should set all stored computed methods as to_recompute
-            for id in &ids {
-                if let Some(missing_fields) = missing_fields_lst.pop().flatten() {
-                    let final_internal_model = self.model_manager.get_model(model_name);
-                    if let Some(final_internal_model) = final_internal_model {
-                        let computed_fields_string = missing_fields
-                            .into_iter()
-                            .filter_map(|f| {
-                                if final_internal_model.is_computed_field(f) {
-                                    Some(f)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<&str>>();
-                        self.cache.add_ids_to_recompute(model_name, &computed_fields_string, &[*id]);
-                    }
-                }
-            }
-            // Now, we can update cache for given fields
-            for (i, d) in data.into_iter().enumerate() {
-                let id = ids[i];
-                for (field_name, value) in d.fields {
-                    if final_model.is_stored(&field_name) {
-                        // If it's stored, it's already in the database. Load it in cache
-                        self.ensure_fields_in_cache::<SingleId>(model_name, &field_name, &id.into())?;
-                    } else {
-                        self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
-                    }
-                }
-            }
-
-            Ok(ids.into())
-        } else {
-            Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into())
+        // Add missing fields
+        for d in data.iter_mut() {
+            let missing_fields = self.fill_default_values_on_map(model_name, d);
+            missing_fields_lst.push(missing_fields)
         }
+        // Create a list that will only contain stored fields (to save in db)
+        let mut stored_data = data.clone();
+        stored_data.iter_mut().for_each(|map| {
+            map.fields.retain(|field, _value| {
+                final_model.is_stored(field)
+            });
+        });
+
+
+        let ids = self.insert_data_to_db(model_name, &stored_data.iter().map(|d| d).collect())?;
+
+        missing_fields_lst.reverse();
+        // Once added in database, we should set all stored computed methods as to_recompute
+        for id in &ids {
+            if let Some(missing_fields) = missing_fields_lst.pop().flatten() {
+                let final_internal_model = self.model_manager.get_model(model_name);
+                let computed_fields_string = missing_fields
+                    .into_iter()
+                    .filter_map(|f| {
+                        if final_internal_model.is_computed_field(f) {
+                            Some(f)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<&str>>();
+                self.cache.add_ids_to_recompute(model_name, &computed_fields_string, &[*id]);
+            }
+        }
+        // Now, we can update cache for given fields
+        for (i, d) in data.into_iter().enumerate() {
+            let id = ids[i];
+            for (field_name, value) in d.fields {
+                if final_model.is_stored(&field_name) {
+                    // If it's stored, it's already in the database. Load it in cache
+                    self.ensure_fields_in_cache::<SingleId>(model_name, &field_name, &id.into())?;
+                } else {
+                    self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
+                }
+            }
+        }
+
+        Ok(ids.into())
     }
 
     /// Add default values for a given model on given data
@@ -775,7 +722,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         model_name: &str,
         data: &mut MapOfFields,
     ) -> Option<Vec<&'mm str>> {
-        let final_internal_model = self.model_manager.get_model(model_name)?;
+        let final_internal_model = self.model_manager.get_model(model_name);
         let missing_fields_to_load = final_internal_model.get_missing_fields(data.get_keys());
         for missing_field_to_load in &missing_fields_to_load {
             let default_value = final_internal_model.get_default_value(missing_field_to_load);
@@ -825,36 +772,31 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         &mut self,
         model_name: &str,
     ) -> Result<()> {
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            for i in 0..=MAX_NUMBER_OF_RECURSION {
-                let cache_models = self.cache.get_cache_models(model_name);
-                // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
-                if let Some((key, value)) = cache_models.to_recompute.iter().find(|(key, _value)| model.is_stored(key)) {
-                    let ids: MultipleIds = MultipleIds {
-                        ids: value.iter().copied().collect(),
-                    };
-                    self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
-                }
-                let cache_models = self.cache.get_cache_models(model_name);
-                // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
-                if cache_models.to_recompute.keys().filter(|key| model.is_stored(key)).peekable().peek().is_some() {
-                    break;
-                }
-                if i == MAX_NUMBER_OF_RECURSION {
-                    return Err(MaximumRecursionDepthCompute {
-                        model_name: model_name.to_string(),
-                        fields_name: cache_models.to_recompute.keys().cloned().collect(),
-                        ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
-                    }.into());
-                }
+        let model = self.model_manager.get_model(model_name);
+        for i in 0..=MAX_NUMBER_OF_RECURSION {
+            let cache_models = self.cache.get_cache_models(model_name);
+            // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
+            if let Some((key, value)) = cache_models.to_recompute.iter().find(|(key, _value)| model.is_stored(key)) {
+                let ids: MultipleIds = MultipleIds {
+                    ids: value.iter().copied().collect(),
+                };
+                self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
             }
-
-            Ok(())
-        } else {
-            Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into())
+            let cache_models = self.cache.get_cache_models(model_name);
+            // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
+            if cache_models.to_recompute.keys().filter(|key| model.is_stored(key)).peekable().peek().is_some() {
+                break;
+            }
+            if i == MAX_NUMBER_OF_RECURSION {
+                return Err(MaximumRecursionDepthCompute {
+                    model_name: model_name.to_string(),
+                    fields_name: cache_models.to_recompute.keys().cloned().collect(),
+                    ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
+                }.into());
+            }
         }
+
+        Ok(())
     }
 
     /// Call computed method on computed & non-computed fields that need to be computed for given model
@@ -893,47 +835,42 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         model_name: &str,
         ids: &[u32],
     ) -> Result<()> {
-        if let Some(model) = self.model_manager.get_model(model_name) {
-            for i in 0..=MAX_NUMBER_OF_RECURSION {
-                let cache_models = self.cache.get_cache_models(model_name);
-                if let Some((field, value)) = cache_models.to_recompute.iter().find_map(|(field, value)| {
-                    if model.is_stored(field) {
-                        let result = value.iter().filter(|id| ids.contains(id)).collect::<Vec<&u32>>();
-                        if result.is_empty() {
-                            None
-                        } else {
-                            Some((field, result))
-                        }
-                    } else {
+        let model = self.model_manager.get_model(model_name);
+        for i in 0..=MAX_NUMBER_OF_RECURSION {
+            let cache_models = self.cache.get_cache_models(model_name);
+            if let Some((field, value)) = cache_models.to_recompute.iter().find_map(|(field, value)| {
+                if model.is_stored(field) {
+                    let result = value.iter().filter(|id| ids.contains(id)).collect::<Vec<&u32>>();
+                    if result.is_empty() {
                         None
+                    } else {
+                        Some((field, result))
                     }
-                }) {
-                    let ids: MultipleIds = MultipleIds {
-                        ids: value.into_iter().copied().collect(),
-                    };
-                    self.call_compute_method(model_name, &ids, &[field.clone().as_str()])?;
+                } else {
+                    None
                 }
-                let cache_models = self.cache.get_cache_models(model_name);
-                if !cache_models.to_recompute.iter().any(|(field, value)| {
-                    model.is_stored(field) && value.iter().any(|id| ids.contains(id))
-                }) {
-                    break;
-                }
-                if i == MAX_NUMBER_OF_RECURSION {
-                    return Err(MaximumRecursionDepthCompute {
-                        model_name: model_name.to_string(),
-                        fields_name: cache_models.to_recompute.keys().cloned().collect(),
-                        ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
-                    }.into());
-                }
+            }) {
+                let ids: MultipleIds = MultipleIds {
+                    ids: value.into_iter().copied().collect(),
+                };
+                self.call_compute_method(model_name, &ids, &[field.clone().as_str()])?;
             }
-
-            Ok(())
-        } else {
-            Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }.into())
+            let cache_models = self.cache.get_cache_models(model_name);
+            if !cache_models.to_recompute.iter().any(|(field, value)| {
+                model.is_stored(field) && value.iter().any(|id| ids.contains(id))
+            }) {
+                break;
+            }
+            if i == MAX_NUMBER_OF_RECURSION {
+                return Err(MaximumRecursionDepthCompute {
+                    model_name: model_name.to_string(),
+                    fields_name: cache_models.to_recompute.keys().cloned().collect(),
+                    ids: cache_models.to_recompute.values().flatten().copied().collect::<Vec<u32>>(),
+                }.into());
+            }
         }
+
+        Ok(())
     }
 
     /// Call computed methods of given fields of given model for given ids
@@ -945,13 +882,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     ) -> Result<()>
     {
         let final_internal_model = self.model_manager.get_model(model_name);
-        if final_internal_model.is_none() {
-            return Err(ModelNotFound {
-                model_name: model_name.to_string(),
-            }
-            .into());
-        }
-        let final_internal_model = final_internal_model.unwrap();
         self.savepoint(|env| {
             for field in fields {
                 if let Some(computed_field) = final_internal_model.get_computed_field(field) {
