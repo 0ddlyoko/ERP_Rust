@@ -3,7 +3,7 @@ use erp::app::Application;
 use erp::model::{CommonModel, MapOfFields};
 use std::error::Error;
 use base::models::{Contact, Lang};
-use erp::field::{IdMode, Reference, SingleId};
+use erp::field::{FieldDepend, IdMode, Reference, SingleId};
 use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
 
@@ -107,6 +107,46 @@ fn test_many2one_one2many() -> Result<()> {
     // Check if there is the opposite link
     let sale_order_line_linked = sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?;
     assert_eq!(sale_order_line_linked.id, sale_order_line.id);
+
+    Ok(())
+}
+
+#[test]
+fn test_depends() -> Result<()> {
+    let mut app = Application::new_test();
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+
+    let sale_order = app.model_manager.get_model("sale_order");
+    let sale_order_line = app.model_manager.get_model("sale_order_line");
+
+    assert!(sale_order.get_internal_field("name").depends.is_empty());
+    assert!(sale_order.get_internal_field("state").depends.is_empty());
+    assert!(sale_order.get_internal_field("total_price").depends.is_empty());
+    assert!(sale_order.get_internal_field("lines").depends.is_empty());
+
+    let so_line_order = &sale_order_line.get_internal_field("order").depends;
+    assert_eq!(so_line_order.len(), 1);
+    assert_eq!(so_line_order[0], vec![
+        FieldDepend::AnotherModel2 { target_model: "sale_order".to_string(), field_name: "order".to_string() },
+        FieldDepend::SameModel { field_name: "total_price".to_string() }
+    ]);
+    let so_line_price = &sale_order_line.get_internal_field("price").depends;
+    assert_eq!(so_line_price.len(), 1);
+    assert_eq!(so_line_price[0], vec![
+        FieldDepend::SameModel { field_name: "total_price".to_string() }
+    ]);
+    let so_line_amount = &sale_order_line.get_internal_field("amount").depends;
+    assert_eq!(so_line_amount.len(), 1);
+    assert_eq!(so_line_amount[0], vec![
+        FieldDepend::SameModel { field_name: "total_price".to_string() }
+    ]);
+    let so_line_amount = &sale_order_line.get_internal_field("total_price").depends;
+    assert_eq!(so_line_amount.len(), 1);
+    assert_eq!(so_line_amount[0], vec![
+        FieldDepend::AnotherModel2 { target_model: "sale_order".to_string(), field_name: "order".to_string() },
+        FieldDepend::SameModel { field_name: "total_price".to_string() }
+    ]);
 
     Ok(())
 }

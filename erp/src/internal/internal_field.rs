@@ -1,4 +1,4 @@
-use crate::field::{FieldType, FieldReference, FieldCompute};
+use crate::field::{FieldType, FieldReference, FieldCompute, FieldDepend};
 use std::any::TypeId;
 use std::collections::HashSet;
 
@@ -24,6 +24,7 @@ pub struct FinalInternalField {
     pub compute: Option<FieldCompute>,
     // If type is M2O, O2M or M2M, there is an inverse here (but field could be empty)
     pub inverse: Option<FieldReference>,
+    pub depends: Vec<Vec<FieldDepend>>,
     is_init: bool,
 }
 
@@ -36,6 +37,7 @@ impl FinalInternalField {
             default_value: FieldType::String("".to_string()),
             compute: None,
             inverse: None,
+            depends: Vec::new(),
             is_init: false,
         }
     }

@@ -1,4 +1,4 @@
-use crate::field::{FieldReference, FieldReferenceType, MultipleIds};
+use crate::field::{FieldCompute, FieldDepend, FieldReference, FieldReferenceType, MultipleIds};
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
 use std::collections::{HashMap, HashSet};
@@ -29,6 +29,21 @@ impl ModelManager {
     /// Execute some final modification when models are registered, like:
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {
+        self._post_register_m2o_links();
+        self._post_register_compute_links();
+    }
+
+    fn _post_register_m2o_links(&mut self) {
+        // Clear M2O depends
+        for model in self.models.values_mut() {
+            for field in model.fields.values_mut() {
+                if let Some(FieldReference { inverse_field: FieldReferenceType::M2O { inverse_fields }, .. }) = &mut field.inverse {
+                    inverse_fields.clear();
+                }
+            }
+        }
+
+        // Now, get the new list
         let mut fields_to_modify: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
         for model in self.models.values() {
             for field in model.fields.values() {
@@ -39,7 +54,8 @@ impl ModelManager {
                 }
             }
         }
-        // Now, modify them
+
+        // Finally, modify them
         for (model_name, model_to_add) in fields_to_modify {
             let model = self.get_model_mut(&model_name);
             for (field_name, mut fields_to_add) in model_to_add {
@@ -52,6 +68,87 @@ impl ModelManager {
                 } else {
                     panic!("A field is targeting {}.{} as an inverse field, but this field is not a M2O", model_name, field_name);
                 }
+            }
+        }
+    }
+
+    fn _post_register_compute_links(&mut self) {
+        // Clear depends
+        for model in self.models.values_mut() {
+            for field in model.fields.values_mut() {
+                field.depends.clear();
+            }
+        }
+        // Now, compute them
+        let mut fields_to_update: HashMap<String, HashMap<String, Vec<Vec<FieldDepend>>>> = HashMap::new();
+        for model in self.models.values() {
+            for field in model.fields.values() {
+                if let Some(FieldCompute { depends, .. }) = &field.compute {
+                    for depend in depends {
+                        let mut final_depends: Vec<FieldDepend> = vec![
+                            FieldDepend::SameModel { field_name: field.name.clone() },
+                        ];
+                        let mut current_model = model;
+                        let depend_split = depend.split(".").collect::<Vec<&str>>();
+                        let size = depend_split.len();
+                        for (i, d) in depend_split.iter().enumerate() {
+                            let field = current_model.get_internal_field(d);
+                            let is_last = i == size - 1;
+                            if is_last {
+                                // Save to field
+                                let mut new_final_depends = final_depends.clone();
+                                new_final_depends.reverse();
+                                let vec = fields_to_update
+                                    .entry(current_model.name.clone()).or_default()
+                                    .entry(field.name.clone()).or_default();
+                                vec.push(new_final_depends);
+                            } else if let Some(FieldReference { target_model, inverse_field }) = &field.inverse {
+                                match inverse_field {
+                                    FieldReferenceType::O2M { inverse_field } => {
+                                        final_depends.push(FieldDepend::AnotherModel2 {
+                                            target_model: current_model.name.clone(),
+                                            field_name: inverse_field.clone(),
+                                        });
+
+                                        // Save to field
+                                        let mut new_final_depends = final_depends.clone();
+                                        new_final_depends.reverse();
+                                        let vec = fields_to_update
+                                            .entry(target_model.clone()).or_default()
+                                            .entry(inverse_field.clone()).or_default();
+                                        vec.push(new_final_depends);
+                                    },
+                                    FieldReferenceType::M2O { .. } => {
+                                        // Save to field
+                                        let mut new_final_depends = final_depends.clone();
+                                        new_final_depends.reverse();
+                                        let vec = fields_to_update
+                                            .entry(current_model.name.clone()).or_default()
+                                            .entry(field.name.clone()).or_default();
+                                        vec.push(new_final_depends);
+
+                                        // If it's a M2O, we need to add "AnotherModel", as the next link will be on another model, and the ref is in this model
+                                        final_depends.push(FieldDepend::AnotherModel {
+                                            target_model: current_model.name.clone(),
+                                            target_field: field.name.clone(),
+                                        });
+                                    },
+                                }
+                                current_model = self.get_model(target_model);
+                            } else {
+                                panic!("Field {}.{} has invalid depends! (Field \"{}\" of depends \"{:?}\" is not a M2O / O2M)", model.name, field.name, d, depend)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (model_name, model_value) in fields_to_update {
+            let model = self.get_model_mut(&model_name);
+            for (field_name, field_values) in model_value {
+                let field = model.get_internal_field_mut(&field_name);
+                field.depends = field_values;
             }
         }
     }

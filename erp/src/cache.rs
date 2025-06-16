@@ -102,6 +102,8 @@ impl Cache {
     /// Insert given record to the cache.
     ///
     /// Update dirty if UpdateDirty is given, and a modification has been done
+    ///
+    /// Returns ids that have been modified
     pub fn insert_field_in_cache(
         &mut self,
         model_name: &str,
@@ -111,15 +113,19 @@ impl Cache {
         update_dirty: &Dirty,
         update_if_exists: &Update,
         update_compute: &Compute,
-    )
+    ) -> Vec<u32>
     {
         let cache_models = self.get_cache_models_mut(model_name);
+        let mut updated_ids = Vec::with_capacity(ids.len());
         for id in ids {
-            cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty, update_if_exists);
+            if cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty, update_if_exists) {
+                updated_ids.push(*id);
+            }
         }
         if matches!(update_compute, Compute::ResetCompute) {
-            cache_models.remove_to_recompute(&[field_name], ids);
+            cache_models.remove_to_recompute(&[field_name], &updated_ids);
         }
+        updated_ids
     }
 
     /// Insert given fields to the cache.

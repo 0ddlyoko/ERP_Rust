@@ -53,16 +53,18 @@ impl CacheModels {
         field_value: Option<FieldType>,
         update_dirty: &Dirty,
         update_if_exists: &Update,
-    ) {
+    ) -> bool {
         let cache_model = self.get_model_or_create(id);
         let result = cache_model.insert_field(field_name, field_value.clone(), update_if_exists);
+        let is_some = result.is_some();
         if matches!(update_dirty, Dirty::UpdateDirty) {
-            if let Some((_cache_field, dirty)) = result {
-                if dirty {
+            if let Some((_cache_field, dirty)) = &result {
+                if *dirty {
                     self.add_dirty(id, vec![field_name.to_string()]);
                 }
             }
         }
+        is_some
     }
 
     pub fn insert_fields(
