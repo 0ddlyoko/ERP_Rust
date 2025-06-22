@@ -633,7 +633,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     }
 
                     // Done, now update the id in the cache
-                    self.cache.insert_field_in_cache(model_name, field_name, &ids, value, update_dirty, update_field, reset_compute);
+                    self.cache.insert_field_in_cache(model_name, field_name, &ids, value.clone(), update_dirty, update_field, reset_compute);
 
                     // Finally, add the id to the new list
                     // TODO Pass by another method, so that it also automatically triggers computes
@@ -664,12 +664,37 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                         cache_models.remove_to_recompute(&fields_to_remove_from_recompute.iter().map(|f| f.as_ref()).collect::<Vec<&str>>(), &[new_id]);
                     }
 
+                    let mut old_values_ids: Vec<u32> = Vec::new();
+
+                    for (_, old_value) in old_values {
+                        if let Some(old_value) = old_value {
+                            match old_value {
+                                FieldType::Ref(id) => old_values_ids.push(id),
+                                _ => panic!("Only Ref is accepted field type, and not {:?}", old_value),
+                            }
+                        }
+                    }
+                    let result: Option<FieldType> = if old_values_ids.is_empty() {
+                        None
+                    } else {
+                        Some(FieldType::Refs(old_values_ids))
+                    };
+
+                    self.check_compute_on_field::<MultipleIds>(model_name, field_name, &ids.into(), &result, &value)?;
+
                     Ok(())
                 }
             }
         }
 
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value, update_dirty, update_field, reset_compute);
+        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value.clone(), update_dirty, update_field, reset_compute);
+        self.check_compute_on_field(model_name, field_name, ids, &None, &value)?;
+        Ok(())
+    }
+
+    /// Method called when a field has changed, and will set as to recompute all fields that needs to be recomputed
+    fn check_compute_on_field<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode, old_value: &Option<FieldType>, new_value: &Option<FieldType>) -> Result<()> {
+        // TODO
         Ok(())
     }
 
