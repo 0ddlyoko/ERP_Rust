@@ -1,4 +1,4 @@
-use crate::cache::{Cache, CacheField, Compute, Dirty, Update};
+use crate::cache::{Cache, CacheField, Dirty, Update};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::field::{FieldReference, FieldReferenceType, FieldType, IdMode, MultipleIds, SingleId};
@@ -52,7 +52,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
             Ok(values) => {
                 for (id, map_of_fields) in values {
                     for (field_name, field_value) in map_of_fields.fields {
-                        self.save_field_to_cache(model_name, &field_name, &id, field_value, &Dirty::NotUpdateDirty, &Update::NotUpdateIfExists, &Compute::NotResetCompute)?;
+                        self.save_field_to_cache(model_name, &field_name, &id, field_value, &Dirty::NotUpdateDirty, &Update::NotUpdateIfExists)?;
                     }
                 }
                 Ok(())
@@ -383,7 +383,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                         Some(FieldType::Refs(ids))
                     };
                     // Save the O2M to the cache. This will also save the M2O thanks to the save_field_to_cache method
-                    self.cache.insert_field_in_cache(model_name, field_name, &[id], field_value, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute);
+                    self.cache.insert_field_in_cache(model_name, field_name, &[id], field_value, &Dirty::UpdateDirty, &Update::UpdateIfExists);
                 }
             } else {
                 // State where field is not computed nor stored. This behavior is unexpected
@@ -411,7 +411,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     {
         let field_type: Option<FieldType> = value.map(|value| value.into());
 
-        self.save_field_to_cache(model_name, field_name, ids, field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists, &Compute::ResetCompute)
+        self.save_field_to_cache(model_name, field_name, ids, field_type, &Dirty::UpdateDirty, &Update::UpdateIfExists)
     }
 
     /// Retrieve given field from the cache, or from the database if not loaded in cache
@@ -516,7 +516,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     /// Save given field to cache.
     ///
     /// This method ensure M2O & O2M are correctly linked in cache (if those fields are loaded)
-    fn save_field_to_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<FieldType>, update_dirty: &Dirty, update_field: &Update, reset_compute: &Compute) -> Result<()> {
+    fn save_field_to_cache<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode, value: Option<FieldType>, update_dirty: &Dirty, update_field: &Update) -> Result<()> {
         if field_name == "id" {
             return Ok(())
         }
@@ -557,10 +557,10 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     }
 
                     if !ids_removed.is_empty() {
-                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids_removed.into(), None, update_dirty, update_field, reset_compute)?;
+                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids_removed.into(), None, update_dirty, update_field)?;
                     }
                     for (id, ids) in ids_added {
-                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids.into(), Some(FieldType::Ref(id)), update_dirty, update_field, reset_compute)?;
+                        self.save_field_to_cache::<MultipleIds>(target_model, inverse_field, &ids.into(), Some(FieldType::Ref(id)), update_dirty, update_field)?;
                     }
                     Ok(())
                 }
@@ -613,7 +613,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             let current_id = ids[i];
                             let cache_model = cache_models.get_model_mut(ref_id);
                             let mut fields_to_remove_from_recompute = Vec::with_capacity(inverse_fields.len());
-                            let should_recompute = matches!(reset_compute, Compute::ResetCompute);
+                            let should_recompute = matches!(update_field, Update::UpdateIfExists);
                             // If this target is not in cache, we do nothing
                             if let Some(cache_model) = cache_model {
                                 for inverse_field in inverse_fields {
@@ -633,7 +633,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     }
 
                     // Done, now update the id in the cache
-                    self.cache.insert_field_in_cache(model_name, field_name, &ids, value.clone(), update_dirty, update_field, reset_compute);
+                    self.cache.insert_field_in_cache(model_name, field_name, &ids, value.clone(), update_dirty, update_field);
 
                     // Finally, add the id to the new list
                     // TODO Pass by another method, so that it also automatically triggers computes
@@ -641,7 +641,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     if let Some(new_id) = new_id {
                         let cache_models = self.cache.get_cache_models_mut(target_model);
                         let mut fields_to_remove_from_recompute = Vec::with_capacity(inverse_fields.len());
-                        let should_recompute = matches!(reset_compute, Compute::ResetCompute);
+                        let should_recompute = matches!(update_field, Update::UpdateIfExists);
 
                         // We only modify if the target model is present in cache
                         if let Some(cache_model) = cache_models.get_model_mut(&new_id) {
@@ -687,8 +687,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
             }
         }
 
-        self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value.clone(), update_dirty, update_field, reset_compute);
-        self.check_compute_on_field(model_name, field_name, ids, &None, &value)?;
+        let modified_ids = self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value.clone(), update_dirty, update_field);
+        self.check_compute_on_field::<MultipleIds>(model_name, field_name, &modified_ids.into(), &None, &value)?;
         Ok(())
     }
 

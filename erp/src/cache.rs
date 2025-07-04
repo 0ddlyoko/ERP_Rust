@@ -112,7 +112,6 @@ impl Cache {
         field_value: Option<FieldType>,
         update_dirty: &Dirty,
         update_if_exists: &Update,
-        update_compute: &Compute,
     ) -> Vec<u32>
     {
         let cache_models = self.get_cache_models_mut(model_name);
@@ -122,9 +121,7 @@ impl Cache {
                 updated_ids.push(*id);
             }
         }
-        if matches!(update_compute, Compute::ResetCompute) {
-            cache_models.remove_to_recompute(&[field_name], &updated_ids);
-        }
+        cache_models.remove_to_recompute(&[field_name], &updated_ids);
         updated_ids
     }
 
@@ -256,9 +253,4 @@ pub enum Dirty {
 pub enum Update {
     UpdateIfExists,
     NotUpdateIfExists,
-}
-
-pub enum Compute {
-    ResetCompute,
-    NotResetCompute,
 }

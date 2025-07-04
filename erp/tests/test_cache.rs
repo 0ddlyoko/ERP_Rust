@@ -1,6 +1,6 @@
 use erp::app::Application;
 use erp::cache::Dirty;
-use erp::cache::{Cache, Compute, Update};
+use erp::cache::{Cache, Update};
 use erp::field::{FieldType, IdMode, SingleId};
 use erp::model::{MapOfFields, ModelManager};
 use std::collections::HashMap;
@@ -41,7 +41,6 @@ fn test_get_and_insert_field() {
         Some(FieldType::String("my_value_2".to_string())),
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
-        &Compute::ResetCompute,
     );
     let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
@@ -55,7 +54,6 @@ fn test_get_and_insert_field() {
         None,
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
-        &Compute::ResetCompute,
     );
     let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_none());
@@ -67,7 +65,6 @@ fn test_get_and_insert_field() {
         Some(FieldType::String("my_value_2".to_string())),
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
-        &Compute::ResetCompute,
     );
 
     // Insert another model
@@ -87,7 +84,6 @@ fn test_get_and_insert_field() {
         Some(FieldType::String("my_value_3".to_string())),
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
-        &Compute::ResetCompute,
     );
     let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
     assert!(cache_field.is_some());
