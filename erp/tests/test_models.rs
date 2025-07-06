@@ -120,15 +120,17 @@ fn test_depends() -> Result<()> {
     let sale_order = app.model_manager.get_model("sale_order");
     let sale_order_line = app.model_manager.get_model("sale_order_line");
 
+    // SO
     assert!(sale_order.get_internal_field("name").depends.is_empty());
     assert!(sale_order.get_internal_field("state").depends.is_empty());
     assert!(sale_order.get_internal_field("total_price").depends.is_empty());
-    assert!(sale_order.get_internal_field("lines").depends.is_empty());
+    assert!(sale_order.get_internal_field("lines").depends.is_empty(), "O2M shouldn't have any dependencies");
 
+    // SOL
     let so_line_order = &sale_order_line.get_internal_field("order").depends;
     assert_eq!(so_line_order.len(), 1);
     assert_eq!(so_line_order[0], vec![
-        FieldDepend::AnotherModel2 { target_model: "sale_order".to_string(), field_name: "order".to_string() },
+        FieldDepend::CurrentFieldAnotherModel { target_model: "sale_order".to_string(), field_name: "order".to_string() },
         FieldDepend::SameModel { field_name: "total_price".to_string() }
     ]);
     let so_line_price = &sale_order_line.get_internal_field("price").depends;
@@ -144,7 +146,7 @@ fn test_depends() -> Result<()> {
     let so_line_amount = &sale_order_line.get_internal_field("total_price").depends;
     assert_eq!(so_line_amount.len(), 1);
     assert_eq!(so_line_amount[0], vec![
-        FieldDepend::AnotherModel2 { target_model: "sale_order".to_string(), field_name: "order".to_string() },
+        FieldDepend::CurrentFieldAnotherModel { target_model: "sale_order".to_string(), field_name: "order".to_string() },
         FieldDepend::SameModel { field_name: "total_price".to_string() }
     ]);
 

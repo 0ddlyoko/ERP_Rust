@@ -44,6 +44,7 @@ impl Cache {
     }
 
     /// Get value of given field for given record
+    /// TODO Do not pass a ref to u32
     pub fn get_field_from_cache(
         &self,
         model_name: &str,

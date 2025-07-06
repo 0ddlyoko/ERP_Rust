@@ -105,7 +105,7 @@ impl ModelManager {
                             } else if let Some(FieldReference { target_model, inverse_field }) = &field.inverse {
                                 match inverse_field {
                                     FieldReferenceType::O2M { inverse_field } => {
-                                        final_depends.push(FieldDepend::AnotherModel2 {
+                                        final_depends.push(FieldDepend::CurrentFieldAnotherModel {
                                             target_model: current_model.name.clone(),
                                             field_name: inverse_field.clone(),
                                         });

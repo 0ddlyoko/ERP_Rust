@@ -1,7 +1,7 @@
 use crate::cache::{Cache, CacheField, Dirty, Update};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
-use crate::field::{FieldReference, FieldReferenceType, FieldType, IdMode, MultipleIds, SingleId};
+use crate::field::{FieldDepend, FieldReference, FieldReferenceType, FieldType, IdMode, MultipleIds, SingleId};
 use crate::model::{MapOfFields, Model, ModelManager};
 use erp_search::{LeftTuple, SearchType};
 use erp_search_code_gen::make_domain;
@@ -520,6 +520,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         if field_name == "id" {
             return Ok(())
         }
+        let is_update_if_exists = matches!(update_field, Update::UpdateIfExists);
         let internal_model = self.model_manager.get_model(model_name);
         let field_info = internal_model.get_internal_field(field_name);
         if let Some(FieldReference { target_model, inverse_field }) = &field_info.inverse {
@@ -577,9 +578,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     // First, retrieve data from cache (or database) without loading it again
                     let mut old_values = self.retrieve_field_from_cache_or_database(model_name, field_name, ids)?;
                     // If we don't have to update loaded fields, remove them from the list
-                    // let mut ids: MultipleIds = ids.get_ids_ref().into();
                     let mut ids = ids.get_ids_ref().clone();
-                    if matches!(update_field, Update::NotUpdateIfExists) {
+                    if !is_update_if_exists {
                         let pos_to_remove = old_values.iter().enumerate().filter_map(|(i, (in_cache, _))| {
                             if *in_cache {
                                 Some(i)
@@ -602,6 +602,10 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             }
                         }).collect::<Vec<u32>>();
                     }
+                    // As those fields could be modified, we need to set them and their dependencies as to_recompute
+                    if is_update_if_exists {
+                        self.check_compute_on_field(model_name, field_name, &ids)?;
+                    }
 
                     // Now, remove the old id from the lists
                     // TODO Pass by another method, so that it also automatically triggers computes
@@ -613,7 +617,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             let current_id = ids[i];
                             let cache_model = cache_models.get_model_mut(ref_id);
                             let mut fields_to_remove_from_recompute = Vec::with_capacity(inverse_fields.len());
-                            let should_recompute = matches!(update_field, Update::UpdateIfExists);
                             // If this target is not in cache, we do nothing
                             if let Some(cache_model) = cache_model {
                                 for inverse_field in inverse_fields {
@@ -622,7 +625,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                                     // If this field is not in cache, we do nothing
                                     if let Some(CacheField { value: Some(FieldType::Refs(vecs)) }) = cache_field {
                                         vecs.retain(|id| current_id != *id);
-                                        if should_recompute {
+                                        if is_update_if_exists {
                                             fields_to_remove_from_recompute.push(inverse_field.clone());
                                         }
                                     }
@@ -641,7 +644,6 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                     if let Some(new_id) = new_id {
                         let cache_models = self.cache.get_cache_models_mut(target_model);
                         let mut fields_to_remove_from_recompute = Vec::with_capacity(inverse_fields.len());
-                        let should_recompute = matches!(update_field, Update::UpdateIfExists);
 
                         // We only modify if the target model is present in cache
                         if let Some(cache_model) = cache_models.get_model_mut(&new_id) {
@@ -655,7 +657,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                                     } else {
                                         cache_field.set(FieldType::Refs(ids.to_vec()));
                                     }
-                                    if should_recompute {
+                                    if is_update_if_exists {
                                         fields_to_remove_from_recompute.push(inverse_field.clone());
                                     }
                                 }
@@ -674,13 +676,11 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                             }
                         }
                     }
-                    let result: Option<FieldType> = if old_values_ids.is_empty() {
-                        None
-                    } else {
-                        Some(FieldType::Refs(old_values_ids))
-                    };
 
-                    self.check_compute_on_field::<MultipleIds>(model_name, field_name, &ids.into(), &result, &value)?;
+                    // Now that we have the correct value, set again dependencies of this field as to_recompute
+                    if is_update_if_exists {
+                        self.check_compute_on_field(model_name, field_name, &ids)?;
+                    }
 
                     Ok(())
                 }
@@ -688,13 +688,55 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         }
 
         let modified_ids = self.cache.insert_field_in_cache(model_name, field_name, ids.get_ids_ref(), value.clone(), update_dirty, update_field);
-        self.check_compute_on_field::<MultipleIds>(model_name, field_name, &modified_ids.into(), &None, &value)?;
+        if is_update_if_exists {
+            self.check_compute_on_field(model_name, field_name, &modified_ids)?;
+        }
         Ok(())
     }
 
     /// Method called when a field has changed, and will set as to recompute all fields that needs to be recomputed
-    fn check_compute_on_field<Mode: IdMode>(&mut self, model_name: &str, field_name: &str, ids: &Mode, old_value: &Option<FieldType>, new_value: &Option<FieldType>) -> Result<()> {
-        // TODO
+    ///
+    /// We shouldn't call this method from a O2M, as a O2M field shouldn't have any dependencies
+    fn check_compute_on_field(&mut self, model_name: &str, field_name: &str, ids: &[u32]) -> Result<()> {
+        let internal_model = self.model_manager.get_model(model_name);
+        let internal_field = internal_model.get_internal_field(field_name);
+        let all_depends = &internal_field.depends;
+        for depend_path in all_depends {
+            let mut current_model = internal_model;
+            let mut current_field = internal_field;
+            let mut current_ids = ids.to_vec();
+            for depend in depend_path {
+                match depend {
+                    FieldDepend::SameModel { field_name } => {
+                        current_field = current_model.get_internal_field(field_name);
+                    },
+                    FieldDepend::AnotherModel { target_model, target_field } => {
+                        // O2M field, we need to perform a search on this field, so we need to compute it
+                        self.save_fields_to_db(target_model, &[target_field])?;
+                        // Now, make a search request
+                        let database_result = self.database.search(target_model, &[target_field], &make_domain!([(target_field, "=", current_ids.clone())]), self.model_manager)?;
+                        current_ids = database_result.into_iter().map(|(id, _)| id).collect::<Vec<_>>();
+                        current_model = self.model_manager.get_model(target_model);
+                    },
+                    FieldDepend::CurrentFieldAnotherModel { target_model, field_name } => {
+                        // M2O field, we can get the value of this field and continue
+                        let all_ids = self.get_fields_value::<MultipleIds>(&current_model.name, field_name, &current_ids.clone().into())?;
+                        current_ids = all_ids.into_iter().flatten().flat_map(|id| {
+                            match id {
+                                FieldType::Ref(r) => vec![*r],
+                                FieldType::Refs(r) => r.clone(),
+                                _ => panic!("Only Ref & Refs are accepted field type, and not {:?}", id),
+                            }
+                        }).collect::<Vec<_>>();
+                        current_model = self.model_manager.get_model(target_model);
+                    },
+                }
+            }
+            // We found ids to recompute, set them as to_recompute
+            if !current_ids.is_empty() {
+                self.cache.add_ids_to_recompute(&current_model.name, &[&current_field.name], &current_ids);
+            }
+        }
         Ok(())
     }
 
@@ -774,6 +816,16 @@ impl<'db, 'mm> Environment<'db, 'mm> {
                 } else {
                     self.save_option_to_cache::<SingleId, _>(model_name, &field_name, &id.into(), value)?;
                 }
+            }
+        }
+
+        // Finally, for all stored fields, call method "check_compute_on_field" to ensure fields
+        //  that are dependencies of those one are correctly calculated
+        // We don't need to call this method for non-stored fields, as those fields are added in
+        //  cache (see few lines before with the "self.save_option_to_cache(...)" method)
+        for (field_name, final_field) in &final_model.fields {
+            if final_field.is_stored() {
+                self.check_compute_on_field(&final_model.name, field_name, &ids)?;
             }
         }
 

@@ -96,24 +96,21 @@ fn test_get_fields_to_save() -> Result<()> {
 #[test]
 fn test_get_record() -> Result<()> {
     let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env();
 
-    // Insert random data inside
-    let mut map: MapOfFields = MapOfFields::default();
-    env.fill_default_values_on_map("sale_order_line", &mut map);
+    // Create new record with default values
+    let map: MapOfFields = MapOfFields::default();
+    let sale_order_line: SaleOrderLine<_> = env.create_new_record_from_map(map)?;
+    let id = sale_order_line.get_id();
 
-    env.cache.insert_fields_in_cache("sale_order_line", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
-
-    // Get the record
-    let sale_order_line = env.get_record::<SaleOrderLine<_>, SingleId>(1.into());
-    assert_eq!(sale_order_line.id, 1);
     assert_eq!(*sale_order_line.get_price(&mut env)?, 42);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 42 * 10, "Should not be 0 as the computed method is called");
-    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "price", &1);
-    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &1);
+    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "price", &id);
+    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &id);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -121,14 +118,19 @@ fn test_get_record() -> Result<()> {
     assert_eq!(*price_cache_record, FieldType::Integer(42));
     assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&1);
-    assert!(dirty_fields.is_none());
+    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&id);
+    assert!(dirty_fields.is_some());
+    // We should have "total_price" as a dirty field, as this field hasn't been saved in the database
+    assert_eq!(dirty_fields.unwrap().len(), 1);
+    assert!(dirty_fields.unwrap().contains("total_price"));
+    // For the following tests, we will push "total_price" to the database
+    env.save_records_to_db("sale_order_line", &sale_order_line.id)?;
 
     // Changing the price should alter the cache
     sale_order_line.set_price(50, &mut env)?;
 
-    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &1);
-    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "name", &1);
+    let price_cache_record = env.cache.get_field_from_cache("sale_order_line", "price", &id);
+    let amount_cache_record = env.cache.get_field_from_cache("sale_order_line", "amount", &id);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -136,14 +138,14 @@ fn test_get_record() -> Result<()> {
     assert_eq!(*price_cache_record, FieldType::Integer(50));
     assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Price has been modified, it should be dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&1);
+    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&id);
     assert!(dirty_fields.is_some());
     let dirty_fields = dirty_fields.unwrap();
     assert_eq!(dirty_fields.len(), 1);
     assert!(dirty_fields.contains(&"price".to_string()));
     let cache_models = env.cache.get_cache_models_mut("sale_order_line");
-    assert!(cache_models.get_model(&1).is_some());
-    let dirty_fields = cache_models.get_dirty(&1);
+    assert!(cache_models.get_model(&id).is_some());
+    let dirty_fields = cache_models.get_dirty(&id);
     assert!(dirty_fields.is_some());
     assert!(dirty_fields
         .unwrap()
@@ -151,8 +153,8 @@ fn test_get_record() -> Result<()> {
         .eq(["price".to_string()].iter()));
 
     // Clear dirty
-    cache_models.clear_dirty(&[1]);
-    assert!(cache_models.get_dirty(&1).is_none());
+    cache_models.clear_dirty(&[id]);
+    assert!(cache_models.get_dirty(&id).is_none());
 
     Ok(())
 }
@@ -182,35 +184,32 @@ fn test_get_record_from_xxx() -> Result<()> {
 #[test]
 fn test_compute_method() -> Result<()> {
     let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env();
 
     // Insert random data inside
-    let mut map: MapOfFields = MapOfFields::default();
-    env.fill_default_values_on_map("sale_order_line", &mut map);
-
-    env.cache.insert_fields_in_cache("sale_order_line", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
+    let map: MapOfFields = MapOfFields::default();
+    let sale_order_line: SaleOrderLine<_> = env.create_new_record_from_map(map)?;
+    let id = sale_order_line.get_id();
 
     // Get the record
-    let sale_order_line: SaleOrderLine<SingleId> = env.get_record(1.into());
-    assert_eq!(sale_order_line.id, 1);
     assert_eq!(*sale_order_line.get_price(&mut env)?, 42);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 42 * 10);
 
     // Modifying a key should call the computed method when we need it
     sale_order_line.set_price(50, &mut env)?;
-    let cache_value = env.cache.get_field_from_cache("sale_order_line", "total_price", &1);
+    let cache_value = env.cache.get_field_from_cache("sale_order_line", "total_price", &id);
     assert!(cache_value.is_some());
     assert_eq!(cache_value.unwrap(), &FieldType::Integer(42 * 10), "Total price shouldn't be updated if we don't want the new value");
 
-    let sale_order_line = env.get_record::<SaleOrderLine<SingleId>, _>(1.into());
-    assert_eq!(sale_order_line.id, 1);
+    assert_eq!(sale_order_line.id, id);
     assert_eq!(*sale_order_line.get_price(&mut env)?, 50);
     assert_eq!(*sale_order_line.get_amount(&mut env)?, 10);
     // Here, it should be updated
-    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 50 * 100);
+    assert_eq!(*sale_order_line.get_total_price(&mut env)?, 50 * 10);
     Ok(())
 }
 
