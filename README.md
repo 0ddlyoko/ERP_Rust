@@ -19,3 +19,5 @@ This project is double-licensed:
 
 For commercial licensing inquiries, please create an issue on the GitHub repository  
 or contact the Licensor through the repository’s contact information.
+
+Please refer to each license file for details.
