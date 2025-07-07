@@ -1,0 +1,7 @@
+This project uses multiple licenses:
+
+- [LICENSE.BSL](LICENSE.BSL): Applies to the ERP core components (`code_gen/`, `erp/`, `erp_search/`, `erp_search_code_gen/`, `src/`,
+ and any other directory created, except `/plugins` and its subdirectories).
+- [LICENSE.LGPL](LICENSE.LGPL): Applies to the plugin system and modules in `plugins/`.
+
+Please refer to each license file for details.
