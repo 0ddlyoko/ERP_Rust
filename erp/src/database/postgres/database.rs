@@ -1,15 +1,16 @@
-use std::collections::HashMap;
-use erp_search::SearchType;
-use std::error::Error;
-use postgres::{Client, NoTls};
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
 use crate::model::{MapOfFields, ModelManager};
+use erp_search::SearchType;
+use postgres::{Client, NoTls};
+use std::collections::HashMap;
+use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub struct PostgresDatabase {
-    client: Client,
+    pub client: Client,
     schema: String,
+    is_transaction: bool,
 }
 
 impl Database for PostgresDatabase {
@@ -29,6 +30,7 @@ impl Database for PostgresDatabase {
         Ok(Self {
             client,
             schema: schema.clone(),
+            is_transaction: false,
         })
     }
 
@@ -83,15 +85,39 @@ impl Database for PostgresDatabase {
         Ok(result)
     }
 
-    fn savepoint(&mut self, _name: &str) -> Result<()> {
-        todo!()
+    fn savepoint(&mut self, name: &str) -> Result<()> {
+        Ok(self.client.batch_execute(&format!("SAVEPOINT {}", name))?)
     }
 
-    fn savepoint_commit(&mut self, _name: &str) -> Result<()> {
-        todo!()
+    fn savepoint_commit(&mut self, name: &str) -> Result<()> {
+        Ok(self.client.batch_execute(&format!("RELEASE {}", name))?)
     }
 
-    fn savepoint_rollback(&mut self, _name: &str) -> Result<()> {
-        todo!()
+    fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
+        Ok(self.client.batch_execute(&format!("ROLLBACK TO {}", name))?)
+    }
+
+    fn start_transaction(&mut self) -> Result<()> {
+        self.is_transaction = true;
+        Ok(self.client.batch_execute("START TRANSACTION")?)
+    }
+
+    fn commit_transaction(&mut self) -> Result<()> {
+        self.is_transaction = false;
+        Ok(self.client.batch_execute("COMMIT")?)
+    }
+
+    fn rollback_transaction(&mut self) -> Result<()> {
+        self.is_transaction = false;
+        Ok(self.client.batch_execute("ROLLBACK")?)
+    }
+}
+
+impl Drop for PostgresDatabase {
+    fn drop(&mut self) {
+        // Rollback if needed
+        if self.is_transaction {
+            self.rollback_transaction();
+        }
     }
 }

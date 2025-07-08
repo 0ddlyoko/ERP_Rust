@@ -1,9 +1,9 @@
 use crate::database::{DatabaseConfig, FieldType};
+use crate::model::{MapOfFields, ModelManager};
 use erp_search::SearchType;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
-use crate::model::{MapOfFields, ModelManager};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -79,4 +79,15 @@ pub trait Database {
     
     /// Rollback previously created savepoint
     fn savepoint_rollback(&mut self, name: &str) -> Result<()>;
+
+    /// Start a new transaction
+    ///
+    /// This method should be called before creating any savepoint
+    fn start_transaction(&mut self) -> Result<()>;
+
+    /// Commit every request made from the creation of the latest transaction
+    fn commit_transaction(&mut self) -> Result<()>;
+
+    /// Rollback every request made from the creation of the latest transaction
+    fn rollback_transaction(&mut self) -> Result<()>;
 }

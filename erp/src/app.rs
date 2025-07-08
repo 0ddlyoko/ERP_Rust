@@ -140,9 +140,11 @@ impl Application {
 
         // Well it looks like this works, but not the call to new_env ...
         let mut env = Environment::new(&self.model_manager, &mut self.database);
+        env.database.start_transaction()?;
         env.savepoint(|env| {
             plugin.post_init(env)
         })?;
+        env.database.commit_transaction()?;
 
         Ok(())
     }

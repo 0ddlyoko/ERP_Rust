@@ -14,7 +14,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 pub struct CacheDatabase {
     installed: bool,
     tables: HashMap<String, Table>,
-    savepoints: Vec<(String, HashMap<String, Table>)>,
+    savepoints: Vec<(Option<String>, HashMap<String, Table>)>,
 }
 
 impl CacheDatabase {
@@ -211,16 +211,20 @@ impl Database for CacheDatabase {
 
     fn savepoint(&mut self, name: &str) -> Result<()> {
         let tables = self.tables.clone();
-        self.savepoints.push((name.to_string(), tables));
+        self.savepoints.push((Some(name.to_string()), tables));
         Ok(())
     }
 
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
         // TODO Create real errors
         if let Some((savepoint_name, _map)) = self.savepoints.last() {
-            if savepoint_name == name {
-                self.savepoints.pop();
-                Ok(())
+            if let Some(savepoint_name) = savepoint_name {
+                if savepoint_name == name {
+                    self.savepoints.pop();
+                    Ok(())
+                } else {
+                    Err(format!("Last savepoint is not {name}").into())
+                }
             } else {
                 Err(format!("Last savepoint is not {name}").into())
             }
@@ -231,15 +235,50 @@ impl Database for CacheDatabase {
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
         if let Some((savepoint_name, _map)) = self.savepoints.last() {
-            if savepoint_name == name {
-                let (_savepoint_name, map) = self.savepoints.pop().unwrap();
-                self.tables = map;
-                Ok(())
+            if let Some(savepoint_name) = savepoint_name {
+                if savepoint_name == name {
+                    let (_savepoint_name, map) = self.savepoints.pop().unwrap();
+                    self.tables = map;
+                    Ok(())
+                } else {
+                    Err(format!("Last savepoint is not {name}").into())
+                }
             } else {
                 Err(format!("Last savepoint is not {name}").into())
             }
         } else {
             Err("Cannot commit a missing savepoint".into())
         }
+    }
+
+    fn start_transaction(&mut self) -> Result<()> {
+        let tables = self.tables.clone();
+        self.savepoints.push((None, tables));
+        Ok(())
+    }
+
+    fn commit_transaction(&mut self) -> Result<()> {
+        while let Some((savepoint_name, _map)) = self.savepoints.pop() {
+            if savepoint_name.is_none() {
+                return Ok(());
+            }
+        }
+        if self.savepoints.is_empty() {
+            return Err("No savepoint left".into());
+        }
+        Ok(())
+    }
+
+    fn rollback_transaction(&mut self) -> Result<()> {
+        while let Some((savepoint_name, map)) = self.savepoints.pop() {
+            if savepoint_name.is_none() {
+                self.tables = map;
+                return Ok(());
+            }
+        }
+        if self.savepoints.is_empty() {
+            return Err("No savepoint left".into());
+        }
+        Ok(())
     }
 }

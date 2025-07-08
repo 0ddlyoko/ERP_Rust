@@ -1,10 +1,10 @@
+use crate::database::cache::CacheDatabase;
+use crate::database::postgres::PostgresDatabase;
+use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
+use crate::model::{MapOfFields, ModelManager};
+use erp_search::SearchType;
 use std::collections::HashMap;
 use std::error::Error;
-use erp_search::SearchType;
-use crate::database::cache::CacheDatabase;
-use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
-use crate::database::postgres::PostgresDatabase;
-use crate::model::{MapOfFields, ModelManager};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -88,6 +88,27 @@ impl Database for DatabaseType {
         match self {
             DatabaseType::Cache(cache) => cache.savepoint_rollback(name),
             DatabaseType::Postgres(postgres) => postgres.savepoint_rollback(name),
+        }
+    }
+
+    fn start_transaction(&mut self) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.start_transaction(),
+            DatabaseType::Postgres(postgres) => postgres.start_transaction(),
+        }
+    }
+
+    fn commit_transaction(&mut self) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.commit_transaction(),
+            DatabaseType::Postgres(postgres) => postgres.commit_transaction(),
+        }
+    }
+
+    fn rollback_transaction(&mut self) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.rollback_transaction(),
+            DatabaseType::Postgres(postgres) => postgres.rollback_transaction(),
         }
     }
 }

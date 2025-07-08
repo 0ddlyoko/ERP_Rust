@@ -7,7 +7,7 @@ use crate::database::DatabaseConfig;
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]
 pub struct Config {
-    pub(crate) database: DatabaseConfig,
+    pub database: DatabaseConfig,
     pub plugin_path: String,
 }
 

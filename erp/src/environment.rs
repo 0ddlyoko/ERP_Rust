@@ -864,7 +864,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         F: FnOnce(&mut Environment) -> Result<R>,
     {
         let cache_copy = self.cache.export_cache();
-        let uuid = Uuid::new_v4().to_string();
+        let uuid = "svp_".to_string() + &Uuid::new_v4().to_string()[..6];
         self.database.savepoint(uuid.as_str())?;
 
         let result = func(self);
@@ -873,8 +873,8 @@ impl<'db, 'mm> Environment<'db, 'mm> {
             self.database.savepoint_commit(uuid.as_str())?;
         } else {
             // Rollback
-            self.cache.import_cache(cache_copy);
             self.database.savepoint_rollback(uuid.as_str())?;
+            self.cache.import_cache(cache_copy);
         }
         result
     }
