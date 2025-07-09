@@ -99,7 +99,7 @@ fn test_x2x_fields() -> Result<()> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Create empty SO
     let map: MapOfFields = MapOfFields::default();

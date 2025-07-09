@@ -15,7 +15,7 @@ fn test_models() -> Result<()> {
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
 
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Create a new SO
     let mut sale_order_map = MapOfFields::default();
@@ -58,7 +58,7 @@ fn test_ref() -> Result<()> {
     app.load_plugin("base")?;
     app.load_plugin("test_lib_plugin")?;
 
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
     // Create a new lang
     let mut record = MapOfFields::default();
     record.insert("name", "French");
@@ -88,7 +88,7 @@ fn test_many2one_one2many() -> Result<()> {
     app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.load_plugin("test_lib_plugin")?;
 
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Create a new SO
     let mut sale_order_map = MapOfFields::default();

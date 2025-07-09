@@ -19,13 +19,28 @@ pub struct Environment<'db, 'mm> {
     pub database: &'db mut DatabaseType,
 }
 
+impl Drop for Environment<'_, '_> {
+    fn drop(&mut self) {
+        // We don't care if there is an issue during the rollback of the transaction
+        self.database.rollback_transaction();
+    }
+}
+
 impl<'db, 'mm> Environment<'db, 'mm> {
-    pub fn new(model_manager: &'mm ModelManager, database: &'db mut DatabaseType) -> Self {
-        Environment {
+    pub fn new(model_manager: &'mm ModelManager, database: &'db mut DatabaseType) -> Result<Self> {
+        let env = Environment {
             cache: Cache::new(model_manager),
             model_manager,
             database,
-        }
+        };
+        env.database.start_transaction()?;
+        Ok(env)
+    }
+
+    /// Flush cache to database, commit and close the transaction.
+    pub fn close(mut self) -> Result<()> {
+        self.save_all_to_db()?;
+        self.database.commit_transaction()
     }
 
     // ------------------------------------------
@@ -105,6 +120,12 @@ impl<'db, 'mm> Environment<'db, 'mm> {
         for (model_name, fields) in fields_to_save {
             self.save_fields_to_db(model_name, &fields)?;
         }
+        Ok(())
+    }
+
+    /// Save all data from cache to the database
+    pub fn save_all_to_db(&mut self) -> Result<()> {
+        // TODO Save all cache to database
         Ok(())
     }
 
@@ -416,7 +437,7 @@ impl<'db, 'mm> Environment<'db, 'mm> {
 
     /// Retrieve given field from the cache, or from the database if not loaded in cache
     ///
-    /// If field is retrieved from the database, it will not be loaded in cache
+    /// If field is retrieved from the database, it will not be added to the cache
     ///
     /// If field is not stored, return the default value
     ///

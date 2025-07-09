@@ -1,7 +1,7 @@
 use erp::app::Application;
 use erp::cache::{Dirty, Update};
 use erp::database::Database;
-use erp::field::{FieldType, IdMode, SingleId};
+use erp::field::{FieldType, IdMode, MultipleIds, SingleId};
 use erp::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use std::collections::HashMap;
@@ -11,12 +11,61 @@ use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[test]
+fn test_env_drop_rollback() -> Result<()> {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.post_register();
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("amount", 42);
+    env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 42)]))?;
+    assert!(!result.id.is_empty());
+
+    // Dropping the environment should roll back its state
+    drop(env);
+    let mut env = app.new_env()?;
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 42)]))?;
+    assert!(result.id.is_empty());
+
+    // Let's try to add a field, and call "close" to see if it's saved in database
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("amount", 42);
+    env.create_new_record_from_map::<SaleOrderLine<_>>(map)?;
+    env.close()?;
+
+    // Open it again to see if it's saved in database
+    let mut env = app.new_env()?;
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 42)]))?;
+    assert!(!result.id.is_empty());
+
+    // If we try to modify it and then don't save, it should be rollbacked. Let's try it
+    result.set_amount(69, &mut env)?;
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 42)]))?;
+    assert!(result.id.is_empty());
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 69)]))?;
+    assert!(!result.id.is_empty());
+
+    // Drop the env, and check the value of "amount"
+    drop(env);
+    let mut env = app.new_env()?;
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 42)]))?;
+    assert!(!result.id.is_empty());
+    let result: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("amount", "=", 69)]))?;
+    assert!(result.id.is_empty());
+
+    Ok(())
+}
+
+#[test]
 fn test_fill_default_values_on_map() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let env = app.new_env();
+    let env = app.new_env()?;
 
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     env.fill_default_values_on_map("sale_order", &mut map);
@@ -40,7 +89,7 @@ fn test_get_fields_to_save() -> Result<()> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let env = app.new_env();
+    let env = app.new_env()?;
 
     // Empty
     assert_eq!(env.get_fields_to_save("sale_order", &vec![
@@ -99,7 +148,7 @@ fn test_get_record() -> Result<()> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Create new record with default values
     let map: MapOfFields = MapOfFields::default();
@@ -165,7 +214,7 @@ fn test_get_record_from_xxx() -> Result<()> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Insert random data inside
     let mut map: MapOfFields = MapOfFields::default();
@@ -187,7 +236,7 @@ fn test_compute_method() -> Result<()> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // Insert random data inside
     let map: MapOfFields = MapOfFields::default();
@@ -214,12 +263,12 @@ fn test_compute_method() -> Result<()> {
 }
 
 #[test]
-fn save_fields_to_db() -> Result<()> {
+fn test_save_fields_to_db() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     let map: MapOfFields = MapOfFields::default();
     let sale_order: SaleOrder<SingleId> = env.create_new_record_from_map(map)?;
@@ -284,12 +333,12 @@ fn save_fields_to_db() -> Result<()> {
 }
 
 #[test]
-fn search() -> Result<()> {
+fn test_search() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.post_register();
-    let mut env = app.new_env();
+    let mut env = app.new_env()?;
 
     // SO
     let map: MapOfFields = MapOfFields::default();

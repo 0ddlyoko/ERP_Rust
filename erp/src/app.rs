@@ -139,12 +139,11 @@ impl Application {
         let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
 
         // Well it looks like this works, but not the call to new_env ...
-        let mut env = Environment::new(&self.model_manager, &mut self.database);
-        env.database.start_transaction()?;
+        let mut env = Environment::new(&self.model_manager, &mut self.database)?;
         env.savepoint(|env| {
             plugin.post_init(env)
         })?;
-        env.database.commit_transaction()?;
+        env.close()?;
 
         Ok(())
     }
@@ -155,7 +154,11 @@ impl Application {
         self.model_manager = ModelManager::default();
     }
 
-    pub fn new_env(&mut self) -> Environment {
+    pub fn new_env(&mut self) -> Result<Environment> {
+        // TODO Check if it's really needed to reuse the database, and if it's not better to create
+        //  a new connection for each new Environment
+        // I think we should create a new connection for each new environment, as later we will
+        // create a new env per connection, and so we want to avoid using the same transaction
         Environment::new(&self.model_manager, &mut self.database)
     }
 }
