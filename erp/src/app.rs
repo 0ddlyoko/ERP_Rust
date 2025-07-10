@@ -1,13 +1,13 @@
-use std::error::Error;
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
-use crate::database::{Database, DatabaseType};
 use crate::database::postgres::PostgresDatabase;
+use crate::database::{Database, DatabaseType};
 use crate::environment::Environment;
 use crate::model::ModelManager;
 use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
+use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -15,41 +15,43 @@ pub struct Application {
     config: Config,
     pub model_manager: ModelManager,
     pub plugin_manager: PluginManager,
-    pub database: DatabaseType,
+    pub is_test: bool,
+    cache_db: CacheDatabase,
 }
 
 impl Application {
     /// Create a new instance of this application with given config
     pub fn new(config: Config) -> Application {
-        let database = PostgresDatabase::connect(&config.database);
-        match database {
-            Ok(database) => {
-                Application {
-                    config,
-                    model_manager: ModelManager::default(),
-                    plugin_manager: PluginManager::default(),
-                    database: database.into(),
-                }
-            }
-            Err(err) => {
-                eprintln!("Error while connecting to database: {}", err);
-                panic!("Error while connecting to database, exiting application");
-            }
+        Application {
+            config,
+            model_manager: ModelManager::default(),
+            plugin_manager: PluginManager::default(),
+            is_test: false,
+            cache_db: CacheDatabase::connect(),
         }
     }
 
     /// Create a new test instance of this application.
     /// Database used is a cache database, so saved in memory.
-    /// Creating new test instances of this Application will create separated memory database, so
+    /// Creating new environment instances of this Application will create separated memory database, so
     ///  it's safe to perform parallel operations on multiples test applications
     pub fn new_test() -> Application {
-        let database = CacheDatabase::connect(&Default::default()).unwrap();
         Application {
             config: Config::default(),
             model_manager: ModelManager::default(),
             plugin_manager: PluginManager::default(),
-            database: database.into(),
+            is_test: true,
+            cache_db: CacheDatabase::connect(),
         }
+    }
+
+    /// Create a new connection to the database
+    pub fn create_new_database(&mut self) -> Result<DatabaseType> {
+        Ok(if self.is_test {
+            DatabaseType::Cache(&mut self.cache_db)
+        } else {
+            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
+        })
     }
 
     pub fn load(&mut self) -> Result<()> {
@@ -70,8 +72,9 @@ impl Application {
     }
 
     fn initialize_db(&mut self) -> Result<()> {
-        if !self.database.is_installed()? {
-            self.database.initialize()?;
+        let mut database = self.create_new_database()?;
+        if !database.is_installed()? {
+            database.initialize()?;
         }
         Ok(())
     }
@@ -91,7 +94,8 @@ impl Application {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
         self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
 
-        let mut plugins = self.database.get_installed_plugins()?;
+        let mut database = self.create_new_database()?;
+        let mut plugins = database.get_installed_plugins()?;
         plugins.retain(|plugin_name| plugin_name != "base");
 
         // Vec<String> => Vec<&String>
@@ -139,7 +143,12 @@ impl Application {
         let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
 
         // Well it looks like this works, but not the call to new_env ...
-        let mut env = Environment::new(&self.model_manager, &mut self.database)?;
+        let database = if self.is_test {
+            DatabaseType::Cache(&mut self.cache_db)
+        } else {
+            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
+        };
+        let mut env = Environment::new(&self.model_manager, database)?;
         env.savepoint(|env| {
             plugin.post_init(env)
         })?;
@@ -155,10 +164,13 @@ impl Application {
     }
 
     pub fn new_env(&mut self) -> Result<Environment> {
-        // TODO Check if it's really needed to reuse the database, and if it's not better to create
-        //  a new connection for each new Environment
-        // I think we should create a new connection for each new environment, as later we will
-        // create a new env per connection, and so we want to avoid using the same transaction
-        Environment::new(&self.model_manager, &mut self.database)
+        // We need to copy this database initialization because calling method create_new_database()
+        //  doesn't work
+        let db = if self.is_test {
+            DatabaseType::Cache(&mut self.cache_db)
+        } else {
+            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
+        };
+        Environment::new(&self.model_manager, db)
     }
 }

@@ -1,6 +1,6 @@
 use crate::database::cache::CacheDatabase;
 use crate::database::postgres::PostgresDatabase;
-use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
+use crate::database::{Database, FieldType};
 use crate::model::{MapOfFields, ModelManager};
 use erp_search::SearchType;
 use std::collections::HashMap;
@@ -8,18 +8,12 @@ use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-pub enum DatabaseType {
-    Cache(CacheDatabase),
+pub enum DatabaseType<'db> {
+    Cache(&'db mut CacheDatabase),
     Postgres(PostgresDatabase),
 }
 
-impl Database for DatabaseType {
-    fn connect(_config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
-    where
-        Self: Sized
-    {
-        panic!("You should not directly call this method")
-    }
+impl<'db> Database for DatabaseType<'db> {
 
     fn is_installed(&mut self) -> Result<bool> {
         match self {
@@ -113,14 +107,8 @@ impl Database for DatabaseType {
     }
 }
 
-impl From<CacheDatabase> for DatabaseType {
-    fn from(cache: CacheDatabase) -> Self {
-        DatabaseType::Cache(cache)
-    }
-}
-
-impl From<PostgresDatabase> for DatabaseType {
-    fn from(postgres: PostgresDatabase) -> Self {
-        DatabaseType::Postgres(postgres)
-    }
-}
+// impl Default for DatabaseType {
+//     fn default() -> Self {
+//         DatabaseType::Cache(CacheDatabase::connect(&DatabaseConfig::default()).unwrap())
+//     }
+// }

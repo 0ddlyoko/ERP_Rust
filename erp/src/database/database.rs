@@ -1,4 +1,4 @@
-use crate::database::{DatabaseConfig, FieldType};
+use crate::database::FieldType;
 use crate::model::{MapOfFields, ModelManager};
 use erp_search::SearchType;
 use std::collections::HashMap;
@@ -38,11 +38,6 @@ impl Error for ErrorType {}
 
 
 pub trait Database {
-
-    /// Make a connection to this database
-    fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
-    where
-        Self: Sized;
 
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool>;

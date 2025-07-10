@@ -13,10 +13,10 @@ pub struct PostgresDatabase {
     is_transaction: bool,
 }
 
-impl Database for PostgresDatabase {
+impl PostgresDatabase {
 
     /// Make a connection to this database
-    fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
+    pub(crate) fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
     where
         Self: Sized
     {
@@ -33,6 +33,9 @@ impl Database for PostgresDatabase {
             is_transaction: false,
         })
     }
+}
+
+impl Database for PostgresDatabase {
 
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
@@ -117,7 +120,7 @@ impl Drop for PostgresDatabase {
     fn drop(&mut self) {
         // Rollback if needed
         if self.is_transaction {
-            self.rollback_transaction();
+            let _ = self.rollback_transaction();
         }
     }
 }

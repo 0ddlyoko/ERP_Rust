@@ -13,22 +13,22 @@ const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-pub struct Environment<'db, 'mm> {
+pub struct Environment<'mm, 'db> {
     pub cache: Cache,
     pub model_manager: &'mm ModelManager,
-    pub database: &'db mut DatabaseType,
+    pub database: DatabaseType<'db>,
 }
 
 impl Drop for Environment<'_, '_> {
     fn drop(&mut self) {
         // We don't care if there is an issue during the rollback of the transaction
-        self.database.rollback_transaction();
+        let _ = self.database.rollback_transaction();
     }
 }
 
-impl<'db, 'mm> Environment<'db, 'mm> {
-    pub fn new(model_manager: &'mm ModelManager, database: &'db mut DatabaseType) -> Result<Self> {
-        let env = Environment {
+impl<'mm, 'db> Environment<'mm, 'db> {
+    pub fn new(model_manager: &'mm ModelManager, database: DatabaseType<'db>) -> Result<Self> {
+        let mut env = Environment {
             cache: Cache::new(model_manager),
             model_manager,
             database,
@@ -40,7 +40,10 @@ impl<'db, 'mm> Environment<'db, 'mm> {
     /// Flush cache to database, commit and close the transaction.
     pub fn close(mut self) -> Result<()> {
         self.save_all_to_db()?;
-        self.database.commit_transaction()
+        // Commiting here ensure everything is saved to the database, so we can take back the
+        //  database and replace it with a cache one
+        self.database.commit_transaction()?;
+        Ok(())
     }
 
     // ------------------------------------------

@@ -1,5 +1,5 @@
 use crate::database::cache::{Row, Table};
-use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
+use crate::database::{Database, FieldType};
 use crate::field::{FieldReference, FieldReferenceType};
 use crate::model::{MapOfFields, ModelManager};
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
@@ -18,6 +18,19 @@ pub struct CacheDatabase {
 }
 
 impl CacheDatabase {
+
+    /// Make a connection to this database
+    pub fn connect() -> Self
+    where
+        Self: Sized
+    {
+        Self {
+            installed: false,
+            tables: HashMap::new(),
+            savepoints: Vec::new(),
+        }
+    }
+
     /// Poorly optimized search into the cache
     ///
     /// I know this method is not optimized, and I don't care as it's only used in tests
@@ -93,18 +106,6 @@ impl CacheDatabase {
 }
 
 impl Database for CacheDatabase {
-
-    /// Make a connection to this database
-    fn connect(_config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
-    where
-        Self: Sized
-    {
-        Ok(Self {
-            installed: false,
-            tables: HashMap::new(),
-            savepoints: Vec::new(),
-        })
-    }
 
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
