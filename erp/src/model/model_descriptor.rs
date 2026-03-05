@@ -1,4 +1,4 @@
-use crate::field::FieldDescriptor;
+use erp_types::field::FieldDescriptor;
 
 pub struct ModelDescriptor {
     pub name: String,

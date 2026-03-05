@@ -17,7 +17,6 @@ impl fmt::Display for PluginAlreadyRegisteredError {
 
 impl error::Error for PluginAlreadyRegisteredError {}
 
-
 #[derive(Debug, Clone)]
 pub struct PluginNotFoundError {
     pub(crate) plugin_name: String,

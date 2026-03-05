@@ -1,7 +1,7 @@
 use erp::app::Application;
 use erp::cache::{Dirty, Update};
-use erp::field::SingleId;
 use erp::model::MapOfFields;
+use erp_types::field::SingleId;
 use std::error::Error;
 use std::fmt;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
@@ -31,7 +31,13 @@ fn test_savepoint_rollback() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_fields_in_cache("sale_order", 1, map, &Dirty::NotUpdateDirty, &Update::UpdateIfExists);
+    env.cache.insert_fields_in_cache(
+        "sale_order",
+        1,
+        map,
+        &Dirty::NotUpdateDirty,
+        &Update::UpdateIfExists,
+    );
 
     let sale_order_line: SaleOrder<SingleId> = env.get_record(1.into());
     let _result: Result<()> = env.savepoint(|env| {

@@ -7,10 +7,10 @@ pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::PluginManager;
 
+use crate::environment::Environment;
 use crate::model::ModelManager;
 use std::any::Any;
 use std::error::Error;
-use crate::environment::Environment;
 
 pub trait Plugin: Any + Send + Sync {
     /// Get the name of this plugin

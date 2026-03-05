@@ -1,6 +1,8 @@
-use crate::field::{FieldCompute, FieldDepend, FieldReference, FieldReferenceType, MultipleIds};
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
+use erp_types::field::FieldCompute;
+use erp_types::field::MultipleIds;
+use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -37,7 +39,11 @@ impl ModelManager {
         // Clear M2O depends
         for model in self.models.values_mut() {
             for field in model.fields.values_mut() {
-                if let Some(FieldReference { inverse_field: FieldReferenceType::M2O { inverse_fields }, .. }) = &mut field.inverse {
+                if let Some(FieldReference {
+                    inverse_field: FieldReferenceType::M2O { inverse_fields },
+                    ..
+                }) = &mut field.inverse
+                {
                     inverse_fields.clear();
                 }
             }
@@ -47,7 +53,11 @@ impl ModelManager {
         let mut fields_to_modify: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
         for model in self.models.values() {
             for field in model.fields.values() {
-                if let Some(FieldReference { target_model, inverse_field: FieldReferenceType::O2M { inverse_field } }) = &field.inverse {
+                if let Some(FieldReference {
+                    target_model,
+                    inverse_field: FieldReferenceType::O2M { inverse_field },
+                }) = &field.inverse
+                {
                     let model_to_modify = fields_to_modify.entry(target_model.clone()).or_default();
                     let field_to_modify = model_to_modify.entry(inverse_field.clone()).or_default();
                     field_to_modify.push(field.name.clone());
@@ -60,7 +70,11 @@ impl ModelManager {
             let model = self.get_model_mut(&model_name);
             for (field_name, mut fields_to_add) in model_to_add {
                 let field = model.get_internal_field_mut(&field_name);
-                if let Some(FieldReference { inverse_field: FieldReferenceType::M2O { inverse_fields }, .. }) = &mut field.inverse {
+                if let Some(FieldReference {
+                    inverse_field: FieldReferenceType::M2O { inverse_fields },
+                    ..
+                }) = &mut field.inverse
+                {
                     inverse_fields.append(&mut fields_to_add);
                     // Check uniqueness
                     let mut seen = HashSet::new();
@@ -80,14 +94,15 @@ impl ModelManager {
             }
         }
         // Now, compute them
-        let mut fields_to_update: HashMap<String, HashMap<String, Vec<Vec<FieldDepend>>>> = HashMap::new();
+        let mut fields_to_update: HashMap<String, HashMap<String, Vec<Vec<FieldDepend>>>> =
+            HashMap::new();
         for model in self.models.values() {
             for field in model.fields.values() {
                 if let Some(FieldCompute { depends, .. }) = &field.compute {
                     for depend in depends {
-                        let mut final_depends: Vec<FieldDepend> = vec![
-                            FieldDepend::SameModel { field_name: field.name.clone() },
-                        ];
+                        let mut final_depends: Vec<FieldDepend> = vec![FieldDepend::SameModel {
+                            field_name: field.name.clone(),
+                        }];
                         let mut current_model = model;
                         let depend_split = depend.split(".").collect::<Vec<&str>>();
                         let size = depend_split.len();
@@ -99,10 +114,16 @@ impl ModelManager {
                                 let mut new_final_depends = final_depends.clone();
                                 new_final_depends.reverse();
                                 let vec = fields_to_update
-                                    .entry(current_model.name.clone()).or_default()
-                                    .entry(field.name.clone()).or_default();
+                                    .entry(current_model.name.clone())
+                                    .or_default()
+                                    .entry(field.name.clone())
+                                    .or_default();
                                 vec.push(new_final_depends);
-                            } else if let Some(FieldReference { target_model, inverse_field }) = &field.inverse {
+                            } else if let Some(FieldReference {
+                                target_model,
+                                inverse_field,
+                            }) = &field.inverse
+                            {
                                 match inverse_field {
                                     FieldReferenceType::O2M { inverse_field } => {
                                         final_depends.push(FieldDepend::CurrentFieldAnotherModel {
@@ -114,17 +135,21 @@ impl ModelManager {
                                         let mut new_final_depends = final_depends.clone();
                                         new_final_depends.reverse();
                                         let vec = fields_to_update
-                                            .entry(target_model.clone()).or_default()
-                                            .entry(inverse_field.clone()).or_default();
+                                            .entry(target_model.clone())
+                                            .or_default()
+                                            .entry(inverse_field.clone())
+                                            .or_default();
                                         vec.push(new_final_depends);
-                                    },
+                                    }
                                     FieldReferenceType::M2O { .. } => {
                                         // Save to field
                                         let mut new_final_depends = final_depends.clone();
                                         new_final_depends.reverse();
                                         let vec = fields_to_update
-                                            .entry(current_model.name.clone()).or_default()
-                                            .entry(field.name.clone()).or_default();
+                                            .entry(current_model.name.clone())
+                                            .or_default()
+                                            .entry(field.name.clone())
+                                            .or_default();
                                         vec.push(new_final_depends);
 
                                         // If it's a M2O, we need to add "AnotherModel", as the next link will be on another model, and the ref is in this model
@@ -132,7 +157,7 @@ impl ModelManager {
                                             target_model: current_model.name.clone(),
                                             target_field: field.name.clone(),
                                         });
-                                    },
+                                    }
                                 }
                                 current_model = self.get_model(target_model);
                             } else {

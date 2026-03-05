@@ -1,4 +1,7 @@
-use crate::{InvalidDomainError, LeftTuple, RightTuple, SearchKey, SearchOperator, SearchTuple, UnknownSearchOperatorError};
+use crate::{
+    InvalidDomainError, LeftTuple, RightTuple, SearchKey, SearchOperator, SearchTuple,
+    UnknownSearchOperatorError,
+};
 use std::error;
 use std::fmt::Display;
 
@@ -19,23 +22,21 @@ impl SearchType {
         result
     }
 
-    fn handle_search_type<'a>(&'a self, result: &mut Vec<&'a LeftTuple>)
-    {
+    fn handle_search_type<'a>(&'a self, result: &mut Vec<&'a LeftTuple>) {
         match self {
             SearchType::And(left, right) | SearchType::Or(left, right) => {
                 SearchType::handle_search_type(left, result);
                 SearchType::handle_search_type(right, result);
-            },
+            }
             SearchType::Tuple(tuple) => {
                 result.push(&tuple.left);
-            },
-            SearchType::Nothing => {},
+            }
+            SearchType::Nothing => {}
         }
     }
 }
 
-impl From<SearchTuple> for SearchType
-{
+impl From<SearchTuple> for SearchType {
     fn from(search_type: SearchTuple) -> Self {
         SearchType::Tuple(search_type)
     }
@@ -45,7 +46,7 @@ impl<L, OP, R> TryFrom<(L, OP, R)> for SearchType
 where
     L: Into<LeftTuple>,
     OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
-    R: Into<RightTuple>
+    R: Into<RightTuple>,
 {
     type Error = UnknownSearchOperatorError;
 
@@ -70,8 +71,6 @@ impl Display for ErrorType {
 }
 
 impl error::Error for ErrorType {}
-
-
 
 impl TryFrom<Vec<SearchKey>> for SearchType {
     type Error = ErrorType;
@@ -105,14 +104,20 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
                                 return None;
                             }
                             return Some(if search_key == SearchKey::And {
-                                SearchType::And(Box::new(left_search_type), Box::new(right_search_type))
+                                SearchType::And(
+                                    Box::new(left_search_type),
+                                    Box::new(right_search_type),
+                                )
                             } else {
-                                SearchType::Or(Box::new(left_search_type), Box::new(right_search_type))
-                            })
+                                SearchType::Or(
+                                    Box::new(left_search_type),
+                                    Box::new(right_search_type),
+                                )
+                            });
                         }
                     }
                     None
-                },
+                }
                 SearchKey::Tuple(tuple) => Some(SearchType::Tuple(tuple)),
             }
         }
@@ -120,7 +125,9 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
         let original_value = value.clone();
         let result = parse_value(&mut value);
         if result.is_none() {
-            return Err(ErrorType::InvalidDomain(InvalidDomainError { search_key: original_value }));
+            return Err(ErrorType::InvalidDomain(InvalidDomainError {
+                search_key: original_value,
+            }));
         }
         let mut result = result.unwrap();
         loop {
@@ -129,7 +136,9 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
             }
             let new_result = parse_value(&mut value);
             if new_result.is_none() {
-                return Err(ErrorType::InvalidDomain(InvalidDomainError { search_key: original_value }));
+                return Err(ErrorType::InvalidDomain(InvalidDomainError {
+                    search_key: original_value,
+                }));
             }
             let new_result = new_result.unwrap();
             result = SearchType::And(Box::new(result), Box::new(new_result));
@@ -146,7 +155,8 @@ where
     type Error = ErrorType;
 
     fn try_from(value: Vec<E>) -> Result<Self, Self::Error> {
-        let result_values: Vec<Result<SearchKey, _>> = value.into_iter().map(|val| val.try_into()).collect();
+        let result_values: Vec<Result<SearchKey, _>> =
+            value.into_iter().map(|val| val.try_into()).collect();
         for val in &result_values {
             if let Err(err) = val {
                 return Err(ErrorType::UnknownSearchOperator(err.clone()));

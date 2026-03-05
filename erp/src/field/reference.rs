@@ -1,9 +1,10 @@
 use crate::model::{BaseModel, Model};
+use erp_types::field::FieldType;
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use std::marker::PhantomData;
 use std::ops;
 use std::slice::Iter;
 use std::vec::IntoIter;
-use crate::field::{IdMode, MultipleIds, SingleId};
 
 #[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {
@@ -12,13 +13,12 @@ pub struct Reference<BM: BaseModel, Mode: IdMode> {
 }
 
 impl<BM: BaseModel> Reference<BM, SingleId> {
-
     /// Retrieves the instance of this ref.
     ///
     /// We don't load the record in cache, neither perform any modification / search to the database.
     pub fn get<M>(&self) -> M
     where
-        M: Model<SingleId, BaseModel=BM>,
+        M: Model<SingleId, BaseModel = BM>,
     {
         M::create_instance(self.id_mode.clone())
     }
@@ -27,9 +27,11 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
 impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
     pub fn get_multiple<M>(&self) -> M
     where
-        M: Model<MultipleIds, BaseModel=BM>,
+        M: Model<MultipleIds, BaseModel = BM>,
     {
-        M::create_instance(MultipleIds { ids: self.id_mode.get_ids_ref().clone() })
+        M::create_instance(MultipleIds {
+            ids: self.id_mode.get_ids_ref().clone(),
+        })
     }
 
     /// Check if given id is contained in the current reference
@@ -69,8 +71,53 @@ where
     }
 }
 
+// impl<E: BaseModel> From<&FieldType> for Option<Reference<E, SingleId>> {
+//     fn from(t: &FieldType) -> Self {
+//         match t {
+//             FieldType::Ref(id) => Some(id.into()),
+//             _ => None,
+//         }
+//     }
+// }
+
+impl<E: BaseModel> From<&Reference<E, SingleId>> for FieldType {
+    fn from(t: &Reference<E, SingleId>) -> Self {
+        FieldType::Ref(t.id_mode.get_id())
+    }
+}
+
+impl<E: BaseModel> From<Reference<E, SingleId>> for FieldType {
+    fn from(t: Reference<E, SingleId>) -> Self {
+        FieldType::Ref(t.id_mode.get_id())
+    }
+}
+
+// impl<E: BaseModel> From<&FieldType> for Option<Reference<E, MultipleIds>> {
+//     fn from(t: &FieldType) -> Self {
+//         match t {
+//             FieldType::Ref(id) => Some(vec![*id].into()),
+//             FieldType::Refs(ids) => Some(ids.clone().into()),
+//             _ => None,
+//         }
+//     }
+// }
+
+impl<E: BaseModel> From<&Reference<E, MultipleIds>> for FieldType {
+    fn from(t: &Reference<E, MultipleIds>) -> Self {
+        FieldType::Refs(t.id_mode.get_ids_ref().clone())
+    }
+}
+
+impl<E: BaseModel> From<Reference<E, MultipleIds>> for FieldType {
+    fn from(t: Reference<E, MultipleIds>) -> Self {
+        FieldType::Refs(t.id_mode.ids)
+    }
+}
+
 /// Allow merging 2 references together
-impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>> for Reference<BM, Mode2> {
+impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
+    for Reference<BM, Mode2>
+{
     type Output = Reference<BM, MultipleIds>;
 
     fn add(self, rhs: Reference<BM, Mode1>) -> Self::Output {
@@ -81,7 +128,9 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
 }
 
 /// Allow removing some ids from a reference
-impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>> for Reference<BM, Mode2> {
+impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>>
+    for Reference<BM, Mode2>
+{
     type Output = Reference<BM, MultipleIds>;
 
     fn sub(self, rhs: Reference<BM, Mode1>) -> Self::Output {
@@ -143,5 +192,3 @@ impl<'a, E: BaseModel> Iterator for ReferenceIterator<'a, E> {
         self.ids.next().map(|id| id.into())
     }
 }
-
-

@@ -37,7 +37,7 @@ impl ToTokens for SearchType {
                         Box::new(#right),
                     )
                 }
-            },
+            }
             SearchType::Or(left, right) => {
                 quote! {
                     erp_search::SearchType::Or(
@@ -45,17 +45,17 @@ impl ToTokens for SearchType {
                         Box::new(#right),
                     )
                 }
-            },
+            }
             SearchType::Tuple(tuple) => {
                 quote! {
                     erp_search::SearchType::Tuple(#tuple)
                 }
-            },
+            }
             SearchType::Nothing => {
                 quote! {
                     erp_search::SearchType::Nothing
                 }
-            },
+            }
         };
         tokens.extend(quote);
     }
@@ -63,7 +63,11 @@ impl ToTokens for SearchType {
 
 impl ToTokens for SearchTuple {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let SearchTuple { left, operator, right } = self;
+        let SearchTuple {
+            left,
+            operator,
+            right,
+        } = self;
         let quote = quote! {
             erp_search::SearchTuple {
                 left: #left.into(),
@@ -79,14 +83,20 @@ impl ToTokens for SearchTuple {
 impl ToTokens for SearchOperator {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let quote = match self {
-            SearchOperator::Operator(operator) => {
-                match operator {
-                    erp_search::SearchOperator::Equal => quote! { erp_search::SearchOperator::Equal },
-                    erp_search::SearchOperator::NotEqual => quote! { erp_search::SearchOperator::NotEqual },
-                    erp_search::SearchOperator::Greater => quote! { erp_search::SearchOperator::Greater },
-                    erp_search::SearchOperator::GreaterEqual => quote! { erp_search::SearchOperator::GreaterEqual },
-                    erp_search::SearchOperator::Lower => quote! { erp_search::SearchOperator::Lower },
-                    erp_search::SearchOperator::LowerEqual => quote! { erp_search::SearchOperator::LowerEqual },
+            SearchOperator::Operator(operator) => match operator {
+                erp_search::SearchOperator::Equal => quote! { erp_search::SearchOperator::Equal },
+                erp_search::SearchOperator::NotEqual => {
+                    quote! { erp_search::SearchOperator::NotEqual }
+                }
+                erp_search::SearchOperator::Greater => {
+                    quote! { erp_search::SearchOperator::Greater }
+                }
+                erp_search::SearchOperator::GreaterEqual => {
+                    quote! { erp_search::SearchOperator::GreaterEqual }
+                }
+                erp_search::SearchOperator::Lower => quote! { erp_search::SearchOperator::Lower },
+                erp_search::SearchOperator::LowerEqual => {
+                    quote! { erp_search::SearchOperator::LowerEqual }
                 }
             },
             SearchOperator::Expr(expr) => quote! {#expr.try_into()?},

@@ -9,3 +9,5 @@ pub mod internal;
 pub mod model;
 pub mod plugin;
 pub mod util;
+
+pub use erp_types as types;

@@ -1,6 +1,6 @@
 use crate::cache::{CacheField, Update};
-use crate::field::FieldType;
 use crate::model::MapOfFields;
+use erp_types::field::FieldType;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -85,11 +85,7 @@ impl CacheModel {
     }
 
     /// Insert given fields, and return fields that have been modified
-    pub fn insert_fields(
-        &mut self,
-        fields: MapOfFields,
-        update_if_exists: &Update,
-    ) -> Vec<String> {
+    pub fn insert_fields(&mut self, fields: MapOfFields, update_if_exists: &Update) -> Vec<String> {
         let mut dirty_fields = Vec::new();
         for (name, value) in fields.fields {
             let result = self.insert_field(name.as_str(), value, update_if_exists);
@@ -115,7 +111,7 @@ impl CacheModel {
 #[cfg(test)]
 mod tests {
     use crate::cache::{CacheField, CacheModel};
-    use crate::field::FieldType;
+    use erp_types::field::FieldType;
     use std::collections::HashMap;
 
     #[test]

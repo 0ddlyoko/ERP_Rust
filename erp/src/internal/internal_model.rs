@@ -1,9 +1,10 @@
 use crate::environment::Environment;
-use crate::field::{FieldCompute, FieldType};
-use crate::field::MultipleIds;
-use crate::internal::internal_field::{FinalInternalField, InternalField};
 use crate::model::ModelDescriptor;
 use crate::model::{CommonModel, Model};
+use erp_types::field::FieldCompute;
+use erp_types::field::FieldType;
+use erp_types::field::MultipleIds;
+use erp_types::internal::{FinalInternalField, InternalField};
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;
@@ -39,6 +40,7 @@ impl FinalInternalModel {
         }
     }
 
+    // TODO Do not pass <M> here, but directly the name, model_descriptor and type_id
     pub fn register_internal_model<M>(&mut self, plugin_name: &str)
     where
         M: Model<MultipleIds> + 'static,
@@ -72,7 +74,8 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()> = |field_name, id, env| M::call_compute_method(field_name, id, env);
+        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()> =
+            |field_name, id, env| M::call_compute_method(field_name, id, env);
 
         let internal_model = InternalModel {
             name: name.to_string(),
@@ -135,7 +138,8 @@ impl FinalInternalModel {
     /// Do not add non-stored fields
     pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<&str> {
         self.fields
-            .iter().filter_map(|(key, value)| {
+            .iter()
+            .filter_map(|(key, value)| {
                 if value.is_stored() && !current_fields.contains(&key.as_str()) {
                     Some(key.as_str())
                 } else {
@@ -150,7 +154,8 @@ impl FinalInternalModel {
     /// TODO Find a way to save this return somewhere, as it should not change when the application
     ///  is running
     pub fn get_stored_fields(&self) -> Vec<&str> {
-        self.fields.iter()
+        self.fields
+            .iter()
             .filter_map(|(field_name, internal_field)| {
                 if internal_field.is_stored() {
                     Some(field_name.as_str())

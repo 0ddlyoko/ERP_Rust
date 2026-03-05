@@ -12,11 +12,11 @@ use std::{env, error, fs};
 unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error> {
     type PluginCreator = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 
-    let library = Library::new(path)?;
-    let constructor: Symbol<PluginCreator> = library.get(b"_create_plugin")?;
-    let boxed_raw = constructor();
+    let library = unsafe { Library::new(path)? };
+    let constructor: Symbol<PluginCreator> = unsafe { library.get(b"_create_plugin")? };
+    let boxed_raw = unsafe { constructor() };
 
-    let plugin = *Box::from_raw(boxed_raw);
+    let plugin = unsafe { *Box::from_raw(boxed_raw) };
     let plugin_type = InternalPluginType::Dll(library);
     let depends = plugin.get_depends();
 
@@ -151,12 +151,17 @@ impl PluginManager {
         self.plugins.get_mut(plugin_name)
     }
 
-    pub(crate) fn _get_ordered_dependencies_of_all_plugins(&self) -> Result<Vec<&str>, Box<dyn error::Error>> {
+    pub(crate) fn _get_ordered_dependencies_of_all_plugins(
+        &self,
+    ) -> Result<Vec<&str>, Box<dyn error::Error>> {
         let plugins = self.plugins.keys().collect::<Vec<_>>();
         self._get_ordered_dependencies(plugins)
     }
 
-    pub(crate) fn _get_ordered_dependencies<'a>(&self, plugins: Vec<&'a String>) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
+    pub(crate) fn _get_ordered_dependencies<'a>(
+        &self,
+        plugins: Vec<&'a String>,
+    ) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
         let dependencies: Vec<(&'a str, Vec<&str>)> = plugins
             .iter()
             .map(|&plugin_name| {
@@ -178,7 +183,8 @@ impl PluginManager {
 
         let dependencies = dependencies.into_iter().collect();
 
-        let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error>> = dependency::sort_dependencies(&dependencies);
+        let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error>> =
+            dependency::sort_dependencies(&dependencies);
         sorted_dependencies
     }
 

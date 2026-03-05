@@ -1,7 +1,8 @@
 use crate::models::{BaseSaleOrderLine, SaleOrderLine};
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::field::{EnumType, IdMode, MultipleIds, Reference};
+use erp::field::Reference;
+use erp::types::field::{EnumType, IdMode, MultipleIds};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -36,28 +37,24 @@ impl From<&str> for &SaleOrderState {
     }
 }
 
-impl EnumType for SaleOrderState {
-}
+impl EnumType for SaleOrderState {}
 
 #[derive(Model)]
-#[erp(table_name="sale_order")]
+#[erp(table_name = "sale_order")]
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default="0ddlyoko")]
+    #[erp(default = "0ddlyoko")]
     name: String,
     state: SaleOrderState,
     #[erp(compute="compute_total_price", depends=["lines.total_price"])]
     total_price: i32,
-    #[erp(inverse="order")]
+    #[erp(inverse = "order")]
     lines: Reference<BaseSaleOrderLine, MultipleIds>,
 }
 
 impl SaleOrder<MultipleIds> {
-    pub fn compute_total_price(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error>> {
+    pub fn compute_total_price(&self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
         for sale_order in self {
             let lines: SaleOrderLine<_> = sale_order.get_lines(env)?;
             let total_prices = lines.get_total_price(env)?;

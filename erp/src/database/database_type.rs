@@ -14,7 +14,6 @@ pub enum DatabaseType<'db> {
 }
 
 impl<'db> Database for DatabaseType<'db> {
-
     fn is_installed(&mut self) -> Result<bool> {
         match self {
             DatabaseType::Cache(cache) => cache.is_installed(),
@@ -29,17 +28,30 @@ impl<'db> Database for DatabaseType<'db> {
         }
     }
 
-    fn browse(&mut self, model_name: &str, domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<u32>> {
+    fn browse(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<u32>> {
         match self {
             DatabaseType::Cache(cache) => cache.browse(model_name, domain, model_manager),
             DatabaseType::Postgres(postgres) => postgres.browse(model_name, domain, model_manager),
         }
     }
 
-    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(
+        &mut self,
+        model_name: &str,
+        fields: &[&'a str],
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         match self {
             DatabaseType::Cache(cache) => cache.search(model_name, fields, domain, model_manager),
-            DatabaseType::Postgres(postgres) => postgres.search(model_name, fields, domain, model_manager),
+            DatabaseType::Postgres(postgres) => {
+                postgres.search(model_name, fields, domain, model_manager)
+            }
         }
     }
 

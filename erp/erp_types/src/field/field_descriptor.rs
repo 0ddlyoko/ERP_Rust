@@ -1,4 +1,4 @@
-use crate::field::{FieldType, FieldReference, FieldCompute};
+use crate::field::{FieldCompute, FieldReference, FieldType};
 
 #[derive(Default)]
 pub struct FieldDescriptor {

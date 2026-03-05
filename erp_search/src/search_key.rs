@@ -16,7 +16,9 @@ impl TryFrom<&str> for SearchKey {
             // "and" => SearchKey::And,
             "|" => Ok(SearchKey::Or),
             // "or" => SearchKey::Or,
-            _ => Err(UnknownSearchKeyError { search_key: value.to_string() }),
+            _ => Err(UnknownSearchKeyError {
+                search_key: value.to_string(),
+            }),
         }
     }
 }

@@ -2,7 +2,8 @@ use erp::app::Application;
 use erp::config::Config;
 
 fn main() {
-    let config = Config::try_default().unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
+    let config = Config::try_default()
+        .unwrap_or_else(|err| panic!("Error while deserializing config: {:?}", err));
     let mut app = Application::new(config);
 
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));

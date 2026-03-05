@@ -1,13 +1,16 @@
+use crate::domain::search_key::{SearchKey, SearchOperator, SearchTuple, SearchType};
+use crate::domain::util::{
+    gen_and_or_or_without_enough_tuple, gen_invalid_or_unknown_attribute,
+    gen_invalid_search_string, gen_invalid_tuple_len, gen_invalid_tuple_operator,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Expr, ExprLit, Result};
 use syn::Expr::{Lit, Tuple};
 use syn::Lit::Str;
-use syn::spanned::Spanned;
-use crate::domain::search_key::{SearchKey, SearchOperator, SearchTuple, SearchType};
-use crate::domain::util::{gen_and_or_or_without_enough_tuple, gen_invalid_or_unknown_attribute, gen_invalid_search_string, gen_invalid_tuple_len, gen_invalid_tuple_operator};
+use syn::{Expr, ExprLit, Result};
 
 pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
     if items.is_empty() {
@@ -19,26 +22,38 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
     /// Transform given expression into a usable SearchKey
     fn transform_to_search_key(expr: &Expr) -> Result<SearchKey> {
         match expr {
-            Lit(ExprLit { lit: Str(lit_str), ..}) => {
+            Lit(ExprLit {
+                lit: Str(lit_str), ..
+            }) => {
                 let str_value = lit_str.value();
                 match str_value.as_str() {
                     "&" => Ok(SearchKey::And),
                     "|" => Ok(SearchKey::Or),
-                    _ => Err(gen_invalid_search_string(expr.span(), str_value.as_str(), &["&", "|"])),
+                    _ => Err(gen_invalid_search_string(
+                        expr.span(),
+                        str_value.as_str(),
+                        &["&", "|"],
+                    )),
                 }
-            },
+            }
             Tuple(expr) => {
                 let elems = &expr.elems;
                 if elems.len() != 3 {
                     return Err(gen_invalid_tuple_len(expr.span()));
                 }
                 let operator: SearchOperator = match &elems[1] {
-                    Lit(ExprLit { lit: Str(field_name), ..}) => {
+                    Lit(ExprLit {
+                        lit: Str(field_name),
+                        ..
+                    }) => {
                         let field_name = field_name.value();
-                        let search_operator: std::result::Result<erp_search::SearchOperator, _> = field_name.as_str().try_into();
+                        let search_operator: std::result::Result<erp_search::SearchOperator, _> =
+                            field_name.as_str().try_into();
                         match search_operator {
                             Ok(search_operator) => SearchOperator::Operator(search_operator),
-                            Err(_) => return Err(gen_invalid_tuple_operator(elems[1].span(), field_name)),
+                            Err(_) => {
+                                return Err(gen_invalid_tuple_operator(elems[1].span(), field_name))
+                            }
                         }
                     }
                     expr => SearchOperator::Expr(expr.clone()),
@@ -48,7 +63,7 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
                     operator,
                     right: elems[2].clone(),
                 }))
-            },
+            }
             _ => Err(gen_invalid_or_unknown_attribute(expr.span())),
         }
     }
@@ -81,11 +96,14 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
         }
     }
 
-    let items: Result<Vec<(&Expr, SearchKey)>> = items.iter().map(|expr| {
-        let transform: Result<SearchKey> = transform_to_search_key(expr);
-        let transform = transform?;
-        Ok((expr, transform))
-    }).collect();
+    let items: Result<Vec<(&Expr, SearchKey)>> = items
+        .iter()
+        .map(|expr| {
+            let transform: Result<SearchKey> = transform_to_search_key(expr);
+            let transform = transform?;
+            Ok((expr, transform))
+        })
+        .collect();
 
     let mut items = items?;
 

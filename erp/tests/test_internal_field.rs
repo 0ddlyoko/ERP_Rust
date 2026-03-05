@@ -1,11 +1,12 @@
-use test_utilities::TestLibPlugin;
-use test_plugin::TestPlugin;
-use erp::field::{FieldCompute, FieldReferenceType, FieldType};
-use erp::internal::internal_field::FinalInternalField;
-use erp::internal::internal_field::InternalField;
+use erp::app::Application;
+use erp_types::field::FieldType;
+use erp_types::field::{FieldCompute, FieldReferenceType};
+use erp_types::internal::FinalInternalField;
+use erp_types::internal::InternalField;
 use std::any::TypeId;
 use std::error::Error;
-use erp::app::Application;
+use test_plugin::TestPlugin;
+use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -23,7 +24,7 @@ fn test_register_field() {
             required: false,
             compute: Some(FieldCompute {
                 type_id,
-                depends: vec!("age".to_string(), "test".to_string()),
+                depends: vec!["age".to_string(), "test".to_string()],
             }),
             field_ref: None,
         },
@@ -51,7 +52,10 @@ fn test_register_field() {
     );
     assert!(field_name.compute.is_some());
     let field_name_compute = field_name.compute.as_ref().unwrap();
-    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string()));
+    assert_eq!(
+        field_name_compute.depends,
+        vec!("age".to_string(), "test".to_string())
+    );
 
     assert_eq!(field_age.name, "age");
     assert_eq!(
@@ -84,7 +88,10 @@ fn test_register_field() {
     );
     assert!(field_name.compute.is_some());
     let field_name_compute = field_name.compute.as_ref().unwrap();
-    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string()));
+    assert_eq!(
+        field_name_compute.depends,
+        vec!("age".to_string(), "test".to_string())
+    );
 
     // Again
     field_name.register_internal_field(
@@ -95,7 +102,7 @@ fn test_register_field() {
             required: true,
             compute: Some(FieldCompute {
                 type_id,
-                depends: vec!("age".to_string(), "test2".to_string()),
+                depends: vec!["age".to_string(), "test2".to_string()],
             }),
             field_ref: None,
         },
@@ -114,7 +121,10 @@ fn test_register_field() {
     );
     assert!(field_name.compute.is_some());
     let field_name_compute = field_name.compute.as_ref().unwrap();
-    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string(), "test2".to_string()));
+    assert_eq!(
+        field_name_compute.depends,
+        vec!("age".to_string(), "test".to_string(), "test2".to_string())
+    );
 
     // Again
     field_name.register_internal_field(
@@ -125,7 +135,7 @@ fn test_register_field() {
             required: true,
             compute: Some(FieldCompute {
                 type_id,
-                depends: vec!("age".to_string()),
+                depends: vec!["age".to_string()],
             }),
             field_ref: None,
         },
@@ -144,7 +154,10 @@ fn test_register_field() {
     );
     assert!(field_name.compute.is_some());
     let field_name_compute = field_name.compute.as_ref().unwrap();
-    assert_eq!(field_name_compute.depends, vec!("age".to_string(), "test".to_string(), "test2".to_string()));
+    assert_eq!(
+        field_name_compute.depends,
+        vec!("age".to_string(), "test".to_string(), "test2".to_string())
+    );
 }
 
 #[test]
@@ -236,8 +249,12 @@ fn test_reference_inverse_link() -> Result<()> {
     assert_eq!(so_field_inverse.target_model, "sale_order_line");
     assert_eq!(so_line_field_inverse.target_model, "sale_order");
 
-    assert!(matches!(so_field_inverse.inverse_field.clone(), FieldReferenceType::O2M { inverse_field } if inverse_field == "order"));
-    assert!(matches!(so_line_field_inverse.inverse_field.clone(), FieldReferenceType::M2O { inverse_fields } if inverse_fields.contains(&"lines".to_string())));
+    assert!(
+        matches!(so_field_inverse.inverse_field.clone(), FieldReferenceType::O2M { inverse_field } if inverse_field == "order")
+    );
+    assert!(
+        matches!(so_line_field_inverse.inverse_field.clone(), FieldReferenceType::M2O { inverse_fields } if inverse_fields.contains(&"lines".to_string()))
+    );
 
     Ok(())
 }

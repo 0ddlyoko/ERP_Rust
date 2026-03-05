@@ -1,4 +1,4 @@
-use crate::field::FieldType;
+use erp_types::field::FieldType;
 
 /// Cache for a single field
 #[derive(Default, Clone)]
@@ -33,7 +33,8 @@ impl CacheField {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::{CacheField, FieldType};
+    use crate::cache::CacheField;
+    use erp_types::field::FieldType;
 
     #[test]
     fn test() {

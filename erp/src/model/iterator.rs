@@ -1,5 +1,5 @@
-use crate::field::SingleId;
 use crate::model::Model;
+use erp_types::field::SingleId;
 use std::marker::PhantomData;
 use std::slice::Iter;
 use std::vec::IntoIter;
@@ -13,9 +13,7 @@ impl<M: Model<SingleId>> Iterator for ModelIntoIterator<M> {
     type Item = M;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.ids.next().map(|id| {
-            M::create_instance(id.into())
-        })
+        self.ids.next().map(|id| M::create_instance(id.into()))
     }
 }
 
@@ -26,10 +24,8 @@ pub struct ModelIterator<'a, M: Model<SingleId>> {
 
 impl<'a, M: Model<SingleId>> Iterator for ModelIterator<'a, M> {
     type Item = M;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
-        self.ids.next().map(|id| {
-            M::create_instance(id.into())
-        })
+        self.ids.next().map(|id| M::create_instance(id.into()))
     }
 }

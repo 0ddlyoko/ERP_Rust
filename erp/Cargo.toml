@@ -1,9 +1,7 @@
 [package]
 name = "erp"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
 serde_derive = "1.0"
@@ -12,10 +10,11 @@ libloading = "0.8"
 config = { version = "0.15", features = ["toml"] }
 directories = "6.0"
 postgres = "0.19.10"
+uuid = { version = "1.16.0", features = ["v4"] }
 
+erp_types = { path = "erp_types" }
 erp_search = { path = "../erp_search" }
 erp_search_code_gen = { path = "../erp_search_code_gen" }
-uuid = { version = "1.16.0", features = ["v4"] }
 
 [dev-dependencies]
 test_utilities = { path = "test_utilities" }

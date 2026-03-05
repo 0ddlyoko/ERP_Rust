@@ -38,15 +38,20 @@ impl error::Error for CircularDependencyError {}
 
 pub fn sort_dependencies<'a>(
     dependencies: &HashMap<&'a str, Vec<&str>>,
-) -> Result<Vec<&'a str>, Box<dyn error::Error>>
-{
+) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
     let mut sorted = Vec::new();
     let mut visited = HashSet::new();
     let mut visiting = HashSet::new();
 
     for &plugin in dependencies.keys() {
         if !visited.contains(plugin) {
-            visit(plugin, dependencies, &mut sorted, &mut visited, &mut visiting)?;
+            visit(
+                plugin,
+                dependencies,
+                &mut sorted,
+                &mut visited,
+                &mut visiting,
+            )?;
         }
     }
 
@@ -59,8 +64,7 @@ fn visit<'a>(
     sorted: &mut Vec<&'a str>,
     visited: &mut HashSet<&'a str>,
     visiting: &mut HashSet<&'a str>,
-) -> Result<(), Box<dyn error::Error>>
-{
+) -> Result<(), Box<dyn error::Error>> {
     if visiting.contains(plugin) {
         return Err(Box::new(CircularDependencyError {
             plugin_name: plugin.to_string(),

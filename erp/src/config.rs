@@ -1,8 +1,8 @@
-use std::path::Path;
+use crate::database::DatabaseConfig;
 use config::ConfigError;
 use directories::ProjectDirs;
 use serde_derive::Deserialize;
-use crate::database::DatabaseConfig;
+use std::path::Path;
 
 #[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]
@@ -24,10 +24,11 @@ impl Config {
             .set_default("database.name", "erp")?
             .set_default("database.schema", "public")?
             .add_source(config::File::from(config_file).required(true))
-            .add_source(config::Environment::with_prefix("ERP")
-                            .try_parsing(true)
-                            .separator("_")
-                            .list_separator(" "),
+            .add_source(
+                config::Environment::with_prefix("ERP")
+                    .try_parsing(true)
+                    .separator("_")
+                    .list_separator(" "),
             )
             .build()
             .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
@@ -35,4 +36,3 @@ impl Config {
         config.try_deserialize()
     }
 }
-

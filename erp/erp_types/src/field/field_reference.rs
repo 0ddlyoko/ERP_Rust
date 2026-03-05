@@ -1,5 +1,3 @@
-
-
 #[derive(Clone)]
 pub struct FieldReference {
     // TODO Use &'static instead of String

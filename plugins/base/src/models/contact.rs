@@ -1,10 +1,11 @@
 use crate::models::country::BaseCountry;
 use crate::models::lang::BaseLang;
 use code_gen::Model;
-use erp::field::{IdMode, MultipleIds, Reference, SingleId};
+use erp::field::Reference;
+use erp::types::field::{IdMode, MultipleIds, SingleId};
 
 #[derive(Model)]
-#[erp(table_name="contact")]
+#[erp(table_name = "contact")]
 #[allow(dead_code)]
 pub struct Contact<Mode: IdMode> {
     id: Mode,
@@ -16,6 +17,6 @@ pub struct Contact<Mode: IdMode> {
     country: Reference<BaseCountry, SingleId>,
     parent: Reference<BaseContact, SingleId>,
     // TODO MultipleIds should not exist without SingleId ref
-    #[erp(inverse="parent")]
+    #[erp(inverse = "parent")]
     childrens: Reference<BaseContact, MultipleIds>,
 }

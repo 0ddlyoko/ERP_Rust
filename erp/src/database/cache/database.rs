@@ -1,8 +1,8 @@
 use crate::database::cache::{Row, Table};
 use crate::database::{Database, FieldType};
-use crate::field::{FieldReference, FieldReferenceType};
 use crate::model::{MapOfFields, ModelManager};
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
+use erp_types::field::{FieldReference, FieldReferenceType};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
@@ -18,11 +18,10 @@ pub struct CacheDatabase {
 }
 
 impl CacheDatabase {
-
     /// Make a connection to this database
     pub fn connect() -> Self
     where
-        Self: Sized
+        Self: Sized,
     {
         Self {
             installed: false,
@@ -34,31 +33,48 @@ impl CacheDatabase {
     /// Poorly optimized search into the cache
     ///
     /// I know this method is not optimized, and I don't care as it's only used in tests
-    fn get_rows(&self, model_name: &str, domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<u32>> {
+    fn get_rows(
+        &self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<u32>> {
         Ok(match domain {
             SearchType::And(left, right) => {
                 let left = self.get_rows(model_name, left, model_manager)?;
                 let right = self.get_rows(model_name, right, model_manager)?;
                 left.into_iter().filter(|id| right.contains(id)).collect()
-            },
+            }
             SearchType::Or(left, right) => {
                 let mut left = self.get_rows(model_name, left, model_manager)?;
                 let mut right = self.get_rows(model_name, right, model_manager)?;
                 left.append(&mut right);
                 HashSet::<_>::from_iter(left).into_iter().collect()
-            },
-            SearchType::Tuple(SearchTuple { left: LeftTuple { path }, operator, right }) => {
+            }
+            SearchType::Tuple(SearchTuple {
+                left: LeftTuple { path },
+                operator,
+                right,
+            }) => {
                 let mut path = path.clone();
                 path.reverse();
-                let result = self._search_path(model_name, &mut path, operator, right, model_manager);
+                let result =
+                    self._search_path(model_name, &mut path, operator, right, model_manager);
                 HashSet::<_>::from_iter(result).into_iter().collect()
-            },
+            }
             SearchType::Nothing => vec![],
         })
     }
 
     // Path should be reverted
-    fn _search_path(&self, model_name: &str, path: &mut Vec<String>, operator: &SearchOperator, right: &RightTuple, model_manager: &ModelManager) -> Vec<u32> {
+    fn _search_path(
+        &self,
+        model_name: &str,
+        path: &mut Vec<String>,
+        operator: &SearchOperator,
+        right: &RightTuple,
+        model_manager: &ModelManager,
+    ) -> Vec<u32> {
         let current_field = path.pop().unwrap();
         if path.is_empty() {
             return self._get_rows(model_name, &current_field, operator, right);
@@ -71,8 +87,16 @@ impl CacheDatabase {
 
         let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
 
-        let ids = if matches!(final_field.default_value, crate::field::FieldType::Ref(_)) {
-            self._get_rows(&model.name, &final_field.name, &SearchOperator::Equal, &ids.into())
+        let ids = if matches!(
+            final_field.default_value,
+            erp_types::field::FieldType::Ref(_)
+        ) {
+            self._get_rows(
+                &model.name,
+                &final_field.name,
+                &SearchOperator::Equal,
+                &ids.into(),
+            )
         } else {
             let mut result: Vec<u32> = Vec::new();
             let table = self.tables.get(&target_model.name).unwrap();
@@ -85,14 +109,23 @@ impl CacheDatabase {
                 }
                 result
             } else {
-                panic!("Field {}.{} is of type M2O. This should not be possible here", target_model.name, current_field)
+                panic!(
+                    "Field {}.{} is of type M2O. This should not be possible here",
+                    target_model.name, current_field
+                )
             }
         };
 
         ids
     }
 
-    fn _get_rows(&self, model_name: &str, field_name: &str, operator: &SearchOperator, right: &RightTuple) -> Vec<u32> {
+    fn _get_rows(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        operator: &SearchOperator,
+        right: &RightTuple,
+    ) -> Vec<u32> {
         let mut result = Vec::new();
         if let Some(table) = self.tables.get(model_name) {
             for (id, row) in &table.rows {
@@ -106,7 +139,6 @@ impl CacheDatabase {
 }
 
 impl Database for CacheDatabase {
-
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
         Ok(self.installed)
@@ -119,24 +151,40 @@ impl Database for CacheDatabase {
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
-    fn browse(&mut self, model_name: &str, domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<u32>> {
+    fn browse(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<u32>> {
         self.get_rows(model_name, domain, model_manager)
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
-    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(
+        &mut self,
+        model_name: &str,
+        fields: &[&'a str],
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         // We don't care about searching 2 times (one to retrieve ids and one to retrieve fields), as it's cache
         let ids = self.browse(model_name, domain, model_manager)?;
         if ids.is_empty() {
             return Ok(vec![]);
         }
         // Following error should never occur, as if table doesn't exist then .browse should return an empty list
-        let table = self.tables.get(model_name).unwrap_or_else(|| panic!("Table {model_name} should exist in cache"));
+        let table = self
+            .tables
+            .get(model_name)
+            .unwrap_or_else(|| panic!("Table {model_name} should exist in cache"));
         let mut result = vec![];
         for id in ids.iter() {
             let mut fields_result = HashMap::new();
             // Following error should never occur, as ids returned by "browse" method are ids already present in table
-            let row = table.get_row(id).unwrap_or_else(|| panic!("Row with id {id} in table {model_name} should exist in cache"));
+            let row = table.get_row(id).unwrap_or_else(|| {
+                panic!("Row with id {id} in table {model_name} should exist in cache")
+            });
             for field_name in fields.iter() {
                 if field_name == &"id" {
                     fields_result.insert(*field_name, Some(FieldType::UInteger(*id)));
@@ -153,14 +201,15 @@ impl Database for CacheDatabase {
         let table = self.tables.entry(model_name.to_string()).or_default();
         let mut ids = Vec::with_capacity(data.len());
         for d in data {
-            let cells = d.fields.iter().map(|(k, v)| {
-                let v = v.clone().map(|value| value.into());
-                (k.clone(), v)
-            }).collect::<HashMap<_, _>>();
-            let row = Row {
-                id: 0,
-                cells,
-            };
+            let cells = d
+                .fields
+                .iter()
+                .map(|(k, v)| {
+                    let v = v.clone().map(|value| value.into());
+                    (k.clone(), v)
+                })
+                .collect::<HashMap<_, _>>();
+            let row = Row { id: 0, cells };
             let id = table.add_row(row);
             ids.push(id);
         }
@@ -198,9 +247,11 @@ impl Database for CacheDatabase {
                 let cell_state = row.get_cell("state");
                 let cell_name = row.get_cell("name");
                 match (cell_state, cell_name) {
-                    (Some(FieldType::String(state)), Some(FieldType::String(name))) if state == "installed" => {
+                    (Some(FieldType::String(state)), Some(FieldType::String(name)))
+                        if state == "installed" =>
+                    {
                         result.push(name.clone());
-                    },
+                    }
                     _ => {}
                 }
             }

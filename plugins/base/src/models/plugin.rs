@@ -1,5 +1,5 @@
 use code_gen::Model;
-use erp::field::{EnumType, IdMode};
+use erp::types::field::{EnumType, IdMode};
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
 pub enum PluginState {
@@ -27,11 +27,10 @@ impl From<&str> for &PluginState {
     }
 }
 
-impl EnumType for PluginState {
-}
+impl EnumType for PluginState {}
 
 #[derive(Model)]
-#[erp(table_name="plugin")]
+#[erp(table_name = "plugin")]
 #[allow(dead_code)]
 pub struct Plugin<Mode: IdMode> {
     id: Mode,

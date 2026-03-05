@@ -1,7 +1,7 @@
 [package]
 name = "rust-erp"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,6 +20,7 @@ erp = { path = "erp" }
 members = [
     "code_gen",
     "erp",
+    "erp/erp_types",
     "erp_search",
     "erp_search_code_gen",
     "plugins/base",

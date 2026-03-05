@@ -46,7 +46,7 @@ impl Application {
     }
 
     /// Create a new connection to the database
-    pub fn create_new_database(&mut self) -> Result<DatabaseType> {
+    pub fn create_new_database(&'_ mut self) -> Result<DatabaseType<'_>> {
         Ok(if self.is_test {
             DatabaseType::Cache(&mut self.cache_db)
         } else {
@@ -63,7 +63,8 @@ impl Application {
     }
 
     fn register_plugins(&mut self) -> Result<()> {
-        self.plugin_manager.register_plugins(&self.config.plugin_path)?;
+        self.plugin_manager
+            .register_plugins(&self.config.plugin_path)?;
         Ok(())
     }
 
@@ -82,7 +83,8 @@ impl Application {
     /// Only load plugin "base"
     fn load_base_plugin(&mut self) -> Result<()> {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
-        self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
+        self.plugin_manager
+            ._get_ordered_dependencies_of_all_plugins()?;
 
         self.load_plugin("base")
     }
@@ -92,7 +94,8 @@ impl Application {
     /// If you want to load "base" plugin, please call load_base_plugin
     fn load_plugins(&mut self) -> Result<()> {
         // Only detect if there is a recursion along all the plugins. We don't care about the result
-        self.plugin_manager._get_ordered_dependencies_of_all_plugins()?;
+        self.plugin_manager
+            ._get_ordered_dependencies_of_all_plugins()?;
 
         let mut database = self.create_new_database()?;
         let mut plugins = database.get_installed_plugins()?;
@@ -101,9 +104,7 @@ impl Application {
         // Vec<String> => Vec<&String>
         let plugins = plugins.iter().collect::<Vec<_>>();
 
-        let ordered_depends: Vec<&str> = self
-            .plugin_manager
-            ._get_ordered_dependencies(plugins)?;
+        let ordered_depends: Vec<&str> = self.plugin_manager._get_ordered_dependencies(plugins)?;
 
         for plugin_name in ordered_depends.iter() {
             self.load_plugin(plugin_name)?;
@@ -142,16 +143,14 @@ impl Application {
         // TODO Get all registered models, to update the database
         let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
 
-        // Well it looks like this works, but not the call to new_env ...
+        // Well, it looks like this works, but not the call to new_env ...
         let database = if self.is_test {
             DatabaseType::Cache(&mut self.cache_db)
         } else {
             DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
         };
         let mut env = Environment::new(&self.model_manager, database)?;
-        env.savepoint(|env| {
-            plugin.post_init(env)
-        })?;
+        env.savepoint(|env| plugin.post_init(env))?;
         env.close()?;
 
         Ok(())
@@ -163,7 +162,7 @@ impl Application {
         self.model_manager = ModelManager::default();
     }
 
-    pub fn new_env(&mut self) -> Result<Environment> {
+    pub fn new_env(&'_ mut self) -> Result<Environment<'_, '_>> {
         // We need to copy this database initialization because calling method create_new_database()
         //  doesn't work
         let db = if self.is_test {

@@ -14,11 +14,10 @@ pub struct PostgresDatabase {
 }
 
 impl PostgresDatabase {
-
     /// Make a connection to this database
     pub(crate) fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
     where
-        Self: Sized
+        Self: Sized,
     {
         let user = &config.user;
         let password = &config.password;
@@ -36,19 +35,22 @@ impl PostgresDatabase {
 }
 
 impl Database for PostgresDatabase {
-
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
-        let result = self.client.query_one("SELECT EXISTS (
+        let result = self.client.query_one(
+            "SELECT EXISTS (
             SELECT FROM \"pg_tables\" WHERE \"schemaname\"=$1 AND \"tablename\"='plugin'
-        )", &[&self.schema])?;
+        )",
+            &[&self.schema],
+        )?;
         Ok(result.try_get(0)?)
     }
 
     /// Initialize this database
     fn initialize(&mut self) -> Result<()> {
         // TODO Put this in a file
-        self.client.batch_execute("
+        self.client.batch_execute(
+            "
             CREATE TABLE plugin (
                 id              SERIAL PRIMARY KEY,
                 name            VARCHAR NOT NULL,
@@ -57,17 +59,29 @@ impl Database for PostgresDatabase {
                 url             TEXT,
                 state           VARCHAR NOT NULL
             )
-            ")?;
+            ",
+        )?;
         Ok(())
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
-    fn browse(&mut self, _model_name: &str, _domain: &SearchType, _model_manager: &ModelManager) -> Result<Vec<u32>> {
+    fn browse(
+        &mut self,
+        _model_name: &str,
+        _domain: &SearchType,
+        _model_manager: &ModelManager,
+    ) -> Result<Vec<u32>> {
         todo!()
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
-    fn search<'a>(&mut self, _model_name: &str, _fields: &[&'a str], _domain: &SearchType, _model_manager: &ModelManager) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    fn search<'a>(
+        &mut self,
+        _model_name: &str,
+        _fields: &[&'a str],
+        _domain: &SearchType,
+        _model_manager: &ModelManager,
+    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
         todo!()
     }
 
@@ -81,7 +95,10 @@ impl Database for PostgresDatabase {
 
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
         let mut result = vec![];
-        for row in self.client.query("SELECT \"name\" FROM \"plugin\" WHERE \"state\"=\'installed\'", &[])? {
+        for row in self.client.query(
+            "SELECT \"name\" FROM \"plugin\" WHERE \"state\"=\'installed\'",
+            &[],
+        )? {
             let name: &str = row.get(0);
             result.push(name.to_string());
         }
@@ -97,7 +114,9 @@ impl Database for PostgresDatabase {
     }
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("ROLLBACK TO {}", name))?)
+        Ok(self
+            .client
+            .batch_execute(&format!("ROLLBACK TO {}", name))?)
     }
 
     fn start_transaction(&mut self) -> Result<()> {

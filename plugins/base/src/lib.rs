@@ -1,7 +1,7 @@
-use std::error::Error;
 use erp::environment::Environment;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
+use std::error::Error;
 
 pub mod models;
 
@@ -22,12 +22,12 @@ impl Plugin for BasePlugin {
 
     fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error>> {
         // TODO Insert all plugins in database, if needed
-        
+
         Ok(())
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn _create_plugin() -> *mut Box<dyn Plugin> {
     let plugin = BasePlugin {};
     let box_plugin = Box::new(plugin);

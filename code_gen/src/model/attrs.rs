@@ -25,11 +25,7 @@ pub enum AllowedModelAttrs {
     DerivedModel(Ident, LitStr),
 }
 
-static VALID_MODEL_STRINGS: &[&str] = &[
-    "table_name",
-    "description",
-    "derived_model",
-];
+static VALID_MODEL_STRINGS: &[&str] = &["table_name", "description", "derived_model"];
 
 impl Parse for AllowedModelAttrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -37,10 +33,23 @@ impl Parse for AllowedModelAttrs {
         let name_str = name.to_string();
 
         match name_str.as_str() {
-            "table_name" => Ok(AllowedModelAttrs::TableName(name, parse_eq(input, "table_name = \"my_table_name\"")?)),
-            "description" => Ok(AllowedModelAttrs::Description(name, parse_eq(input, "description = \"Description of the struct\"")?)),
-            "derived_model" => Ok(AllowedModelAttrs::DerivedModel(name, parse_eq(input, "derived_model = \"base::models::company\"")?)),
-            _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_MODEL_STRINGS))
+            "table_name" => Ok(AllowedModelAttrs::TableName(
+                name,
+                parse_eq(input, "table_name = \"my_table_name\"")?,
+            )),
+            "description" => Ok(AllowedModelAttrs::Description(
+                name,
+                parse_eq(input, "description = \"Description of the struct\"")?,
+            )),
+            "derived_model" => Ok(AllowedModelAttrs::DerivedModel(
+                name,
+                parse_eq(input, "derived_model = \"base::models::company\"")?,
+            )),
+            _ => Err(gen_unknown_key_error(
+                name.span(),
+                &name_str,
+                VALID_MODEL_STRINGS,
+            )),
         }
     }
 }
@@ -65,13 +74,7 @@ pub enum AllowedFieldAttrs {
     Inverse(Ident, LitStr),
 }
 
-static VALID_FIELD_STRINGS: &[&str] = &[
-    "default",
-    "description",
-    "compute",
-    "depends",
-    "inverse",
-];
+static VALID_FIELD_STRINGS: &[&str] = &["default", "description", "compute", "depends", "inverse"];
 
 impl Parse for AllowedFieldAttrs {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -79,20 +82,40 @@ impl Parse for AllowedFieldAttrs {
         let name_str = name.to_string();
 
         match name_str.as_str() {
-            "default" => Ok(AllowedFieldAttrs::Default(name, parse_eq(input, "default = \"default_value\"")?)),
-            "description" => Ok(AllowedFieldAttrs::Description(name, parse_eq(input, "description = \"Description of the field\"")?)),
-            "compute" => Ok(AllowedFieldAttrs::Compute(name, parse_eq(input, "compute = \"compute_method\"")?)),
+            "default" => Ok(AllowedFieldAttrs::Default(
+                name,
+                parse_eq(input, "default = \"default_value\"")?,
+            )),
+            "description" => Ok(AllowedFieldAttrs::Description(
+                name,
+                parse_eq(input, "description = \"Description of the field\"")?,
+            )),
+            "compute" => Ok(AllowedFieldAttrs::Compute(
+                name,
+                parse_eq(input, "compute = \"compute_method\"")?,
+            )),
             "depends" => {
                 input.parse::<Eq>()?;
 
                 let content;
                 bracketed!(content in input);
-                let dependencies: Punctuated<LitStr, Comma> = content.parse_terminated(<LitStr as Parse>::parse, Comma)?;
-                
-                Ok(AllowedFieldAttrs::Depends(name, dependencies.into_iter().collect()))
-            },
-            "inverse" => Ok(AllowedFieldAttrs::Inverse(name, parse_eq(input, "inverse = \"inverse\"")?)),
-            _ => Err(gen_unknown_key_error(name.span(), &name_str, VALID_FIELD_STRINGS))
+                let dependencies: Punctuated<LitStr, Comma> =
+                    content.parse_terminated(<LitStr as Parse>::parse, Comma)?;
+
+                Ok(AllowedFieldAttrs::Depends(
+                    name,
+                    dependencies.into_iter().collect(),
+                ))
+            }
+            "inverse" => Ok(AllowedFieldAttrs::Inverse(
+                name,
+                parse_eq(input, "inverse = \"inverse\"")?,
+            )),
+            _ => Err(gen_unknown_key_error(
+                name.span(),
+                &name_str,
+                VALID_FIELD_STRINGS,
+            )),
         }
     }
 }
@@ -117,9 +140,7 @@ where
 {
     let mut result = Vec::new();
 
-    for attr in attrs.iter().filter(|attr| {
-        attr.meta.path().is_ident("erp")
-    }) {
+    for attr in attrs.iter().filter(|attr| attr.meta.path().is_ident("erp")) {
         let map = attr
             .parse_args_with(Punctuated::<T, Comma>::parse_terminated)?
             .into_iter()
@@ -129,7 +150,6 @@ where
             });
         result.extend(map);
     }
-
 
     Ok(result)
 }

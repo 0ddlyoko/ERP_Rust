@@ -1,4 +1,4 @@
-use crate::field::{FieldType, FieldReference, FieldCompute, FieldDepend};
+use crate::field::{FieldCompute, FieldDepend, FieldReference, FieldType};
 use std::any::TypeId;
 use std::collections::HashSet;
 
@@ -41,7 +41,7 @@ impl FinalInternalField {
             is_init: false,
         }
     }
-    
+
     pub fn is_stored(&self) -> bool {
         // TODO Add real stored system
         !matches!(self.default_value, FieldType::Refs(_))
@@ -68,10 +68,14 @@ impl FinalInternalField {
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 existing_compute.type_id = *type_id;
-                existing_compute.depends.append(&mut new_compute.depends.clone());
+                existing_compute
+                    .depends
+                    .append(&mut new_compute.depends.clone());
                 // Remove duplicates
                 let mut seen = HashSet::new();
-                existing_compute.depends.retain(|dep| seen.insert(dep.clone()));
+                existing_compute
+                    .depends
+                    .retain(|dep| seen.insert(dep.clone()));
             } else {
                 self.compute = Some(FieldCompute {
                     type_id: *type_id,

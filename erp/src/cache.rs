@@ -7,8 +7,9 @@ pub use cache_field::*;
 pub use cache_model::*;
 pub use cache_models::*;
 
-use crate::field::{FieldType, IdMode};
 use crate::model::{MapOfFields, ModelManager};
+use erp_types::field::FieldType;
+use erp_types::field::IdMode;
 use std::collections::HashMap;
 
 pub struct Cache {
@@ -87,12 +88,7 @@ impl Cache {
     }
 
     /// Check if given record field is present in cache
-    pub fn is_field_in_cache(
-        &self,
-        model_name: &str,
-        field_name: &str,
-        id: &u32,
-    ) -> bool {
+    pub fn is_field_in_cache(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
         self.cache
             .get(model_name)
             .and_then(|cache_models| cache_models.get_model(id))
@@ -113,12 +109,17 @@ impl Cache {
         field_value: Option<FieldType>,
         update_dirty: &Dirty,
         update_if_exists: &Update,
-    ) -> Vec<u32>
-    {
+    ) -> Vec<u32> {
         let cache_models = self.get_cache_models_mut(model_name);
         let mut updated_ids = Vec::with_capacity(ids.len());
         for id in ids {
-            if cache_models.insert_field(field_name, *id, field_value.clone(), update_dirty, update_if_exists) {
+            if cache_models.insert_field(
+                field_name,
+                *id,
+                field_value.clone(),
+                update_dirty,
+                update_if_exists,
+            ) {
                 updated_ids.push(*id);
             }
         }
@@ -129,7 +130,7 @@ impl Cache {
     /// Insert given fields to the cache.
     ///
     /// Update dirty if UpdateDirty is given, and a modification has been done
-    /// 
+    ///
     /// TODO To remove ?
     pub fn insert_fields_in_cache(
         &mut self,
@@ -147,7 +148,11 @@ impl Cache {
     // Dirty
 
     /// Get dirty fields linked to given model
-    pub fn get_dirty_models<F>(&self, model_name: &str, field_filter: F) -> HashMap<u32, MapOfFields>
+    pub fn get_dirty_models<F>(
+        &self,
+        model_name: &str,
+        field_filter: F,
+    ) -> HashMap<u32, MapOfFields>
     where
         F: Fn(&str) -> bool,
     {
@@ -162,7 +167,12 @@ impl Cache {
     }
 
     /// Get all dirty fields for given records
-    pub fn get_dirty_records<F>(&self, model_name: &str, ids: &[u32], field_filter: F) -> HashMap<u32, MapOfFields>
+    pub fn get_dirty_records<F>(
+        &self,
+        model_name: &str,
+        ids: &[u32],
+        field_filter: F,
+    ) -> HashMap<u32, MapOfFields>
     where
         F: Fn(&str) -> bool,
     {
@@ -177,7 +187,12 @@ impl Cache {
     }
 
     /// Clear dirty fields of given records
-    pub fn clear_dirty_fields<Mode: IdMode>(&mut self, model_name: &str, fields: &[&str], ids: &Mode) {
+    pub fn clear_dirty_fields<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        fields: &[&str],
+        ids: &Mode,
+    ) {
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.clear_dirty_records(fields, ids.get_ids_ref())
     }
@@ -191,9 +206,9 @@ impl Cache {
     // Compute
 
     pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
-        self.cache
-            .get(model_name)
-            .map_or(false, |cache_models| cache_models.is_to_recompute(field_name, id))
+        self.cache.get(model_name).map_or(false, |cache_models| {
+            cache_models.is_to_recompute(field_name, id)
+        })
     }
 
     /// Check if given record field are present in cache, and return those who are not in cache
@@ -214,13 +229,10 @@ impl Cache {
         }
         let ids_to_recompute = ids_to_recompute.unwrap();
 
-        ids_to_recompute.iter().filter_map(|id| {
-            if ids.contains(id) {
-                Some(*id)
-            } else {
-                None
-            }
-        }).collect()
+        ids_to_recompute
+            .iter()
+            .filter_map(|id| if ids.contains(id) { Some(*id) } else { None })
+            .collect()
     }
 
     pub fn add_ids_to_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
@@ -228,7 +240,12 @@ impl Cache {
         cache_models.add_to_recompute(fields_name, ids);
     }
 
-    pub fn remove_ids_from_recompute(&mut self, model_name: &str, fields_name: &[&str], ids: &[u32]) {
+    pub fn remove_ids_from_recompute(
+        &mut self,
+        model_name: &str,
+        fields_name: &[&str],
+        ids: &[u32],
+    ) {
         let cache_models = self.get_cache_models_mut(model_name);
         cache_models.remove_to_recompute(fields_name, ids);
     }

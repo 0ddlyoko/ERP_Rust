@@ -1,10 +1,9 @@
-use crate::field::id::sealed::Sealed;
+use erp_search::RightTuple;
+use sealed::Sealed;
 use std::collections::HashSet;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::slice::Iter;
 use std::vec::IntoIter;
-use erp_search::RightTuple;
-use crate::model::Model;
 
 #[derive(Default, Debug, Clone, Hash, Eq)]
 pub struct SingleId {
@@ -24,15 +23,17 @@ impl SingleId {
 
 #[derive(Default, Debug, Clone)]
 pub struct MultipleIds {
-    pub(crate) ids: Vec<u32>,
+    pub ids: Vec<u32>,
 }
 
-mod sealed {
+pub mod sealed {
     pub trait Sealed {}
 }
 
 // TODO Should we transform this into an enum, as we only have 2 structs ?
-pub trait IdMode: Sealed + Clone + Into<MultipleIds> + Into<RightTuple> + IntoIterator<Item = SingleId> + AsRef<[u32]> {
+pub trait IdMode:
+    Sealed + Clone + Into<MultipleIds> + Into<RightTuple> + IntoIterator<Item = SingleId> + AsRef<[u32]>
+{
     /// Returns a vector containing ids saved in this reference
     fn get_ids_ref(&self) -> &Vec<u32>;
     /// Return the id at given pos.
@@ -67,6 +68,7 @@ impl IdMode for SingleId {
         false
     }
 }
+
 impl AsRef<[u32]> for SingleId {
     fn as_ref(&self) -> &[u32] {
         &self.ids
@@ -96,15 +98,16 @@ impl IdMode for MultipleIds {
         self.ids.is_empty()
     }
 }
+
 impl AsRef<[u32]> for MultipleIds {
     fn as_ref(&self) -> &[u32] {
         &self.ids
     }
 }
+
 impl Sealed for MultipleIds {}
 
 // From
-
 impl From<u32> for SingleId {
     fn from(id: u32) -> Self {
         SingleId { id, ids: vec![id] }
@@ -113,7 +116,10 @@ impl From<u32> for SingleId {
 
 impl From<&u32> for SingleId {
     fn from(id: &u32) -> Self {
-        SingleId { id: *id, ids: vec![*id] }
+        SingleId {
+            id: *id,
+            ids: vec![*id],
+        }
     }
 }
 
@@ -155,7 +161,9 @@ impl From<&Vec<u32>> for MultipleIds {
 
 impl From<Vec<&u32>> for MultipleIds {
     fn from(ids: Vec<&u32>) -> Self {
-        MultipleIds { ids: ids.into_iter().copied().collect() }
+        MultipleIds {
+            ids: ids.into_iter().copied().collect(),
+        }
     }
 }
 
@@ -166,6 +174,16 @@ impl From<Vec<&u32>> for MultipleIds {
 // {
 //     fn from(value: E) -> Self {
 //         todo!()
+//     }
+// }
+
+// TODO Find a way to transform an IdMode into a MultipleIds
+// impl<M> From<M> for MultipleIds
+// where
+//     M: Model<MultipleIds>
+// {
+//     fn from(value: M) -> Self {
+//         value.get_id_mode().clone()
 //     }
 // }
 
@@ -183,19 +201,25 @@ impl From<&SingleId> for MultipleIds {
 
 impl From<Vec<SingleId>> for MultipleIds {
     fn from(ids: Vec<SingleId>) -> Self {
-        MultipleIds { ids: ids.iter().map(|id| id.get_id()).collect() }
+        MultipleIds {
+            ids: ids.iter().map(|id| id.get_id()).collect(),
+        }
     }
 }
 
 impl From<&Vec<SingleId>> for MultipleIds {
     fn from(ids: &Vec<SingleId>) -> Self {
-        MultipleIds { ids: ids.iter().map(|id| id.get_id()).collect() }
+        MultipleIds {
+            ids: ids.iter().map(|id| id.get_id()).collect(),
+        }
     }
 }
 
 impl From<Vec<&SingleId>> for MultipleIds {
     fn from(ids: Vec<&SingleId>) -> Self {
-        MultipleIds { ids: ids.iter().map(|&id| id.get_id()).collect() }
+        MultipleIds {
+            ids: ids.iter().map(|&id| id.get_id()).collect(),
+        }
     }
 }
 
@@ -204,16 +228,6 @@ impl From<&MultipleIds> for MultipleIds {
         Self {
             ids: ids.ids.clone(),
         }
-    }
-}
-
-// TODO Find a way to transform an IdMode into a MultipleIds
-impl<M> From<M> for MultipleIds
-where
-    M: Model<MultipleIds>
-{
-    fn from(value: M) -> Self {
-        value.get_id_mode().clone()
     }
 }
 
@@ -230,7 +244,6 @@ impl From<&MultipleIds> for RightTuple {
 }
 
 // Iterators
-
 impl IntoIterator for SingleId {
     type Item = SingleId;
     type IntoIter = MultipleIdsIntoIterator;
@@ -303,7 +316,7 @@ impl<E> FromIterator<E> for MultipleIds
 where
     E: Into<MultipleIds>,
 {
-    fn from_iter<T: IntoIterator<Item=E>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = E>>(iter: T) -> Self {
         let mut result: MultipleIds = Default::default();
         for item in iter {
             result += item.into();
@@ -314,7 +327,6 @@ where
 }
 
 // Eq
-
 impl PartialEq<u32> for SingleId {
     fn eq(&self, other: &u32) -> bool {
         self.id == *other
@@ -357,13 +369,16 @@ impl<Mode: IdMode> PartialEq<Mode> for MultipleIds {
 }
 
 // +, -
-
 impl Sub for MultipleIds {
     type Output = MultipleIds;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
-            ids: self.ids.into_iter().filter(|id| !rhs.contains(id)).collect(),
+            ids: self
+                .ids
+                .into_iter()
+                .filter(|id| !rhs.contains(id))
+                .collect(),
         }
     }
 }
@@ -380,9 +395,7 @@ impl Add for MultipleIds {
     fn add(self, rhs: Self) -> Self::Output {
         let mut ids = self.ids.clone();
         ids.append(rhs.ids.clone().as_mut());
-        let mut result = Self {
-            ids,
-        };
+        let mut result = Self { ids };
         result.remove_dup();
         result
     }
@@ -397,9 +410,7 @@ impl Add for SingleId {
                 ids: vec![self.id, rhs.id],
             }
         } else {
-            Self::Output {
-                ids: vec![self.id],
-            }
+            Self::Output { ids: vec![self.id] }
         }
     }
 }

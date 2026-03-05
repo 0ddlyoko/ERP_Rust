@@ -11,7 +11,7 @@ impl<L, OP, R> TryFrom<(L, OP, R)> for SearchTuple
 where
     L: Into<LeftTuple>,
     OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
-    R: Into<RightTuple>
+    R: Into<RightTuple>,
 {
     type Error = UnknownSearchOperatorError;
 
@@ -31,10 +31,11 @@ pub struct LeftTuple {
 
 impl From<&str> for LeftTuple {
     fn from(value: &str) -> Self {
-        let split = value.split(".").map(|str| str.to_string()).collect::<Vec<_>>();
-        LeftTuple {
-            path: split
-        }
+        let split = value
+            .split(".")
+            .map(|str| str.to_string())
+            .collect::<Vec<_>>();
+        LeftTuple { path: split }
     }
 }
 
@@ -99,7 +100,7 @@ impl From<bool> for RightTuple {
 
 impl<E> From<Vec<E>> for RightTuple
 where
-    E: Into<RightTuple>
+    E: Into<RightTuple>,
 {
     fn from(v: Vec<E>) -> Self {
         Self::Array(v.into_iter().map(Into::into).collect())

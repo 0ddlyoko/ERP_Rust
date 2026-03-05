@@ -1,8 +1,8 @@
 use code_gen::Model;
-use erp::field::IdMode;
+use erp::types::field::IdMode;
 
 #[derive(Model)]
-#[erp(table_name="sale_order_test")]
+#[erp(table_name = "sale_order_test")]
 #[allow(dead_code)]
 pub(crate) struct SaleOrderTest<Mode: IdMode> {
     id: Mode,
@@ -11,11 +11,11 @@ pub(crate) struct SaleOrderTest<Mode: IdMode> {
 }
 
 #[derive(Model)]
-#[erp(table_name="sale_order_test")]
-#[erp(derived_model="")]
+#[erp(table_name = "sale_order_test")]
+#[erp(derived_model = "")]
 #[allow(dead_code)]
 pub(crate) struct SaleOrderTest2<Mode: IdMode> {
     id: Mode,
-    #[erp(description="New name of the SO")]
+    #[erp(description = "New name of the SO")]
     name: String,
 }

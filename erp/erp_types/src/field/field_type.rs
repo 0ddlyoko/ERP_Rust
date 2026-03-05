@@ -1,13 +1,11 @@
-use crate::field::{IdMode, MultipleIds, Reference, SingleId};
 use std::fmt::{Debug, Display, Formatter};
-use crate::model::BaseModel;
 
 #[macro_export]
 macro_rules! field_type_make_eq {
     ( $self:expr, $other:expr, $( $path:path ),* ) => {
         match $self {
-            $($path(ref self_value) => {
-                if let $path(ref other_value) = $other {
+            $($path(self_value) => {
+                if let $path(other_value) = $other {
                     self_value == other_value
                 } else {
                     false
@@ -56,7 +54,6 @@ impl PartialEq for FieldType {
 }
 
 // String
-
 impl<'a> From<&'a FieldType> for Option<&'a String> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -85,7 +82,6 @@ impl From<&str> for FieldType {
 }
 
 // i32
-
 impl<'a> From<&'a FieldType> for Option<&'a i32> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -108,7 +104,6 @@ impl From<&i32> for FieldType {
 }
 
 // f32
-
 impl<'a> From<&'a FieldType> for Option<&'a f32> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -131,7 +126,6 @@ impl From<&f32> for FieldType {
 }
 
 // bool
-
 impl<'a> From<&'a FieldType> for Option<&'a bool> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -154,9 +148,7 @@ impl From<&bool> for FieldType {
 }
 
 // Enums
-
-pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {
-}
+pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {}
 
 impl<'a, E> From<&'a FieldType> for Option<&'a E>
 where
@@ -182,7 +174,6 @@ where
 }
 
 // Ref
-
 impl<'a> From<&'a FieldType> for Option<&'a u32> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -204,30 +195,7 @@ impl From<&u32> for FieldType {
     }
 }
 
-impl<E: BaseModel> From<&FieldType> for Option<Reference<E, SingleId>> {
-    fn from(t: &FieldType) -> Self {
-        match t {
-            FieldType::Ref(id) => Some(id.into()),
-            _ => None,
-        }
-    }
-}
-
-impl<E: BaseModel> From<&Reference<E, SingleId>> for FieldType {
-    fn from(t: &Reference<E, SingleId>) -> Self {
-        FieldType::Ref(t.id_mode.get_id())
-    }
-}
-
-impl<E: BaseModel> From<Reference<E, SingleId>> for FieldType {
-    fn from(t: Reference<E, SingleId>) -> Self {
-        FieldType::Ref(t.id_mode.get_id())
-    }
-}
-
-
 // Refs
-
 impl<'a> From<&'a FieldType> for Option<&'a Vec<u32>> {
     fn from(t: &'a FieldType) -> Self {
         match t {
@@ -246,27 +214,5 @@ impl From<Vec<u32>> for FieldType {
 impl From<&Vec<u32>> for FieldType {
     fn from(t: &Vec<u32>) -> Self {
         FieldType::Refs(t.clone())
-    }
-}
-
-impl<E: BaseModel> From<&FieldType> for Option<Reference<E, MultipleIds>> {
-    fn from(t: &FieldType) -> Self {
-        match t {
-            FieldType::Ref(id) => Some(vec![*id].into()),
-            FieldType::Refs(ids) => Some(ids.clone().into()),
-            _ => None,
-        }
-    }
-}
-
-impl<E: BaseModel> From<&Reference<E, MultipleIds>> for FieldType {
-    fn from(t: &Reference<E, MultipleIds>) -> Self {
-        FieldType::Refs(t.id_mode.get_ids_ref().clone())
-    }
-}
-
-impl<E: BaseModel> From<Reference<E, MultipleIds>> for FieldType {
-    fn from(t: Reference<E, MultipleIds>) -> Self {
-        FieldType::Refs(t.id_mode.ids)
     }
 }

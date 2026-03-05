@@ -21,14 +21,18 @@ impl TryFrom<&str> for SearchOperator {
             ">=" => SearchOperator::GreaterEqual,
             "<" => SearchOperator::Lower,
             "<=" => SearchOperator::LowerEqual,
-            _ => return Err(UnknownSearchOperatorError { search_operator: str.to_string() }),
+            _ => {
+                return Err(UnknownSearchOperatorError {
+                    search_operator: str.to_string(),
+                })
+            }
         })
     }
 }
 
 impl TryFrom<String> for SearchOperator {
     type Error = UnknownSearchOperatorError;
-    
+
     fn try_from(str: String) -> Result<Self, UnknownSearchOperatorError> {
         str.as_str().try_into()
     }

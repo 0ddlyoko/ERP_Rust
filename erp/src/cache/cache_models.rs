@@ -1,6 +1,6 @@
 use crate::cache::{CacheModel, Dirty, Update};
-use crate::field::FieldType;
 use crate::model::MapOfFields;
+use erp_types::field::FieldType;
 use std::collections::{HashMap, HashSet};
 
 /// Cache for a specific model type
@@ -90,16 +90,14 @@ impl CacheModels {
     where
         F: Fn(&str) -> bool,
     {
-        self._get_dirty_map_of_fields_from_filter(|field_name| { field_filter(field_name) })
+        self._get_dirty_map_of_fields_from_filter(|field_name| field_filter(field_name))
     }
 
     /// Get dirty data linked to given model and given fields.
     ///
     /// Do not insert non-stored fields
     pub fn get_dirty_fields_for_fields(&self, fields: &[&str]) -> HashMap<u32, MapOfFields> {
-        self._get_dirty_map_of_fields_from_filter(|field_name| {
-            fields.contains(&field_name)
-        })
+        self._get_dirty_map_of_fields_from_filter(|field_name| fields.contains(&field_name))
     }
 
     /// Get all dirty filtered fields for given records
@@ -111,14 +109,17 @@ impl CacheModels {
         for id in ids {
             if let Some(cache_model) = self.get_model(id) {
                 if let Some(dirty_fields) = self.dirty.get(id) {
-                    let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
-                        if !field_filter(dirty_field) {
-                            return None;
-                        }
+                    let map: HashMap<String, Option<FieldType>> = dirty_fields
+                        .iter()
+                        .filter_map(|dirty_field| {
+                            if !field_filter(dirty_field) {
+                                return None;
+                            }
 
-                        let field = cache_model.get_field(dirty_field)?;
-                        Some((dirty_field.clone(), field.get().cloned()))
-                    }).collect();
+                            let field = cache_model.get_field(dirty_field)?;
+                            Some((dirty_field.clone(), field.get().cloned()))
+                        })
+                        .collect();
 
                     if !map.is_empty() {
                         result.insert(*id, MapOfFields::new(map));
@@ -138,15 +139,17 @@ impl CacheModels {
         let mut result: HashMap<u32, MapOfFields> = HashMap::new();
         for (id, dirty_fields) in &self.dirty {
             if let Some(cache_model) = self.get_model(id) {
-                let map: HashMap<String, Option<FieldType>> = dirty_fields.iter().filter_map(|dirty_field| {
-                    if !field_filter(dirty_field) {
-                        return None;
-                    }
+                let map: HashMap<String, Option<FieldType>> = dirty_fields
+                    .iter()
+                    .filter_map(|dirty_field| {
+                        if !field_filter(dirty_field) {
+                            return None;
+                        }
 
-                    let field = cache_model.get_field(dirty_field)?;
-                    Some((dirty_field.clone(), field.get().cloned()))
-                }).collect();
-
+                        let field = cache_model.get_field(dirty_field)?;
+                        Some((dirty_field.clone(), field.get().cloned()))
+                    })
+                    .collect();
 
                 if !map.is_empty() {
                     result.insert(*id, MapOfFields::new(map));
@@ -180,7 +183,7 @@ impl CacheModels {
     }
 
     pub fn clear_dirty(&mut self, ids: &[u32]) {
-        self.dirty.retain(|key, _| { !ids.contains(key) });
+        self.dirty.retain(|key, _| !ids.contains(key));
     }
 
     pub fn clear_dirty_records(&mut self, fields: &[&str], ids: &[u32]) {
@@ -200,7 +203,8 @@ impl CacheModels {
         for &field_name in fields_name {
             let mut set = self.to_recompute.get_mut(field_name);
             if set.is_none() {
-                self.to_recompute.insert(field_name.to_string(), HashSet::new());
+                self.to_recompute
+                    .insert(field_name.to_string(), HashSet::new());
                 set = self.to_recompute.get_mut(field_name);
             }
             set.unwrap().extend(ids);
@@ -219,7 +223,8 @@ impl CacheModels {
     }
 
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
-        self.get_to_recompute(field_name).map_or(false, |set| set.contains(id))
+        self.get_to_recompute(field_name)
+            .map_or(false, |set| set.contains(id))
     }
 
     pub fn get_to_recompute(&self, field_name: &str) -> Option<&HashSet<u32>> {

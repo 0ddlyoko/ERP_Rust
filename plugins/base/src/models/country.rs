@@ -1,8 +1,8 @@
 use code_gen::Model;
-use erp::field::IdMode;
+use erp::types::field::IdMode;
 
 #[derive(Model)]
-#[erp(table_name="country")]
+#[erp(table_name = "country")]
 #[allow(dead_code)]
 pub struct Country<Mode: IdMode> {
     id: Mode,

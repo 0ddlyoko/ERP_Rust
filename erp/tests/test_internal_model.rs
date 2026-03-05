@@ -1,6 +1,6 @@
-use erp::field::FieldType;
-use erp::internal::internal_field::InternalField;
 use erp::internal::internal_model::FinalInternalModel;
+use erp_types::field::FieldType;
+use erp_types::internal::InternalField;
 use std::any::TypeId;
 
 #[test]

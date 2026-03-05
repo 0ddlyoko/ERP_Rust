@@ -36,9 +36,7 @@ impl Display for ErrorType {
 
 impl Error for ErrorType {}
 
-
 pub trait Database {
-
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool>;
 
@@ -49,13 +47,24 @@ pub trait Database {
     ///
     /// ModelManager is needed to know the current structure of the database, and to make correct
     /// links between the domain and the database
-    fn browse(&mut self, model_name: &str, domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<u32>>;
+    fn browse(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<u32>>;
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     ///
     /// ModelManager is needed to know the current structure of the database, and to make correct
     /// links between the domain and the database
-    fn search<'a>(&mut self, model_name: &str, fields: &[&'a str], domain: &SearchType, model_manager: &ModelManager) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>>;
+    fn search<'a>(
+        &mut self,
+        model_name: &str,
+        fields: &[&'a str],
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>>;
 
     /// Create one new record per given data for given model
     fn create(&mut self, model_name: &str, data: &Vec<&MapOfFields>) -> Result<Vec<u32>>;
@@ -65,13 +74,13 @@ pub trait Database {
 
     /// Retrieves installed plugins
     fn get_installed_plugins(&mut self) -> Result<Vec<String>>;
-    
+
     /// Create a new savepoint
     fn savepoint(&mut self, name: &str) -> Result<()>;
-    
+
     /// Commit previously created savepoint
     fn savepoint_commit(&mut self, name: &str) -> Result<()>;
-    
+
     /// Rollback previously created savepoint
     fn savepoint_rollback(&mut self, name: &str) -> Result<()>;
 

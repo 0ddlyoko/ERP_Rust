@@ -1,5 +1,5 @@
-use std::{error, fmt};
 use crate::SearchKey;
+use std::{error, fmt};
 
 #[derive(Debug, Clone)]
 pub struct InvalidDomainError {
@@ -51,5 +51,3 @@ impl fmt::Display for UnknownSearchOperatorError {
 }
 
 impl error::Error for UnknownSearchOperatorError {}
-
-

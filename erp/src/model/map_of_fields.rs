@@ -1,4 +1,4 @@
-use crate::field::FieldType;
+use erp_types::field::FieldType;
 use std::collections::HashMap;
 
 // TODO Check if we still need this

@@ -1,13 +1,13 @@
-use std::fmt::{Display, Formatter};
 use erp_search::RightTuple;
-use crate::field;
+use erp_types::field as field_type;
+use std::fmt::{Display, Formatter};
 
 #[macro_export]
 macro_rules! database_field_type_make_eq {
     ( $self:expr, $other:expr, $( $path:path ),* ) => {
         match $self {
-            $($path(ref self_value) => {
-                if let $path(ref other_value) = $other {
+            $($path(self_value) => {
+                if let $path(other_value) = $other {
                     self_value == other_value
                 } else {
                     false
@@ -72,9 +72,7 @@ impl PartialEq<RightTuple> for FieldType {
             (FieldType::UInteger(value), RightTuple::UInteger(other_value)) => value == other_value,
             (FieldType::Float(value), RightTuple::Float(other_value)) => value == other_value,
             (FieldType::Boolean(value), RightTuple::Boolean(other_value)) => value == other_value,
-            (value, RightTuple::Array(other_value)) => {
-                other_value.contains(&value.clone().into())
-            },
+            (value, RightTuple::Array(other_value)) => other_value.contains(&value.clone().into()),
             _ => false,
         }
     }
@@ -87,28 +85,30 @@ impl PartialEq<FieldType> for RightTuple {
     }
 }
 
-impl From<field::FieldType> for FieldType {
-    fn from(value: field::FieldType) -> Self {
+impl From<field_type::FieldType> for FieldType {
+    fn from(value: field_type::FieldType) -> Self {
         match value {
-            field::FieldType::String(v) => FieldType::String(v),
-            field::FieldType::Integer(v) => FieldType::Integer(v),
-            field::FieldType::Float(v) => FieldType::Float(v),
-            field::FieldType::Bool(v) => FieldType::Boolean(v),
-            field::FieldType::Ref(v) => FieldType::UInteger(v),
+            field_type::FieldType::String(v) => FieldType::String(v),
+            field_type::FieldType::Integer(v) => FieldType::Integer(v),
+            field_type::FieldType::Float(v) => FieldType::Float(v),
+            field_type::FieldType::Bool(v) => FieldType::Boolean(v),
+            field_type::FieldType::Ref(v) => FieldType::UInteger(v),
             // This should not occur
-            field::FieldType::Refs(_v) => panic!("Cannot convert Refs fields to database objet"),
+            field_type::FieldType::Refs(_v) => {
+                panic!("Cannot convert Refs fields to database objet")
+            }
         }
     }
 }
 
-impl From<FieldType> for field::FieldType {
+impl From<FieldType> for field_type::FieldType {
     fn from(value: FieldType) -> Self {
         match value {
-            FieldType::String(v) => field::FieldType::String(v),
-            FieldType::Integer(v) => field::FieldType::Integer(v),
-            FieldType::UInteger(v) => field::FieldType::Ref(v),
-            FieldType::Float(v) => field::FieldType::Float(v),
-            FieldType::Boolean(v) => field::FieldType::Bool(v),
+            FieldType::String(v) => field_type::FieldType::String(v),
+            FieldType::Integer(v) => field_type::FieldType::Integer(v),
+            FieldType::UInteger(v) => field_type::FieldType::Ref(v),
+            FieldType::Float(v) => field_type::FieldType::Float(v),
+            FieldType::Boolean(v) => field_type::FieldType::Bool(v),
         }
     }
 }

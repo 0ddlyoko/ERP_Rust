@@ -46,7 +46,7 @@ impl Plugin for TestPlugin3 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn _create_plugin() -> *mut Box<dyn Plugin> {
     let object = TestPlugin {};
     let b = Box::new(object);
