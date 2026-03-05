@@ -72,7 +72,7 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> {
     type BaseModel: BaseModel;
 }
 
-impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
+impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
     /// Returns given field of given type.
     ///
     /// If error, returns the error
@@ -98,7 +98,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
                     field_name: field_name.to_string(),
                     id: id.get_id(),
                 }
-                .into())
+                    .into())
             }
         } else {
             Err(RequiredFieldEmpty {
@@ -106,7 +106,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
                 field_name: field_name.to_string(),
                 id: id.get_id(),
             }
-            .into())
+                .into())
         }
     }
 
@@ -136,7 +136,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
         env: &mut Environment,
     ) -> Result<Option<M>, Box<dyn Error>>
     where
-        M: Model<SingleId, BaseModel = BM2>,
+        M: Model<SingleId, BaseModel=BM2>,
         BM2: BaseModel,
     {
         let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
@@ -152,7 +152,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     }
 }
 
-impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
+impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
     /// Returns given field of given type.
     ///
     /// If error, returns the error
@@ -181,7 +181,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
                             field_name: field_name.to_string(),
                             id: *ids.get_id_at(idx),
                         }
-                        .into())
+                            .into())
                     }
                 } else {
                     Err(RequiredFieldEmpty {
@@ -189,7 +189,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
                         field_name: field_name.to_string(),
                         id: *ids.get_id_at(idx),
                     }
-                    .into())
+                        .into())
                 }
             })
             .collect()
@@ -216,7 +216,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     }
 }
 
-impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
+impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     /// Returns given optional references field.
     ///
     /// If error, returns the error
@@ -226,7 +226,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         env: &mut Environment,
     ) -> Result<M, Box<dyn Error>>
     where
-        M: Model<MultipleIds, BaseModel = BM2>,
+        M: Model<MultipleIds, BaseModel=BM2>,
         BM2: BaseModel,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -315,7 +315,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     /// Convert this model into another one, but from the same base
     pub fn convert<TO>(&self) -> TO
     where
-        TO: Model<Mode, BaseModel = BM>,
+        TO: Model<Mode, BaseModel=BM>,
     {
         TO::create_instance(self.get_id_mode().clone())
     }

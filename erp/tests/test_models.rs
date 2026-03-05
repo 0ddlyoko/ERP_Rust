@@ -30,10 +30,12 @@ fn test_models() -> Result<()> {
         0,
         "Total price should be 0, as there is no line"
     );
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .get_id_mode()
-        .is_empty());
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .get_id_mode()
+            .is_empty()
+    );
 
     // Create a new SO line
     let mut sale_order_line_map = MapOfFields::default();
@@ -144,10 +146,12 @@ fn test_depends() -> Result<()> {
     // SO
     assert!(sale_order.get_internal_field("name").depends.is_empty());
     assert!(sale_order.get_internal_field("state").depends.is_empty());
-    assert!(sale_order
-        .get_internal_field("total_price")
-        .depends
-        .is_empty());
+    assert!(
+        sale_order
+            .get_internal_field("total_price")
+            .depends
+            .is_empty()
+    );
     assert!(
         sale_order.get_internal_field("lines").depends.is_empty(),
         "O2M shouldn't have any dependencies"

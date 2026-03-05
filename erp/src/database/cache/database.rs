@@ -52,10 +52,10 @@ impl CacheDatabase {
                 HashSet::<_>::from_iter(left).into_iter().collect()
             }
             SearchType::Tuple(SearchTuple {
-                left: LeftTuple { path },
-                operator,
-                right,
-            }) => {
+                                  left: LeftTuple { path },
+                                  operator,
+                                  right,
+                              }) => {
                 let mut path = path.clone();
                 path.reverse();
                 let result =
@@ -82,7 +82,7 @@ impl CacheDatabase {
         let model = model_manager.get_model(model_name);
         let final_field = model.get_internal_field(&current_field);
 
-        let FieldReference {target_model, inverse_field} = final_field.inverse.as_ref().unwrap_or_else(|| panic!("Field {}.{} doesn't have any inverse fields. This should not occur, as this is checked in method get_fields_to_save", model_name, current_field));
+        let FieldReference { target_model, inverse_field } = final_field.inverse.as_ref().unwrap_or_else(|| panic!("Field {}.{} doesn't have any inverse fields. This should not occur, as this is checked in method get_fields_to_save", model_name, current_field));
         let target_model = model_manager.get_model(target_model);
 
         let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
@@ -248,10 +248,10 @@ impl Database for CacheDatabase {
                 let cell_name = row.get_cell("name");
                 match (cell_state, cell_name) {
                     (Some(FieldType::String(state)), Some(FieldType::String(name)))
-                        if state == "installed" =>
-                    {
-                        result.push(name.clone());
-                    }
+                    if state == "installed" =>
+                        {
+                            result.push(name.clone());
+                        }
                     _ => {}
                 }
             }

@@ -24,7 +24,7 @@ impl TryFrom<&str> for SearchOperator {
             _ => {
                 return Err(UnknownSearchOperatorError {
                     search_operator: str.to_string(),
-                })
+                });
             }
         })
     }

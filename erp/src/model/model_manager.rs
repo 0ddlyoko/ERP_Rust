@@ -40,9 +40,9 @@ impl ModelManager {
         for model in self.models.values_mut() {
             for field in model.fields.values_mut() {
                 if let Some(FieldReference {
-                    inverse_field: FieldReferenceType::M2O { inverse_fields },
-                    ..
-                }) = &mut field.inverse
+                                inverse_field: FieldReferenceType::M2O { inverse_fields },
+                                ..
+                            }) = &mut field.inverse
                 {
                     inverse_fields.clear();
                 }
@@ -54,9 +54,9 @@ impl ModelManager {
         for model in self.models.values() {
             for field in model.fields.values() {
                 if let Some(FieldReference {
-                    target_model,
-                    inverse_field: FieldReferenceType::O2M { inverse_field },
-                }) = &field.inverse
+                                target_model,
+                                inverse_field: FieldReferenceType::O2M { inverse_field },
+                            }) = &field.inverse
                 {
                     let model_to_modify = fields_to_modify.entry(target_model.clone()).or_default();
                     let field_to_modify = model_to_modify.entry(inverse_field.clone()).or_default();
@@ -71,16 +71,19 @@ impl ModelManager {
             for (field_name, mut fields_to_add) in model_to_add {
                 let field = model.get_internal_field_mut(&field_name);
                 if let Some(FieldReference {
-                    inverse_field: FieldReferenceType::M2O { inverse_fields },
-                    ..
-                }) = &mut field.inverse
+                                inverse_field: FieldReferenceType::M2O { inverse_fields },
+                                ..
+                            }) = &mut field.inverse
                 {
                     inverse_fields.append(&mut fields_to_add);
                     // Check uniqueness
                     let mut seen = HashSet::new();
                     inverse_fields.retain(|field| seen.insert(field.clone()));
                 } else {
-                    panic!("A field is targeting {}.{} as an inverse field, but this field is not a M2O", model_name, field_name);
+                    panic!(
+                        "A field is targeting {}.{} as an inverse field, but this field is not a M2O",
+                        model_name, field_name
+                    );
                 }
             }
         }
@@ -120,9 +123,9 @@ impl ModelManager {
                                     .or_default();
                                 vec.push(new_final_depends);
                             } else if let Some(FieldReference {
-                                target_model,
-                                inverse_field,
-                            }) = &field.inverse
+                                                   target_model,
+                                                   inverse_field,
+                                               }) = &field.inverse
                             {
                                 match inverse_field {
                                     FieldReferenceType::O2M { inverse_field } => {
@@ -161,7 +164,10 @@ impl ModelManager {
                                 }
                                 current_model = self.get_model(target_model);
                             } else {
-                                panic!("Field {}.{} has invalid depends! (Field \"{}\" of depends \"{:?}\" is not a M2O / O2M)", model.name, field.name, d, depend)
+                                panic!(
+                                    "Field {}.{} has invalid depends! (Field \"{}\" of depends \"{:?}\" is not a M2O / O2M)",
+                                    model.name, field.name, d, depend
+                                )
                             }
                         }
                     }

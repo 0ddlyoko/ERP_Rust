@@ -39,13 +39,13 @@ impl ModelGen {
 
         let fields = match data {
             Data::Struct(DataStruct {
-                fields: Fields::Named(named_fields),
-                ..
-            }) => Some(&named_fields.named),
+                             fields: Fields::Named(named_fields),
+                             ..
+                         }) => Some(&named_fields.named),
             Data::Struct(DataStruct {
-                fields: Fields::Unnamed(unnamed_fields),
-                ..
-            }) => Some(&unnamed_fields.unnamed),
+                             fields: Fields::Unnamed(unnamed_fields),
+                             ..
+                         }) => Some(&unnamed_fields.unnamed),
             _ => None,
         };
         let fields = syn_fields_from_data(fields)?;

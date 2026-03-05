@@ -105,43 +105,43 @@ fn test_get_fields_to_save() -> Result<()> {
     );
 
     assert_eq!(
-        env.get_fields_to_save("sale_order", &vec![&("name".into()),])?
+        env.get_fields_to_save("sale_order", &vec![&("name".into()), ])?
             .into_iter()
             .map(|(k, mut v)| {
                 v.sort();
                 (k, v)
             })
             .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name"]),])
+        HashMap::from([("sale_order", vec!["name"]), ])
     );
 
     assert_eq!(
         env.get_fields_to_save(
             "sale_order",
-            &vec![&("name".into()), &("state".into()), &("total_price".into()),]
+            &vec![&("name".into()), &("state".into()), &("total_price".into()), ]
         )?
-        .into_iter()
-        .map(|(k, mut v)| {
-            v.sort();
-            (k, v)
-        })
-        .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name", "state", "total_price"]),])
+            .into_iter()
+            .map(|(k, mut v)| {
+                v.sort();
+                (k, v)
+            })
+            .collect::<HashMap<_, _>>(),
+        HashMap::from([("sale_order", vec!["name", "state", "total_price"]), ])
     );
 
     // Give same fields should only appear once
     assert_eq!(
         env.get_fields_to_save(
             "sale_order",
-            &vec![&("name".into()), &("name".into()), &("name".into()),]
+            &vec![&("name".into()), &("name".into()), &("name".into()), ]
         )?
-        .into_iter()
-        .map(|(k, mut v)| {
-            v.sort();
-            (k, v)
-        })
-        .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name"]),])
+            .into_iter()
+            .map(|(k, mut v)| {
+                v.sort();
+                (k, v)
+            })
+            .collect::<HashMap<_, _>>(),
+        HashMap::from([("sale_order", vec!["name"]), ])
     );
 
     // Path should also work correctly, and only add stored fields
@@ -155,30 +155,30 @@ fn test_get_fields_to_save() -> Result<()> {
                 &("lines.total_price".into()),
             ]
         )?
-        .into_iter()
-        .map(|(k, mut v)| {
-            v.sort();
-            (k, v)
-        })
-        .collect::<HashMap<_, _>>(),
+            .into_iter()
+            .map(|(k, mut v)| {
+                v.sort();
+                (k, v)
+            })
+            .collect::<HashMap<_, _>>(),
         HashMap::from([(
             "sale_order_line",
             vec!["amount", "order", "price", "total_price"]
-        ),])
+        ), ])
     );
 
     // Same here, as "order" is a stored field, this should be returned (and not "lines")
     assert_eq!(
         env.get_fields_to_save(
             "sale_order_line",
-            &vec![&("price".into()), &("order.name".into()),]
+            &vec![&("price".into()), &("order.name".into()), ]
         )?
-        .into_iter()
-        .map(|(k, mut v)| {
-            v.sort();
-            (k, v)
-        })
-        .collect::<HashMap<_, _>>(),
+            .into_iter()
+            .map(|(k, mut v)| {
+                v.sort();
+                (k, v)
+            })
+            .collect::<HashMap<_, _>>(),
         HashMap::from([
             ("sale_order", vec!["name"]),
             ("sale_order_line", vec!["order", "price"]),
@@ -254,10 +254,12 @@ fn test_get_record() -> Result<()> {
     assert!(cache_models.get_model(&id).is_some());
     let dirty_fields = cache_models.get_dirty(&id);
     assert!(dirty_fields.is_some());
-    assert!(dirty_fields
-        .unwrap()
-        .iter()
-        .eq(["price".to_string()].iter()));
+    assert!(
+        dirty_fields
+            .unwrap()
+            .iter()
+            .eq(["price".to_string()].iter())
+    );
 
     // Clear dirty
     cache_models.clear_dirty(&[id]);
@@ -372,34 +374,39 @@ fn test_save_fields_to_db() -> Result<()> {
     );
 
     // create_new_record_from_map should create the record, and so this should not be dirty
-    assert!(!env
-        .cache
-        .get_cache_models("sale_order")
-        .is_field_dirty("name", &id));
+    assert!(
+        !env.cache
+            .get_cache_models("sale_order")
+            .is_field_dirty("name", &id)
+    );
 
     // Changing the name should set this field as dirty
     sale_order.set_name("1ddlyoko".to_string(), &mut env)?;
     sale_order.set_state(SaleOrderState::Paid, &mut env)?;
     sale_order.set_total_price(42, &mut env)?;
-    assert!(env
-        .cache
-        .get_cache_models("sale_order")
-        .is_field_dirty("name", &id));
-    assert!(env
-        .cache
-        .get_cache_models("sale_order")
-        .is_field_dirty("state", &id));
-    assert!(env
-        .cache
-        .get_cache_models("sale_order")
-        .is_field_dirty("total_price", &id));
+    assert!(
+        env.cache
+            .get_cache_models("sale_order")
+            .is_field_dirty("name", &id)
+    );
+    assert!(
+        env.cache
+            .get_cache_models("sale_order")
+            .is_field_dirty("state", &id)
+    );
+    assert!(
+        env.cache
+            .get_cache_models("sale_order")
+            .is_field_dirty("total_price", &id)
+    );
     // To Recompute shouldn't be set for those fields
     assert!(!env.cache.is_field_to_recompute("sale_order", "name", &id));
     assert!(!env.cache.is_field_to_recompute("sale_order", "state", &id));
     // Neither for total_price, as we fixed a value before
-    assert!(!env
-        .cache
-        .is_field_to_recompute("sale_order", "total_price", &id));
+    assert!(
+        !env.cache
+            .is_field_to_recompute("sale_order", "total_price", &id)
+    );
 
     // Calling save_records_to_db should save given records to db, and so only those records should not be dirty anymore
     env.save_fields_to_db("sale_order", &["name", "state"])?;
@@ -485,14 +492,16 @@ fn test_search() -> Result<()> {
     sale_order.set_name("1ddlyoko".to_string(), &mut env)?;
 
     // Old search should return nothing
-    assert!(env
-        .search::<SaleOrder<_>>(&make_domain!([("name", "=", "0ddlyoko")]))?
-        .id
-        .is_empty());
-    assert!(env
-        .search::<SaleOrderLine<_>>(&make_domain!([("order.name", "=", "0ddlyoko")]))?
-        .id
-        .is_empty());
+    assert!(
+        env.search::<SaleOrder<_>>(&make_domain!([("name", "=", "0ddlyoko")]))?
+            .id
+            .is_empty()
+    );
+    assert!(
+        env.search::<SaleOrderLine<_>>(&make_domain!([("order.name", "=", "0ddlyoko")]))?
+            .id
+            .is_empty()
+    );
     // Because name is now "1ddlyoko"
     assert_eq!(
         sale_order_search.id,
@@ -507,14 +516,16 @@ fn test_search() -> Result<()> {
 
     // Update the line, and check if we can search on it
     sale_order_line.set_amount(42, &mut env)?;
-    assert!(env
-        .search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 50)]))?
-        .id
-        .is_empty());
-    assert!(env
-        .search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 69)]))?
-        .id
-        .is_empty());
+    assert!(
+        env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 50)]))?
+            .id
+            .is_empty()
+    );
+    assert!(
+        env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 69)]))?
+            .id
+            .is_empty()
+    );
     assert_eq!(
         sale_order_search.id,
         env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 42)]))?
@@ -526,10 +537,11 @@ fn test_search() -> Result<()> {
     map.insert("order", sale_order.id.get_id());
     map.insert("amount", 69);
     let _sale_order_line_2: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
-    assert!(env
-        .search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 50)]))?
-        .id
-        .is_empty());
+    assert!(
+        env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 50)]))?
+            .id
+            .is_empty()
+    );
     assert_eq!(
         sale_order_search.id,
         env.search::<SaleOrder<_>>(&make_domain!([("lines.amount", "=", 69)]))?

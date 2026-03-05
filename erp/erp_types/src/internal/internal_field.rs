@@ -54,12 +54,18 @@ impl FinalInternalField {
                 let a = std::mem::discriminant(&self.default_value);
                 let b = std::mem::discriminant(default_value);
                 if a != b {
-                    panic!("Default values are of different type (name: {}, first default value: {}, second default value: {}", self.name, &self.default_value, &default_value);
+                    panic!(
+                        "Default values are of different type (name: {}, first default value: {}, second default value: {}",
+                        self.name, &self.default_value, &default_value
+                    );
                 }
             }
             self.default_value = default_value.clone();
         } else if !self.is_init {
-            panic!("First register should have a default value. This is needed to identify the type of the field (name: {}).", field_descriptor.name);
+            panic!(
+                "First register should have a default value. This is needed to identify the type of the field (name: {}).",
+                field_descriptor.name
+            );
         }
         if let Some(description) = &field_descriptor.description {
             self.description = description.clone();

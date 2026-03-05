@@ -283,7 +283,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                             Some(erp::types::field::FieldType::Refs(refs))
                         }
                     }
-                },
+                }
             }
         } else if *is_reference {
             if *is_reference_multi {

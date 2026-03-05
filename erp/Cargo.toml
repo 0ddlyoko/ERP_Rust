@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde_derive = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-libloading = "0.8"
-config = { version = "0.15", features = ["toml"] }
-directories = "6.0"
-postgres = "0.19.10"
-uuid = { version = "1.16.0", features = ["v4"] }
+config.workspace = true
+directories.workspace = true
+libloading.workspace = true
+postgres.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
+uuid.workspace = true
 
 erp_types = { path = "erp_types" }
 erp_search = { path = "../erp_search" }
@@ -21,4 +21,4 @@ test_utilities = { path = "test_utilities" }
 # Temporary solution. To remove later
 test_plugin = { path = "../plugins/test_plugin" }
 base = { path = "../plugins/base" }
-serial_test = "3.2.0"
+serial_test.workspace = true

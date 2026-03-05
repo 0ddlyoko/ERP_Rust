@@ -117,9 +117,9 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                         .insert(&final_field.name);
                 }
                 if let Some(FieldReference {
-                    target_model,
-                    inverse_field,
-                }) = &final_field.inverse
+                                target_model,
+                                inverse_field,
+                            }) = &final_field.inverse
                 {
                     // Get target model to continue the process.
                     // Also, if this field (or the target one) is a stored field, save it
@@ -466,9 +466,9 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                 // This could be a computed one. Call it
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {
-                target_model,
-                inverse_field: FieldReferenceType::O2M { inverse_field },
-            }) = &field_info.inverse
+                                   target_model,
+                                   inverse_field: FieldReferenceType::O2M { inverse_field },
+                               }) = &field_info.inverse
             {
                 // O2M, save data to the database, and then load the field with related M2O
                 // TODO Add search_group(...)
@@ -609,9 +609,9 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                     map_result.insert(id, (false, field_value.map(|value| value.into())));
                 }
             } else if let Some(FieldReference {
-                target_model,
-                inverse_field: FieldReferenceType::O2M { inverse_field },
-            }) = &field_info.inverse
+                                   target_model,
+                                   inverse_field: FieldReferenceType::O2M { inverse_field },
+                               }) = &field_info.inverse
             {
                 // TODO Check if target field is stored or not
                 // O2M, save data to the database, and then make a request
@@ -699,9 +699,9 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         let internal_model = self.model_manager.get_model(model_name);
         let field_info = internal_model.get_internal_field(field_name);
         if let Some(FieldReference {
-            target_model,
-            inverse_field,
-        }) = &field_info.inverse
+                        target_model,
+                        inverse_field,
+                    }) = &field_info.inverse
         {
             // M2O or O2M
             return match inverse_field {
@@ -834,8 +834,8 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                                     let cache_field = cache_model.get_field_mut(inverse_field);
                                     // If this field is not in cache, we do nothing
                                     if let Some(CacheField {
-                                        value: Some(FieldType::Refs(vecs)),
-                                    }) = cache_field
+                                                    value: Some(FieldType::Refs(vecs)),
+                                                }) = cache_field
                                     {
                                         vecs.retain(|id| current_id != *id);
                                         if is_update_if_exists {
@@ -1193,7 +1193,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                .into());
+                    .into());
             }
         }
 
@@ -1233,7 +1233,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                .into());
+                    .into());
             }
         }
 
@@ -1284,7 +1284,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                .into());
+                    .into());
             }
         }
 

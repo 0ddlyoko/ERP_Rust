@@ -12,9 +12,7 @@ impl fmt::Display for RequiredFieldEmpty {
         write!(
             f,
             "Field \"{}\".\"{}\" for record \"{}\" is required but is empty. This should not happen",
-            self.model_name,
-            self.field_name,
-            self.id,
+            self.model_name, self.field_name, self.id,
         )
     }
 }

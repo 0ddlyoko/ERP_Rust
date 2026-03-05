@@ -18,7 +18,7 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
     /// We don't load the record in cache, neither perform any modification / search to the database.
     pub fn get<M>(&self) -> M
     where
-        M: Model<SingleId, BaseModel = BM>,
+        M: Model<SingleId, BaseModel=BM>,
     {
         M::create_instance(self.id_mode.clone())
     }
@@ -27,7 +27,7 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
 impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
     pub fn get_multiple<M>(&self) -> M
     where
-        M: Model<MultipleIds, BaseModel = BM>,
+        M: Model<MultipleIds, BaseModel=BM>,
     {
         M::create_instance(MultipleIds {
             ids: self.id_mode.get_ids_ref().clone(),
@@ -116,7 +116,7 @@ impl<E: BaseModel> From<Reference<E, MultipleIds>> for FieldType {
 
 /// Allow merging 2 references together
 impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
-    for Reference<BM, Mode2>
+for Reference<BM, Mode2>
 {
     type Output = Reference<BM, MultipleIds>;
 
@@ -129,7 +129,7 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Add<Reference<BM, Mode1>>
 
 /// Allow removing some ids from a reference
 impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>>
-    for Reference<BM, Mode2>
+for Reference<BM, Mode2>
 {
     type Output = Reference<BM, MultipleIds>;
 

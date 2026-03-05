@@ -3,17 +3,7 @@ name = "rust-erp"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-#h2 = "0.3.20"
-#bytes = "1"
-#http = "0.2"
-#tokio = { version = "1.29", features = ["full"] }
-#hyper = "1.0.0-rc.4"
-#rocket = "0.5.0-rc.3"
-#syn = "2.0"
-#diesel = "2.1"
 erp = { path = "erp" }
 
 [workspace]
@@ -26,3 +16,17 @@ members = [
     "plugins/base",
     "plugins/test_plugin",
 ]
+
+[workspace.dependencies]
+
+config = { version = "0.15", features = ["toml"] }
+directories = "6.0"
+libloading = "0.9"
+proc-macro2 = "1.0"
+postgres = "0.19.10"
+quote = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1.0"
+serial_test = "3.2.0"
+syn = "2.0"
+uuid = { version = "1.16.0", features = ["v4"] }

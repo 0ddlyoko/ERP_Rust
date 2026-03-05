@@ -32,7 +32,7 @@ pub mod sealed {
 
 // TODO Should we transform this into an enum, as we only have 2 structs ?
 pub trait IdMode:
-    Sealed + Clone + Into<MultipleIds> + Into<RightTuple> + IntoIterator<Item = SingleId> + AsRef<[u32]>
+Sealed + Clone + Into<MultipleIds> + Into<RightTuple> + IntoIterator<Item=SingleId> + AsRef<[u32]>
 {
     /// Returns a vector containing ids saved in this reference
     fn get_ids_ref(&self) -> &Vec<u32>;
@@ -316,7 +316,7 @@ impl<E> FromIterator<E> for MultipleIds
 where
     E: Into<MultipleIds>,
 {
-    fn from_iter<T: IntoIterator<Item = E>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item=E>>(iter: T) -> Self {
         let mut result: MultipleIds = Default::default();
         for item in iter {
             result += item.into();

@@ -127,22 +127,28 @@ fn test_x2x_fields() -> Result<()> {
 
     // SO shouldn't have any lines, as it's not linked
     // So, both methods should return an empty list
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .is_empty());
-    assert!(sale_order_line
-        .get_order::<SaleOrder<_>>(&mut env)?
-        .is_none());
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .is_empty()
+    );
+    assert!(
+        sale_order_line
+            .get_order::<SaleOrder<_>>(&mut env)?
+            .is_none()
+    );
 
     // Linking SO to a line should work, for both side
     // TODO Allow to add/remove line(s), instead of set
     // TODO Clean this, to only pass "sale_order_line" instead of "sale_order_line.id.clone().into()"
     sale_order.set_lines(sale_order_line.id.clone().into(), &mut env)?;
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line.id.get_id_ref()));
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line.id.get_id_ref())
+    );
     assert_eq!(
         sale_order_line
             .get_order::<SaleOrder<_>>(&mut env)?
@@ -154,14 +160,18 @@ fn test_x2x_fields() -> Result<()> {
     let map: MapOfFields = MapOfFields::default();
     let sale_order_line_2: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
     sale_order_line_2.set_order(Some(sale_order.id.get_id().into()), &mut env)?;
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line.id.get_id_ref()));
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line_2.id.get_id_ref()));
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line.id.get_id_ref())
+    );
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line_2.id.get_id_ref())
+    );
     assert_eq!(
         sale_order_line
             .get_order::<SaleOrder<_>>(&mut env)?
@@ -180,19 +190,25 @@ fn test_x2x_fields() -> Result<()> {
     // TODO Clean this, to allow to pass "sale_order" instead of "sale_order.id.get_id()"
     map.insert("order", sale_order.id.get_id());
     let sale_order_line_3: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line.id.get_id_ref()));
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line_2.id.get_id_ref()));
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line.id.get_id_ref())
+    );
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line_2.id.get_id_ref())
+    );
     // TODO Fix this (save in cache if needed)
-    assert!(sale_order
-        .get_lines::<SaleOrderLine<_>>(&mut env)?
-        .id
-        .contains(sale_order_line_3.id.get_id_ref()));
+    assert!(
+        sale_order
+            .get_lines::<SaleOrderLine<_>>(&mut env)?
+            .id
+            .contains(sale_order_line_3.id.get_id_ref())
+    );
     assert_eq!(
         sale_order_line
             .get_order::<SaleOrder<_>>(&mut env)?
