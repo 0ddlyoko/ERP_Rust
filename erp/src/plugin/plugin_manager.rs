@@ -38,6 +38,7 @@ impl PluginManager {
         &mut self,
         directory_path: &String,
     ) -> Result<(), Box<dyn error::Error>> {
+        println!("Registering plugins from {}", directory_path);
         let dll_extension = env::consts::DLL_EXTENSION;
         let paths = fs::read_dir(directory_path)?;
         for path in paths {

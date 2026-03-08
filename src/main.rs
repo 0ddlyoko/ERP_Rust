@@ -8,7 +8,7 @@ fn main() {
 
     app.load().unwrap_or_else(|err| panic!("Error: {}", err));
 
-    let model = app.model_manager.get_model("sale_order_test");
+    let model = app.model_manager.get_model("contact");
     println!("Models: {}", model.name);
 
     app.unload();
