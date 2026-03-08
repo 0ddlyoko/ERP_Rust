@@ -1,10 +1,10 @@
 use crate::environment::Environment;
-use crate::model::ModelDescriptor;
 use crate::model::{CommonModel, Model};
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
 use erp_types::field::MultipleIds;
 use erp_types::internal::{FinalInternalField, InternalField};
+use erp_types::model::ModelDescriptor;
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;

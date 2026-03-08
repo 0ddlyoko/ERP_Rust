@@ -1,8 +1,9 @@
 use crate::database::cache::CacheDatabase;
 use crate::database::postgres::PostgresDatabase;
 use crate::database::{Database, FieldType};
-use crate::model::{MapOfFields, ModelManager};
+use crate::model::ModelManager;
 use erp_search::SearchType;
+use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 

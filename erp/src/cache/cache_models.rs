@@ -1,7 +1,8 @@
-use crate::cache::{CacheModel, Dirty, Update};
-use crate::model::MapOfFields;
+use crate::cache::CacheModel;
 use erp_types::field::FieldType;
+use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
+use erp_types::cache::{Dirty, Update};
 
 /// Cache for a specific model type
 ///

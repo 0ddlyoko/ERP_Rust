@@ -1,6 +1,7 @@
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
-use crate::model::{MapOfFields, ModelManager};
+use crate::model::ModelManager;
 use erp_search::SearchType;
+use erp_types::model::MapOfFields;
 use postgres::{Client, NoTls};
 use std::collections::HashMap;
 use std::error::Error;

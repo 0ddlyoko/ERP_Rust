@@ -1,6 +1,7 @@
 use crate::database::FieldType;
-use crate::model::{MapOfFields, ModelManager};
+use crate::model::ModelManager;
 use erp_search::SearchType;
+use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;

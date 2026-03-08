@@ -56,7 +56,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             #[derive(Default, Debug)]
             pub struct #base_model_name_ident;
 
-            impl erp::model::BaseModel for #base_model_name_ident {
+            impl erp::types::model::BaseModel for #base_model_name_ident {
                 fn get_model_name() -> &'static str {
                     #table_name
                 }
@@ -350,7 +350,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         quote! {
             {
                 // Yep, I don't know how to call get_model_name() without this line
-                use erp::model::BaseModel;
+                use erp::types::model::BaseModel;
                 erp::types::field::FieldDescriptor {
                     name: #field_name.to_string(),
                     default_value: #default_value,
@@ -378,13 +378,13 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 &self.id
             }
 
-            fn get_model_descriptor() -> erp::model::ModelDescriptor {
+            fn get_model_descriptor() -> erp::types::model::ModelDescriptor {
                 let name = Self::get_model_name().to_string();
                 let description = #description;
                 let fields = vec![
                     #(#fields_descriptor,)*
                 ];
-                erp::model::ModelDescriptor {
+                erp::types::model::ModelDescriptor {
                     name,
                     description,
                     fields,

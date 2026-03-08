@@ -2,10 +2,12 @@ use base::models::{Contact, Lang};
 use base::BasePlugin;
 use erp::app::Application;
 use erp::field::Reference;
-use erp::model::{CommonModel, MapOfFields};
+use erp::model::CommonModel;
 use erp_types::field::FieldDepend;
 use erp_types::field::{IdMode, SingleId};
+use erp_types::model::MapOfFields;
 use std::error::Error;
+use erp::environment::EnvironmentBase;
 use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
 

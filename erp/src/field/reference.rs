@@ -1,6 +1,7 @@
-use crate::model::{BaseModel, Model};
+use crate::model::Model;
 use erp_types::field::FieldType;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
+use erp_types::model::BaseModel;
 use std::marker::PhantomData;
 use std::ops;
 use std::slice::Iter;
@@ -15,7 +16,7 @@ pub struct Reference<BM: BaseModel, Mode: IdMode> {
 impl<BM: BaseModel> Reference<BM, SingleId> {
     /// Retrieves the instance of this ref.
     ///
-    /// We don't load the record in cache, neither perform any modification / search to the database.
+    /// We don't load the record in cache, nor perform any modification / search to the database.
     pub fn get<M>(&self) -> M
     where
         M: Model<SingleId, BaseModel=BM>,
@@ -34,7 +35,7 @@ impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
         })
     }
 
-    /// Check if given id is contained in the current reference
+    /// Check if the given id is contained in the current reference
     pub fn contains(&self, id: &u32) -> bool {
         self.id_mode.contains(id)
     }

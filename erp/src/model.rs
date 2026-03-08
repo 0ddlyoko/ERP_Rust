@@ -1,29 +1,18 @@
 mod errors;
 mod iterator;
-mod map_of_fields;
-mod model_descriptor;
 mod model_manager;
 
 pub use errors::*;
 pub use iterator::*;
-pub use map_of_fields::*;
-pub use model_descriptor::*;
 pub use model_manager::*;
 
-use crate::environment::Environment;
+use crate::environment::{Environment, EnvironmentBase};
 use crate::field::Reference;
 use erp_types::field::FieldType;
 use erp_types::field::RequiredFieldEmpty;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
+use erp_types::model::{BaseModel, ModelDescriptor};
 use std::error::Error;
-
-/// BaseModel that represent a model, but not a single model instance by itself.
-///
-/// If multiple plugins implement different fields for the same model, the `BaseModel` will only be
-///  defined once and be used across all those models
-pub trait BaseModel {
-    fn get_model_name() -> &'static str;
-}
 
 /// Common version of the model (that will be implemented for each model)
 ///
@@ -37,7 +26,7 @@ pub trait CommonModel<Mode: IdMode> {
         <Self as Model<Mode>>::BaseModel::get_model_name()
     }
 
-    /// Get a descriptor that represent this model
+    /// Get a descriptor that represents this model
     ///
     /// This method should only be called at startup, to load the model
     fn get_model_descriptor() -> ModelDescriptor
@@ -73,7 +62,7 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> {
 }
 
 impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
-    /// Returns given field of given type.
+    /// Returns the given field of the given type.
     ///
     /// If error, returns the error
     pub fn get<'a, E>(
@@ -110,7 +99,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
         }
     }
 
-    /// Returns given optional field of given type.
+    /// Returns the given optional field of the given type.
     ///
     /// If error, returns the error
     pub fn get_option<'a, E>(
@@ -127,7 +116,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
         Ok(result.and_then(|result| result.into()))
     }
 
-    /// Returns given optional reference field.
+    /// Returns the given optional reference field.
     ///
     /// If error, returns the error
     pub fn get_reference<M, BM2>(
@@ -153,7 +142,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
 }
 
 impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
-    /// Returns given field of given type.
+    /// Returns the given field of the given type.
     ///
     /// If error, returns the error
     pub fn gets<'a, E>(
@@ -195,7 +184,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
             .collect()
     }
 
-    /// Returns given optional field of given type.
+    /// Returns given optional field of the given type.
     ///
     /// If error, returns the error
     pub fn get_options<'a, E>(
@@ -252,7 +241,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
         Ok(reference.get_multiple::<M>())
     }
 
-    /// Changes the value of given field to given value
+    /// Changes the value of the given field to the given value
     pub fn set<E>(
         &self,
         field_name: &str,
@@ -267,7 +256,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
         env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
 
-    /// Changes the value of given field to given optional value
+    /// Changes the value of the given field to the given optional value
     pub fn set_option<E>(
         &self,
         field_name: &str,
@@ -282,7 +271,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
         env.save_option_to_cache(model_name, field_name, id_mode, value)
     }
 
-    /// Changes the value of given field to given reference
+    /// Changes the value of the given field to the given reference
     pub fn set_reference<E>(
         &self,
         field_name: &str,
@@ -297,7 +286,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
         env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
 
-    /// Changes the value of given field to given reference
+    /// Changes the value of the given field to the given reference
     pub fn set_references<E>(
         &self,
         field_name: &str,

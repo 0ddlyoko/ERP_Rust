@@ -1,12 +1,13 @@
 use erp::app::Application;
-use erp::cache::{Dirty, Update};
 use erp::database::Database;
-use erp::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use erp_types::field::FieldType;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
+use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
+use erp::environment::EnvironmentBase;
+use erp_types::cache::{Dirty, Update};
 use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;

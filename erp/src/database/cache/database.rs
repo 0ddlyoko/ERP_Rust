@@ -1,8 +1,9 @@
 use crate::database::cache::{Row, Table};
 use crate::database::{Database, FieldType};
-use crate::model::{MapOfFields, ModelManager};
+use crate::model::ModelManager;
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
+use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
