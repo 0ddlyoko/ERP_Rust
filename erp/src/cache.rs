@@ -8,11 +8,11 @@ pub use cache_model::*;
 pub use cache_models::*;
 
 use crate::model::ModelManager;
+use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::field::IdMode;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use erp_types::cache::{Dirty, Update};
 
 pub struct Cache {
     cache: HashMap<String, CacheModels>,

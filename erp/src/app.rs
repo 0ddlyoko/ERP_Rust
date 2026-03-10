@@ -16,7 +16,7 @@ pub struct Application {
     pub model_manager: ModelManager,
     pub plugin_manager: PluginManager,
     pub is_test: bool,
-    cache_db: CacheDatabase,
+    pub cache_db: CacheDatabase,
 }
 
 impl Application {

@@ -23,8 +23,8 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
     fn transform_to_search_key(expr: &Expr) -> Result<SearchKey> {
         match expr {
             Lit(ExprLit {
-                    lit: Str(lit_str), ..
-                }) => {
+                lit: Str(lit_str), ..
+            }) => {
                 let str_value = lit_str.value();
                 match str_value.as_str() {
                     "&" => Ok(SearchKey::And),
@@ -43,16 +43,19 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
                 }
                 let operator: SearchOperator = match &elems[1] {
                     Lit(ExprLit {
-                            lit: Str(field_name),
-                            ..
-                        }) => {
+                        lit: Str(field_name),
+                        ..
+                    }) => {
                         let field_name = field_name.value();
                         let search_operator: std::result::Result<erp_search::SearchOperator, _> =
                             field_name.as_str().try_into();
                         match search_operator {
                             Ok(search_operator) => SearchOperator::Operator(search_operator),
                             Err(_) => {
-                                return Err(gen_invalid_tuple_operator(elems[1].span(), field_name));
+                                return Err(gen_invalid_tuple_operator(
+                                    elems[1].span(),
+                                    field_name,
+                                ));
                             }
                         }
                     }

@@ -10,7 +10,7 @@ pub struct SearchTuple {
 impl<L, OP, R> TryFrom<(L, OP, R)> for SearchTuple
 where
     L: Into<LeftTuple>,
-    OP: TryInto<SearchOperator, Error=UnknownSearchOperatorError>,
+    OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
     R: Into<RightTuple>,
 {
     type Error = UnknownSearchOperatorError;

@@ -1,8 +1,8 @@
 use crate::cache::CacheField;
+use erp_types::cache::Update;
 use erp_types::field::FieldType;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use erp_types::cache::Update;
 
 #[derive(Clone)]
 pub struct CacheModel {

@@ -53,10 +53,10 @@ impl CacheDatabase {
                 HashSet::<_>::from_iter(left).into_iter().collect()
             }
             SearchType::Tuple(SearchTuple {
-                                  left: LeftTuple { path },
-                                  operator,
-                                  right,
-                              }) => {
+                left: LeftTuple { path },
+                operator,
+                right,
+            }) => {
                 let mut path = path.clone();
                 path.reverse();
                 let result =
@@ -249,10 +249,10 @@ impl Database for CacheDatabase {
                 let cell_name = row.get_cell("name");
                 match (cell_state, cell_name) {
                     (Some(FieldType::String(state)), Some(FieldType::String(name)))
-                    if state == "installed" =>
-                        {
-                            result.push(name.clone());
-                        }
+                        if state == "installed" =>
+                    {
+                        result.push(name.clone());
+                    }
                     _ => {}
                 }
             }

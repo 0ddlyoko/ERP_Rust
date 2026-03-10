@@ -45,7 +45,7 @@ impl From<SearchTuple> for SearchType {
 impl<L, OP, R> TryFrom<(L, OP, R)> for SearchType
 where
     L: Into<LeftTuple>,
-    OP: TryInto<SearchOperator, Error=UnknownSearchOperatorError>,
+    OP: TryInto<SearchOperator, Error = UnknownSearchOperatorError>,
     R: Into<RightTuple>,
 {
     type Error = UnknownSearchOperatorError;
@@ -150,7 +150,7 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
 
 impl<E> TryFrom<Vec<E>> for SearchType
 where
-    E: TryInto<SearchKey, Error=UnknownSearchOperatorError>,
+    E: TryInto<SearchKey, Error = UnknownSearchOperatorError>,
 {
     type Error = ErrorType;
 

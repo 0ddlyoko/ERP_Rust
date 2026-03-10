@@ -1,4 +1,4 @@
-use crate::environment::Environment;
+use crate::environment::{EnvironmentBase, ErasedEnvironment};
 use crate::model::{CommonModel, Model};
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
@@ -16,8 +16,19 @@ pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()>,
+    pub computed_method: fn(&str, MultipleIds, &mut dyn ErasedEnvironment) -> Result<()>,
     pub plugin_name: String,
+}
+
+impl InternalModel {
+    pub fn call_computed_method(
+        &self,
+        field_name: &str,
+        id: MultipleIds,
+        env: &mut dyn ErasedEnvironment,
+    ) -> Result<()> {
+        (self.computed_method)(field_name, id, env)
+    }
 }
 
 /// Final descriptor of a model.
@@ -28,6 +39,20 @@ pub struct FinalInternalModel {
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
+}
+
+fn compute_wrapper<E, M>(
+    field: &str,
+    ids: MultipleIds,
+    env: &mut dyn ErasedEnvironment,
+) -> Result<()>
+where
+    E: EnvironmentBase<'static>,
+    M: Model<MultipleIds> + 'static,
+{
+    let env = unsafe { &mut *(env as *mut dyn ErasedEnvironment as *mut E) };
+
+    M::call_compute_method(field, ids, env)
 }
 
 impl FinalInternalModel {
@@ -41,9 +66,10 @@ impl FinalInternalModel {
     }
 
     // TODO Do not pass <M> here, but directly the name, model_descriptor and type_id
-    pub fn register_internal_model<M>(&mut self, plugin_name: &str)
+    pub fn register_internal_model<M, E>(&mut self, plugin_name: &str)
     where
         M: Model<MultipleIds> + 'static,
+        E: EnvironmentBase<'static>,
     {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();
@@ -74,14 +100,11 @@ impl FinalInternalModel {
             final_fields.insert(field_name, internal_field);
         }
 
-        let call_computed_method: fn(&str, MultipleIds, &mut Environment) -> Result<()> =
-            |field_name, id, env| M::call_compute_method(field_name, id, env);
-
         let internal_model = InternalModel {
             name: name.to_string(),
             description,
             fields: final_fields,
-            call_computed_method,
+            computed_method: compute_wrapper::<E, M>,
             plugin_name: plugin_name.to_string(),
         };
 

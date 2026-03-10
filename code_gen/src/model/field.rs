@@ -148,12 +148,12 @@ impl FieldGen {
         let mut field_type = None;
         // Check field type
         if let Type::Path(TypePath {
-                              qself: _,
-                              path: Path {
-                                  leading_colon: _,
-                                  segments,
-                              },
-                          }) = ty
+            qself: _,
+            path: Path {
+                leading_colon: _,
+                segments,
+            },
+        }) = ty
         {
             if segments.len() != 1 {
                 return Err(gen_field_no_field_error(ident.span()));
@@ -167,8 +167,8 @@ impl FieldGen {
                 }
                 // Go deeper
                 if let PathArguments::AngleBracketed(AngleBracketedGenericArguments {
-                                                         args, ..
-                                                     }) = arguments
+                    args, ..
+                }) = arguments
                 {
                     // The <String> in "email: Option<String>"
                     let args_len = args.len();
@@ -180,13 +180,13 @@ impl FieldGen {
                         return Err(gen_reference_not_two_generic(args.span()));
                     }
                     if let GenericArgument::Type(Type::Path(TypePath {
-                                                                qself: _,
-                                                                path:
-                                                                Path {
-                                                                    leading_colon: _,
-                                                                    segments,
-                                                                },
-                                                            })) = &args[0]
+                        qself: _,
+                        path:
+                            Path {
+                                leading_colon: _,
+                                segments,
+                            },
+                    })) = &args[0]
                     {
                         if segments.len() != 1 {
                             return Err(gen_field_no_field_error(segments.span()));
@@ -195,13 +195,13 @@ impl FieldGen {
                     }
                     if is_reference {
                         if let GenericArgument::Type(Type::Path(TypePath {
-                                                                    qself: _,
-                                                                    path:
-                                                                    Path {
-                                                                        leading_colon: _,
-                                                                        segments,
-                                                                    },
-                                                                })) = &args[1]
+                            qself: _,
+                            path:
+                                Path {
+                                    leading_colon: _,
+                                    segments,
+                                },
+                        })) = &args[1]
                         {
                             if segments.len() != 1 {
                                 return Err(gen_field_no_field_error(segments.span()));

@@ -1,13 +1,13 @@
 use erp::app::Application;
 use erp::database::Database;
+use erp::environment::EnvironmentBase;
 use erp_search_code_gen::make_domain;
+use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use erp::environment::EnvironmentBase;
-use erp_types::cache::{Dirty, Update};
 use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -106,43 +106,43 @@ fn test_get_fields_to_save() -> Result<()> {
     );
 
     assert_eq!(
-        env.get_fields_to_save("sale_order", &vec![&("name".into()), ])?
+        env.get_fields_to_save("sale_order", &vec![&("name".into()),])?
             .into_iter()
             .map(|(k, mut v)| {
                 v.sort();
                 (k, v)
             })
             .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name"]), ])
+        HashMap::from([("sale_order", vec!["name"]),])
     );
 
     assert_eq!(
         env.get_fields_to_save(
             "sale_order",
-            &vec![&("name".into()), &("state".into()), &("total_price".into()), ]
+            &vec![&("name".into()), &("state".into()), &("total_price".into()),]
         )?
-            .into_iter()
-            .map(|(k, mut v)| {
-                v.sort();
-                (k, v)
-            })
-            .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name", "state", "total_price"]), ])
+        .into_iter()
+        .map(|(k, mut v)| {
+            v.sort();
+            (k, v)
+        })
+        .collect::<HashMap<_, _>>(),
+        HashMap::from([("sale_order", vec!["name", "state", "total_price"]),])
     );
 
     // Give same fields should only appear once
     assert_eq!(
         env.get_fields_to_save(
             "sale_order",
-            &vec![&("name".into()), &("name".into()), &("name".into()), ]
+            &vec![&("name".into()), &("name".into()), &("name".into()),]
         )?
-            .into_iter()
-            .map(|(k, mut v)| {
-                v.sort();
-                (k, v)
-            })
-            .collect::<HashMap<_, _>>(),
-        HashMap::from([("sale_order", vec!["name"]), ])
+        .into_iter()
+        .map(|(k, mut v)| {
+            v.sort();
+            (k, v)
+        })
+        .collect::<HashMap<_, _>>(),
+        HashMap::from([("sale_order", vec!["name"]),])
     );
 
     // Path should also work correctly, and only add stored fields
@@ -156,30 +156,30 @@ fn test_get_fields_to_save() -> Result<()> {
                 &("lines.total_price".into()),
             ]
         )?
-            .into_iter()
-            .map(|(k, mut v)| {
-                v.sort();
-                (k, v)
-            })
-            .collect::<HashMap<_, _>>(),
+        .into_iter()
+        .map(|(k, mut v)| {
+            v.sort();
+            (k, v)
+        })
+        .collect::<HashMap<_, _>>(),
         HashMap::from([(
             "sale_order_line",
             vec!["amount", "order", "price", "total_price"]
-        ), ])
+        ),])
     );
 
     // Same here, as "order" is a stored field, this should be returned (and not "lines")
     assert_eq!(
         env.get_fields_to_save(
             "sale_order_line",
-            &vec![&("price".into()), &("order.name".into()), ]
+            &vec![&("price".into()), &("order.name".into()),]
         )?
-            .into_iter()
-            .map(|(k, mut v)| {
-                v.sort();
-                (k, v)
-            })
-            .collect::<HashMap<_, _>>(),
+        .into_iter()
+        .map(|(k, mut v)| {
+            v.sort();
+            (k, v)
+        })
+        .collect::<HashMap<_, _>>(),
         HashMap::from([
             ("sale_order", vec!["name"]),
             ("sale_order_line", vec!["order", "price"]),

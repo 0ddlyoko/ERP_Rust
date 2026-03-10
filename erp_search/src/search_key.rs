@@ -44,7 +44,7 @@ impl TryFrom<&String> for SearchKey {
 
 impl<'a, E> TryFrom<(&'a str, E, &'a str)> for SearchKey
 where
-    (&'a str, E, &'a str): TryInto<SearchTuple, Error=UnknownSearchOperatorError>,
+    (&'a str, E, &'a str): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 
@@ -55,7 +55,7 @@ where
 
 impl<E> TryFrom<(String, E, String)> for SearchKey
 where
-    (String, E, String): TryInto<SearchTuple, Error=UnknownSearchOperatorError>,
+    (String, E, String): TryInto<SearchTuple, Error = UnknownSearchOperatorError>,
 {
     type Error = UnknownSearchOperatorError;
 

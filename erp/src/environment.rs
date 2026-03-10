@@ -4,6 +4,7 @@ use crate::errors::MaximumRecursionDepthCompute;
 use crate::model::{Model, ModelManager};
 use erp_search::{LeftTuple, SearchType};
 use erp_search_code_gen::make_domain;
+use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
@@ -11,7 +12,6 @@ use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use uuid::Uuid;
-use erp_types::cache::{Dirty, Update};
 
 const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
@@ -59,11 +59,7 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
     /// Load given records from the database to the cache.
     ///
     /// If the record is already present in cache, do nothing
-    fn load_records_from_db<Mode: IdMode>(
-        &mut self,
-        model_name: &str,
-        ids: &Mode,
-    ) -> Result<()> {
+    fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()> {
         let internal_model = self.model_manager.get_model(model_name);
         let fields = internal_model.get_stored_fields();
         self.load_records_fields_from_db(model_name, ids, &fields)
@@ -121,9 +117,9 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                         .insert(&final_field.name);
                 }
                 if let Some(FieldReference {
-                                target_model,
-                                inverse_field,
-                            }) = &final_field.inverse
+                    target_model,
+                    inverse_field,
+                }) = &final_field.inverse
                 {
                     // Get target model to continue the process.
                     // Also, if this field (or the target one) is a stored field, save it
@@ -271,11 +267,7 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
     }
 
     /// Get all dirty stored fields for given records
-    fn get_dirty_stored_records(
-        &self,
-        model_name: &str,
-        ids: &[u32],
-    ) -> HashMap<u32, MapOfFields> {
+    fn get_dirty_stored_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields> {
         let model = self.model_manager.get_model(model_name);
         self.get_dirty_filtered_records(model_name, ids, |field_name| model.is_stored(field_name))
     }
@@ -470,9 +462,9 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                 // This could be a computed one. Call it
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {
-                                   target_model,
-                                   inverse_field: FieldReferenceType::O2M { inverse_field },
-                               }) = &field_info.inverse
+                target_model,
+                inverse_field: FieldReferenceType::O2M { inverse_field },
+            }) = &field_info.inverse
             {
                 // O2M, save data to the database, and then load the field with related M2O
                 // TODO Add search_group(...)
@@ -613,9 +605,9 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                     map_result.insert(id, (false, field_value.map(|value| value.into())));
                 }
             } else if let Some(FieldReference {
-                                   target_model,
-                                   inverse_field: FieldReferenceType::O2M { inverse_field },
-                               }) = &field_info.inverse
+                target_model,
+                inverse_field: FieldReferenceType::O2M { inverse_field },
+            }) = &field_info.inverse
             {
                 // TODO Check if target field is stored or not
                 // O2M, save data to the database, and then make a request
@@ -703,9 +695,9 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
         let internal_model = self.model_manager.get_model(model_name);
         let field_info = internal_model.get_internal_field(field_name);
         if let Some(FieldReference {
-                        target_model,
-                        inverse_field,
-                    }) = &field_info.inverse
+            target_model,
+            inverse_field,
+        }) = &field_info.inverse
         {
             // M2O or O2M
             return match inverse_field {
@@ -838,8 +830,8 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                                     let cache_field = cache_model.get_field_mut(inverse_field);
                                     // If this field is not in cache, we do nothing
                                     if let Some(CacheField {
-                                                    value: Some(FieldType::Refs(vecs)),
-                                                }) = cache_field
+                                        value: Some(FieldType::Refs(vecs)),
+                                    }) = cache_field
                                     {
                                         vecs.retain(|id| current_id != *id);
                                         if is_update_if_exists {
@@ -1197,7 +1189,7 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                    .into());
+                .into());
             }
         }
 
@@ -1237,7 +1229,7 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                    .into());
+                .into());
             }
         }
 
@@ -1288,7 +1280,7 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
                         .copied()
                         .collect::<Vec<u32>>(),
                 }
-                    .into());
+                .into());
             }
         }
 
@@ -1303,11 +1295,11 @@ impl<'mm, 'db> EnvironmentBase<'mm> for Environment<'mm, 'db> {
         fields: &[&str],
     ) -> Result<()> {
         let final_internal_model = self.model_manager.get_model(model_name);
-        self.savepoint(|env| {
+        self.savepoint(move |env| {
             for field in fields {
                 if let Some(computed_field) = final_internal_model.get_computed_field(field) {
                     // TODO Try to find a way to not clone the id
-                    (computed_field.call_computed_method)(field, ids.get_ids_ref().into(), env)?;
+                    computed_field.call_computed_method(field, ids.get_ids_ref().into(), env)?;
                 }
             }
             Ok(())
@@ -1326,11 +1318,7 @@ pub trait EnvironmentBase<'mm> {
     /// Load given records from the database to the cache.
     ///
     /// If the record is already present in cache, do nothing
-    fn load_records_from_db<Mode: IdMode>(
-        &mut self,
-        model_name: &str,
-        ids: &Mode,
-    ) -> Result<()>;
+    fn load_records_from_db<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()>;
 
     /// Load fields of given records from the database to the cache.
     ///
@@ -1381,11 +1369,7 @@ pub trait EnvironmentBase<'mm> {
     fn get_dirty_fields(&self, model_name: &str, fields: &[&str]) -> HashMap<u32, MapOfFields>;
 
     /// Get all dirty stored fields for given records
-    fn get_dirty_stored_records(
-        &self,
-        model_name: &str,
-        ids: &[u32],
-    ) -> HashMap<u32, MapOfFields>;
+    fn get_dirty_stored_records(&self, model_name: &str, ids: &[u32]) -> HashMap<u32, MapOfFields>;
 
     /// Get all dirty filtered fields for given records
     fn get_dirty_filtered_records<F>(
@@ -1421,11 +1405,8 @@ pub trait EnvironmentBase<'mm> {
     ///
     /// This method does not check if given fields are stored or not.
     /// It's up to the caller to ensure given data are correct.
-    fn insert_data_to_db(
-        &mut self,
-        model_name: &str,
-        data: &Vec<&MapOfFields>,
-    ) -> Result<Vec<u32>>;
+    fn insert_data_to_db(&mut self, model_name: &str, data: &Vec<&MapOfFields>)
+    -> Result<Vec<u32>>;
 
     // ------------------------------------------
     // |             Retrieve Logic             |
@@ -1600,3 +1581,7 @@ pub trait EnvironmentBase<'mm> {
         fields: &[&str],
     ) -> Result<()>;
 }
+
+pub trait ErasedEnvironment {}
+
+impl<'mm, T: EnvironmentBase<'mm>> ErasedEnvironment for T {}

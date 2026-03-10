@@ -62,7 +62,7 @@ impl PluginManager {
             return Err(PluginAlreadyRegisteredError {
                 plugin_name: plugin_name.to_string(),
             }
-                .into());
+            .into());
         }
         let plugin_type = InternalPluginType::Static();
         let depends = plugin.get_depends();
@@ -98,7 +98,7 @@ impl PluginManager {
             return Err(PluginAlreadyRegisteredError {
                 plugin_name: plugin_name_string,
             }
-                .into());
+            .into());
         }
 
         self.plugins.insert(plugin_name, internal_plugin);

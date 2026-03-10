@@ -6,7 +6,7 @@ pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;
 
-use crate::environment::{Environment, EnvironmentBase};
+use crate::environment::EnvironmentBase;
 use crate::field::Reference;
 use erp_types::field::FieldType;
 use erp_types::field::RequiredFieldEmpty;
@@ -47,11 +47,11 @@ pub trait CommonModel<Mode: IdMode> {
     ///
     /// So, when you implement this method in `Model<SingleId>`, you can return Ok(()), as this
     ///  method will never be called on SingleId
-    fn call_compute_method(
+    fn call_compute_method<'mm>(
         // &self,
         field_name: &str,
         id: MultipleIds,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<(), Box<dyn Error>>
     where
         Self: Sized;
@@ -61,14 +61,14 @@ pub trait Model<Mode: IdMode>: CommonModel<Mode> {
     type BaseModel: BaseModel;
 }
 
-impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
+impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// Returns the given field of the given type.
     ///
     /// If error, returns the error
-    pub fn get<'a, E>(
+    pub fn get<'a, 'mm, E>(
         &self,
         field_name: &str,
-        env: &'a mut Environment,
+        env: &'a mut impl EnvironmentBase<'mm>,
     ) -> Result<&'a E, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -87,7 +87,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
                     field_name: field_name.to_string(),
                     id: id.get_id(),
                 }
-                    .into())
+                .into())
             }
         } else {
             Err(RequiredFieldEmpty {
@@ -95,17 +95,17 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
                 field_name: field_name.to_string(),
                 id: id.get_id(),
             }
-                .into())
+            .into())
         }
     }
 
     /// Returns the given optional field of the given type.
     ///
     /// If error, returns the error
-    pub fn get_option<'a, E>(
+    pub fn get_option<'a, 'mm, E>(
         &self,
         field_name: &str,
-        env: &'a mut Environment,
+        env: &'a mut impl EnvironmentBase<'mm>,
     ) -> Result<Option<&'a E>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -119,13 +119,13 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
     /// Returns the given optional reference field.
     ///
     /// If error, returns the error
-    pub fn get_reference<M, BM2>(
+    pub fn get_reference<'mm, M, BM2>(
         &self,
         field_name: &str,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<Option<M>, Box<dyn Error>>
     where
-        M: Model<SingleId, BaseModel=BM2>,
+        M: Model<SingleId, BaseModel = BM2>,
         BM2: BaseModel,
     {
         let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
@@ -141,14 +141,14 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel=BM> {
     }
 }
 
-impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
+impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     /// Returns the given field of the given type.
     ///
     /// If error, returns the error
-    pub fn gets<'a, E>(
+    pub fn gets<'a, 'mm, E>(
         &self,
         field_name: &str,
-        env: &'a mut Environment,
+        env: &'a mut impl EnvironmentBase<'mm>,
     ) -> Result<Vec<&'a E>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -170,7 +170,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
                             field_name: field_name.to_string(),
                             id: *ids.get_id_at(idx),
                         }
-                            .into())
+                        .into())
                     }
                 } else {
                     Err(RequiredFieldEmpty {
@@ -178,7 +178,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
                         field_name: field_name.to_string(),
                         id: *ids.get_id_at(idx),
                     }
-                        .into())
+                    .into())
                 }
             })
             .collect()
@@ -187,10 +187,10 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
     /// Returns given optional field of the given type.
     ///
     /// If error, returns the error
-    pub fn get_options<'a, E>(
+    pub fn get_options<'a, 'mm, E>(
         &self,
         field_name: &str,
-        env: &'a mut Environment,
+        env: &'a mut impl EnvironmentBase<'mm>,
     ) -> Result<Vec<Option<&'a E>>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -205,17 +205,17 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel=BM> {
     }
 }
 
-impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
+impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     /// Returns given optional references field.
     ///
     /// If error, returns the error
-    pub fn get_references<M, BM2>(
+    pub fn get_references<'mm, M, BM2>(
         &self,
         field_name: &str,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<M, Box<dyn Error>>
     where
-        M: Model<MultipleIds, BaseModel=BM2>,
+        M: Model<MultipleIds, BaseModel = BM2>,
         BM2: BaseModel,
     {
         let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
@@ -242,11 +242,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     }
 
     /// Changes the value of the given field to the given value
-    pub fn set<E>(
+    pub fn set<'mm, E>(
         &self,
         field_name: &str,
         value: E,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
@@ -257,11 +257,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     }
 
     /// Changes the value of the given field to the given optional value
-    pub fn set_option<E>(
+    pub fn set_option<'mm, E>(
         &self,
         field_name: &str,
         value: Option<E>,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
@@ -272,11 +272,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     }
 
     /// Changes the value of the given field to the given reference
-    pub fn set_reference<E>(
+    pub fn set_reference<'mm, E>(
         &self,
         field_name: &str,
         value: Reference<E, SingleId>,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<(), Box<dyn Error>>
     where
         E: BaseModel,
@@ -287,11 +287,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     }
 
     /// Changes the value of the given field to the given reference
-    pub fn set_references<E>(
+    pub fn set_references<'mm, E>(
         &self,
         field_name: &str,
         value: Reference<E, MultipleIds>,
-        env: &mut Environment,
+        env: &mut impl EnvironmentBase<'mm>,
     ) -> Result<(), Box<dyn Error>>
     where
         E: BaseModel,
@@ -304,7 +304,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel=BM> {
     /// Convert this model into another one, but from the same base
     pub fn convert<TO>(&self) -> TO
     where
-        TO: Model<Mode, BaseModel=BM>,
+        TO: Model<Mode, BaseModel = BM>,
     {
         TO::create_instance(self.get_id_mode().clone())
     }

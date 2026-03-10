@@ -1,3 +1,4 @@
+use crate::environment::Environment;
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
 use erp_types::field::FieldCompute;
@@ -25,7 +26,7 @@ impl ModelManager {
         self.models
             .entry(model_name.to_string())
             .or_insert_with(|| FinalInternalModel::new(model_name))
-            .register_internal_model::<M>(plugin_name);
+            .register_internal_model::<M, Environment>(plugin_name);
     }
 
     /// Execute some final modification when models are registered, like:
@@ -40,9 +41,9 @@ impl ModelManager {
         for model in self.models.values_mut() {
             for field in model.fields.values_mut() {
                 if let Some(FieldReference {
-                                inverse_field: FieldReferenceType::M2O { inverse_fields },
-                                ..
-                            }) = &mut field.inverse
+                    inverse_field: FieldReferenceType::M2O { inverse_fields },
+                    ..
+                }) = &mut field.inverse
                 {
                     inverse_fields.clear();
                 }
@@ -54,9 +55,9 @@ impl ModelManager {
         for model in self.models.values() {
             for field in model.fields.values() {
                 if let Some(FieldReference {
-                                target_model,
-                                inverse_field: FieldReferenceType::O2M { inverse_field },
-                            }) = &field.inverse
+                    target_model,
+                    inverse_field: FieldReferenceType::O2M { inverse_field },
+                }) = &field.inverse
                 {
                     let model_to_modify = fields_to_modify.entry(target_model.clone()).or_default();
                     let field_to_modify = model_to_modify.entry(inverse_field.clone()).or_default();
@@ -71,9 +72,9 @@ impl ModelManager {
             for (field_name, mut fields_to_add) in model_to_add {
                 let field = model.get_internal_field_mut(&field_name);
                 if let Some(FieldReference {
-                                inverse_field: FieldReferenceType::M2O { inverse_fields },
-                                ..
-                            }) = &mut field.inverse
+                    inverse_field: FieldReferenceType::M2O { inverse_fields },
+                    ..
+                }) = &mut field.inverse
                 {
                     inverse_fields.append(&mut fields_to_add);
                     // Check uniqueness
@@ -123,9 +124,9 @@ impl ModelManager {
                                     .or_default();
                                 vec.push(new_final_depends);
                             } else if let Some(FieldReference {
-                                                   target_model,
-                                                   inverse_field,
-                                               }) = &field.inverse
+                                target_model,
+                                inverse_field,
+                            }) = &field.inverse
                             {
                                 match inverse_field {
                                     FieldReferenceType::O2M { inverse_field } => {

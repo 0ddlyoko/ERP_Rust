@@ -34,12 +34,12 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
 
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
     let camel_case_table_name = table_name.replace("_", " ").to_camel_case();
-    let base_model_name = format!("Base{}", camel_case_table_name);
+    let base_model_name = format!("Base{camel_case_table_name}");
     let base_model = if let Some(derived_model) = derived_model {
         let full_base_model = if derived_model.is_empty() {
             base_model_name
         } else {
-            format!("{}::{}", derived_model, base_model_name)
+            format!("{derived_model}::{base_model_name}")
         };
         let full_base_model_path: Path = parse_str(&full_base_model)?;
         quote! {
@@ -83,9 +83,9 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         if field_name == "id" {
             return None;
         }
-        let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
+        let get_field_ident = Ident::new(format!("get_{field_name}").as_str(), Span::call_site());
         // TODO Move the set to another place, as it's not needed to be different between SingleId & MultipleIds
-        let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
+        let set_field_ident = Ident::new(format!("set_{field_name}").as_str(), Span::call_site());
 
         if *is_reference {
             if *is_reference_multi {
@@ -150,9 +150,9 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         if field_name == "id" {
             return None;
         }
-        let get_field_ident = Ident::new(format!("get_{}", field_name).as_str(), Span::call_site());
+        let get_field_ident = Ident::new(format!("get_{field_name}").as_str(), Span::call_site());
         // TODO Move the set to another place, as it's not needed to be different between SingleId & MultipleIds
-        let set_field_ident = Ident::new(format!("set_{}", field_name).as_str(), Span::call_site());
+        let set_field_ident = Ident::new(format!("set_{field_name}").as_str(), Span::call_site());
 
         if *is_reference {
             if *is_reference_multi {
@@ -398,11 +398,12 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 }
             }
 
-            fn call_compute_method(
+            fn call_compute_method<'mm>(
                 field_name: &str,
                 id: erp::types::field::MultipleIds,
-                env: &mut erp::environment::Environment,
+                env: &mut impl erp::environment::EnvironmentBase<'mm>,
             ) -> Result<(), Box<dyn std::error::Error>> {
+                let env = unsafe { &mut *(env as *mut dyn erp::environment::ErasedEnvironment as *mut erp::environment::Environment) };
                 let record = #ident::<erp::types::field::MultipleIds>::create_instance(id);
                 #(#compute_fields)*
                 Ok(())
