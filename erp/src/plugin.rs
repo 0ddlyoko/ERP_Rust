@@ -7,7 +7,7 @@ pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::PluginManager;
 
-use crate::environment::{Environment, EnvironmentBase};
+use crate::environment::Environment;
 use crate::model::ModelManager;
 use std::any::Any;
 use std::error::Error;

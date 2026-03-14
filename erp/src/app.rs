@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::database::cache::CacheDatabase;
 use crate::database::postgres::PostgresDatabase;
 use crate::database::{Database, DatabaseType};
-use crate::environment::{Environment, EnvironmentBase};
+use crate::environment::Environment;
 use crate::model::ModelManager;
 use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;

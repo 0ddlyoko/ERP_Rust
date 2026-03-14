@@ -1,6 +1,5 @@
 use erp::app::Application;
 use erp::cache::Cache;
-use erp::environment::EnvironmentBase;
 use erp::model::ModelManager;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;

@@ -1,4 +1,4 @@
-use erp::environment::{Environment, EnvironmentBase};
+use erp::environment::Environment;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 use std::error::Error;

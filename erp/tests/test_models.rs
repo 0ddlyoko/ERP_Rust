@@ -1,7 +1,6 @@
 use base::models::{Contact, Lang};
 use base::BasePlugin;
 use erp::app::Application;
-use erp::environment::EnvironmentBase;
 use erp::field::Reference;
 use erp::model::CommonModel;
 use erp_types::field::FieldDepend;

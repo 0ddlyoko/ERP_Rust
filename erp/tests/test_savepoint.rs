@@ -1,5 +1,4 @@
 use erp::app::Application;
-use erp::environment::EnvironmentBase;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::SingleId;
 use erp_types::model::MapOfFields;

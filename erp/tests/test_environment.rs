@@ -1,6 +1,5 @@
 use erp::app::Application;
 use erp::database::Database;
-use erp::environment::EnvironmentBase;
 use erp_search_code_gen::make_domain;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;

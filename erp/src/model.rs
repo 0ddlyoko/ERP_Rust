@@ -6,7 +6,7 @@ pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;
 
-use crate::environment::EnvironmentBase;
+use crate::environment::{Environment, ErasedEnvironment};
 use crate::field::Reference;
 use erp_types::field::FieldType;
 use erp_types::field::RequiredFieldEmpty;
@@ -47,11 +47,11 @@ pub trait CommonModel<Mode: IdMode> {
     ///
     /// So, when you implement this method in `Model<SingleId>`, you can return Ok(()), as this
     ///  method will never be called on SingleId
-    fn call_compute_method<'mm>(
+    fn call_compute_method(
         // &self,
         field_name: &str,
         id: MultipleIds,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut dyn ErasedEnvironment,
     ) -> Result<(), Box<dyn Error>>
     where
         Self: Sized;
@@ -65,10 +65,10 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// Returns the given field of the given type.
     ///
     /// If error, returns the error
-    pub fn get<'a, 'mm, E>(
+    pub fn get<'a, E>(
         &self,
         field_name: &str,
-        env: &'a mut impl EnvironmentBase<'mm>,
+        env: &'a mut Environment,
     ) -> Result<&'a E, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -102,10 +102,10 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// Returns the given optional field of the given type.
     ///
     /// If error, returns the error
-    pub fn get_option<'a, 'mm, E>(
+    pub fn get_option<'a, E>(
         &self,
         field_name: &str,
-        env: &'a mut impl EnvironmentBase<'mm>,
+        env: &'a mut Environment,
     ) -> Result<Option<&'a E>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -119,10 +119,10 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// Returns the given optional reference field.
     ///
     /// If error, returns the error
-    pub fn get_reference<'mm, M, BM2>(
+    pub fn get_reference<M, BM2>(
         &self,
         field_name: &str,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<Option<M>, Box<dyn Error>>
     where
         M: Model<SingleId, BaseModel = BM2>,
@@ -145,10 +145,10 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     /// Returns the given field of the given type.
     ///
     /// If error, returns the error
-    pub fn gets<'a, 'mm, E>(
+    pub fn gets<'a, E>(
         &self,
         field_name: &str,
-        env: &'a mut impl EnvironmentBase<'mm>,
+        env: &'a mut Environment,
     ) -> Result<Vec<&'a E>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -187,10 +187,10 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     /// Returns given optional field of the given type.
     ///
     /// If error, returns the error
-    pub fn get_options<'a, 'mm, E>(
+    pub fn get_options<'a, E>(
         &self,
         field_name: &str,
-        env: &'a mut impl EnvironmentBase<'mm>,
+        env: &'a mut Environment,
     ) -> Result<Vec<Option<&'a E>>, Box<dyn Error>>
     where
         &'a FieldType: Into<Option<&'a E>>,
@@ -209,10 +209,10 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     /// Returns given optional references field.
     ///
     /// If error, returns the error
-    pub fn get_references<'mm, M, BM2>(
+    pub fn get_references<M, BM2>(
         &self,
         field_name: &str,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<M, Box<dyn Error>>
     where
         M: Model<MultipleIds, BaseModel = BM2>,
@@ -242,11 +242,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     }
 
     /// Changes the value of the given field to the given value
-    pub fn set<'mm, E>(
+    pub fn set<E>(
         &self,
         field_name: &str,
         value: E,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
@@ -257,11 +257,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     }
 
     /// Changes the value of the given field to the given optional value
-    pub fn set_option<'mm, E>(
+    pub fn set_option<E>(
         &self,
         field_name: &str,
         value: Option<E>,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>
     where
         E: Into<FieldType>,
@@ -272,11 +272,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     }
 
     /// Changes the value of the given field to the given reference
-    pub fn set_reference<'mm, E>(
+    pub fn set_reference<E>(
         &self,
         field_name: &str,
         value: Reference<E, SingleId>,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>
     where
         E: BaseModel,
@@ -287,11 +287,11 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     }
 
     /// Changes the value of the given field to the given reference
-    pub fn set_references<'mm, E>(
+    pub fn set_references<E>(
         &self,
         field_name: &str,
         value: Reference<E, MultipleIds>,
-        env: &mut impl EnvironmentBase<'mm>,
+        env: &mut Environment,
     ) -> Result<(), Box<dyn Error>>
     where
         E: BaseModel,

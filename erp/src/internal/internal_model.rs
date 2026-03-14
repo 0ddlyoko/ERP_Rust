@@ -1,4 +1,4 @@
-use crate::environment::{EnvironmentBase, ErasedEnvironment};
+use crate::environment::ErasedEnvironment;
 use crate::model::{CommonModel, Model};
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
@@ -41,17 +41,14 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
 }
 
-fn compute_wrapper<E, M>(
+fn compute_wrapper<M>(
     field: &str,
     ids: MultipleIds,
     env: &mut dyn ErasedEnvironment,
 ) -> Result<()>
 where
-    E: EnvironmentBase<'static>,
     M: Model<MultipleIds> + 'static,
 {
-    let env = unsafe { &mut *(env as *mut dyn ErasedEnvironment as *mut E) };
-
     M::call_compute_method(field, ids, env)
 }
 
@@ -66,10 +63,9 @@ impl FinalInternalModel {
     }
 
     // TODO Do not pass <M> here, but directly the name, model_descriptor and type_id
-    pub fn register_internal_model<M, E>(&mut self, plugin_name: &str)
+    pub fn register_internal_model<M>(&mut self, plugin_name: &str)
     where
         M: Model<MultipleIds> + 'static,
-        E: EnvironmentBase<'static>,
     {
         let name = M::get_model_name();
         let model_descriptor = M::get_model_descriptor();
@@ -104,7 +100,7 @@ impl FinalInternalModel {
             name: name.to_string(),
             description,
             fields: final_fields,
-            computed_method: compute_wrapper::<E, M>,
+            computed_method: compute_wrapper::<M>,
             plugin_name: plugin_name.to_string(),
         };
 

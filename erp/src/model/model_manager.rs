@@ -1,4 +1,3 @@
-use crate::environment::Environment;
 use crate::internal::internal_model::{FinalInternalModel, InternalModel};
 use crate::model::Model;
 use erp_types::field::FieldCompute;
@@ -26,7 +25,7 @@ impl ModelManager {
         self.models
             .entry(model_name.to_string())
             .or_insert_with(|| FinalInternalModel::new(model_name))
-            .register_internal_model::<M, Environment>(plugin_name);
+            .register_internal_model::<M>(plugin_name);
     }
 
     /// Execute some final modification when models are registered, like:

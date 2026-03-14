@@ -398,12 +398,12 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 }
             }
 
-            fn call_compute_method<'mm>(
+            fn call_compute_method(
                 field_name: &str,
                 id: erp::types::field::MultipleIds,
-                env: &mut impl erp::environment::EnvironmentBase<'mm>,
+                env: &mut dyn erp::environment::ErasedEnvironment,
             ) -> Result<(), Box<dyn std::error::Error>> {
-                let env = unsafe { &mut *(env as *mut dyn erp::environment::ErasedEnvironment as *mut erp::environment::Environment) };
+                let env: &mut erp::environment::Environment = unsafe { &mut *(env as *mut dyn erp::environment::ErasedEnvironment as *mut erp::environment::Environment) };
                 let record = #ident::<erp::types::field::MultipleIds>::create_instance(id);
                 #(#compute_fields)*
                 Ok(())
