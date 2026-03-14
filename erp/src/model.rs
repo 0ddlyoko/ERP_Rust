@@ -6,13 +6,14 @@ pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;
 
-use crate::environment::{Environment, ErasedEnvironment};
+use crate::environment::Environment;
 use crate::field::Reference;
 use erp_types::field::FieldType;
 use erp_types::field::RequiredFieldEmpty;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{BaseModel, ModelDescriptor};
 use std::error::Error;
+use erp_types::environment::ErasedEnvironment;
 
 /// Common version of the model (that will be implemented for each model)
 ///

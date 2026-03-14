@@ -12,6 +12,7 @@ use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use uuid::Uuid;
+use erp_types::environment::ErasedEnvironment;
 
 const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
@@ -1306,7 +1307,5 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         })
     }
 }
-
-pub trait ErasedEnvironment {}
 
 impl ErasedEnvironment for Environment<'_, '_> {}
