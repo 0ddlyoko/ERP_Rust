@@ -12,6 +12,8 @@ serde.workspace = true
 serde_derive.workspace = true
 uuid.workspace = true
 
+erp_cache = { path = "erp_cache" }
+erp_internal_types = { path = "erp_internal_types" }
 erp_types = { path = "erp_types" }
 erp_search = { path = "../erp_search" }
 erp_search_code_gen = { path = "../erp_search_code_gen" }

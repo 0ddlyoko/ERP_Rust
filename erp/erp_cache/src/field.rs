@@ -3,7 +3,7 @@ use erp_types::field::FieldType;
 /// Cache for a single field
 #[derive(Default, Clone)]
 pub struct CacheField {
-    pub(crate) value: Option<FieldType>,
+    pub value: Option<FieldType>,
 }
 
 impl CacheField {
@@ -33,8 +33,8 @@ impl CacheField {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::CacheField;
     use erp_types::field::FieldType;
+    use crate::CacheField;
 
     #[test]
     fn test() {

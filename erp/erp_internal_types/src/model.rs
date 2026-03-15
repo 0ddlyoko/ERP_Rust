@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
-use crate::environment::ErasedEnvironment;
-use crate::field::MultipleIds;
-use crate::internal::InternalField;
+use erp_types::environment::ErasedEnvironment;
+use erp_types::field::MultipleIds;
+use crate::field::InternalField;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 

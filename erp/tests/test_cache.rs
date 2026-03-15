@@ -1,5 +1,4 @@
 use erp::app::Application;
-use erp::cache::Cache;
 use erp::model::ModelManager;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
@@ -7,6 +6,7 @@ use erp_types::field::{IdMode, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
+use erp::environment::make_cache;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -17,7 +17,7 @@ fn test_get_and_insert_field() {
     model_manager.register_model::<SaleOrder<_>>();
     model_manager.register_model::<SaleOrderLine<_>>();
     model_manager.post_register();
-    let mut cache = Cache::new(&model_manager);
+    let mut cache = make_cache(&model_manager);
     let id_1: SingleId = 1.into();
     let id_2: SingleId = 2.into();
     let mut cached_fields = HashMap::new();

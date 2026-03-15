@@ -1,0 +1,7 @@
+[package]
+name = "erp_internal_types"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+erp_types = { path = "../erp_types" }

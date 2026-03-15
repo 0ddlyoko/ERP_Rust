@@ -1,7 +1,7 @@
-use crate::cache::{Cache, CacheField};
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::model::{Model, ModelManager};
+use erp_cache::{Cache, CacheField, CacheModels};
 use erp_search::{LeftTuple, SearchType};
 use erp_search_code_gen::make_domain;
 use erp_types::cache::{Dirty, Update};
@@ -17,6 +17,14 @@ use erp_types::environment::ErasedEnvironment;
 const MAX_NUMBER_OF_RECURSION: i32 = 1024;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+pub fn make_cache(model_manager: &ModelManager) -> Cache {
+    let mut cache = HashMap::new();
+    for model_name in model_manager.get_models().keys() {
+        cache.insert(model_name.clone(), CacheModels::new(model_name.clone()));
+    }
+    Cache { cache }
+}
 
 pub struct Environment<'mm, 'db> {
     pub cache: Cache,
@@ -34,7 +42,7 @@ impl Drop for Environment<'_, '_> {
 impl<'mm, 'db> Environment<'mm, 'db> {
     pub fn new(model_manager: &'mm ModelManager, database: DatabaseType<'db>) -> Result<Self> {
         let mut env = Environment {
-            cache: Cache::new(model_manager),
+            cache: make_cache(model_manager),
             model_manager,
             database,
         };

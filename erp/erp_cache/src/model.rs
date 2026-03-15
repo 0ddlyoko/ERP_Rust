@@ -1,8 +1,8 @@
-use crate::cache::CacheField;
 use erp_types::cache::Update;
 use erp_types::field::FieldType;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
+use crate::CacheField;
 
 #[derive(Clone)]
 pub struct CacheModel {
@@ -111,9 +111,9 @@ impl CacheModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::{CacheField, CacheModel};
     use erp_types::field::FieldType;
     use std::collections::HashMap;
+    use crate::{CacheField, CacheModel};
 
     #[test]
     fn test_access_valid_fields() {

@@ -1,10 +1,9 @@
 use erp::app::Application;
 use erp_types::field::FieldType;
 use erp_types::field::{FieldCompute, FieldReferenceType};
-use erp_types::internal::FinalInternalField;
-use erp_types::internal::InternalField;
 use std::any::TypeId;
 use std::error::Error;
+use erp_internal_types::{FinalInternalField, InternalField};
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
 

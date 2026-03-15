@@ -1,13 +1,13 @@
 use crate::model::{CommonModel, Model};
+use erp_internal_types::{FinalInternalField, InternalField, InternalModel};
+use erp_types::environment::ErasedEnvironment;
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
 use erp_types::field::MultipleIds;
-use erp_types::internal::{FinalInternalField, InternalField, InternalModel};
 use erp_types::model::ModelDescriptor;
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;
-use erp_types::environment::ErasedEnvironment;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -18,7 +18,7 @@ pub struct FinalInternalModel {
     pub name: String,
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
-    pub fields: HashMap<String, FinalInternalField>,
+    pub fields: HashMap<String, FinalInternalField  >,
 }
 
 fn compute_wrapper<M>(

@@ -1,8 +1,8 @@
-use crate::cache::CacheModel;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
+use crate::CacheModel;
 
 /// Cache for a specific model type
 ///
@@ -13,9 +13,9 @@ use std::collections::{HashMap, HashSet};
 #[derive(Clone)]
 pub struct CacheModels {
     name: String,
-    pub(crate) models: HashMap<u32, CacheModel>,
-    pub(crate) dirty: HashMap<u32, HashSet<String>>,
-    pub(crate) to_recompute: HashMap<String, HashSet<u32>>,
+    pub models: HashMap<u32, CacheModel>,
+    pub dirty: HashMap<u32, HashSet<String>>,
+    pub to_recompute: HashMap<String, HashSet<u32>>,
 }
 
 impl CacheModels {

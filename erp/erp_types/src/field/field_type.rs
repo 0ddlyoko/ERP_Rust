@@ -28,12 +28,12 @@ pub enum FieldType {
 impl Display for FieldType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            FieldType::String(s) => write!(f, "{}", s),
-            FieldType::Integer(i) => write!(f, "{}", i),
-            FieldType::Float(fl) => write!(f, "{}", fl),
-            FieldType::Bool(b) => write!(f, "{}", b),
-            FieldType::Ref(id) => write!(f, "{}", id),
-            FieldType::Refs(ids) => write!(f, "{:?}", ids),
+            FieldType::String(s) => write!(f, "{s}"),
+            FieldType::Integer(i) => write!(f, "{i}"),
+            FieldType::Float(fl) => write!(f, "{fl}"),
+            FieldType::Bool(b) => write!(f, "{b}"),
+            FieldType::Ref(id) => write!(f, "{id}"),
+            FieldType::Refs(ids) => write!(f, "{ids:?}"),
         }
     }
 }

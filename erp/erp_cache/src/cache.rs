@@ -1,31 +1,15 @@
-mod cache_field;
-mod cache_model;
-mod cache_models;
-pub mod errors;
-
-pub use cache_field::*;
-pub use cache_model::*;
-pub use cache_models::*;
-
-use crate::model::ModelManager;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::field::IdMode;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
+use crate::CacheModels;
 
 pub struct Cache {
-    cache: HashMap<String, CacheModels>,
+    pub cache: HashMap<String, CacheModels>,
 }
 
 impl Cache {
-    pub fn new(model_manager: &ModelManager) -> Self {
-        let mut cache = HashMap::new();
-        for model_name in model_manager.get_models().keys() {
-            cache.insert(model_name.clone(), CacheModels::new(model_name.clone()));
-        }
-        Cache { cache }
-    }
 
     /// Check if a given record is present in cache. If CacheModels not found, panic
     pub fn is_record_present(&self, model_name: &str, id: &u32) -> bool {

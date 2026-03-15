@@ -1,4 +1,4 @@
-use crate::field::{FieldCompute, FieldDepend, FieldReference, FieldType};
+use erp_types::field::{FieldCompute, FieldDepend, FieldReference, FieldType};
 use std::any::TypeId;
 use std::collections::HashSet;
 

@@ -10,6 +10,8 @@ erp = { path = "erp" }
 members = [
     "code_gen",
     "erp",
+    "erp/erp_cache",
+    "erp/erp_internal_types",
     "erp/erp_types",
     "erp_search",
     "erp_search_code_gen",
