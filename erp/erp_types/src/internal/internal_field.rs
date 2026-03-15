@@ -22,7 +22,7 @@ pub struct FinalInternalField {
     pub required: bool,
     pub default_value: FieldType,
     pub compute: Option<FieldCompute>,
-    // If type is M2O, O2M or M2M, there is an inverse here (but field could be empty)
+    // If the type is M2O, O2M or M2M, there is an inverse here (but the field could be empty)
     pub inverse: Option<FieldReference>,
     pub depends: Vec<Vec<FieldDepend>>,
     is_init: bool,

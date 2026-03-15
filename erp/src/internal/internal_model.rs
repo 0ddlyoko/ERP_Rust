@@ -2,7 +2,7 @@ use crate::model::{CommonModel, Model};
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
 use erp_types::field::MultipleIds;
-use erp_types::internal::{FinalInternalField, InternalField};
+use erp_types::internal::{FinalInternalField, InternalField, InternalModel};
 use erp_types::model::ModelDescriptor;
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -10,26 +10,6 @@ use std::error::Error;
 use erp_types::environment::ErasedEnvironment;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
-
-/// Model descriptor represented by a single struct model
-pub struct InternalModel {
-    pub name: String,
-    pub description: Option<String>,
-    pub fields: HashMap<String, InternalField>,
-    pub computed_method: fn(&str, MultipleIds, &mut dyn ErasedEnvironment) -> Result<()>,
-    pub plugin_name: String,
-}
-
-impl InternalModel {
-    pub fn call_computed_method(
-        &self,
-        field_name: &str,
-        id: MultipleIds,
-        env: &mut dyn ErasedEnvironment,
-    ) -> Result<()> {
-        (self.computed_method)(field_name, id, env)
-    }
-}
 
 /// Final descriptor of a model.
 ///
