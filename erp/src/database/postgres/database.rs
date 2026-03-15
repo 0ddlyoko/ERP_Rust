@@ -107,17 +107,17 @@ impl Database for PostgresDatabase {
     }
 
     fn savepoint(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("SAVEPOINT {}", name))?)
+        Ok(self.client.batch_execute(&format!("SAVEPOINT {name}"))?)
     }
 
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("RELEASE {}", name))?)
+        Ok(self.client.batch_execute(&format!("RELEASE {name}"))?)
     }
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
         Ok(self
             .client
-            .batch_execute(&format!("ROLLBACK TO {}", name))?)
+            .batch_execute(&format!("ROLLBACK TO {name}"))?)
     }
 
     fn start_transaction(&mut self) -> Result<()> {

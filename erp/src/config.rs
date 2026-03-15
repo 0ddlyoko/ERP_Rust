@@ -18,7 +18,7 @@ impl Config {
         };
         let config_file = Path::join(config_dir.config_dir(), "config.toml");
 
-        println!("Loading config from {:?}", config_file);
+        println!("Loading config from {config_file:?}");
         let config = config::Config::builder()
             .set_default("database.url", "localhost")?
             .set_default("database.name", "erp")?
@@ -31,7 +31,7 @@ impl Config {
                     .list_separator(" "),
             )
             .build()
-            .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
+            .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {err:?}"));
 
         config.try_deserialize()
     }
