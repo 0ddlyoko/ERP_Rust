@@ -67,7 +67,7 @@ impl FinalInternalModel {
     where
         M: Model<MultipleIds> + 'static,
     {
-        let name = M::get_model_name();
+        let name = M::_get_model_name();
         let model_descriptor = M::get_model_descriptor();
         let type_id = TypeId::of::<M>();
 

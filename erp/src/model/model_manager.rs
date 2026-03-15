@@ -20,7 +20,7 @@ impl ModelManager {
             Some(plugin_name) => plugin_name,
             None => "Unknown",
         };
-        let model_name = M::get_model_name();
+        let model_name = M::_get_model_name();
 
         self.models
             .entry(model_name.to_string())

@@ -369,12 +369,12 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         M: Model<MultipleIds>,
     {
         // TODO Add limit
-        let model_name = M::get_model_name();
+        let model_name = M::_get_model_name();
         self.save_domain_fields_to_db(model_name, domain)?;
 
         let ids = self
             .database
-            .browse(M::get_model_name(), domain, self.model_manager)?;
+            .browse(M::_get_model_name(), domain, self.model_manager)?;
         Ok(M::create_instance(ids.into()))
     }
 
@@ -1018,7 +1018,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
     where
         M: Model<SingleId>,
     {
-        let model_name = M::get_model_name();
+        let model_name = M::_get_model_name();
         let ids = self._create_new_records(model_name, vec![data])?;
         let id = ids.get_id_at(0);
         Ok(self.get_record::<M, SingleId>(id.into()))
@@ -1029,7 +1029,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
     where
         M: Model<MultipleIds>,
     {
-        let model_name = M::get_model_name();
+        let model_name = M::_get_model_name();
         let ids = self._create_new_records(model_name, data)?;
         Ok(self.get_record::<M, MultipleIds>(ids))
     }

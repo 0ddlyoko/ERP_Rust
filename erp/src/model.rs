@@ -19,12 +19,14 @@ use erp_types::environment::ErasedEnvironment;
 ///
 /// This common trait contains methods that could be applied for both SingleId & MultipleIds structs
 pub trait CommonModel<Mode: IdMode> {
+    type BaseModel: BaseModel;
+
     /// Get this model name
-    fn get_model_name() -> &'static str
+    fn _get_model_name() -> &'static str
     where
         Self: Sized + Model<Mode>,
     {
-        <Self as Model<Mode>>::BaseModel::get_model_name()
+        Self::BaseModel::_get_model_name()
     }
 
     /// Get a descriptor that represents this model
@@ -59,7 +61,6 @@ pub trait CommonModel<Mode: IdMode> {
 }
 
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {
-    type BaseModel: BaseModel;
 }
 
 impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
@@ -74,7 +75,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
-        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id: &SingleId = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         if let Some(result) = result {
@@ -111,7 +112,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
-        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         Ok(result.and_then(|result| result.into()))
@@ -129,7 +130,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
         M: Model<SingleId, BaseModel = BM2>,
         BM2: BaseModel,
     {
-        let model_name = <Self as Model<SingleId>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
         let reference: Option<Reference<BM2, SingleId>> = result.and_then(|result| match result {
@@ -154,7 +155,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
-        let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let ids: &MultipleIds = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, ids)?;
         result
@@ -196,7 +197,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
-        let model_name = <Self as Model<MultipleIds>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id: &MultipleIds = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, id)?;
         Ok(result
@@ -207,6 +208,10 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
 }
 
 impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
+    pub fn get_model_name() -> &'static str {
+        <Self as CommonModel<Mode>>::BaseModel::_get_model_name()
+    }
+
     /// Returns given optional references field.
     ///
     /// If error, returns the error
@@ -219,7 +224,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         M: Model<MultipleIds, BaseModel = BM2>,
         BM2: BaseModel,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let ids = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, ids)?;
         let ids: Vec<u32> = result
@@ -252,7 +257,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     where
         E: Into<FieldType>,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id_mode = self.get_id_mode();
         env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
@@ -267,7 +272,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     where
         E: Into<FieldType>,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id_mode = self.get_id_mode();
         env.save_option_to_cache(model_name, field_name, id_mode, value)
     }
@@ -282,7 +287,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     where
         E: BaseModel,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id_mode = self.get_id_mode();
         env.save_value_to_cache(model_name, field_name, id_mode, value)
     }
@@ -297,7 +302,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     where
         E: BaseModel,
     {
-        let model_name = <Self as Model<Mode>>::BaseModel::get_model_name();
+        let model_name = Self::get_model_name();
         let id_mode = self.get_id_mode();
         env.save_value_to_cache(model_name, field_name, id_mode, value)
     }

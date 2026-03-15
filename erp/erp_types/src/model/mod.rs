@@ -9,5 +9,5 @@ pub use model_descriptor::*;
 /// If multiple plugins implement different fields for the same model, the `BaseModel` will only be
 ///  defined once and be used across all those models
 pub trait BaseModel {
-    fn get_model_name() -> &'static str;
+    fn _get_model_name() -> &'static str;
 }
