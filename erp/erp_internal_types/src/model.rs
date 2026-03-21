@@ -60,7 +60,6 @@ impl FinalInternalModel {
         }
     }
 
-    // TODO Do not pass <M> here, but directly the name, model_descriptor and type_id
     pub fn register_internal_model<M>(&mut self, plugin_name: &str)
     where
         M: CommonModel<MultipleIds> + 'static,
