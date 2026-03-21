@@ -1,10 +1,9 @@
-use crate::model::{CommonModel, Model};
 use erp_internal_types::{FinalInternalField, InternalField, InternalModel};
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::FieldCompute;
 use erp_types::field::FieldType;
 use erp_types::field::MultipleIds;
-use erp_types::model::ModelDescriptor;
+use erp_types::model::{CommonModel, ModelDescriptor};
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::error::Error;
@@ -18,7 +17,7 @@ pub struct FinalInternalModel {
     pub name: String,
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
-    pub fields: HashMap<String, FinalInternalField  >,
+    pub fields: HashMap<String, FinalInternalField>,
 }
 
 fn compute_wrapper<M>(
@@ -27,7 +26,7 @@ fn compute_wrapper<M>(
     env: &mut dyn ErasedEnvironment,
 ) -> Result<()>
 where
-    M: Model<MultipleIds> + 'static,
+    M: CommonModel<MultipleIds> + 'static,
 {
     M::call_compute_method(field, ids, env)
 }
@@ -45,7 +44,7 @@ impl FinalInternalModel {
     // TODO Do not pass <M> here, but directly the name, model_descriptor and type_id
     pub fn register_internal_model<M>(&mut self, plugin_name: &str)
     where
-        M: Model<MultipleIds> + 'static,
+        M: CommonModel<MultipleIds> + 'static,
     {
         let name = M::_get_model_name();
         let model_descriptor = M::get_model_descriptor();

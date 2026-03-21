@@ -11,54 +11,8 @@ use crate::field::Reference;
 use erp_types::field::FieldType;
 use erp_types::field::RequiredFieldEmpty;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
-use erp_types::model::{BaseModel, ModelDescriptor};
+use erp_types::model::{BaseModel, CommonModel};
 use std::error::Error;
-use erp_types::environment::ErasedEnvironment;
-
-/// Common version of the model (that will be implemented for each model)
-///
-/// This common trait contains methods that could be applied for both SingleId & MultipleIds structs
-pub trait CommonModel<Mode: IdMode> {
-    type BaseModel: BaseModel;
-
-    /// Get this model name
-    fn _get_model_name() -> &'static str
-    where
-        Self: Sized + Model<Mode>,
-    {
-        Self::BaseModel::_get_model_name()
-    }
-
-    /// Get a descriptor that represents this model
-    ///
-    /// This method should only be called at startup, to load the model
-    fn get_model_descriptor() -> ModelDescriptor
-    where
-        Self: Sized;
-
-    /// Get the current id of this model
-    fn get_id_mode(&self) -> &Mode;
-
-    /// Create a new instance of this model with given id
-    fn create_instance(id: Mode) -> Self
-    where
-        Self: Sized;
-
-    /// Call a given computed method
-    ///
-    /// This method will only be called with a `Model<MultipleIds>`, not with `Model<SingleId>`
-    ///
-    /// So, when you implement this method in `Model<SingleId>`, you can return Ok(()), as this
-    ///  method will never be called on SingleId
-    fn call_compute_method(
-        // &self,
-        field_name: &str,
-        id: MultipleIds,
-        env: &mut dyn ErasedEnvironment,
-    ) -> Result<(), Box<dyn Error>>
-    where
-        Self: Sized;
-}
 
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {
 }

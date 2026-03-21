@@ -1296,7 +1296,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         Ok(())
     }
 
-    /// Call computed methods of given fields of given model for given ids
+    /// Call computed methods of given fields of the given model for given ids
     fn call_compute_method<Mode: IdMode>(
         &mut self,
         model_name: &str,
