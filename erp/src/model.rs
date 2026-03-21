@@ -7,13 +7,13 @@ pub use iterator::*;
 pub use model_manager::*;
 
 use crate::environment::Environment;
-use crate::field::Reference;
-use erp_types::field::FieldType;
+use erp_types::field::{FieldType, Reference};
 use erp_types::field::RequiredFieldEmpty;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{BaseModel, CommonModel};
 use std::error::Error;
 
+// We need to make another trait here to be able to implement methods, as we are in another crate.
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {
 }
 

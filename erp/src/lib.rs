@@ -3,7 +3,6 @@ pub mod config;
 pub mod database;
 pub mod environment;
 pub mod errors;
-pub mod field;
 pub mod model;
 pub mod plugin;
 pub mod util;

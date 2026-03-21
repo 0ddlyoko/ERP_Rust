@@ -5,6 +5,7 @@ mod field_descriptor;
 mod field_reference;
 mod field_type;
 mod id;
+mod reference;
 
 pub use error::*;
 pub use field_compute::*;
@@ -13,3 +14,4 @@ pub use field_descriptor::*;
 pub use field_reference::*;
 pub use field_type::*;
 pub use id::*;
+pub use reference::*;

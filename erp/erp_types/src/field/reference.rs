@@ -1,11 +1,9 @@
-use crate::model::Model;
-use erp_types::field::FieldType;
-use erp_types::field::{IdMode, MultipleIds, SingleId};
-use erp_types::model::BaseModel;
 use std::marker::PhantomData;
 use std::ops;
 use std::slice::Iter;
 use std::vec::IntoIter;
+use crate::field::{FieldType, IdMode, MultipleIds, SingleId};
+use crate::model::{BaseModel, CommonModel};
 
 #[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {
@@ -19,7 +17,7 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
     /// We don't load the record in cache, nor perform any modification / search to the database.
     pub fn get<M>(&self) -> M
     where
-        M: Model<SingleId, BaseModel = BM>,
+        M: CommonModel<SingleId, BaseModel = BM>,
     {
         M::create_instance(self.id_mode.clone())
     }
@@ -28,7 +26,7 @@ impl<BM: BaseModel> Reference<BM, SingleId> {
 impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
     pub fn get_multiple<M>(&self) -> M
     where
-        M: Model<MultipleIds, BaseModel = BM>,
+        M: CommonModel<MultipleIds, BaseModel = BM>,
     {
         M::create_instance(MultipleIds {
             ids: self.id_mode.get_ids_ref().clone(),

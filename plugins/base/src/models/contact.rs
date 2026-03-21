@@ -1,8 +1,7 @@
 use crate::models::country::BaseCountry;
 use crate::models::lang::BaseLang;
 use code_gen::Model;
-use erp::field::Reference;
-use erp::types::field::{IdMode, MultipleIds, SingleId};
+use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 
 #[derive(Model)]
 #[erp(table_name = "contact")]

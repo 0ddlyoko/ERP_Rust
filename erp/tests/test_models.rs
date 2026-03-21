@@ -1,8 +1,7 @@
 use base::models::{Contact, Lang};
 use base::BasePlugin;
 use erp::app::Application;
-use erp::field::Reference;
-use erp_types::field::FieldDepend;
+use erp_types::field::{FieldDepend, Reference};
 use erp_types::field::{IdMode, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::error::Error;

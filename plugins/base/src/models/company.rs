@@ -1,7 +1,6 @@
 use crate::models::contact::BaseContact;
 use code_gen::Model;
-use erp::field::Reference;
-use erp::types::field::{IdMode, SingleId};
+use erp::types::field::{IdMode, Reference, SingleId};
 
 #[derive(Model)]
 #[erp(table_name = "company")]

@@ -1,8 +1,7 @@
 use crate::models::sale_order::BaseSaleOrder;
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::field::Reference;
-use erp::types::field::{IdMode, MultipleIds, SingleId};
+use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use std::error::Error;
 
 #[derive(Model, Debug)]

@@ -1,8 +1,7 @@
 use crate::models::{BaseSaleOrderLine, SaleOrderLine};
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::field::Reference;
-use erp::types::field::{EnumType, IdMode, MultipleIds};
+use erp::types::field::{EnumType, IdMode, MultipleIds, Reference};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
