@@ -1,6 +1,5 @@
-use crate::internal::internal_model::FinalInternalModel;
 use crate::model::Model;
-use erp_internal_types::InternalModel;
+use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
