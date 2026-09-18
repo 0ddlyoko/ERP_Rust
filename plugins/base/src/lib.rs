@@ -3,7 +3,11 @@ use erp::model::ModelManager;
 use erp::plugin::Plugin;
 use std::error::Error;
 
+pub mod auth;
 pub mod models;
+
+/// Password given to the seeded administrator on a fresh database.
+pub const DEFAULT_ADMIN_PASSWORD: &str = "admin";
 
 pub struct BasePlugin;
 
@@ -14,6 +18,8 @@ impl Plugin for BasePlugin {
 
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::Company<_>>();
+        model_manager.register_model::<models::Group<_>>();
+        model_manager.register_model::<models::Users<_>>();
         model_manager.register_model::<models::Contact<_>>();
         model_manager.register_model::<models::Country<_>>();
         model_manager.register_model::<models::Lang<_>>();
@@ -21,9 +27,21 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Plugin<_>>();
     }
 
-    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // TODO Insert all plugins in database, if needed
+    fn data(&self) -> Vec<&'static str> {
+        vec![include_str!("../data/users.xml")]
+    }
 
+    /// Give the seeded administrator a password, only if it has none.
+    ///
+    /// A hash cannot be written in a data file — it is salted per account — so the account is
+    /// declared there and finished here. `noupdate` keeps later loads away from it.
+    fn post_init(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let Some(admin) = erp::data::resolve(env, "base.user_admin")? else {
+            return Ok(());
+        };
+        if !auth::has_password(env, admin)? {
+            auth::set_password(env, admin, DEFAULT_ADMIN_PASSWORD)?;
+        }
         Ok(())
     }
 }

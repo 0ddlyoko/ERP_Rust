@@ -44,6 +44,11 @@ pub struct Environment<'mm> {
     pub cache: Cache,
     pub model_manager: &'mm ModelManager,
     pub database: DatabaseType,
+    /// Who this unit of work runs on behalf of.
+    ///
+    /// `None` means nobody in particular: booting, loading plugins, system work. Carried here
+    /// rather than passed around because retrofitting it later would touch every signature.
+    uid: Option<u32>,
     closed: bool,
 }
 
@@ -63,14 +68,29 @@ impl Drop for Environment<'_> {
 
 impl<'mm> Environment<'mm> {
     pub fn new(model_manager: &'mm ModelManager, database: DatabaseType) -> Result<Self> {
+        Self::new_as(model_manager, database, None)
+    }
+
+    /// Same, on behalf of a user.
+    pub fn new_as(
+        model_manager: &'mm ModelManager,
+        database: DatabaseType,
+        uid: Option<u32>,
+    ) -> Result<Self> {
         let mut env = Environment {
             cache: make_cache(model_manager),
             model_manager,
             database,
+            uid,
             closed: false,
         };
         env.database.start_transaction()?;
         Ok(env)
+    }
+
+    /// Who this environment runs on behalf of, if anyone.
+    pub fn uid(&self) -> Option<u32> {
+        self.uid
     }
 }
 

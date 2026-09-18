@@ -191,4 +191,9 @@ impl Application {
     pub fn new_env(&self) -> Result<Environment<'_>> {
         Environment::new(&self.model_manager, self.create_new_database()?)
     }
+
+    /// Open a new environment on behalf of a user.
+    pub fn new_env_as(&self, uid: u32) -> Result<Environment<'_>> {
+        Environment::new_as(&self.model_manager, self.create_new_database()?, Some(uid))
+    }
 }

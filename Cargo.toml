@@ -27,6 +27,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1.38", features = ["db-postgres"] }
+argon2 = { version = "0.5", features = ["std"] }
 config = { version = "0.15", default-features = false, features = ["toml"] }
 directories = "6.0"
 libloading = "0.9"
