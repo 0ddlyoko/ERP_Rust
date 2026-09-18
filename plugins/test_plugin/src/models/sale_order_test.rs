@@ -14,6 +14,8 @@ pub(crate) struct SaleOrderTest<Mode: IdMode> {
     label: String,
     #[erp(compute = "compute_replaced", depends = ["name"])]
     replaced: String,
+    #[erp(compute = "compute_narrowed", depends = ["name"])]
+    narrowed: String,
 }
 
 impl SaleOrderTest<MultipleIds> {
@@ -40,6 +42,17 @@ impl SaleOrderTest<MultipleIds> {
         }
         Ok(())
     }
+
+    pub fn compute_narrowed(
+        &self,
+        env: &mut Environment,
+        _parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        for record in self {
+            record.set_narrowed("base".to_string(), env)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Model)]
@@ -54,6 +67,8 @@ pub(crate) struct SaleOrderTest2<Mode: IdMode> {
     label: String,
     #[erp(compute = "compute_replaced", depends = ["name"])]
     replaced: String,
+    #[erp(compute = "compute_narrowed", depends = ["name"])]
+    narrowed: String,
 }
 
 impl SaleOrderTest2<MultipleIds> {
@@ -82,5 +97,22 @@ impl SaleOrderTest2<MultipleIds> {
             record.set_replaced("derived".to_string(), env)?;
         }
         Ok(())
+    }
+
+    /// Handles some records itself and hands only the rest down the chain.
+    pub fn compute_narrowed(
+        &self,
+        env: &mut Environment,
+        parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut handed_down = Vec::new();
+        for record in self {
+            if record.get_name(env)? == "skip" {
+                record.set_narrowed("skipped".to_string(), env)?;
+            } else {
+                handed_down.push(record.get_id());
+            }
+        }
+        parent.call_on(handed_down, env)
     }
 }

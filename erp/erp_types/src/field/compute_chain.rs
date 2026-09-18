@@ -1,5 +1,5 @@
 use crate::environment::ErasedEnvironment;
-use crate::field::MultipleIds;
+use crate::field::{IdMode, MultipleIds};
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -31,22 +31,39 @@ impl<'a> Super<'a> {
         }
     }
 
-    /// Call the implementation this one overrides.
+    /// Call the implementation this one overrides, on the same records.
     ///
     /// Does nothing when there is none, so a compute can call `super` unconditionally instead of
     /// testing for the base case. Not calling it at all replaces the previous implementation.
     pub fn call(&self, env: &mut dyn ErasedEnvironment) -> Result<()> {
+        self.call_on(self.ids.clone(), env)
+    }
+
+    /// Call it on a different set of records.
+    ///
+    /// A link can narrow the recordset it hands down — handling some records itself and letting
+    /// the implementation below deal with the rest — or widen it. Records left out simply never
+    /// reach the rest of the chain.
+    pub fn call_on(
+        &self,
+        ids: impl Into<MultipleIds>,
+        env: &mut dyn ErasedEnvironment,
+    ) -> Result<()> {
         let Some((next, remaining)) = self.remaining.split_first() else {
             return Ok(());
         };
+        let ids = ids.into();
+        if ids.is_empty() {
+            return Ok(());
+        }
         next(
             self.field_name,
-            self.ids.clone(),
+            ids.clone(),
             env,
             Super {
                 remaining,
                 field_name: self.field_name,
-                ids: self.ids,
+                ids: &ids,
             },
         )
     }

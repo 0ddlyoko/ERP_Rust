@@ -120,3 +120,64 @@ fn test_chain_reruns_on_dependency_change() -> Result<()> {
     );
     Ok(())
 }
+
+/// A link may hand only part of its recordset down the chain.
+///
+/// Records it keeps for itself never reach the implementation below.
+#[test]
+fn test_super_can_narrow_the_recordset() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    assert_eq!(
+        label_of(&mut env, "keep", "narrowed")?,
+        "base",
+        "a record handed down reaches the base"
+    );
+    assert_eq!(
+        label_of(&mut env, "skip", "narrowed")?,
+        "skipped",
+        "a record kept back never does"
+    );
+    Ok(())
+}
+
+/// The two paths coexist within one call: some records go down, others do not.
+#[test]
+fn test_narrowing_splits_a_single_recordset() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let maps: Vec<MapOfFields> = ["keep", "skip", "keep"]
+        .iter()
+        .map(|name| {
+            let mut map = MapOfFields::new(HashMap::new());
+            map.insert("name", *name);
+            map
+        })
+        .collect();
+    let ids = env.create_records("sale_order_test", maps)?;
+
+    let rows = env.read("sale_order_test", &ids, &["narrowed"])?;
+    let narrowed: Vec<String> = rows
+        .iter()
+        .map(|row| row.get::<&String>("narrowed").clone())
+        .collect();
+    assert_eq!(narrowed, vec!["base", "skipped", "base"]);
+    Ok(())
+}
+
+/// Handing down an empty set is allowed and simply does nothing.
+#[test]
+fn test_narrowing_to_nothing_is_a_noop() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "skip");
+    let ids = env.create_records("sale_order_test", vec![map])?;
+
+    let rows = env.read("sale_order_test", &ids, &["narrowed"])?;
+    assert_eq!(rows[0].get::<&String>("narrowed"), &"skipped".to_string());
+    Ok(())
+}
