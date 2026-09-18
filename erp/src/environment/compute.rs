@@ -230,11 +230,13 @@ impl<'mm> Environment<'mm> {
         fields: &[&str],
     ) -> Result<()> {
         let final_internal_model = self.model_manager.get_model(model_name);
+        let ids: MultipleIds = ids.get_ids_ref().into();
+        // One savepoint for the whole chain: a compute is a single logical operation, so a link
+        // that fails must take the ones before it with it.
         self.savepoint(move |env| {
             for field in fields {
-                if let Some(computed_field) = final_internal_model.get_computed_field(field) {
-                    // TODO Try to find a way to not clone the id
-                    computed_field.call_computed_method(field, ids.get_ids_ref().into(), env)?;
+                if let Some(chain) = final_internal_model.compute_chain(field) {
+                    Super::head(chain, field, &ids).call(env)?;
                 }
             }
             Ok(())

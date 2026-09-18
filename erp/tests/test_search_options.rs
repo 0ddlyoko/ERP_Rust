@@ -1,7 +1,7 @@
 use erp::app::Application;
 use erp_search::{OrderBy, SearchOptions};
 use erp_search_code_gen::make_domain;
-use erp_types::field::{Decimal, IdMode, MultipleIds};
+use erp_types::field::{Decimal, IdMode, MultipleIds, NaiveDate};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
@@ -106,6 +106,7 @@ fn test_nulls_sort_last() -> Result<()> {
 
     let mut with_date: MapOfFields = MapOfFields::new(HashMap::new());
     with_date.insert("name", "dated");
+    with_date.insert("signed_on", NaiveDate::from_str("2026-05-01")?);
     let mut without: MapOfFields = MapOfFields::new(HashMap::new());
     without.insert("name", "undated");
     without.insert_none("signed_on");

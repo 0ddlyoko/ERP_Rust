@@ -275,31 +275,17 @@ impl From<&Vec<u32>> for FieldType {
 #[error("Cannot read {raw:?} as a {expected}")]
 pub struct ParseFieldTypeError {
     pub raw: String,
-    pub expected: &'static str,
+    pub expected: FieldKind,
 }
 
 impl FieldType {
-    /// Name of the variant, for error messages and for describing a field to a client.
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            FieldType::String(_) => "string",
-            FieldType::Integer(_) => "integer",
-            FieldType::Decimal(_) => "decimal",
-            FieldType::Bool(_) => "boolean",
-            FieldType::Date(_) => "date",
-            FieldType::DateTime(_) => "datetime",
-            FieldType::Ref(_) => "reference",
-            FieldType::Refs(_) => "references",
-        }
-    }
-
     /// Read `raw` as a value of the same variant as `self`.
     ///
     /// Serialization writes bare values, so nothing in `"4"` says whether it is an integer or a
     /// reference. The field's declared default carries that answer — it is the type tag the
     /// registry already relies on — so parsing is always driven by a template.
     pub fn parse_like(&self, raw: &str) -> Result<FieldType, ParseFieldTypeError> {
-        let expected = self.type_name();
+        let expected = self.kind();
         let fail = || ParseFieldTypeError {
             raw: raw.to_string(),
             expected,
@@ -352,6 +338,77 @@ impl serde::Serialize for FieldType {
             FieldType::DateTime(value) => serializer.serialize_str(&value.to_rfc3339()),
             FieldType::Ref(value) => serializer.serialize_u32(*value),
             FieldType::Refs(value) => serde::Serialize::serialize(value, serializer),
+        }
+    }
+}
+
+/// Type of a field, independent of any value it may hold.
+///
+/// Until now the type was read off the discriminant of the declared default, which forced every
+/// field to carry one and left no way to say "no value". Carrying it explicitly is what lets a
+/// field be genuinely empty, and what a DDL generator or a UI needs to know about a column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FieldKind {
+    #[default]
+    String,
+    Integer,
+    Decimal,
+    Bool,
+    Date,
+    DateTime,
+    /// many2one
+    Ref,
+    /// one2many, and later many2many
+    Refs,
+}
+
+impl FieldKind {
+    /// Whether values of this kind live in a column of their own.
+    ///
+    /// Only the "many" side of a relation does not: it is derived from the other side's foreign
+    /// key.
+    pub fn is_stored(&self) -> bool {
+        !matches!(self, FieldKind::Refs)
+    }
+
+    /// Whether this kind holds a reference to another model.
+    pub fn is_relational(&self) -> bool {
+        matches!(self, FieldKind::Ref | FieldKind::Refs)
+    }
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            FieldKind::String => "string",
+            FieldKind::Integer => "integer",
+            FieldKind::Decimal => "decimal",
+            FieldKind::Bool => "boolean",
+            FieldKind::Date => "date",
+            FieldKind::DateTime => "datetime",
+            FieldKind::Ref => "reference",
+            FieldKind::Refs => "references",
+        };
+        write!(f, "{name}")
+    }
+}
+
+impl FieldType {
+    /// Kind of this value.
+    ///
+    /// Lets the derive macro name a field's type by building its default once at startup, rather
+    /// than by matching on the Rust type name.
+    pub fn kind(&self) -> FieldKind {
+        match self {
+            FieldType::String(_) => FieldKind::String,
+            FieldType::Integer(_) => FieldKind::Integer,
+            FieldType::Decimal(_) => FieldKind::Decimal,
+            FieldType::Bool(_) => FieldKind::Bool,
+            FieldType::Date(_) => FieldKind::Date,
+            FieldType::DateTime(_) => FieldKind::DateTime,
+            FieldType::Ref(_) => FieldKind::Ref,
+            FieldType::Refs(_) => FieldKind::Refs,
         }
     }
 }

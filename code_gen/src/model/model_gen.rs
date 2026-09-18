@@ -28,7 +28,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         let compute_method_ident = Ident::new(&compute, Span::call_site());
         Some(quote! {
             if field_name == #field_name {
-                return record.#compute_method_ident(env);
+                return record.#compute_method_ident(env, parent);
             }
         })
     });
@@ -325,18 +325,26 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 }
             }
         } else if *is_reference {
-            if *is_reference_multi {
-                quote! {
-                    Some(erp::types::field::FieldType::Refs(vec![]))
-                }
-            } else {
-                quote! {
-                    Some(erp::types::field::FieldType::Ref(0))
-                }
-            }
+            // A relation starts empty; there is no "no reference" sentinel any more.
+            quote! { None }
+        } else if *is_required {
+            // A bare `T` takes its type's default.
+            quote! { Some((#field_type_keyword::default()).into()) }
+        } else {
+            // `Option<T>` starts empty — that is what declaring it optional now means.
+            quote! { None }
+        };
+
+        // The kind is derived from the declared Rust type by building its default once at
+        // startup, which reuses the existing `From<T> for FieldType` impls — including the
+        // blanket one for enums — instead of matching on type names in the macro.
+        let kind = if *is_reference_multi {
+            quote! { erp::types::field::FieldKind::Refs }
+        } else if *is_reference {
+            quote! { erp::types::field::FieldKind::Ref }
         } else {
             quote! {
-                Some((#field_type_keyword::default()).into())
+                erp::types::field::FieldType::from(#field_type_keyword::default()).kind()
             }
         };
 
@@ -392,6 +400,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 use erp::types::model::BaseModel;
                 erp::types::field::FieldDescriptor {
                     name: #field_name.to_string(),
+                    kind: #kind,
                     default_value: #default_value,
                     description: #description,
                     required: #is_required,
@@ -444,6 +453,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 field_name: &str,
                 id: erp::types::field::MultipleIds,
                 env: &mut dyn erp::types::environment::ErasedEnvironment,
+                parent: erp::types::field::Super<'_>,
             ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let env = erp::environment::Environment::from_erased(env);
                 let record = #ident::<erp::types::field::MultipleIds>::create_instance(id);

@@ -1,5 +1,7 @@
 use code_gen::Model;
-use erp::types::field::IdMode;
+use erp::environment::Environment;
+use erp::types::field::{IdMode, MultipleIds, Super};
+use std::error::Error;
 
 #[derive(Model)]
 #[erp(id = "sale_order_test")]
@@ -8,6 +10,36 @@ pub(crate) struct SaleOrderTest<Mode: IdMode> {
     id: Mode,
     name: String,
     age: i32,
+    #[erp(compute = "compute_label", depends = ["name"])]
+    label: String,
+    #[erp(compute = "compute_replaced", depends = ["name"])]
+    replaced: String,
+}
+
+impl SaleOrderTest<MultipleIds> {
+    /// Base implementation of the chain.
+    pub fn compute_label(
+        &self,
+        env: &mut Environment,
+        _parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        for record in self {
+            let name = record.get_name(env)?.clone();
+            record.set_label(format!("base:{name}"), env)?;
+        }
+        Ok(())
+    }
+
+    pub fn compute_replaced(
+        &self,
+        env: &mut Environment,
+        _parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        for record in self {
+            record.set_replaced("base".to_string(), env)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Model)]
@@ -18,4 +50,37 @@ pub(crate) struct SaleOrderTest2<Mode: IdMode> {
     id: Mode,
     #[erp(description = "New name of the SO")]
     name: String,
+    #[erp(compute = "compute_label", depends = ["name"])]
+    label: String,
+    #[erp(compute = "compute_replaced", depends = ["name"])]
+    replaced: String,
+}
+
+impl SaleOrderTest2<MultipleIds> {
+    /// Extends the base: calls it, then appends to what it produced.
+    pub fn compute_label(
+        &self,
+        env: &mut Environment,
+        parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        assert!(parent.exists(), "the base implementation must be reachable");
+        parent.call(env)?;
+        for record in self {
+            let current = record.get_label(env)?.clone();
+            record.set_label(format!("{current}+derived"), env)?;
+        }
+        Ok(())
+    }
+
+    /// Replaces the base: never calls it.
+    pub fn compute_replaced(
+        &self,
+        env: &mut Environment,
+        _parent: Super,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        for record in self {
+            record.set_replaced("derived".to_string(), env)?;
+        }
+        Ok(())
+    }
 }

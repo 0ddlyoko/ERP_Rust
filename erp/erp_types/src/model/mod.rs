@@ -2,7 +2,7 @@ mod map_of_fields;
 mod model_descriptor;
 
 use crate::environment::ErasedEnvironment;
-use crate::field::{IdMode, MultipleIds};
+use crate::field::{IdMode, MultipleIds, Super};
 pub use map_of_fields::*;
 pub use model_descriptor::*;
 use std::error::Error;
@@ -55,6 +55,7 @@ pub trait CommonModel<Mode: IdMode> {
         field_name: &str,
         id: MultipleIds,
         env: &mut dyn ErasedEnvironment,
+        parent: Super<'_>,
     ) -> Result<(), Box<dyn Error + Send + Sync>>
     where
         Self: Sized;

@@ -111,13 +111,10 @@ impl<'mm> Environment<'mm> {
         let final_internal_model = self.model_manager.get_model(model_name);
         let missing_fields_to_load = final_internal_model.get_missing_fields(data.get_keys());
         for missing_field_to_load in &missing_fields_to_load {
-            let default_value = final_internal_model.get_default_value(missing_field_to_load);
-            if matches!(default_value, FieldType::Ref(0)) {
-                // Do not insert a reference if it's 0 (the default value)
-                // TODO Do not handle this here, but add a real default value to "None"
-                data.insert_none(missing_field_to_load);
-            } else {
-                data.insert_field_type(missing_field_to_load, default_value);
+            // A field that declares no default simply starts empty.
+            match final_internal_model.get_default_value(missing_field_to_load) {
+                Some(default_value) => data.insert_field_type(missing_field_to_load, default_value),
+                None => data.insert_none(missing_field_to_load),
             }
         }
         Some(missing_fields_to_load)

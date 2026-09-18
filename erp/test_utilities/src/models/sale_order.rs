@@ -1,7 +1,7 @@
 use crate::models::{BaseSaleOrderLine, SaleOrderLine};
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::types::field::{EnumType, IdMode, MultipleIds, Reference};
+use erp::types::field::{EnumType, IdMode, MultipleIds, Reference, Super};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -56,6 +56,7 @@ impl SaleOrder<MultipleIds> {
     pub fn compute_total_price(
         &self,
         env: &mut Environment,
+        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for sale_order in self {
             let lines: SaleOrderLine<_> = sale_order.get_lines(env)?;

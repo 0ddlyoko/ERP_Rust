@@ -2,6 +2,30 @@
 use super::*;
 
 impl<'mm> Environment<'mm> {
+    /// Write field values onto records, addressing the model and its fields by name.
+    ///
+    /// The counterpart of [`Environment::read`] for callers that only hold names at runtime.
+    /// Values go through the same path as the generated setters, so relational mirrors stay
+    /// coherent and dependent computes are flagged.
+    pub fn write<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        ids: &Mode,
+        values: MapOfFields,
+    ) -> Result<()> {
+        for (field_name, value) in values.fields {
+            self.save_field_to_cache(
+                model_name,
+                &field_name,
+                ids,
+                value,
+                &Dirty::UpdateDirty,
+                &Update::UpdateIfExists,
+            )?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn save_value_to_cache<Mode: IdMode, E>(
         &mut self,
         model_name: &str,
@@ -126,26 +150,9 @@ impl<'mm> Environment<'mm> {
                     map_result.insert(id, (false, field_value));
                 }
             } else {
-                // Load default value
+                // Load default value, which may simply be "empty".
                 for id in ids_not_in_cache {
-                    let default_value = match field_info.default_value.clone() {
-                        FieldType::Ref(id) => {
-                            if id == 0 {
-                                None
-                            } else {
-                                Some(FieldType::Ref(id))
-                            }
-                        }
-                        FieldType::Refs(ids) => {
-                            if ids.is_empty() {
-                                None
-                            } else {
-                                Some(FieldType::Refs(ids))
-                            }
-                        }
-                        other => Some(other),
-                    };
-                    map_result.insert(id, (false, default_value));
+                    map_result.insert(id, (false, field_info.default_value.clone()));
                 }
             }
         }

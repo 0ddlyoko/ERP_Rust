@@ -68,8 +68,8 @@ fn test_parse_is_driven_by_the_template() -> Result<()> {
     assert_eq!(as_reference, FieldType::Ref(4));
 
     assert_ne!(
-        as_integer.type_name(),
-        as_reference.type_name(),
+        as_integer.kind(),
+        as_reference.kind(),
         "the same text yields different types depending on the field"
     );
     Ok(())

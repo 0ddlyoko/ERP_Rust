@@ -240,10 +240,7 @@ impl CacheConnection {
 
         let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
 
-        if matches!(
-            final_field.default_value,
-            erp_types::field::FieldType::Ref(_)
-        ) {
+        if final_field.kind == erp_types::field::FieldKind::Ref {
             self._get_rows(
                 &model.name,
                 &final_field.name,

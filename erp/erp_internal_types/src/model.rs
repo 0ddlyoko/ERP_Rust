@@ -2,7 +2,7 @@ use crate::FinalInternalField;
 use crate::errors::FieldNotFound;
 use crate::field::InternalField;
 use erp_types::environment::ErasedEnvironment;
-use erp_types::field::{FieldCompute, FieldType, MultipleIds};
+use erp_types::field::{ComputeFn, FieldCompute, FieldType, MultipleIds, Super};
 use erp_types::model::{CommonModel, ModelDescriptor};
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub computed_method: fn(&str, MultipleIds, &mut dyn ErasedEnvironment) -> Result<()>,
+    pub computed_method: ComputeFn,
     pub plugin_name: String,
 }
 
@@ -25,8 +25,9 @@ impl InternalModel {
         field_name: &str,
         id: MultipleIds,
         env: &mut dyn ErasedEnvironment,
+        parent: Super<'_>,
     ) -> Result<()> {
-        (self.computed_method)(field_name, id, env)
+        (self.computed_method)(field_name, id, env, parent)
     }
 }
 
@@ -43,11 +44,16 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
 }
 
-fn compute_wrapper<M>(field: &str, ids: MultipleIds, env: &mut dyn ErasedEnvironment) -> Result<()>
+fn compute_wrapper<M>(
+    field: &str,
+    ids: MultipleIds,
+    env: &mut dyn ErasedEnvironment,
+    parent: Super<'_>,
+) -> Result<()>
 where
     M: CommonModel<MultipleIds> + 'static,
 {
-    M::call_compute_method(field, ids, env)
+    M::call_compute_method(field, ids, env, parent)
 }
 
 impl FinalInternalModel {
@@ -94,13 +100,14 @@ impl FinalInternalModel {
             let field_name = field.name;
             let internal_field = InternalField {
                 name: field_name.clone(),
+                kind: field.kind,
                 default_value: field.default_value,
                 description: field.description,
                 required: field.required,
                 compute: field.compute,
                 field_ref: field.field_ref,
             };
-            self.register_internal_field(&internal_field, &type_id);
+            self.register_internal_field(&internal_field, &type_id, compute_wrapper::<M>);
             final_fields.insert(field_name, internal_field);
         }
 
@@ -118,13 +125,18 @@ impl FinalInternalModel {
         self.models.insert(type_id, internal_model);
     }
 
-    pub fn register_internal_field(&mut self, field_descriptor: &InternalField, type_id: &TypeId) {
+    pub fn register_internal_field(
+        &mut self,
+        field_descriptor: &InternalField,
+        type_id: &TypeId,
+        compute_fn: ComputeFn,
+    ) {
         let name = &field_descriptor.name;
         let internal_field = self
             .fields
             .entry(name.to_string())
             .or_insert_with(|| FinalInternalField::new(name));
-        internal_field.register_internal_field(field_descriptor, type_id);
+        internal_field.register_internal_field(field_descriptor, type_id, compute_fn);
     }
 
     pub fn first(&self) -> &InternalModel {
@@ -248,12 +260,21 @@ impl FinalInternalModel {
             .unwrap_or_else(|err| panic!("{err}"))
     }
 
-    /// Return default value for given field.
-    ///
-    /// If the first is not present, panic
-    pub fn get_default_value(&self, field_name: &str) -> FieldType {
+    /// Default value declared for given field, if it declares one.
+    pub fn get_default_value(&self, field_name: &str) -> Option<FieldType> {
         let field = self.get_internal_field(field_name);
         field.default_value.clone()
+    }
+
+    /// Implementations of a field's compute, most-derived first.
+    ///
+    /// `None` when the field is unknown or carries no compute at all.
+    pub fn compute_chain(&self, field_name: &str) -> Option<&[ComputeFn]> {
+        let field = self.fields.get(field_name)?;
+        if field.compute_chain.is_empty() {
+            return None;
+        }
+        Some(&field.compute_chain)
     }
 
     /// Return true if given field is a computed field.

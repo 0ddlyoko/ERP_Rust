@@ -76,12 +76,12 @@ fn test_null_field_reads_as_none() -> Result<()> {
     Ok(())
 }
 
-/// Pins down a wart worth knowing about: declaring a field `Option<T>` does **not** make it
-/// nullable. Every field carries a default, because the default doubles as the type tag
-/// (`erp_internal_types/src/field.rs:8`), so an unset `Option<NaiveDate>` stores 1970-01-01.
-/// `Option<T>` currently only changes the generated accessor's signature.
+/// Declaring a field `Option<T>` is what makes it start empty.
+///
+/// This used to be impossible: the type was read off the default, so every field carried one and
+/// an unset `Option<NaiveDate>` stored 1970-01-01.
 #[test]
-fn test_unset_optional_field_still_gets_a_default() -> Result<()> {
+fn test_unset_optional_field_is_empty() -> Result<()> {
     let app = new_app();
     let mut env = app.new_env()?;
 
@@ -90,8 +90,30 @@ fn test_unset_optional_field_still_gets_a_default() -> Result<()> {
     assert!(
         rows[0]
             .get_option::<&erp_types::field::NaiveDate>("signed_on")
+            .is_none(),
+        "an optional field with no declared default must start empty"
+    );
+    Ok(())
+}
+
+/// A bare `T` still takes its type's default, and an explicit one still wins.
+#[test]
+fn test_required_field_keeps_its_default() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let ids = env.create_records("invoice", vec![MapOfFields::new(HashMap::new())])?;
+    let rows = env.read("invoice", &ids, &["tax_rate", "due_date"])?;
+    assert_eq!(
+        rows[0].get::<&erp_types::field::Decimal>("tax_rate"),
+        &erp_types::field::Decimal::from_str("0.21")?,
+        "an explicit default still applies"
+    );
+    assert!(
+        rows[0]
+            .get_option::<&erp_types::field::NaiveDate>("due_date")
             .is_some(),
-        "today an unset optional field is filled with its type default, not NULL"
+        "a bare field with no explicit default falls back to its type's default"
     );
     Ok(())
 }
