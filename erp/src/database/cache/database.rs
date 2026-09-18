@@ -6,29 +6,117 @@ use erp_types::field::{FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// In-memory database, used mainly for testing.
+/// Committed state of the in-memory database, shared by every connection opened on it.
 ///
-/// This cache database could also be used in the app
-pub struct CacheDatabase {
+/// Also owns id allocation, so rows created concurrently by different connections never collide.
+#[derive(Default)]
+struct CacheStore {
     installed: bool,
     tables: HashMap<String, Table>,
-    savepoints: Vec<(Option<String>, HashMap<String, Table>)>,
+    next_ids: HashMap<String, u32>,
+}
+
+impl CacheStore {
+    /// Reserve `count` ids for `model_name`, so no other connection can hand out the same ones.
+    fn reserve_ids(&mut self, model_name: &str, count: usize) -> Vec<u32> {
+        let next_id = self.next_ids.entry(model_name.to_string()).or_insert(0);
+        let first = *next_id + 1;
+        *next_id += count as u32;
+        (first..=*next_id).collect()
+    }
+}
+
+/// A connection's savepoint: the working copy and write set to restore when rolling back to it.
+struct Savepoint {
+    name: Option<String>,
+    tables: HashMap<String, Table>,
+    written_rows: HashMap<String, HashSet<u32>>,
+}
+
+/// In-memory database, used mainly for testing.
+///
+/// Holds committed state only. Each [`CacheDatabase::connect`] hands out an independent
+/// connection carrying its own transaction, so several environments can run side by side the way
+/// they would against a real server.
+#[derive(Clone, Default)]
+pub struct CacheDatabase {
+    store: Arc<Mutex<CacheStore>>,
 }
 
 impl CacheDatabase {
-    /// Make a connection to this database
-    pub fn connect() -> Self
-    where
-        Self: Sized,
-    {
-        Self {
+    /// Open an independent connection to this database.
+    pub fn connect(&self) -> CacheConnection {
+        let mut connection = CacheConnection {
+            store: Arc::clone(&self.store),
             installed: false,
             tables: HashMap::new(),
+            written_rows: HashMap::new(),
             savepoints: Vec::new(),
+        };
+        connection.reload_from_store();
+        connection
+    }
+}
+
+/// A single connection to a [`CacheDatabase`].
+///
+/// Reads and writes target a working copy taken when the transaction starts; committing publishes
+/// it back to the shared store. Each connection therefore gets the isolation a real transaction
+/// provides, where the database previously carried one global savepoint stack that concurrent
+/// environments would have corrupted.
+pub struct CacheConnection {
+    store: Arc<Mutex<CacheStore>>,
+    installed: bool,
+    tables: HashMap<String, Table>,
+    /// Rows this transaction created or updated, published row by row on commit.
+    written_rows: HashMap<String, HashSet<u32>>,
+    savepoints: Vec<Savepoint>,
+}
+
+impl CacheConnection {
+    /// Take a fresh working copy from the shared store, discarding uncommitted changes.
+    fn reload_from_store(&mut self) {
+        {
+            let store = self.store.lock().expect("cache database mutex poisoned");
+            self.installed = store.installed;
+            self.tables = store.tables.clone();
         }
+        self.written_rows.clear();
+    }
+
+    /// Publish this transaction's write set to the shared store.
+    ///
+    /// Only the rows this connection touched are copied over, so committing never reverts rows
+    /// another connection committed in the meantime.
+    fn publish_to_store(&mut self) {
+        {
+            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            store.installed = self.installed;
+            for (model_name, ids) in &self.written_rows {
+                let Some(source) = self.tables.get(model_name) else {
+                    continue;
+                };
+                let target = store.tables.entry(model_name.clone()).or_default();
+                for id in ids {
+                    if let Some(row) = source.get_row(id) {
+                        target.insert_row(*id, row.clone());
+                    }
+                }
+            }
+        }
+        self.written_rows.clear();
+    }
+
+    /// Record that `ids` of `model_name` were written by this transaction.
+    fn mark_written(&mut self, model_name: &str, ids: impl IntoIterator<Item = u32>) {
+        self.written_rows
+            .entry(model_name.to_string())
+            .or_default()
+            .extend(ids);
     }
 
     /// Poorly optimized search into the cache
@@ -139,15 +227,21 @@ impl CacheDatabase {
     }
 }
 
-impl Database for CacheDatabase {
+impl Database for CacheConnection {
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
-        Ok(self.installed)
+        let store = self.store.lock().expect("cache database mutex poisoned");
+        Ok(store.installed)
     }
 
-    /// Initialize this database
+    /// Initialize this database.
+    ///
+    /// Written straight through to the shared store: installation happens at boot, outside any
+    /// transaction.
     fn initialize(&mut self) -> Result<()> {
         self.installed = true;
+        let mut store = self.store.lock().expect("cache database mutex poisoned");
+        store.installed = true;
         Ok(())
     }
 
@@ -199,9 +293,12 @@ impl Database for CacheDatabase {
     }
 
     fn create(&mut self, model_name: &str, data: &Vec<&MapOfFields>) -> Result<Vec<u32>> {
+        let ids = {
+            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            store.reserve_ids(model_name, data.len())
+        };
         let table = self.tables.entry(model_name.to_string()).or_default();
-        let mut ids = Vec::with_capacity(data.len());
-        for d in data {
+        for (id, d) in ids.iter().zip(data) {
             let cells = d
                 .fields
                 .iter()
@@ -210,18 +307,19 @@ impl Database for CacheDatabase {
                     (k.clone(), v)
                 })
                 .collect::<HashMap<_, _>>();
-            let row = Row { id: 0, cells };
-            let id = table.add_row(row);
-            ids.push(id);
+            table.insert_row(*id, Row { id: *id, cells });
         }
+        self.mark_written(model_name, ids.iter().copied());
         Ok(ids)
     }
 
     fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
         let mut number_of_updates = 0;
+        let mut updated_ids = Vec::new();
         if let Some(table) = self.tables.get_mut(model_name) {
             for (id, map_of_field) in data {
                 if let Some(row) = table.get_row_mut(id) {
+                    updated_ids.push(*id);
                     for (field_name, value) in &map_of_field.fields {
                         if field_name == "id" {
                             continue;
@@ -233,6 +331,7 @@ impl Database for CacheDatabase {
                 }
             }
         }
+        self.mark_written(model_name, updated_ids);
         // If model not present in database, do nothing
         Ok(number_of_updates)
     }
@@ -263,75 +362,71 @@ impl Database for CacheDatabase {
     }
 
     fn savepoint(&mut self, name: &str) -> Result<()> {
-        let tables = self.tables.clone();
-        self.savepoints.push((Some(name.to_string()), tables));
+        self.savepoints.push(Savepoint {
+            name: Some(name.to_string()),
+            tables: self.tables.clone(),
+            written_rows: self.written_rows.clone(),
+        });
         Ok(())
     }
 
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
         // TODO Create real errors
-        if let Some((savepoint_name, _map)) = self.savepoints.last() {
-            if let Some(savepoint_name) = savepoint_name {
-                if savepoint_name == name {
-                    self.savepoints.pop();
-                    Ok(())
-                } else {
-                    Err(format!("Last savepoint is not {name}").into())
-                }
-            } else {
-                Err(format!("Last savepoint is not {name}").into())
+        match self.savepoints.last() {
+            Some(Savepoint { name: Some(last), .. }) if last == name => {
+                self.savepoints.pop();
+                Ok(())
             }
-        } else {
-            Err("Cannot commit a missing savepoint".into())
+            Some(_) => Err(format!("Last savepoint is not {name}").into()),
+            None => Err("Cannot commit a missing savepoint".into()),
         }
     }
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
-        if let Some((savepoint_name, _map)) = self.savepoints.last() {
-            if let Some(savepoint_name) = savepoint_name {
-                if savepoint_name == name {
-                    let (_savepoint_name, map) = self.savepoints.pop().unwrap();
-                    self.tables = map;
-                    Ok(())
-                } else {
-                    Err(format!("Last savepoint is not {name}").into())
-                }
-            } else {
-                Err(format!("Last savepoint is not {name}").into())
+        match self.savepoints.last() {
+            Some(Savepoint { name: Some(last), .. }) if last == name => {
+                let savepoint = self.savepoints.pop().expect("checked just above");
+                self.tables = savepoint.tables;
+                self.written_rows = savepoint.written_rows;
+                Ok(())
             }
-        } else {
-            Err("Cannot commit a missing savepoint".into())
+            Some(_) => Err(format!("Last savepoint is not {name}").into()),
+            None => Err("Cannot roll back a missing savepoint".into()),
         }
     }
 
+    /// Start a transaction on this connection.
+    ///
+    /// Refreshes the working copy first, so the transaction observes everything other connections
+    /// have committed so far.
     fn start_transaction(&mut self) -> Result<()> {
-        let tables = self.tables.clone();
-        self.savepoints.push((None, tables));
+        self.reload_from_store();
+        self.savepoints.push(Savepoint {
+            name: None,
+            tables: self.tables.clone(),
+            written_rows: HashMap::new(),
+        });
         Ok(())
     }
 
     fn commit_transaction(&mut self) -> Result<()> {
-        while let Some((savepoint_name, _map)) = self.savepoints.pop() {
-            if savepoint_name.is_none() {
+        while let Some(savepoint) = self.savepoints.pop() {
+            if savepoint.name.is_none() {
+                self.publish_to_store();
                 return Ok(());
             }
         }
-        if self.savepoints.is_empty() {
-            return Err("No savepoint left".into());
-        }
-        Ok(())
+        Err("No transaction to commit".into())
     }
 
     fn rollback_transaction(&mut self) -> Result<()> {
-        while let Some((savepoint_name, map)) = self.savepoints.pop() {
-            if savepoint_name.is_none() {
-                self.tables = map;
+        while let Some(savepoint) = self.savepoints.pop() {
+            if savepoint.name.is_none() {
+                self.tables = savepoint.tables;
+                self.written_rows = savepoint.written_rows;
                 return Ok(());
             }
         }
-        if self.savepoints.is_empty() {
-            return Err("No savepoint left".into());
-        }
-        Ok(())
+        Err("No transaction to roll back".into())
     }
 }

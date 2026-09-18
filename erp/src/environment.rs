@@ -26,32 +26,41 @@ pub fn make_cache(model_manager: &ModelManager) -> Cache {
     Cache { cache }
 }
 
-pub struct Environment<'mm, 'db> {
+pub struct Environment<'mm> {
     pub cache: Cache,
     pub model_manager: &'mm ModelManager,
-    pub database: DatabaseType<'db>,
+    pub database: DatabaseType,
+    closed: bool,
 }
 
-impl Drop for Environment<'_, '_> {
+impl Drop for Environment<'_> {
+    /// Roll back the transaction opened by [`Environment::new`].
+    ///
+    /// Does nothing once [`Environment::close`] committed: the transaction is already over, so a
+    /// rollback here would apply to whatever the connection is reused for next.
     fn drop(&mut self) {
+        if self.closed {
+            return;
+        }
         // We don't care if there is an issue during the rollback of the transaction
         let _ = self.database.rollback_transaction();
     }
 }
 
-impl<'mm, 'db> Environment<'mm, 'db> {
-    pub fn new(model_manager: &'mm ModelManager, database: DatabaseType<'db>) -> Result<Self> {
+impl<'mm> Environment<'mm> {
+    pub fn new(model_manager: &'mm ModelManager, database: DatabaseType) -> Result<Self> {
         let mut env = Environment {
             cache: make_cache(model_manager),
             model_manager,
             database,
+            closed: false,
         };
         env.database.start_transaction()?;
         Ok(env)
     }
 }
 
-impl<'mm, 'db> Environment<'mm, 'db> {
+impl<'mm> Environment<'mm> {
     // ------------------------------------------
     // |             Database Logic             |
     // ------------------------------------------
@@ -62,6 +71,7 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         // Commiting here ensures everything is saved to the database, so we can take back the
         //  database and replace it with a cache one
         self.database.commit_transaction()?;
+        self.closed = true;
         Ok(())
     }
 
@@ -167,9 +177,15 @@ impl<'mm, 'db> Environment<'mm, 'db> {
         Ok(())
     }
 
-    /// Save all data from cache to the database
+    /// Flush every registered model that holds dirty records to the database.
+    ///
+    /// The `&ModelManager` is copied out first so the registry borrow stays independent of the
+    /// `&mut self` that `save_model_to_db` requires.
     pub fn save_all_to_db(&mut self) -> Result<()> {
-        // TODO Save all cache to database
+        let model_manager = self.model_manager;
+        for model_name in model_manager.get_models().keys() {
+            self.save_model_to_db(model_name)?;
+        }
         Ok(())
     }
 
@@ -1177,13 +1193,10 @@ impl<'mm, 'db> Environment<'mm, 'db> {
             }
             let cache_models = self.cache.get_cache_models(model_name);
             // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
-            if cache_models
+            if !cache_models
                 .to_recompute
-                .keys()
-                .filter(|key| model.is_stored(key))
-                .peekable()
-                .peek()
-                .is_some()
+                .iter()
+                .any(|(key, value)| !value.is_empty() && model.is_stored(key))
             {
                 break;
             }
@@ -1316,4 +1329,4 @@ impl<'mm, 'db> Environment<'mm, 'db> {
     }
 }
 
-impl ErasedEnvironment for Environment<'_, '_> {}
+impl ErasedEnvironment for Environment<'_> {}

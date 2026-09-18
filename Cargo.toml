@@ -21,7 +21,7 @@ members = [
 
 [workspace.dependencies]
 
-config = { version = "0.15", features = ["toml"] }
+config = { version = "0.15", default-features = false, features = ["toml"] }
 directories = "6.0"
 libloading = "0.9"
 proc-macro2 = "1.0"

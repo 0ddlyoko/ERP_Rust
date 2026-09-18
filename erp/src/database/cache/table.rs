@@ -17,17 +17,21 @@ impl Table {
         self.rows.get_mut(id)
     }
 
-    pub(crate) fn add_row(&mut self, mut row: Row) -> u32 {
-        self.last_id += 1;
-        let id = self.last_id;
+    /// Insert a row under an id allocated by the shared store.
+    ///
+    /// Ids are handed out by [`CacheStore`](super::CacheStore) rather than per table, so two
+    /// connections creating rows concurrently cannot pick the same one.
+    pub(crate) fn insert_row(&mut self, id: u32, mut row: Row) {
         row.cells
             .insert("id".to_string(), Some(FieldType::UInteger(id)));
-        let row = Row {
+        self.last_id = self.last_id.max(id);
+        self.rows.insert(
             id,
-            cells: row.cells,
-        };
-        self.rows.insert(id, row);
-        id
+            Row {
+                id,
+                cells: row.cells,
+            },
+        );
     }
 
     pub(crate) fn delete_row(&mut self, id: &u32) {

@@ -1,4 +1,4 @@
-use crate::database::cache::CacheDatabase;
+use crate::database::cache::CacheConnection;
 use crate::database::postgres::PostgresDatabase;
 use crate::database::{Database, FieldType};
 use crate::model::ModelManager;
@@ -9,12 +9,12 @@ use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-pub enum DatabaseType<'db> {
-    Cache(&'db mut CacheDatabase),
-    Postgres(PostgresDatabase),
+pub enum DatabaseType {
+    Cache(CacheConnection),
+    Postgres(Box<PostgresDatabase>),
 }
 
-impl<'db> Database for DatabaseType<'db> {
+impl Database for DatabaseType {
     fn is_installed(&mut self) -> Result<bool> {
         match self {
             DatabaseType::Cache(cache) => cache.is_installed(),

@@ -27,7 +27,7 @@ impl Application {
             model_manager: ModelManager::default(),
             plugin_manager: PluginManager::default(),
             is_test: false,
-            cache_db: CacheDatabase::connect(),
+            cache_db: CacheDatabase::default(),
         }
     }
 
@@ -41,16 +41,17 @@ impl Application {
             model_manager: ModelManager::default(),
             plugin_manager: PluginManager::default(),
             is_test: true,
-            cache_db: CacheDatabase::connect(),
+            cache_db: CacheDatabase::default(),
         }
     }
 
     /// Create a new connection to the database
-    pub fn create_new_database(&'_ mut self) -> Result<DatabaseType<'_>> {
+    /// Open a new, independent connection to the configured database.
+    pub fn create_new_database(&self) -> Result<DatabaseType> {
         Ok(if self.is_test {
-            DatabaseType::Cache(&mut self.cache_db)
+            DatabaseType::Cache(self.cache_db.connect())
         } else {
-            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
+            DatabaseType::Postgres(Box::new(PostgresDatabase::connect(&self.config.database)?))
         })
     }
 
@@ -132,6 +133,9 @@ impl Application {
             self._load_plugin(depend.as_str())?;
         }
 
+        // Opened before borrowing the plugin mutably: the connection is owned, so it does not
+        // keep `self` borrowed afterwards.
+        let database = self.create_new_database()?;
         let plugin = &mut self.plugin_manager.load_plugin(plugin_name)?.plugin;
 
         plugin.pre_init();
@@ -143,12 +147,6 @@ impl Application {
         // TODO Get all registered models, to update the database
         let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
 
-        // Well, it looks like this works, but not the call to new_env ...
-        let database = if self.is_test {
-            DatabaseType::Cache(&mut self.cache_db)
-        } else {
-            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
-        };
         let mut env = Environment::new(&self.model_manager, database)?;
         env.savepoint(|env| plugin.post_init(env))?;
         env.close()?;
@@ -156,20 +154,21 @@ impl Application {
         Ok(())
     }
 
+    /// Tear this application down.
+    ///
+    /// The model registry is cleared before the plugins: it holds `computed_method` function
+    /// pointers and `TypeId`s originating from the plugin dylibs, which dangle once those
+    /// libraries are unloaded.
     pub fn unload(mut self) {
+        self.model_manager = ModelManager::default();
         self.plugin_manager.unload();
         self.plugin_manager = PluginManager::default();
-        self.model_manager = ModelManager::default();
     }
 
-    pub fn new_env(&'_ mut self) -> Result<Environment<'_, '_>> {
-        // We need to copy this database initialization because calling method create_new_database()
-        //  doesn't work
-        let db = if self.is_test {
-            DatabaseType::Cache(&mut self.cache_db)
-        } else {
-            DatabaseType::Postgres(PostgresDatabase::connect(&self.config.database)?)
-        };
-        Environment::new(&self.model_manager, db)
+    /// Open a new environment, with its own database connection and transaction.
+    ///
+    /// Takes `&self`, so any number of environments can be alive at once.
+    pub fn new_env(&self) -> Result<Environment<'_>> {
+        Environment::new(&self.model_manager, self.create_new_database()?)
     }
 }
