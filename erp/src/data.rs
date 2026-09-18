@@ -24,8 +24,6 @@ pub enum DataError {
     },
     #[error("A <record> of plugin {module} has no {attribute}")]
     MissingAttribute { module: String, attribute: String },
-    #[error("A <field> of record {record} has no name")]
-    UnnamedField { record: String },
     #[error("Record {reference}, referenced by {record}, does not exist")]
     UnknownReference { reference: String, record: String },
 }
@@ -71,12 +69,18 @@ fn load_record(
     let external_id = qualify(module, name);
 
     let mut values = MapOfFields::default();
-    for field in node.children().filter(|node| node.has_tag_name("field")) {
-        let field_name = field
-            .attribute("name")
-            .ok_or_else(|| DataError::UnnamedField {
-                record: external_id.clone(),
-            })?;
+    for field in node.children().filter(roxmltree::Node::is_element) {
+        // A field is named by its own tag — `<price>7</price>`. `<field name="price">` is the
+        // long form, kept because it reads better when generating files and because it makes the
+        // intent explicit.
+        //
+        // The two only meet on `<field>`: with a `name`, it is the long form; without one, it is
+        // the short form for a field actually called `field`. That is what lets every name be
+        // written, including the ones that collide with the structural elements.
+        let field_name = match field.attribute("name") {
+            Some(name) if field.has_tag_name("field") => name,
+            _ => field.tag_name().name(),
+        };
 
         let value = match field.attribute("ref") {
             Some(reference) => {

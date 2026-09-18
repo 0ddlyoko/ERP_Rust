@@ -229,3 +229,209 @@ fn test_only_declared_records_are_created() -> Result<()> {
     assert_eq!(env.count("sale_order_line", &make_domain!([]))?, 1);
     Ok(())
 }
+
+/// A field is named by its own tag.
+#[test]
+fn test_short_form_names_the_field() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="short" model="invoice">
+                <name>Short form</name>
+                <amount_untaxed>12.50</amount_untaxed>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.short")?.expect("record must exist");
+    let rows = env.read("invoice", &SingleId::from(id), &["name", "amount_untaxed"])?;
+    assert_eq!(rows[0].get::<&String>("name"), &"Short form".to_string());
+    assert_eq!(
+        rows[0].get::<&Decimal>("amount_untaxed"),
+        &Decimal::from_str("12.50")?
+    );
+    Ok(())
+}
+
+/// Both spellings may appear in the same record.
+#[test]
+fn test_both_forms_coexist() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="mixed" model="invoice">
+                <name>Mixed</name>
+                <field name="amount_untaxed">99.99</field>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.mixed")?.unwrap();
+    let rows = env.read("invoice", &SingleId::from(id), &["name", "amount_untaxed"])?;
+    assert_eq!(rows[0].get::<&String>("name"), &"Mixed".to_string());
+    assert_eq!(
+        rows[0].get::<&Decimal>("amount_untaxed"),
+        &Decimal::from_str("99.99")?
+    );
+    Ok(())
+}
+
+/// A reference works the same way in the short form.
+#[test]
+fn test_short_form_carries_a_reference() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let order = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="extra_line" model="sale_order_line">
+                <price>3</price>
+                <order ref="main_order"/>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.extra_line")?.unwrap();
+    let rows = env.read("sale_order_line", &SingleId::from(id), &["order"])?;
+    assert_eq!(rows[0].get::<&u32>("order"), &order);
+    Ok(())
+}
+
+/// A tag that names no field is refused, and says which one.
+#[test]
+fn test_unknown_tag_is_refused() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let err = data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="bogus" model="invoice">
+                <not_a_field>x</not_a_field>
+            </record>
+        </erp>"#,
+    )
+    .unwrap_err();
+    assert!(
+        err.to_string().contains("not_a_field"),
+        "the error must name the offending tag, got: {err}"
+    );
+    Ok(())
+}
+
+/// Comments and whitespace between fields are ignored.
+#[test]
+fn test_comments_are_not_fields() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="commented" model="invoice">
+                <!-- this is not a field -->
+                <name>Commented</name>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.commented")?.unwrap();
+    let rows = env.read("invoice", &SingleId::from(id), &["name"])?;
+    assert_eq!(rows[0].get::<&String>("name"), &"Commented".to_string());
+    Ok(())
+}
+
+/// `<field>` without a `name` attribute is the short form for the field called `field`.
+///
+/// This is the one place the two spellings meet, and it is what makes every field name
+/// writable — including the ones that collide with the structural elements.
+#[test]
+fn test_field_tag_without_name_is_a_field_called_field() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="edge" model="tag">
+                <name>Edge</name>
+                <field>short form</field>
+                <field name="field">overwritten by the long form</field>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.edge")?.expect("record must exist");
+    let rows = env.read("tag", &SingleId::from(id), &["name", "field"])?;
+    assert_eq!(rows[0].get::<&String>("name"), &"Edge".to_string());
+    assert_eq!(
+        rows[0].get::<&String>("field"),
+        &"overwritten by the long form".to_string(),
+        "both spellings reach the same field"
+    );
+    Ok(())
+}
+
+/// The short form alone reaches it too.
+#[test]
+fn test_field_tag_alone_reaches_the_field() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="edge_short" model="tag">
+                <field>only the short form</field>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.edge_short")?.unwrap();
+    let rows = env.read("tag", &SingleId::from(id), &["field"])?;
+    assert_eq!(
+        rows[0].get::<&String>("field"),
+        &"only the short form".to_string()
+    );
+    Ok(())
+}
+
+/// And the long form still names any field, including one it does not share a tag with.
+#[test]
+fn test_long_form_still_names_any_field() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="edge_long" model="tag">
+                <field name="name">Named through the long form</field>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.edge_long")?.unwrap();
+    let rows = env.read("tag", &SingleId::from(id), &["name"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        &"Named through the long form".to_string()
+    );
+    Ok(())
+}

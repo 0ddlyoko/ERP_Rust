@@ -31,7 +31,6 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    /// Unload this plugin
     /// XML documents this plugin ships.
     ///
     /// Returned as contents rather than paths, through `include_str!`: a plugin is a dynamic
@@ -41,6 +40,7 @@ pub trait Plugin: Any + Send + Sync {
         Vec::new()
     }
 
+    /// Unload this plugin
     fn unload(&mut self) {}
 
     /// Returns dependencies of this plugin

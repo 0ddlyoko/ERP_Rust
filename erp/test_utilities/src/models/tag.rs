@@ -10,6 +10,10 @@ pub struct Tag<Mode: IdMode> {
     pub id: Mode,
     #[erp(default = "")]
     name: String,
+    /// Named after the structural element on purpose: it pins down that `<field>` with no `name`
+    /// attribute reaches the field called `field`, and not the long form.
+    #[erp(default = "")]
+    field: String,
     #[erp(relation = "invoice_tag_rel")]
     invoices: Reference<BaseInvoice, MultipleIds>,
 }

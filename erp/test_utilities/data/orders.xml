@@ -1,17 +1,19 @@
 <erp>
     <record id="main_order" model="sale_order">
-        <field name="name">Seeded order</field>
+        <name>Seeded order</name>
     </record>
 
     <record id="first_line" model="sale_order_line">
-        <field name="price">7</field>
-        <field name="amount">6</field>
-        <field name="order" ref="main_order"/>
+        <price>7</price>
+        <amount>6</amount>
+        <order ref="main_order"/>
     </record>
 
+    <!-- The long form stays valid, and is what a field whose name collides with a structural
+         element would use. -->
     <record id="reference_invoice" model="invoice" noupdate="1">
         <field name="name">Untouchable</field>
-        <field name="amount_untaxed">1234.56</field>
-        <field name="due_date">2026-09-30</field>
+        <amount_untaxed>1234.56</amount_untaxed>
+        <due_date>2026-09-30</due_date>
     </record>
 </erp>
