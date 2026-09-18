@@ -202,3 +202,92 @@ fn test_unlinked_record_reads_empty() -> Result<()> {
     assert_eq!(env.count("invoice", &make_domain!([]))?, 1);
     Ok(())
 }
+
+fn summary_of(env: &mut erp::environment::Environment, invoice: u32) -> Result<String> {
+    let rows = env.read("invoice", &SingleId::from(invoice), &["tag_summary"])?;
+    Ok(rows[0].get::<&String>("tag_summary").clone())
+}
+
+/// A compute may depend on a path that crosses the relation table.
+#[test]
+fn test_compute_depends_across_a_many2many() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let invoice = create(&mut env, "invoice", "INV")?;
+    let urgent = create(&mut env, "tag", "urgent")?;
+    let late = create(&mut env, "tag", "late")?;
+
+    set_tags(&mut env, invoice, vec![urgent, late])?;
+    assert_eq!(summary_of(&mut env, invoice)?, "late,urgent");
+    Ok(())
+}
+
+/// Renaming a tag recomputes every invoice it is linked to.
+#[test]
+fn test_changing_a_target_recomputes_the_source() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let invoice = create(&mut env, "invoice", "INV")?;
+    let urgent = create(&mut env, "tag", "urgent")?;
+    set_tags(&mut env, invoice, vec![urgent])?;
+    assert_eq!(summary_of(&mut env, invoice)?, "urgent");
+
+    let mut rename = MapOfFields::new(HashMap::new());
+    rename.insert("name", "critical");
+    env.write("tag", &SingleId::from(urgent), rename)?;
+
+    assert_eq!(
+        summary_of(&mut env, invoice)?,
+        "critical",
+        "the invoice must be recomputed through the relation"
+    );
+    Ok(())
+}
+
+/// Linking and unlinking recompute too.
+#[test]
+fn test_linking_recomputes() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let invoice = create(&mut env, "invoice", "INV")?;
+    let urgent = create(&mut env, "tag", "urgent")?;
+    let late = create(&mut env, "tag", "late")?;
+
+    set_tags(&mut env, invoice, vec![urgent])?;
+    assert_eq!(summary_of(&mut env, invoice)?, "urgent");
+
+    set_tags(&mut env, invoice, vec![urgent, late])?;
+    assert_eq!(summary_of(&mut env, invoice)?, "late,urgent");
+
+    set_tags(&mut env, invoice, vec![])?;
+    assert_eq!(summary_of(&mut env, invoice)?, "");
+    Ok(())
+}
+
+/// Only the invoices actually linked are recomputed.
+#[test]
+fn test_recompute_reaches_every_linked_source() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let first = create(&mut env, "invoice", "A")?;
+    let second = create(&mut env, "invoice", "B")?;
+    let untouched = create(&mut env, "invoice", "C")?;
+    let shared = create(&mut env, "tag", "shared")?;
+
+    set_tags(&mut env, first, vec![shared])?;
+    set_tags(&mut env, second, vec![shared])?;
+    assert_eq!(summary_of(&mut env, untouched)?, "");
+
+    let mut rename = MapOfFields::new(HashMap::new());
+    rename.insert("name", "renamed");
+    env.write("tag", &SingleId::from(shared), rename)?;
+
+    assert_eq!(summary_of(&mut env, first)?, "renamed");
+    assert_eq!(summary_of(&mut env, second)?, "renamed");
+    assert_eq!(summary_of(&mut env, untouched)?, "");
+    Ok(())
+}

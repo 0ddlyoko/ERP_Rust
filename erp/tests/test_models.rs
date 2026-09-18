@@ -133,6 +133,44 @@ fn test_many2one_one2many() -> Result<()> {
     Ok(())
 }
 
+/// Reverse dependencies, spelled out in full.
+///
+/// The set is compared exactly rather than by prefix: a spurious edge is as much a bug as a
+/// missing one, since it makes the ORM recompute fields nothing changed for.
+fn depends_of(
+    model: &erp_internal_types::FinalInternalModel,
+    field: &str,
+) -> Vec<Vec<FieldDepend>> {
+    let mut depends = model.get_internal_field(field).depends.clone();
+    depends.sort_by_key(|chain| format!("{chain:?}"));
+    depends
+}
+
+fn same(field: &str) -> FieldDepend {
+    FieldDepend::SameModel {
+        field_name: field.to_string(),
+    }
+}
+
+fn through(model: &str, field: &str) -> FieldDepend {
+    FieldDepend::CurrentFieldAnotherModel {
+        target_model: model.to_string(),
+        field_name: field.to_string(),
+    }
+}
+
+fn hop(model: &str, field: &str) -> FieldDepend {
+    FieldDepend::AnotherModel {
+        target_model: model.to_string(),
+        target_field: field.to_string(),
+    }
+}
+
+fn sorted(mut chains: Vec<Vec<FieldDepend>>) -> Vec<Vec<FieldDepend>> {
+    chains.sort_by_key(|chain| format!("{chain:?}"));
+    chains
+}
+
 #[test]
 fn test_depends() -> Result<()> {
     let mut app = Application::new_test();
@@ -143,64 +181,81 @@ fn test_depends() -> Result<()> {
     let sale_order_line = app.model_manager.get_model("sale_order_line");
 
     // SO
-    assert!(sale_order.get_internal_field("name").depends.is_empty());
-    assert!(sale_order.get_internal_field("state").depends.is_empty());
+    assert!(depends_of(sale_order, "name").is_empty());
+    assert!(depends_of(sale_order, "state").is_empty());
+    assert!(depends_of(sale_order, "total_price").is_empty());
     assert!(
-        sale_order
-            .get_internal_field("total_price")
-            .depends
-            .is_empty()
+        depends_of(sale_order, "lines").is_empty(),
+        "O2M shouldn't have any dependencies"
     );
     assert!(
-        sale_order.get_internal_field("lines").depends.is_empty(),
-        "O2M shouldn't have any dependencies"
+        depends_of(sale_order, "tags").is_empty(),
+        "a M2M carries its edges on the mirror side, and a write touches both"
     );
 
     // SOL
-    let so_line_order = &sale_order_line.get_internal_field("order").depends;
-    assert_eq!(so_line_order.len(), 1);
     assert_eq!(
-        so_line_order[0],
-        vec![
-            FieldDepend::CurrentFieldAnotherModel {
-                target_model: "sale_order".to_string(),
-                field_name: "order".to_string()
-            },
-            FieldDepend::SameModel {
-                field_name: "total_price".to_string()
-            }
-        ]
+        depends_of(sale_order_line, "order"),
+        sorted(vec![
+            vec![through("sale_order", "order"), same("total_price")],
+            vec![same("order_tags")],
+            vec![same("siblings_total")],
+            vec![
+                through("sale_order", "order"),
+                hop("sale_order_line", "order"),
+                same("siblings_total"),
+            ],
+        ]),
+        "moving a line re-totals both orders, and re-reads what the new one carries"
     );
-    let so_line_price = &sale_order_line.get_internal_field("price").depends;
-    assert_eq!(so_line_price.len(), 1);
     assert_eq!(
-        so_line_price[0],
-        vec![FieldDepend::SameModel {
-            field_name: "total_price".to_string()
-        }]
+        depends_of(sale_order_line, "price"),
+        sorted(vec![
+            vec![same("total_price")],
+            vec![
+                through("sale_order", "order"),
+                hop("sale_order_line", "order"),
+                same("siblings_total"),
+            ],
+        ])
     );
-    let so_line_amount = &sale_order_line.get_internal_field("amount").depends;
-    assert_eq!(so_line_amount.len(), 1);
     assert_eq!(
-        so_line_amount[0],
-        vec![FieldDepend::SameModel {
-            field_name: "total_price".to_string()
-        }]
+        depends_of(sale_order_line, "amount"),
+        vec![vec![same("total_price")]]
     );
-    let so_line_amount = &sale_order_line.get_internal_field("total_price").depends;
-    assert_eq!(so_line_amount.len(), 1);
     assert_eq!(
-        so_line_amount[0],
-        vec![
-            FieldDepend::CurrentFieldAnotherModel {
-                target_model: "sale_order".to_string(),
-                field_name: "order".to_string()
-            },
-            FieldDepend::SameModel {
-                field_name: "total_price".to_string()
-            }
-        ]
+        depends_of(sale_order_line, "total_price"),
+        vec![vec![through("sale_order", "order"), same("total_price")]]
     );
 
+    Ok(())
+}
+
+/// A `depends` reaching through a many2many lands on the mirror field of the relation.
+#[test]
+fn test_depends_through_many2many() -> Result<()> {
+    let mut app = Application::new_test();
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+
+    let tag = app.model_manager.get_model("tag");
+
+    let two_hops = vec![through("invoice", "invoices"), same("tag_summary")];
+    let three_hops = vec![
+        through("sale_order", "orders"),
+        hop("sale_order_line", "order"),
+        same("order_tags"),
+    ];
+
+    assert_eq!(
+        depends_of(tag, "name"),
+        sorted(vec![two_hops, three_hops.clone()]),
+        "renaming a tag must reach every model listing it, however far"
+    );
+    assert_eq!(
+        depends_of(tag, "orders"),
+        vec![three_hops],
+        "so must linking or unlinking one"
+    );
     Ok(())
 }

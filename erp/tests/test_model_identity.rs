@@ -6,7 +6,7 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
-use test_utilities::models::{Invoice, MeterReading};
+use test_utilities::models::{Invoice, MeterReading, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -14,6 +14,7 @@ fn new_app() -> Application {
     let mut app = Application::new_test();
     app.model_manager.register_model::<Invoice<_>>();
     app.model_manager.register_model::<MeterReading<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     app
 }

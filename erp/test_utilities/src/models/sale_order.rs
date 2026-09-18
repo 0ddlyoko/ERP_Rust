@@ -1,4 +1,4 @@
-use crate::models::{BaseSaleOrderLine, SaleOrderLine};
+use crate::models::{BaseSaleOrderLine, BaseTag, SaleOrderLine};
 use code_gen::Model;
 use erp::environment::Environment;
 use erp::types::field::{EnumType, IdMode, MultipleIds, Reference, Super};
@@ -50,6 +50,8 @@ pub struct SaleOrder<Mode: IdMode> {
     total_price: i32,
     #[erp(inverse = "order")]
     lines: Reference<BaseSaleOrderLine, MultipleIds>,
+    #[erp(relation = "sale_order_tag_rel")]
+    tags: Reference<BaseTag, MultipleIds>,
 }
 
 impl SaleOrder<MultipleIds> {

@@ -5,7 +5,7 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
-use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine};
+use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -14,6 +14,7 @@ fn new_app() -> Application {
     app.model_manager.register_model::<Invoice<_>>();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     app
 }

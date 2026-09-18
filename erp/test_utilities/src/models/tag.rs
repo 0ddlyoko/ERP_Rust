@@ -1,4 +1,4 @@
-use crate::models::BaseInvoice;
+use crate::models::{BaseInvoice, BaseSaleOrder};
 use code_gen::Model;
 use erp::types::field::{IdMode, MultipleIds, Reference};
 
@@ -16,4 +16,6 @@ pub struct Tag<Mode: IdMode> {
     field: String,
     #[erp(relation = "invoice_tag_rel")]
     invoices: Reference<BaseInvoice, MultipleIds>,
+    #[erp(relation = "sale_order_tag_rel")]
+    orders: Reference<BaseSaleOrder, MultipleIds>,
 }

@@ -7,7 +7,7 @@ use erp_types::field::{IdMode, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use test_utilities::models::{SaleOrder, SaleOrderLine};
+use test_utilities::models::{SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -16,6 +16,7 @@ fn test_get_and_insert_field() {
     let mut model_manager = ModelManager::default();
     model_manager.register_model::<SaleOrder<_>>();
     model_manager.register_model::<SaleOrderLine<_>>();
+    model_manager.register_model::<Tag<_>>();
     model_manager.post_register();
     let mut cache = make_cache(&model_manager);
     let id_1: SingleId = 1.into();
@@ -115,6 +116,7 @@ fn test_x2x_fields() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 

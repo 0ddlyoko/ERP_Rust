@@ -129,13 +129,33 @@ impl ModelManager {
                             }) = &field.inverse
                             {
                                 match inverse_field {
-                                    // A compute depending on a path through a many2many is not
-                                    // supported: the traversal below assumes a column on one of
-                                    // the two sides, and a relation table has none.
-                                    FieldReferenceType::M2M { .. } => panic!(
-                                        "Field {}.{} is a many2many, which a compute dependency cannot traverse yet",
-                                        current_model.name, field.name
-                                    ),
+                                    // Symmetric with the one2many below: the hop back is the
+                                    // field on the other side that names the same relation table.
+                                    FieldReferenceType::M2M { relation, .. } => {
+                                        let target = self.get_model(target_model);
+                                        let Some(mirror) = target.field_of_relation(relation)
+                                        else {
+                                            panic!(
+                                                "Field {}.{} names relation {relation}, which model {target_model} does not declare",
+                                                current_model.name, field.name
+                                            )
+                                        };
+                                        let mirror = mirror.to_string();
+                                        final_depends.push(FieldDepend::CurrentFieldAnotherModel {
+                                            target_model: current_model.name.clone(),
+                                            field_name: mirror.clone(),
+                                        });
+
+                                        // Save to field
+                                        let mut new_final_depends = final_depends.clone();
+                                        new_final_depends.reverse();
+                                        let vec = fields_to_update
+                                            .entry(target_model.clone())
+                                            .or_default()
+                                            .entry(mirror)
+                                            .or_default();
+                                        vec.push(new_final_depends);
+                                    }
                                     FieldReferenceType::O2M { inverse_field } => {
                                         final_depends.push(FieldDepend::CurrentFieldAnotherModel {
                                             target_model: current_model.name.clone(),

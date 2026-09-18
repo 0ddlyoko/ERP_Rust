@@ -79,6 +79,8 @@ fn test_super_on_a_single_link_is_a_noop() -> Result<()> {
         .register_model::<test_utilities::models::SaleOrder<_>>();
     app.model_manager
         .register_model::<test_utilities::models::SaleOrderLine<_>>();
+    app.model_manager
+        .register_model::<test_utilities::models::Tag<_>>();
     app.model_manager.post_register();
 
     let model = app.model_manager.get_model("sale_order_line");

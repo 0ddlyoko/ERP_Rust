@@ -8,7 +8,7 @@ use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
+use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -17,6 +17,7 @@ fn test_env_drop_rollback() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
@@ -66,6 +67,7 @@ fn test_fill_default_values_on_map() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let env = app.new_env()?;
 
@@ -90,6 +92,7 @@ fn test_get_fields_to_save() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let env = app.new_env()?;
 
@@ -194,6 +197,7 @@ fn test_get_record() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 
@@ -274,6 +278,7 @@ fn test_get_record_from_xxx() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 
@@ -302,6 +307,7 @@ fn test_compute_method() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 
@@ -340,6 +346,7 @@ fn test_save_fields_to_db() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 
@@ -465,6 +472,7 @@ fn test_search() -> Result<()> {
     let mut app = Application::new_test();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
     let mut env = app.new_env()?;
 

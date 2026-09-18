@@ -209,16 +209,7 @@ impl<'mm> Environment<'mm> {
     /// by matching on it rather than being declared twice.
     pub(super) fn mirror_of_relation(&self, model_name: &str, relation: &str) -> Option<String> {
         let model = self.model_manager.try_get_model(model_name).ok()?;
-        model.fields.iter().find_map(|(name, field)| {
-            matches!(
-                &field.inverse,
-                Some(FieldReference {
-                    inverse_field: FieldReferenceType::M2M { relation: other, .. },
-                    ..
-                }) if other == relation
-            )
-            .then(|| name.clone())
-        })
+        model.field_of_relation(relation).map(str::to_string)
     }
 
     pub(super) fn save_field_to_cache<Mode: IdMode>(
@@ -268,7 +259,19 @@ impl<'mm> Environment<'mm> {
                         }
                     }
 
+                    let mirror = self.mirror_of_relation(target_model, relation);
+                    let touched: Vec<u32> = touched.into_iter().collect();
+
+                    // Dependents are collected under both states. A record that loses its last
+                    // link is only reachable through the other side *before* the change; one
+                    // that gains a link, only after. Invalidating the mirror alone would say
+                    // nothing to either — the one2many path gets this for free by writing the
+                    // children's own field, and a many2many has no field to write.
                     self.check_compute_on_field(model_name, field_name, ids.get_ids_ref())?;
+                    if let Some(mirror) = &mirror {
+                        self.check_compute_on_field(target_model, mirror, &touched)?;
+                    }
+
                     self.cache.insert_field_in_cache(
                         model_name,
                         field_name,
@@ -278,10 +281,10 @@ impl<'mm> Environment<'mm> {
                         update_field,
                     );
 
-                    // Whatever the other side had cached about these records is now wrong.
-                    if let Some(mirror) = self.mirror_of_relation(target_model, relation) {
-                        let touched: Vec<u32> = touched.into_iter().collect();
-                        self.cache.invalidate_field(target_model, &mirror, &touched);
+                    if let Some(mirror) = &mirror {
+                        // Whatever the other side had cached about these records is now wrong.
+                        self.cache.invalidate_field(target_model, mirror, &touched);
+                        self.check_compute_on_field(target_model, mirror, &touched)?;
                     }
                     self.check_compute_on_field(model_name, field_name, ids.get_ids_ref())?;
                     Ok(())
