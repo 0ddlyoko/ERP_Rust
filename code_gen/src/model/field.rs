@@ -25,6 +25,7 @@ pub struct FieldGen {
     pub compute: Option<String>,
     pub depends: Option<Vec<String>>,
     pub inverse: Option<String>,
+    pub relation: Option<String>,
 }
 
 impl FieldGen {
@@ -47,6 +48,7 @@ impl FieldGen {
         let mut compute = None;
         let mut depends = None;
         let mut inverse = None;
+        let mut relation = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -139,6 +141,9 @@ impl FieldGen {
                 AllowedFieldAttrs::Depends(_, depends_value) => {
                     depends = Some(depends_value.iter().map(|s| s.value()).collect());
                 }
+                AllowedFieldAttrs::Relation(ident, relation_value) => {
+                    relation = Some((ident, relation_value.value()));
+                }
                 AllowedFieldAttrs::Inverse(ident, inverse_value) => {
                     inverse = Some((ident, inverse_value.value()));
                 }
@@ -220,6 +225,10 @@ impl FieldGen {
         if !is_reference_multi && let Some((inverse_ident, _)) = inverse {
             return Err(gen_inverse_not_multiple_ids(inverse_ident.span()));
         }
+        // So should "relation": a many2many is a list on both sides.
+        if !is_reference_multi && let Some((relation_ident, _)) = relation {
+            return Err(gen_inverse_not_multiple_ids(relation_ident.span()));
+        }
 
         Ok(FieldGen {
             field_name,
@@ -234,6 +243,7 @@ impl FieldGen {
             compute,
             depends,
             inverse: inverse.map(|inv| inv.1),
+            relation: relation.map(|rel| rel.1),
         })
     }
 }

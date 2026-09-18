@@ -40,6 +40,11 @@ impl CacheModel {
     ///
     /// We assume the field name given to this method exists, as giving an invalid name or a name
     /// that does not belong to this model is invalid.
+    /// Forget a field's value, so the next read loads it again.
+    pub fn remove_field(&mut self, name: &str) {
+        self.fields.remove(name);
+    }
+
     pub fn get_field_mut(&mut self, name: &str) -> Option<&mut CacheField> {
         self.fields.get_mut(name)
     }

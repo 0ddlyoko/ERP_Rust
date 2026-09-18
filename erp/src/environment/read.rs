@@ -212,6 +212,50 @@ impl<'mm> Environment<'mm> {
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {
                 target_model,
+                inverse_field: FieldReferenceType::M2M { relation, .. },
+            }) = &field_info.inverse
+            {
+                // Both sides may hold unwritten pairs, so they reach the relation table before it
+                // is read back.
+                let target_model = target_model.clone();
+                let relation = relation.clone();
+                self.save_relations_to_db(model_name, &[field_name])?;
+                if let Some(mirror) = self.mirror_of_relation(&target_model, &relation) {
+                    self.save_relations_to_db(&target_model, &[&mirror])?;
+                }
+
+                let model_info = self.model_manager.try_get_model(model_name)?;
+                let field_info = model_info.try_get_internal_field(field_name)?;
+                let Some(FieldReference {
+                    inverse_field:
+                        FieldReferenceType::M2M {
+                            relation,
+                            column,
+                            target_column,
+                        },
+                    ..
+                }) = &field_info.inverse
+                else {
+                    unreachable!("just matched a many2many")
+                };
+                let pairs = self.database.read_relation(
+                    relation,
+                    column,
+                    target_column,
+                    ids_not_in_cache.get_ids_ref(),
+                )?;
+                for (id, targets) in pairs {
+                    self.cache.insert_field_in_cache(
+                        model_name,
+                        field_name,
+                        &[id],
+                        Some(FieldType::Refs(targets)),
+                        &Dirty::NotUpdateDirty,
+                        &Update::UpdateIfExists,
+                    );
+                }
+            } else if let Some(FieldReference {
+                target_model,
                 inverse_field: FieldReferenceType::O2M { inverse_field },
             }) = &field_info.inverse
             {

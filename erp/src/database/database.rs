@@ -77,6 +77,28 @@ pub trait Database {
     /// Update given data for given model
     fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32>;
 
+    /// Pairs held by a relation table, for each of `ids`.
+    ///
+    /// A many2many lives in a table of its own rather than in a column, so it does not go
+    /// through the row operations above.
+    fn read_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        ids: &[u32],
+    ) -> Result<HashMap<u32, Vec<u32>>>;
+
+    /// Replace the pairs of one record in a relation table.
+    fn write_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        id: u32,
+        targets: &[u32],
+    ) -> Result<()>;
+
     /// Delete the given records, and return how many rows were actually removed.
     ///
     /// Ids that are not present are skipped rather than reported, mirroring `update`.

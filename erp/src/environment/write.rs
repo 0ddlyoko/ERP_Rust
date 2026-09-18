@@ -111,6 +111,41 @@ impl<'mm> Environment<'mm> {
                 }
             } else if let Some(FieldReference {
                 target_model,
+                inverse_field: FieldReferenceType::M2M { relation, .. },
+            }) = &field_info.inverse
+            {
+                // A many2many has no column of its own; its pairs come from the relation table.
+                // Both sides may still be holding unwritten changes, so they reach the table
+                // first — the same precaution the one2many path takes.
+                self.save_relations_to_db(model_name, &[field_name])?;
+                if let Some(mirror) = self.mirror_of_relation(target_model, relation) {
+                    self.save_relations_to_db(target_model, &[&mirror])?;
+                }
+                let model_info = self.model_manager.try_get_model(model_name)?;
+                let field_info = model_info.try_get_internal_field(field_name)?;
+                let Some(FieldReference {
+                    inverse_field:
+                        FieldReferenceType::M2M {
+                            relation,
+                            column,
+                            target_column,
+                        },
+                    ..
+                }) = &field_info.inverse
+                else {
+                    unreachable!("just matched a many2many")
+                };
+                let pairs = self.database.read_relation(
+                    relation,
+                    column,
+                    target_column,
+                    &ids_not_in_cache,
+                )?;
+                for (id, targets) in pairs {
+                    map_result.insert(id, (false, Some(FieldType::Refs(targets))));
+                }
+            } else if let Some(FieldReference {
+                target_model,
                 inverse_field: FieldReferenceType::O2M { inverse_field },
             }) = &field_info.inverse
             {
@@ -168,6 +203,24 @@ impl<'mm> Environment<'mm> {
     /// Save given field to cache.
     ///
     /// This method ensure M2O & O2M are correctly linked in cache (if those fields are loaded)
+    /// Field on `model_name` that is the other end of a relation table.
+    ///
+    /// The two sides of a many2many name the same table independently, so the pairing is found
+    /// by matching on it rather than being declared twice.
+    pub(super) fn mirror_of_relation(&self, model_name: &str, relation: &str) -> Option<String> {
+        let model = self.model_manager.try_get_model(model_name).ok()?;
+        model.fields.iter().find_map(|(name, field)| {
+            matches!(
+                &field.inverse,
+                Some(FieldReference {
+                    inverse_field: FieldReferenceType::M2M { relation: other, .. },
+                    ..
+                }) if other == relation
+            )
+            .then(|| name.clone())
+        })
+    }
+
     pub(super) fn save_field_to_cache<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -188,12 +241,51 @@ impl<'mm> Environment<'mm> {
             inverse_field,
         }) = &field_info.inverse
         {
-            // M2O or O2M
             return match inverse_field {
-                // For now, M2M is not handled, so it's a O2M (as there is an inverse field)
-                // Call this method for each field that has been modified.
-                // To be able to do this, we need to retrieve old data, and compare it with the new data
-                //FieldReferenceType::M2M { ... } => { ... }
+                // Both sides of a many2many live in the same table of pairs, so writing one side
+                // cannot be mirrored by writing the other — that would recurse forever. The
+                // other side is invalidated instead, and reloaded from the relation on next
+                // read. One reload is cheaper than the bookkeeping, and cannot go stale.
+                FieldReferenceType::M2M { relation, .. } => {
+                    let new_ids: Vec<u32> = match value.clone() {
+                        None => Vec::new(),
+                        Some(FieldType::Ref(id)) => vec![id],
+                        Some(FieldType::Refs(ids)) => ids,
+                        other => {
+                            return Err(format!(
+                                "A many2many takes a list of references, not {other:?}"
+                            )
+                            .into());
+                        }
+                    };
+
+                    let old_values =
+                        self.retrieve_field_from_cache_or_database(model_name, field_name, ids)?;
+                    let mut touched: HashSet<u32> = new_ids.iter().copied().collect();
+                    for (_, old) in old_values {
+                        if let Some(FieldType::Refs(old_ids)) = old {
+                            touched.extend(old_ids);
+                        }
+                    }
+
+                    self.check_compute_on_field(model_name, field_name, ids.get_ids_ref())?;
+                    self.cache.insert_field_in_cache(
+                        model_name,
+                        field_name,
+                        ids.get_ids_ref(),
+                        Some(FieldType::Refs(new_ids)),
+                        update_dirty,
+                        update_field,
+                    );
+
+                    // Whatever the other side had cached about these records is now wrong.
+                    if let Some(mirror) = self.mirror_of_relation(target_model, relation) {
+                        let touched: Vec<u32> = touched.into_iter().collect();
+                        self.cache.invalidate_field(target_model, &mirror, &touched);
+                    }
+                    self.check_compute_on_field(model_name, field_name, ids.get_ids_ref())?;
+                    Ok(())
+                }
                 FieldReferenceType::O2M { inverse_field } => {
                     let new_ids = match value.clone() {
                         None => HashSet::new(),

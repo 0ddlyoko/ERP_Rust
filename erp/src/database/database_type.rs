@@ -95,6 +95,39 @@ impl Database for DatabaseType {
         }
     }
 
+    fn read_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        ids: &[u32],
+    ) -> Result<HashMap<u32, Vec<u32>>> {
+        match self {
+            DatabaseType::Cache(cache) => cache.read_relation(relation, column, target_column, ids),
+            DatabaseType::Postgres(postgres) => {
+                postgres.read_relation(relation, column, target_column, ids)
+            }
+        }
+    }
+
+    fn write_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        id: u32,
+        targets: &[u32],
+    ) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => {
+                cache.write_relation(relation, column, target_column, id, targets)
+            }
+            DatabaseType::Postgres(postgres) => {
+                postgres.write_relation(relation, column, target_column, id, targets)
+            }
+        }
+    }
+
     fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
         match self {
             DatabaseType::Cache(cache) => cache.delete(model_name, ids),

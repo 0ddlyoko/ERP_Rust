@@ -188,6 +188,12 @@ impl Cache {
         cache_models.clear_dirty(ids.as_ref());
     }
 
+    /// Forget a field's value on the given records, so the next read loads it again.
+    pub fn invalidate_field(&mut self, model_name: &str, field_name: &str, ids: &[u32]) {
+        self.get_cache_models_mut(model_name)
+            .invalidate_field(field_name, ids);
+    }
+
     /// Forget the given records: values, dirty flags and pending recomputations.
     pub fn remove_records<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
         let cache_models = self.get_cache_models_mut(model_name);

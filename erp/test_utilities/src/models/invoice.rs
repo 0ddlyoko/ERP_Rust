@@ -1,5 +1,6 @@
+use crate::models::BaseTag;
 use code_gen::Model;
-use erp::types::field::{Decimal, IdMode, NaiveDate, Timestamp};
+use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, Timestamp};
 
 /// Exercises the field types an ERP cannot do without: exact money, a due date and an audit stamp.
 #[derive(Model)]
@@ -16,4 +17,6 @@ pub struct Invoice<Mode: IdMode> {
     due_date: NaiveDate,
     created_at: Timestamp,
     signed_on: Option<NaiveDate>,
+    #[erp(relation = "invoice_tag_rel")]
+    tags: Reference<BaseTag, MultipleIds>,
 }

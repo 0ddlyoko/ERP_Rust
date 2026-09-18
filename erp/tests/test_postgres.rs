@@ -13,7 +13,7 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
-use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine};
+use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -44,6 +44,7 @@ fn postgres_app(schema: &str) -> Option<Application> {
     app.model_manager.register_model::<Invoice<_>>();
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
     app.model_manager.post_register();
 
     let mut database = match app.create_new_database() {
@@ -59,7 +60,7 @@ fn postgres_app(schema: &str) -> Option<Application> {
         .batch_execute(&format!("DROP SCHEMA IF EXISTS \"{schema}\" CASCADE"))
         .ok()?;
     database.initialize().ok()?;
-    for name in ["invoice", "sale_order", "sale_order_line"] {
+    for name in ["invoice", "sale_order", "sale_order_line", "tag"] {
         let model = app.model_manager.get_model(name);
         database.sync_model(model).ok()?;
     }
@@ -365,6 +366,109 @@ fn test_null_round_trip() -> Result<()> {
             &make_domain!([("signed_on", "!=", None::<NaiveDate>)])
         )?,
         0
+    );
+    Ok(())
+}
+
+/// The relation table is created alongside the models that declare it.
+#[test]
+fn test_relation_table_is_created() -> Result<()> {
+    let app = app_or_skip!("t_m2m_ddl");
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+
+    let columns: Vec<String> = connection
+        .client
+        .query(
+            "SELECT column_name FROM information_schema.columns \
+             WHERE table_schema = 't_m2m_ddl' AND table_name = 'invoice_tag_rel' \
+             ORDER BY column_name",
+            &[],
+        )?
+        .iter()
+        .map(|row| row.get(0))
+        .collect();
+    assert_eq!(columns, vec!["invoice_id", "tag_id"]);
+
+    let invoice_columns: Vec<String> = connection
+        .client
+        .query(
+            "SELECT column_name FROM information_schema.columns \
+             WHERE table_schema = 't_m2m_ddl' AND table_name = 'invoice'",
+            &[],
+        )?
+        .iter()
+        .map(|row| row.get(0))
+        .collect();
+    assert!(
+        !invoice_columns.contains(&"tags".to_string()),
+        "a many2many has a table, not a column"
+    );
+    Ok(())
+}
+
+/// Pairs round-trip through the relation table, and are visible from both sides.
+#[test]
+fn test_many2many_against_postgres() -> Result<()> {
+    let app = app_or_skip!("t_m2m");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "INV");
+    let invoices: MultipleIds = env.create_records("invoice", vec![map])?;
+    let invoice = *invoices.get_ids_ref().first().unwrap();
+
+    let mut tags = Vec::new();
+    for name in ["urgent", "late"] {
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", name);
+        let created: MultipleIds = env.create_records("tag", vec![map])?;
+        tags.push(*created.get_ids_ref().first().unwrap());
+    }
+
+    let mut link: MapOfFields = MapOfFields::new(HashMap::new());
+    link.insert("tags", tags.clone());
+    env.write("invoice", &SingleId::from(invoice), link)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let rows = env.read("invoice", &SingleId::from(invoice), &["tags"])?;
+    assert_eq!(
+        rows[0]
+            .get_option::<&Vec<u32>>("tags")
+            .cloned()
+            .unwrap_or_default(),
+        tags,
+        "the pairs must survive a commit"
+    );
+
+    let rows = env.read("tag", &SingleId::from(tags[0]), &["invoices"])?;
+    assert_eq!(
+        rows[0]
+            .get_option::<&Vec<u32>>("invoices")
+            .cloned()
+            .unwrap_or_default(),
+        vec![invoice],
+        "and be visible from the other side"
+    );
+
+    // Dropping one target leaves the other alone.
+    let mut link: MapOfFields = MapOfFields::new(HashMap::new());
+    link.insert("tags", vec![tags[0]]);
+    env.write("invoice", &SingleId::from(invoice), link)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let rows = env.read("tag", &SingleId::from(tags[1]), &["invoices"])?;
+    assert!(
+        rows[0]
+            .get_option::<&Vec<u32>>("invoices")
+            .cloned()
+            .unwrap_or_default()
+            .is_empty(),
+        "the dropped tag must no longer see the invoice"
     );
     Ok(())
 }

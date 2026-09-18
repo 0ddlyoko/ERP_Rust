@@ -115,6 +115,16 @@ impl<'mm> Environment<'mm> {
     pub fn save_model_to_db(&mut self, model_name: &str) -> Result<()> {
         self.call_computed_method_on_all_fields(model_name)?;
 
+        // Relation tables are not reached by the row operations below.
+        let relational: Vec<&'mm str> = self
+            .model_manager
+            .try_get_model(model_name)?
+            .fields
+            .keys()
+            .map(String::as_str)
+            .collect();
+        self.save_relations_to_db(model_name, &relational)?;
+
         let dirty_map_of_fields = self.get_dirty_stored_models(model_name);
 
         if dirty_map_of_fields.is_empty() {
@@ -137,7 +147,57 @@ impl<'mm> Environment<'mm> {
     /// Compute them if needed.
     ///
     /// Remove from the original list non-stored fields
+    /// Write dirty many2many fields to their relation tables.
+    ///
+    /// They have no column, so they never reach the row operations that save the rest.
+    pub(super) fn save_relations_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        let relations: Vec<(&'mm str, &'mm str, &'mm str, &'mm str)> = fields
+            .iter()
+            .filter_map(|field_name| {
+                let field = model.try_get_internal_field(field_name).ok()?;
+                match &field.inverse {
+                    Some(FieldReference {
+                        inverse_field:
+                            FieldReferenceType::M2M {
+                                relation,
+                                column,
+                                target_column,
+                            },
+                        ..
+                    }) => Some((
+                        field.name.as_str(),
+                        relation.as_str(),
+                        column.as_str(),
+                        target_column.as_str(),
+                    )),
+                    _ => None,
+                }
+            })
+            .collect();
+
+        for (field_name, relation, column, target_column) in relations {
+            let dirty = self.cache.get_dirty_fields(model_name, &[field_name]);
+            if dirty.is_empty() {
+                continue;
+            }
+            for (id, values) in &dirty {
+                let targets = values
+                    .get_option::<&Vec<u32>>(field_name)
+                    .cloned()
+                    .unwrap_or_default();
+                self.database
+                    .write_relation(relation, column, target_column, *id, &targets)?;
+            }
+            let ids: MultipleIds = dirty.keys().collect::<MultipleIds>();
+            self.cache
+                .clear_dirty_fields(model_name, &[field_name], &ids);
+        }
+        Ok(())
+    }
+
     pub fn save_fields_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
+        self.save_relations_to_db(model_name, fields)?;
         let model = self.model_manager.get_model(model_name);
         let fields = fields
             .iter()

@@ -21,6 +21,7 @@ impl Plugin for TestLibPlugin {
         model_manager.register_model::<models::MeterReading<_>>();
         model_manager.register_model::<models::SaleOrder<_>>();
         model_manager.register_model::<models::SaleOrderLine<_>>();
+        model_manager.register_model::<models::Tag<_>>();
     }
 }
 

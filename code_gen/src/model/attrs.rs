@@ -78,9 +78,17 @@ pub enum AllowedFieldAttrs {
     Compute(Ident, LitStr),
     Depends(Ident, Vec<LitStr>),
     Inverse(Ident, LitStr),
+    Relation(Ident, LitStr),
 }
 
-static VALID_FIELD_STRINGS: &[&str] = &["default", "description", "compute", "depends", "inverse"];
+static VALID_FIELD_STRINGS: &[&str] = &[
+    "default",
+    "description",
+    "compute",
+    "depends",
+    "inverse",
+    "relation",
+];
 
 impl Parse for AllowedFieldAttrs {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -113,6 +121,10 @@ impl Parse for AllowedFieldAttrs {
                     dependencies.into_iter().collect(),
                 ))
             }
+            "relation" => Ok(AllowedFieldAttrs::Relation(
+                name,
+                parse_eq(input, "relation = \"my_relation_table\"")?,
+            )),
             "inverse" => Ok(AllowedFieldAttrs::Inverse(
                 name,
                 parse_eq(input, "inverse = \"inverse\"")?,
@@ -134,6 +146,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Compute(ident, _) => ident.span(),
             AllowedFieldAttrs::Depends(ident, _) => ident.span(),
             AllowedFieldAttrs::Inverse(ident, _) => ident.span(),
+            AllowedFieldAttrs::Relation(ident, _) => ident.span(),
         }
     }
 }

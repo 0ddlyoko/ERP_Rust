@@ -268,6 +268,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             compute,
             depends,
             inverse,
+            relation,
             ..
         } = f;
 
@@ -378,7 +379,21 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         };
 
         let field_reference = if *is_reference {
-            let inverse_field = if let Some(inverse) = inverse {
+            let inverse_field = if let Some(relation) = relation {
+                // Column names come from the two model ids, so declaring the relation table is
+                // enough; the other side names the same table and sees the columns swapped.
+                quote! {
+                    erp::types::field::FieldReferenceType::M2M {
+                        relation: #relation.to_string(),
+                        column: erp::types::field::FieldReferenceType::relation_column(
+                            <Self as erp::types::model::CommonModel<Mode>>::_get_model_name(),
+                        ),
+                        target_column: erp::types::field::FieldReferenceType::relation_column(
+                            #field_type_keyword::_get_model_name(),
+                        ),
+                    }
+                }
+            } else if let Some(inverse) = inverse {
                 quote! { erp::types::field::FieldReferenceType::O2M { inverse_field: #inverse.to_string() } }
             } else {
                 quote! { erp::types::field::FieldReferenceType::M2O { inverse_fields: Vec::new() } }

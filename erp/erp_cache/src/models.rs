@@ -249,6 +249,15 @@ impl CacheModels {
         self.remove_all_to_recompute(ids);
     }
 
+    /// Forget a field's value on the given records.
+    pub fn invalidate_field(&mut self, field_name: &str, ids: &[u32]) {
+        for id in ids {
+            if let Some(model) = self.models.get_mut(id) {
+                model.remove_field(field_name);
+            }
+        }
+    }
+
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
         self.get_to_recompute(field_name)
             .is_some_and(|set| set.contains(id))

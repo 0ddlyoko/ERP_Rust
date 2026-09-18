@@ -424,6 +424,72 @@ impl Database for CacheConnection {
         Ok(number_of_updates)
     }
 
+    fn read_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        ids: &[u32],
+    ) -> Result<HashMap<u32, Vec<u32>>> {
+        let mut result: HashMap<u32, Vec<u32>> = ids.iter().map(|id| (*id, Vec::new())).collect();
+        let Some(table) = self.tables.get(relation) else {
+            return Ok(result);
+        };
+        for row in table.rows.values() {
+            let (Some(FieldType::UInteger(owner)), Some(FieldType::UInteger(target))) =
+                (row.get_cell(column), row.get_cell(target_column))
+            else {
+                continue;
+            };
+            if let Some(targets) = result.get_mut(owner) {
+                targets.push(*target);
+            }
+        }
+        for targets in result.values_mut() {
+            targets.sort_unstable();
+        }
+        Ok(result)
+    }
+
+    fn write_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        id: u32,
+        targets: &[u32],
+    ) -> Result<()> {
+        let new_ids = {
+            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            store.reserve_ids(relation, targets.len())
+        };
+        let table = self.tables.entry(relation.to_string()).or_default();
+
+        let stale: Vec<u32> = table
+            .rows
+            .iter()
+            .filter(|(_, row)| row.get_cell(column) == &Some(FieldType::UInteger(id)))
+            .map(|(row_id, _)| *row_id)
+            .collect();
+        for row_id in &stale {
+            table.delete_row(row_id);
+        }
+        for (row_id, target) in new_ids.iter().zip(targets) {
+            let cells = HashMap::from([
+                (column.to_string(), Some(FieldType::UInteger(id))),
+                (
+                    target_column.to_string(),
+                    Some(FieldType::UInteger(*target)),
+                ),
+            ]);
+            table.insert_row(*row_id, Row { cells });
+        }
+
+        self.mark_rows(relation, stale, RowOp::Deleted);
+        self.mark_rows(relation, new_ids, RowOp::Written);
+        Ok(())
+    }
+
     fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
         let mut deleted_ids = Vec::new();
         if let Some(table) = self.tables.get_mut(model_name) {

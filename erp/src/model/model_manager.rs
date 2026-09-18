@@ -129,6 +129,13 @@ impl ModelManager {
                             }) = &field.inverse
                             {
                                 match inverse_field {
+                                    // A compute depending on a path through a many2many is not
+                                    // supported: the traversal below assumes a column on one of
+                                    // the two sides, and a relation table has none.
+                                    FieldReferenceType::M2M { .. } => panic!(
+                                        "Field {}.{} is a many2many, which a compute dependency cannot traverse yet",
+                                        current_model.name, field.name
+                                    ),
                                     FieldReferenceType::O2M { inverse_field } => {
                                         final_depends.push(FieldDepend::CurrentFieldAnotherModel {
                                             target_model: current_model.name.clone(),

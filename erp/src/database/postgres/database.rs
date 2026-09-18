@@ -2,6 +2,7 @@ use super::{QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_i
 use crate::database::{Database, DatabaseConfig, ErrorType, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{SearchOptions, SearchType};
+use erp_types::field::{FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
 use postgres::{Client, NoTls};
 use std::collections::{HashMap, HashSet};
@@ -70,6 +71,11 @@ impl PostgresDatabase {
             quote_ident(&self.schema),
             quote_ident(table)
         ))
+    }
+
+    /// A relation table, quoted and schema-qualified.
+    fn qualified_relation(&self, relation: &str) -> String {
+        format!("{}.{}", quote_ident(&self.schema), quote_ident(relation))
     }
 
     /// Columns the table already has.
@@ -141,7 +147,28 @@ impl Database for PostgresDatabase {
                 continue;
             }
             let Some(column_type) = column_type(field.kind) else {
-                // A one2many has no column: it is read from the other side's foreign key.
+                // A one2many has no column: it is read from the other side's foreign key. A
+                // many2many has none either, but it does have a table of pairs.
+                if let Some(FieldReference {
+                    inverse_field:
+                        FieldReferenceType::M2M {
+                            relation,
+                            column,
+                            target_column,
+                        },
+                    ..
+                }) = &field.inverse
+                {
+                    self.client.batch_execute(&format!(
+                        "CREATE TABLE IF NOT EXISTS {} ({} INTEGER NOT NULL, {} INTEGER NOT NULL, \
+                         PRIMARY KEY ({}, {}))",
+                        self.qualified_relation(relation),
+                        quote_ident(column),
+                        quote_ident(target_column),
+                        quote_ident(column),
+                        quote_ident(target_column)
+                    ))?;
+                }
                 continue;
             };
             self.client.batch_execute(&format!(
@@ -299,6 +326,69 @@ impl Database for PostgresDatabase {
             updated += self.client.execute(&sql, &builder.params())? as u32;
         }
         Ok(updated)
+    }
+
+    fn read_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        ids: &[u32],
+    ) -> Result<HashMap<u32, Vec<u32>>> {
+        let mut result: HashMap<u32, Vec<u32>> = ids.iter().map(|id| (*id, Vec::new())).collect();
+        if ids.is_empty() {
+            return Ok(result);
+        }
+        let owners: Vec<i32> = ids.iter().copied().map(id_to_sql).collect::<Result<_>>()?;
+        let sql = format!(
+            "SELECT {}, {} FROM {} WHERE {} = ANY($1) ORDER BY {}",
+            quote_ident(column),
+            quote_ident(target_column),
+            self.qualified_relation(relation),
+            quote_ident(column),
+            quote_ident(target_column)
+        );
+        for row in self.client.query(&sql, &[&owners])? {
+            let owner = id_from_sql(row.try_get::<_, i32>(0)?)?;
+            let target = id_from_sql(row.try_get::<_, i32>(1)?)?;
+            if let Some(targets) = result.get_mut(&owner) {
+                targets.push(target);
+            }
+        }
+        Ok(result)
+    }
+
+    fn write_relation(
+        &mut self,
+        relation: &str,
+        column: &str,
+        target_column: &str,
+        id: u32,
+        targets: &[u32],
+    ) -> Result<()> {
+        let table = self.qualified_relation(relation);
+        let owner = id_to_sql(id)?;
+        self.client.execute(
+            &format!("DELETE FROM {table} WHERE {} = $1", quote_ident(column)),
+            &[&owner],
+        )?;
+        if targets.is_empty() {
+            return Ok(());
+        }
+        let targets: Vec<i32> = targets
+            .iter()
+            .copied()
+            .map(id_to_sql)
+            .collect::<Result<_>>()?;
+        self.client.execute(
+            &format!(
+                "INSERT INTO {table} ({}, {}) SELECT $1, * FROM UNNEST($2::INTEGER[])",
+                quote_ident(column),
+                quote_ident(target_column)
+            ),
+            &[&owner, &targets],
+        )?;
+        Ok(())
     }
 
     fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
