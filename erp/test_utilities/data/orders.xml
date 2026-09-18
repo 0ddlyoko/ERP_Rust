@@ -1,16 +1,16 @@
 <erp>
-    <record id="main_order" model="sale_order">
+    <sale_order id="main_order">
         <name>Seeded order</name>
-    </record>
+    </sale_order>
 
-    <record id="first_line" model="sale_order_line">
+    <sale_order_line id="first_line">
         <price>7</price>
         <amount>6</amount>
         <order ref="main_order"/>
-    </record>
+    </sale_order_line>
 
-    <!-- The long form stays valid, and is what a field whose name collides with a structural
-         element would use. -->
+    <!-- The long form stays valid, and is what a model or a field whose name collides with a
+         structural element would use. -->
     <record id="reference_invoice" model="invoice" noupdate="1">
         <field name="name">Untouchable</field>
         <amount_untaxed>1234.56</amount_untaxed>

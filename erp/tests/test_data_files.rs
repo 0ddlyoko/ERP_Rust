@@ -435,3 +435,135 @@ fn test_long_form_still_names_any_field() -> Result<()> {
     );
     Ok(())
 }
+
+/// A record is named by its own tag, exactly as a field is.
+#[test]
+fn test_record_is_named_by_its_tag() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <tag id="short_tag">
+                <name>Named by its tag</name>
+            </tag>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.short_tag")?.expect("record must exist");
+    let rows = env.read("tag", &SingleId::from(id), &["name"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        &"Named by its tag".to_string()
+    );
+    Ok(())
+}
+
+/// `<record>` without a `model` attribute is the short form for the model called `record`.
+///
+/// The mirror of `<field>` without a `name`: the one place the two spellings meet, and what
+/// keeps every model name writable.
+#[test]
+fn test_record_tag_without_model_is_a_model_called_record() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="edge_record">
+                <name>The model called record</name>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.edge_record")?.expect("record must exist");
+    let rows = env.read("record", &SingleId::from(id), &["name"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        &"The model called record".to_string()
+    );
+    Ok(())
+}
+
+/// The long form still names any model, including one it does not share a tag with.
+#[test]
+fn test_long_form_still_names_any_model() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <record id="long_tag" model="tag">
+                <name>Named through the long form</name>
+            </record>
+        </erp>"#,
+    )?;
+
+    let id = data::resolve(&mut env, "seed_plugin.long_tag")?.unwrap();
+    let rows = env.read("tag", &SingleId::from(id), &["name"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        &"Named through the long form".to_string()
+    );
+    Ok(())
+}
+
+/// Both spellings designate the same record when they carry the same external identifier.
+#[test]
+fn test_both_spellings_reach_the_same_record() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <tag id="same">
+                <name>First</name>
+            </tag>
+            <record id="same" model="tag">
+                <name>Second</name>
+            </record>
+        </erp>"#,
+    )?;
+
+    let ids = env.search_ids(
+        "tag",
+        &make_domain!([("name", "in", vec!["First", "Second"])]),
+    )?;
+    assert_eq!(ids.len(), 1, "the second element must update, not create");
+
+    let id = data::resolve(&mut env, "seed_plugin.same")?.unwrap();
+    let rows = env.read("tag", &SingleId::from(id), &["name"])?;
+    assert_eq!(rows[0].get::<&String>("name"), &"Second".to_string());
+    Ok(())
+}
+
+/// A tag naming no model at all is refused rather than silently skipped.
+#[test]
+fn test_unknown_model_tag_is_an_error() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let err = data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <not_a_model id="oops">
+                <name>Nothing declares this</name>
+            </not_a_model>
+        </erp>"#,
+    )
+    .unwrap_err();
+    assert!(
+        err.to_string().contains("not_a_model"),
+        "the error must name the offending tag, got: {err}"
+    );
+    Ok(())
+}

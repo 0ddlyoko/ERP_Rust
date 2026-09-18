@@ -1,17 +1,17 @@
 <erp>
-    <record id="group_user" model="group">
+    <group id="group_user">
         <name>User</name>
-    </record>
+    </group>
 
-    <record id="group_admin" model="group">
+    <group id="group_admin">
         <name>Administrator</name>
-    </record>
+    </group>
 
     <!-- The password is left to post_init, which sets a default one only if the account has
          none. noupdate then keeps a later reload from touching the account. -->
-    <record id="user_admin" model="users" noupdate="1">
+    <users id="user_admin" noupdate="1">
         <login>admin</login>
         <name>Administrator</name>
         <active>true</active>
-    </record>
+    </users>
 </erp>

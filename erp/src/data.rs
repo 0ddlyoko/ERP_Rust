@@ -37,10 +37,26 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     let root = document.root_element();
     let root_noupdate = read_noupdate(root);
 
-    for node in root.children().filter(|node| node.has_tag_name("record")) {
+    for node in root.children().filter(roxmltree::Node::is_element) {
         load_record(env, module, node, root_noupdate)?;
     }
     Ok(())
+}
+
+/// Model a record element declares, by the same rule fields follow.
+///
+/// A record is named by its own tag — `<group id="group_user">`. `<record model="group">` is the
+/// long form, and the two only meet on `<record>`: with a `model`, it is the long form; without
+/// one, it is the short form for a model actually called `record`.
+///
+/// Unlike the field rule, whose reserved set is permanently `{record}`, this one's will grow as
+/// the loader gains directives — `<delete>`, `<function>`, `<menuitem>`. Each will make one more
+/// model name reachable only through the long form.
+fn model_of<'a>(node: roxmltree::Node<'a, 'a>) -> &'a str {
+    match node.attribute("model") {
+        Some(model) if node.has_tag_name("record") => model,
+        _ => node.tag_name().name(),
+    }
 }
 
 fn read_noupdate(node: roxmltree::Node) -> bool {
@@ -59,12 +75,7 @@ fn load_record(
             module: module.to_string(),
             attribute: "id".to_string(),
         })?;
-    let model_name = node
-        .attribute("model")
-        .ok_or_else(|| DataError::MissingAttribute {
-            module: module.to_string(),
-            attribute: "model".to_string(),
-        })?;
+    let model_name = model_of(node);
     let noupdate = inherited_noupdate || read_noupdate(node);
     let external_id = qualify(module, name);
 
