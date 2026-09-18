@@ -24,13 +24,6 @@ pub trait Plugin: Any + Send + Sync {
     /// Register models created in this plugin
     fn init_models(&self, model_manager: &mut ModelManager);
 
-    /// Post-Initialize this plugin
-    ///
-    /// This method is called once this plugin is fully initialized (after the call to init_models)
-    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
-        Ok(())
-    }
-
     /// XML documents this plugin ships.
     ///
     /// Returned as contents rather than paths, through `include_str!`: a plugin is a dynamic
@@ -38,6 +31,13 @@ pub trait Plugin: Any + Send + Sync {
     /// instead of working around it.
     fn data(&self) -> Vec<&'static str> {
         Vec::new()
+    }
+
+    /// Post-Initialize this plugin
+    ///
+    /// This method is called once this plugin is fully initialized (after the call to init_models)
+    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
+        Ok(())
     }
 
     /// Unload this plugin

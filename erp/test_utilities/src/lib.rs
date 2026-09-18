@@ -36,14 +36,14 @@ impl Plugin for SeedPlugin {
         "seed_plugin".to_string()
     }
 
-    /// External identifiers are recorded in `model_data`, which `base` declares.
-    fn get_depends(&self) -> Vec<String> {
-        vec!["base".to_string(), "test_lib_plugin".to_string()]
-    }
+    fn init_models(&self, _model_manager: &mut ModelManager) {}
 
     fn data(&self) -> Vec<&'static str> {
         vec![include_str!("../data/orders.xml")]
     }
 
-    fn init_models(&self, _model_manager: &mut ModelManager) {}
+    /// External identifiers are recorded in `model_data`, which `base` declares.
+    fn get_depends(&self) -> Vec<String> {
+        vec!["base".to_string(), "test_lib_plugin".to_string()]
+    }
 }
