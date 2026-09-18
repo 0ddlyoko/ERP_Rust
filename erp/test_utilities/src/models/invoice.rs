@@ -3,7 +3,7 @@ use erp::types::field::{Decimal, IdMode, NaiveDate, Timestamp};
 
 /// Exercises the field types an ERP cannot do without: exact money, a due date and an audit stamp.
 #[derive(Model)]
-#[erp(table_name = "invoice")]
+#[erp(id = "invoice")]
 #[allow(dead_code)]
 pub struct Invoice<Mode: IdMode> {
     pub id: Mode,

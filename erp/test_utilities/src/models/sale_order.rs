@@ -39,7 +39,7 @@ impl From<&str> for &SaleOrderState {
 impl EnumType for SaleOrderState {}
 
 #[derive(Model)]
-#[erp(table_name = "sale_order")]
+#[erp(id = "sale_order")]
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     pub id: Mode,

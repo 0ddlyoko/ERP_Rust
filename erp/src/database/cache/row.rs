@@ -34,6 +34,21 @@ impl Row {
         }
     }
 
+    /// Order two cells of the same field.
+    ///
+    /// NULLs sort last, matching PostgreSQL's default for ascending order. Cells whose types do
+    /// not line up compare equal, because a sort comparator has to stay consistent.
+    pub(crate) fn compare_cells(left: &Option<FieldType>, right: &Option<FieldType>) -> Ordering {
+        match (left, right) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(left), Some(right)) => {
+                Self::compare(left, &right.clone().into()).unwrap_or(Ordering::Equal)
+            }
+        }
+    }
+
     /// Check if this row is valid for given domain
     pub(crate) fn is_valid(
         &self,
@@ -53,20 +68,75 @@ impl Row {
                 (left, Some(right)) => left != right,
                 _ => true,
             },
-            _ => {
-                let Some(cell_value) = cell_value else {
-                    return false;
-                };
-                let Some(ordering) = Self::compare(cell_value, right) else {
-                    return false;
-                };
-                match operator {
-                    SearchOperator::Greater => ordering.is_gt(),
-                    SearchOperator::GreaterEqual => ordering.is_ge(),
-                    SearchOperator::Lower => ordering.is_lt(),
-                    _ => ordering.is_le(),
-                }
-            }
+            SearchOperator::In => Self::is_member(cell_value, right),
+            SearchOperator::NotIn => !Self::is_member(cell_value, right),
+            SearchOperator::Like => Self::matches_pattern(cell_value, right, false),
+            SearchOperator::ILike => Self::matches_pattern(cell_value, right, true),
+            SearchOperator::Greater => Self::ordered(cell_value, right, Ordering::is_gt),
+            SearchOperator::GreaterEqual => Self::ordered(cell_value, right, Ordering::is_ge),
+            SearchOperator::Lower => Self::ordered(cell_value, right, Ordering::is_lt),
+            SearchOperator::LowerEqual => Self::ordered(cell_value, right, Ordering::is_le),
         }
     }
+
+    /// Compare a cell against a value and report whether the ordering is the one wanted.
+    ///
+    /// A missing cell, or a right-hand side of another type, matches nothing.
+    fn ordered(cell: &Option<FieldType>, right: &RightTuple, accept: fn(Ordering) -> bool) -> bool {
+        let Some(cell) = cell else {
+            return false;
+        };
+        Self::compare(cell, right).is_some_and(accept)
+    }
+
+    /// Membership of a cell in an array. Anything but an array matches nothing.
+    fn is_member(cell: &Option<FieldType>, right: &RightTuple) -> bool {
+        let (Some(cell), RightTuple::Array(members)) = (cell, right) else {
+            return false;
+        };
+        members.iter().any(|member| cell == member)
+    }
+
+    /// Match a text cell against an SQL pattern.
+    fn matches_pattern(cell: &Option<FieldType>, right: &RightTuple, ignore_case: bool) -> bool {
+        let (Some(FieldType::String(cell)), RightTuple::String(pattern)) = (cell, right) else {
+            return false;
+        };
+        if ignore_case {
+            sql_like(&cell.to_lowercase(), &pattern.to_lowercase())
+        } else {
+            sql_like(cell, pattern)
+        }
+    }
+}
+
+/// Match a string against an SQL `LIKE` pattern: `%` stands for any run of characters, `_` for
+/// exactly one.
+///
+/// Greedy with backtracking on the last `%`, which is enough for patterns of this shape and
+/// avoids pulling a regex engine into the workspace.
+fn sql_like(value: &str, pattern: &str) -> bool {
+    let value: Vec<char> = value.chars().collect();
+    let pattern: Vec<char> = pattern.chars().collect();
+    let (mut v, mut p) = (0usize, 0usize);
+    let mut last_wildcard: Option<usize> = None;
+    let mut resume_at = 0usize;
+
+    while v < value.len() {
+        if p < pattern.len() && (pattern[p] == '_' || pattern[p] == value[v]) {
+            v += 1;
+            p += 1;
+        } else if p < pattern.len() && pattern[p] == '%' {
+            last_wildcard = Some(p);
+            resume_at = v;
+            p += 1;
+        } else if let Some(wildcard) = last_wildcard {
+            p = wildcard + 1;
+            resume_at += 1;
+            v = resume_at;
+        } else {
+            return false;
+        }
+    }
+    pattern[p..].iter().all(|c| *c == '%')
 }

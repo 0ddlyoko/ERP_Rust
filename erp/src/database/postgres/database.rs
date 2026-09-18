@@ -1,6 +1,6 @@
 use crate::database::{Database, DatabaseConfig, ErrorType, SearchedRow};
 use crate::model::ModelManager;
-use erp_search::SearchType;
+use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
 use postgres::{Client, NoTls};
 use std::collections::HashMap;
@@ -73,7 +73,17 @@ impl Database for PostgresDatabase {
         _model_name: &str,
         _domain: &SearchType,
         _model_manager: &ModelManager,
+        _options: &SearchOptions,
     ) -> Result<Vec<u32>> {
+        todo!()
+    }
+
+    fn count(
+        &mut self,
+        _model_name: &str,
+        _domain: &SearchType,
+        _model_manager: &ModelManager,
+    ) -> Result<u32> {
         todo!()
     }
 
@@ -84,6 +94,7 @@ impl Database for PostgresDatabase {
         _fields: &[&'a str],
         _domain: &SearchType,
         _model_manager: &ModelManager,
+        _options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>> {
         todo!()
     }
@@ -93,6 +104,10 @@ impl Database for PostgresDatabase {
     }
 
     fn update(&mut self, _model_name: &str, _data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
+        todo!()
+    }
+
+    fn delete(&mut self, _model_name: &str, _ids: &[u32]) -> Result<u32> {
         todo!()
     }
 

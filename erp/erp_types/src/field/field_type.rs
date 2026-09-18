@@ -269,3 +269,89 @@ impl From<&Vec<u32>> for FieldType {
         FieldType::Refs(t.clone())
     }
 }
+
+/// Raised when text cannot be read as the field type it is destined for.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("Cannot read {raw:?} as a {expected}")]
+pub struct ParseFieldTypeError {
+    pub raw: String,
+    pub expected: &'static str,
+}
+
+impl FieldType {
+    /// Name of the variant, for error messages and for describing a field to a client.
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            FieldType::String(_) => "string",
+            FieldType::Integer(_) => "integer",
+            FieldType::Decimal(_) => "decimal",
+            FieldType::Bool(_) => "boolean",
+            FieldType::Date(_) => "date",
+            FieldType::DateTime(_) => "datetime",
+            FieldType::Ref(_) => "reference",
+            FieldType::Refs(_) => "references",
+        }
+    }
+
+    /// Read `raw` as a value of the same variant as `self`.
+    ///
+    /// Serialization writes bare values, so nothing in `"4"` says whether it is an integer or a
+    /// reference. The field's declared default carries that answer — it is the type tag the
+    /// registry already relies on — so parsing is always driven by a template.
+    pub fn parse_like(&self, raw: &str) -> Result<FieldType, ParseFieldTypeError> {
+        let expected = self.type_name();
+        let fail = || ParseFieldTypeError {
+            raw: raw.to_string(),
+            expected,
+        };
+        Ok(match self {
+            FieldType::String(_) => FieldType::String(raw.to_string()),
+            FieldType::Integer(_) => FieldType::Integer(raw.parse().map_err(|_| fail())?),
+            FieldType::Decimal(_) => {
+                FieldType::Decimal(Decimal::from_str_exact(raw).map_err(|_| fail())?)
+            }
+            FieldType::Bool(_) => match raw {
+                "true" | "True" | "1" => FieldType::Bool(true),
+                "false" | "False" | "0" => FieldType::Bool(false),
+                _ => return Err(fail()),
+            },
+            FieldType::Date(_) => FieldType::Date(raw.parse().map_err(|_| fail())?),
+            FieldType::DateTime(_) => {
+                FieldType::DateTime(raw.parse::<DateTime<Utc>>().map_err(|_| fail())?)
+            }
+            FieldType::Ref(_) => FieldType::Ref(raw.parse().map_err(|_| fail())?),
+            FieldType::Refs(_) => {
+                let ids = raw
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|part| !part.is_empty())
+                    .map(|part| part.parse::<u32>().map_err(|_| fail()))
+                    .collect::<Result<Vec<u32>, _>>()?;
+                FieldType::Refs(ids)
+            }
+        })
+    }
+}
+
+impl serde::Serialize for FieldType {
+    /// Written as a bare value, never as a tagged enum: the type belongs to the field's
+    /// metadata, not to each value.
+    ///
+    /// `Decimal` goes out as a string on purpose — a JSON number would route it through a float
+    /// and lose the exactness the type exists for.
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            FieldType::String(value) => serializer.serialize_str(value),
+            FieldType::Integer(value) => serializer.serialize_i32(*value),
+            FieldType::Decimal(value) => serializer.serialize_str(&value.to_string()),
+            FieldType::Bool(value) => serializer.serialize_bool(*value),
+            FieldType::Date(value) => serializer.serialize_str(&value.to_string()),
+            FieldType::DateTime(value) => serializer.serialize_str(&value.to_rfc3339()),
+            FieldType::Ref(value) => serializer.serialize_u32(*value),
+            FieldType::Refs(value) => serde::Serialize::serialize(value, serializer),
+        }
+    }
+}

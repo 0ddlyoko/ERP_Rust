@@ -2,7 +2,7 @@ use crate::database::cache::CacheConnection;
 use crate::database::postgres::PostgresDatabase;
 use crate::database::{Database, SearchedRow};
 use crate::model::ModelManager;
-use erp_search::SearchType;
+use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
@@ -34,10 +34,25 @@ impl Database for DatabaseType {
         model_name: &str,
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<u32>> {
         match self {
-            DatabaseType::Cache(cache) => cache.browse(model_name, domain, model_manager),
-            DatabaseType::Postgres(postgres) => postgres.browse(model_name, domain, model_manager),
+            DatabaseType::Cache(cache) => cache.browse(model_name, domain, model_manager, options),
+            DatabaseType::Postgres(postgres) => {
+                postgres.browse(model_name, domain, model_manager, options)
+            }
+        }
+    }
+
+    fn count(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<u32> {
+        match self {
+            DatabaseType::Cache(cache) => cache.count(model_name, domain, model_manager),
+            DatabaseType::Postgres(postgres) => postgres.count(model_name, domain, model_manager),
         }
     }
 
@@ -47,11 +62,14 @@ impl Database for DatabaseType {
         fields: &[&'a str],
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>> {
         match self {
-            DatabaseType::Cache(cache) => cache.search(model_name, fields, domain, model_manager),
+            DatabaseType::Cache(cache) => {
+                cache.search(model_name, fields, domain, model_manager, options)
+            }
             DatabaseType::Postgres(postgres) => {
-                postgres.search(model_name, fields, domain, model_manager)
+                postgres.search(model_name, fields, domain, model_manager, options)
             }
         }
     }
@@ -67,6 +85,13 @@ impl Database for DatabaseType {
         match self {
             DatabaseType::Cache(cache) => cache.update(model_name, data),
             DatabaseType::Postgres(postgres) => postgres.update(model_name, data),
+        }
+    }
+
+    fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
+        match self {
+            DatabaseType::Cache(cache) => cache.delete(model_name, ids),
+            DatabaseType::Postgres(postgres) => postgres.delete(model_name, ids),
         }
     }
 

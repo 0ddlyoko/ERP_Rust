@@ -40,11 +40,11 @@ impl<'mm> Environment<'mm> {
     ) -> Result<HashMap<&'mm str, Vec<&'mm str>>> {
         // TODO Save this result somewhere to avoid recomputing it again
         let mut fields_to_save: HashMap<&str, HashSet<&str>> = HashMap::new();
-        let model = self.model_manager.get_model(model_name);
+        let model = self.model_manager.try_get_model(model_name)?;
         for field in fields {
             let mut current_model = model;
             for elem in &field.path {
-                let final_field = current_model.get_internal_field(elem);
+                let final_field = current_model.try_get_internal_field(elem)?;
                 let is_stored = final_field.is_stored();
                 if is_stored {
                     // If stored field, we need to save it to the database
@@ -248,9 +248,13 @@ impl<'mm> Environment<'mm> {
             return Ok(HashMap::new());
         }
         let domain = make_domain!([("id", "=", ids.clone())]);
-        let data = self
-            .database
-            .search(model_name, fields, &domain, self.model_manager)?;
+        let data = self.database.search(
+            model_name,
+            fields,
+            &domain,
+            self.model_manager,
+            &SearchOptions::default(),
+        )?;
         Ok(data
             .into_iter()
             .map(|(id, map)| {

@@ -5,7 +5,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use std::error::Error;
 
 #[derive(Model, Debug)]
-#[erp(table_name = "sale_order_line")]
+#[erp(id = "sale_order_line")]
 #[allow(dead_code)]
 pub struct SaleOrderLine<Mode: IdMode> {
     pub id: Mode,

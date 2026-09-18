@@ -20,12 +20,13 @@ pub struct AttributeWrapper<T> {
 // Models
 
 pub enum AllowedModelAttrs {
+    Id(Ident, LitStr),
     TableName(Ident, LitStr),
     Description(Ident, LitStr),
     DerivedModel(Ident, LitStr),
 }
 
-static VALID_MODEL_STRINGS: &[&str] = &["table_name", "description", "derived_model"];
+static VALID_MODEL_STRINGS: &[&str] = &["id", "table_name", "description", "derived_model"];
 
 impl Parse for AllowedModelAttrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -33,6 +34,10 @@ impl Parse for AllowedModelAttrs {
         let name_str = name.to_string();
 
         match name_str.as_str() {
+            "id" => Ok(AllowedModelAttrs::Id(
+                name,
+                parse_eq(input, "id = \"my_model_id\"")?,
+            )),
             "table_name" => Ok(AllowedModelAttrs::TableName(
                 name,
                 parse_eq(input, "table_name = \"my_table_name\"")?,
@@ -57,6 +62,7 @@ impl Parse for AllowedModelAttrs {
 impl MySpanned for AllowedModelAttrs {
     fn span(&self) -> Span {
         match self {
+            AllowedModelAttrs::Id(ident, _) => ident.span(),
             AllowedModelAttrs::TableName(ident, _) => ident.span(),
             AllowedModelAttrs::Description(ident, _) => ident.span(),
             AllowedModelAttrs::DerivedModel(ident, _) => ident.span(),

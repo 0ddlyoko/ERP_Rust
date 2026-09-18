@@ -10,6 +10,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
     let DeriveInput { ident, .. } = item;
     let ModelGen {
         struct_name,
+        id,
         table_name,
         description,
         derived_model,
@@ -33,8 +34,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
     });
 
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
-    let camel_case_table_name = table_name.replace("_", " ").to_camel_case();
-    let base_model_name = format!("Base{camel_case_table_name}");
+    // Derived from the identity, not the table: renaming the physical table must not rename
+    // the generated Rust type.
+    let camel_case_id = id.replace("_", " ").to_camel_case();
+    let base_model_name = format!("Base{camel_case_id}");
 
     let (base_model, base_model_ref): (TokenStream, Path) = if let Some(derived_model) =
         derived_model
@@ -66,7 +69,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
 
                 impl erp::types::model::BaseModel for #base_model_name_ident {
                     fn _get_model_name() -> &'static str {
-                        #table_name
+                        #id
                     }
                 }
 
@@ -424,6 +427,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 ];
                 erp::types::model::ModelDescriptor {
                     name,
+                    table_name: #table_name.to_string(),
                     description,
                     fields,
                 }

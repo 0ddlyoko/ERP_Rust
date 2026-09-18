@@ -69,9 +69,9 @@ impl<'mm> Environment<'mm> {
         }
 
         if !ids_not_in_cache.is_empty() {
-            let model_info = self.model_manager.get_model(model_name);
+            let model_info = self.model_manager.try_get_model(model_name)?;
 
-            let field_info = model_info.get_internal_field(field_name);
+            let field_info = model_info.try_get_internal_field(field_name)?;
             if field_info.is_stored() {
                 // Load from database
                 let database_result = self.database.search(
@@ -79,6 +79,7 @@ impl<'mm> Environment<'mm> {
                     &[field_name],
                     &make_domain!([("id", "=", ids_not_in_cache)]),
                     self.model_manager,
+                    &SearchOptions::default(),
                 )?;
                 for (id, mut map) in database_result {
                     let field_value = map.remove(field_name).unwrap();
@@ -104,6 +105,7 @@ impl<'mm> Environment<'mm> {
                     &[inverse_field],
                     &make_domain!([(inverse_field, "=", ids_not_in_cache)]),
                     self.model_manager,
+                    &SearchOptions::default(),
                 )?;
                 for (id, mut map) in database_result {
                     // Data should exist in database, and should not be empty, so we unwrap 2 times
@@ -172,8 +174,8 @@ impl<'mm> Environment<'mm> {
             return Ok(());
         }
         let is_update_if_exists = matches!(update_field, Update::UpdateIfExists);
-        let internal_model = self.model_manager.get_model(model_name);
-        let field_info = internal_model.get_internal_field(field_name);
+        let internal_model = self.model_manager.try_get_model(model_name)?;
+        let field_info = internal_model.try_get_internal_field(field_name)?;
         if let Some(FieldReference {
             target_model,
             inverse_field,

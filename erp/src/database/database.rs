@@ -1,6 +1,6 @@
 use crate::database::FieldType;
 use crate::model::ModelManager;
-use erp_search::SearchType;
+use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
@@ -34,18 +34,34 @@ pub trait Database {
         model_name: &str,
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<u32>>;
+
+    /// Count the records matching a domain.
+    ///
+    /// Kept apart from [`SearchOptions`] because counting happens before any limit applies, so
+    /// folding the two together would be ambiguous.
+    fn count(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<u32>;
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     ///
     /// ModelManager is needed to know the current structure of the database, and to make correct
     /// links between the domain and the database
+    ///
+    /// A SQL backend implements the ordering and paging with `ORDER BY` and `LIMIT` in the same
+    /// statement; applying them afterwards would mean fetching every matching row first.
     fn search<'a>(
         &mut self,
         model_name: &str,
         fields: &[&'a str],
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>>;
 
     /// Create one new record per given data for given model
@@ -53,6 +69,11 @@ pub trait Database {
 
     /// Update given data for given model
     fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32>;
+
+    /// Delete the given records, and return how many rows were actually removed.
+    ///
+    /// Ids that are not present are skipped rather than reported, mirroring `update`.
+    fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32>;
 
     /// Retrieves installed plugins
     fn get_installed_plugins(&mut self) -> Result<Vec<String>>;

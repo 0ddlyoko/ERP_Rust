@@ -229,6 +229,26 @@ impl CacheModels {
         }
     }
 
+    /// Drop the given ids from every field flagged for recomputation.
+    ///
+    /// Deleting a record must go through this: a leftover entry would have the compute engine call
+    /// a method on a dead id, and `get_model_or_create` would silently bring the record back.
+    pub fn remove_all_to_recompute(&mut self, ids: &[u32]) {
+        self.to_recompute.retain(|_, set| {
+            set.retain(|id| !ids.contains(id));
+            !set.is_empty()
+        });
+    }
+
+    /// Forget the given records entirely: values, dirty flags and pending recomputations.
+    pub fn remove_models(&mut self, ids: &[u32]) {
+        for id in ids {
+            self.models.remove(id);
+        }
+        self.clear_dirty(ids);
+        self.remove_all_to_recompute(ids);
+    }
+
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
         self.get_to_recompute(field_name)
             .is_some_and(|set| set.contains(id))

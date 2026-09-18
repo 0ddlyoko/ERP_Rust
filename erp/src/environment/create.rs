@@ -23,6 +23,18 @@ impl<'mm> Environment<'mm> {
         Ok(self.get_record::<M, MultipleIds>(ids))
     }
 
+    /// Create records from untyped field maps, addressing the model by name.
+    ///
+    /// The entry point for callers that only hold a model name at runtime; the typed
+    /// [`Environment::create_new_record_from_map`] resolves the name from `M` and lands here.
+    pub fn create_records(
+        &mut self,
+        model_name: &str,
+        data: Vec<MapOfFields>,
+    ) -> Result<MultipleIds> {
+        self._create_new_records(model_name, data)
+    }
+
     pub(super) fn _create_new_records(
         &mut self,
         model_name: &str,

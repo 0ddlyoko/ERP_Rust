@@ -8,7 +8,7 @@ use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::model::{Model, ModelManager};
 use erp_cache::{Cache, CacheField, CacheModels};
-use erp_search::{LeftTuple, SearchType};
+use erp_search::{LeftTuple, SearchOptions, SearchType};
 use erp_search_code_gen::make_domain;
 use erp_types::cache::{Dirty, Update};
 use erp_types::environment::ErasedEnvironment;
@@ -22,6 +22,7 @@ use uuid::Uuid;
 
 mod compute;
 mod create;
+mod delete;
 mod flush;
 mod read;
 mod transaction;

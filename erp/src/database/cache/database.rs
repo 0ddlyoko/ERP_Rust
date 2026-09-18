@@ -1,7 +1,7 @@
 use crate::database::cache::{Row, Table};
 use crate::database::{Database, FieldType, SearchedRow};
 use crate::model::ModelManager;
-use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
+use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
@@ -30,11 +30,24 @@ impl CacheStore {
     }
 }
 
+/// What a transaction did to a row, as it will be replayed onto the shared store.
+///
+/// One entry per row, so a row created then deleted in the same transaction resolves to a single
+/// outcome instead of landing in two competing sets.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum RowOp {
+    Written,
+    Deleted,
+}
+
+/// The rows a transaction touched, and what it did to each.
+type WriteSet = HashMap<String, HashMap<u32, RowOp>>;
+
 /// A connection's savepoint: the working copy and write set to restore when rolling back to it.
 struct Savepoint {
     name: Option<String>,
     tables: HashMap<String, Table>,
-    written_rows: HashMap<String, HashSet<u32>>,
+    written_rows: WriteSet,
 }
 
 /// In-memory database, used mainly for testing.
@@ -72,8 +85,8 @@ pub struct CacheConnection {
     store: Arc<Mutex<CacheStore>>,
     installed: bool,
     tables: HashMap<String, Table>,
-    /// Rows this transaction created or updated, published row by row on commit.
-    written_rows: HashMap<String, HashSet<u32>>,
+    /// Rows this transaction touched, replayed row by row on commit.
+    written_rows: WriteSet,
     savepoints: Vec<Savepoint>,
 }
 
@@ -90,20 +103,27 @@ impl CacheConnection {
 
     /// Publish this transaction's write set to the shared store.
     ///
-    /// Only the rows this connection touched are copied over, so committing never reverts rows
-    /// another connection committed in the meantime.
+    /// Only the rows this connection touched are replayed, so committing never reverts rows
+    /// another connection committed in the meantime. A copy alone cannot express a removal, which
+    /// is why the write set records the operation and not just the id.
     fn publish_to_store(&mut self) {
         {
             let mut store = self.store.lock().expect("cache database mutex poisoned");
             store.installed = self.installed;
-            for (model_name, ids) in &self.written_rows {
-                let Some(source) = self.tables.get(model_name) else {
-                    continue;
-                };
+            for (model_name, ops) in &self.written_rows {
                 let target = store.tables.entry(model_name.clone()).or_default();
-                for id in ids {
-                    if let Some(row) = source.get_row(id) {
-                        target.insert_row(*id, row.clone());
+                for (id, op) in ops {
+                    match op {
+                        RowOp::Written => {
+                            if let Some(source) = self.tables.get(model_name)
+                                && let Some(row) = source.get_row(id)
+                            {
+                                target.insert_row(*id, row.clone());
+                            }
+                        }
+                        RowOp::Deleted => {
+                            target.delete_row(id);
+                        }
                     }
                 }
             }
@@ -111,12 +131,50 @@ impl CacheConnection {
         self.written_rows.clear();
     }
 
-    /// Record that `ids` of `model_name` were written by this transaction.
-    fn mark_written(&mut self, model_name: &str, ids: impl IntoIterator<Item = u32>) {
-        self.written_rows
-            .entry(model_name.to_string())
-            .or_default()
-            .extend(ids);
+    /// Record what this transaction did to `ids` of `model_name`.
+    fn mark_rows(&mut self, model_name: &str, ids: impl IntoIterator<Item = u32>, op: RowOp) {
+        let entry = self.written_rows.entry(model_name.to_string()).or_default();
+        for id in ids {
+            entry.insert(id, op);
+        }
+    }
+
+    /// Sort ids on the requested keys.
+    ///
+    /// Keys are read once per record rather than on every comparison, and ties fall back to the
+    /// id so the result stays stable.
+    fn sort_ids(&self, model_name: &str, ids: &mut [u32], options: &SearchOptions) {
+        let table = self.tables.get(model_name);
+        let keys: HashMap<u32, Vec<Option<FieldType>>> = ids
+            .iter()
+            .map(|id| {
+                let row = table.and_then(|table| table.get_row(id));
+                let values = options
+                    .order
+                    .iter()
+                    .map(|order| {
+                        row.map(|row| row.get_cell(&order.field).clone())
+                            .unwrap_or(None)
+                    })
+                    .collect();
+                (*id, values)
+            })
+            .collect();
+
+        ids.sort_by(|left, right| {
+            for (index, order) in options.order.iter().enumerate() {
+                let ordering = Row::compare_cells(&keys[left][index], &keys[right][index]);
+                let ordering = if order.descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                };
+                if ordering != std::cmp::Ordering::Equal {
+                    return ordering;
+                }
+            }
+            left.cmp(right)
+        });
     }
 
     /// Poorly optimized search into the cache
@@ -151,7 +209,13 @@ impl CacheConnection {
                     self._search_path(model_name, &mut path, operator, right, model_manager);
                 HashSet::<_>::from_iter(result).into_iter().collect()
             }
-            SearchType::Nothing => vec![],
+            // An empty domain filters nothing, so it selects every record. Without this there
+            // is no way to express "list them all", which is what any list view starts from.
+            SearchType::Nothing => self
+                .tables
+                .get(model_name)
+                .map(|table| table.rows.keys().copied().collect())
+                .unwrap_or_default(),
         })
     }
 
@@ -188,11 +252,21 @@ impl CacheConnection {
             )
         } else {
             let mut result: Vec<u32> = Vec::new();
-            let table = self.tables.get(&target_model.name).unwrap();
+            // Both lookups below tolerate a missing row: deleting a record leaves the ids of
+            // rows that pointed at it behind, and a search must not surface — or trip over —
+            // something that is gone.
+            let Some(table) = self.tables.get(&target_model.name) else {
+                return result;
+            };
+            let owner_table = self.tables.get(model_name);
             if let FieldReferenceType::O2M { inverse_field } = inverse_field {
                 for id in ids {
-                    let row = table.get_row(&id).unwrap();
-                    if let Some(FieldType::UInteger(id)) = row.get_cell(inverse_field) {
+                    let Some(row) = table.get_row(&id) else {
+                        continue;
+                    };
+                    if let Some(FieldType::UInteger(id)) = row.get_cell(inverse_field)
+                        && owner_table.is_some_and(|table| table.get_row(id).is_some())
+                    {
                         result.push(*id)
                     }
                 }
@@ -249,8 +323,26 @@ impl Database for CacheConnection {
         model_name: &str,
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<u32>> {
-        self.get_rows(model_name, domain, model_manager)
+        let mut ids = self.get_rows(model_name, domain, model_manager)?;
+        // Rows live in a `HashMap` and set operations round-trip through a `HashSet`, so the
+        // natural order varies between runs. Sorting by id makes results reproducible, which is
+        // what `limit` and `offset` need to mean anything, and it breaks ties for `order`.
+        ids.sort_unstable();
+        if !options.order.is_empty() {
+            self.sort_ids(model_name, &mut ids, options);
+        }
+        Ok(options.paginate(ids))
+    }
+
+    fn count(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<u32> {
+        Ok(self.get_rows(model_name, domain, model_manager)?.len() as u32)
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
@@ -260,9 +352,10 @@ impl Database for CacheConnection {
         fields: &[&'a str],
         domain: &SearchType,
         model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>> {
         // We don't care about searching 2 times (one to retrieve ids and one to retrieve fields), as it's cache
-        let ids = self.browse(model_name, domain, model_manager)?;
+        let ids = self.browse(model_name, domain, model_manager, options)?;
         if ids.is_empty() {
             return Ok(vec![]);
         }
@@ -307,7 +400,7 @@ impl Database for CacheConnection {
                 .collect::<HashMap<_, _>>();
             table.insert_row(*id, Row { cells });
         }
-        self.mark_written(model_name, ids.iter().copied());
+        self.mark_rows(model_name, ids.iter().copied(), RowOp::Written);
         Ok(ids)
     }
 
@@ -329,9 +422,23 @@ impl Database for CacheConnection {
                 }
             }
         }
-        self.mark_written(model_name, updated_ids);
+        self.mark_rows(model_name, updated_ids, RowOp::Written);
         // If model not present in database, do nothing
         Ok(number_of_updates)
+    }
+
+    fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
+        let mut deleted_ids = Vec::new();
+        if let Some(table) = self.tables.get_mut(model_name) {
+            for id in ids {
+                if table.delete_row(id) {
+                    deleted_ids.push(*id);
+                }
+            }
+        }
+        let number_of_deletions = deleted_ids.len() as u32;
+        self.mark_rows(model_name, deleted_ids, RowOp::Deleted);
+        Ok(number_of_deletions)
     }
 
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
@@ -406,7 +513,7 @@ impl Database for CacheConnection {
         self.savepoints.push(Savepoint {
             name: None,
             tables: self.tables.clone(),
-            written_rows: HashMap::new(),
+            written_rows: WriteSet::new(),
         });
         Ok(())
     }

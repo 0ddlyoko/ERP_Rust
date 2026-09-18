@@ -27,13 +27,103 @@ impl<'mm> Environment<'mm> {
         M: Model<MultipleIds>,
     {
         // TODO Add limit
-        let model_name = M::_get_model_name();
-        self.save_domain_fields_to_db(model_name, domain)?;
-
-        let ids = self
-            .database
-            .browse(M::_get_model_name(), domain, self.model_manager)?;
+        let ids = self.search_ids(M::_get_model_name(), domain)?;
         Ok(M::create_instance(ids.into()))
+    }
+
+    /// Search a model addressed by name, and return the matching ids.
+    ///
+    /// The entry point for callers that only hold a model name at runtime. Like
+    /// [`Environment::search`], it first flushes every field the domain mentions.
+    pub fn search_ids(&mut self, model_name: &str, domain: &SearchType) -> Result<Vec<u32>> {
+        self.search_ids_with(model_name, domain, &SearchOptions::default())
+    }
+
+    /// Same as [`Environment::search_ids`], ordered and paginated.
+    pub fn search_ids_with(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        options: &SearchOptions,
+    ) -> Result<Vec<u32>> {
+        self.save_domain_fields_to_db(model_name, domain)?;
+        // Ordering reads stored values, so anything still dirty has to reach the database first.
+        for order in &options.order {
+            self.save_fields_to_db(model_name, &[order.field.as_str()])?;
+        }
+        self.database
+            .browse(model_name, domain, self.model_manager, options)
+    }
+
+    /// Same as [`Environment::search`], ordered and paginated.
+    pub fn search_with<M>(&mut self, domain: &SearchType, options: &SearchOptions) -> Result<M>
+    where
+        M: Model<MultipleIds>,
+    {
+        let ids = self.search_ids_with(M::_get_model_name(), domain, options)?;
+        Ok(M::create_instance(ids.into()))
+    }
+
+    /// Search and read in one call.
+    ///
+    /// Paging and ordering are applied by the database, so only the records that will be returned
+    /// are ever materialised. Values then come back through the cache like [`Environment::read`],
+    /// which means computed fields are computed.
+    pub fn search_read(
+        &mut self,
+        model_name: &str,
+        fields: &[&str],
+        domain: &SearchType,
+        options: &SearchOptions,
+    ) -> Result<Vec<MapOfFields>> {
+        let ids = self.search_ids_with(model_name, domain, options)?;
+        self.read(model_name, &MultipleIds::from(ids), fields)
+    }
+
+    /// Count the records matching a domain.
+    ///
+    /// Counting happens before any limit would apply, which is why it is not a search option.
+    pub fn count(&mut self, model_name: &str, domain: &SearchType) -> Result<u32> {
+        self.save_domain_fields_to_db(model_name, domain)?;
+        self.database.count(model_name, domain, self.model_manager)
+    }
+
+    /// Read fields of records, addressing the model and its fields by name.
+    ///
+    /// Goes through the cache exactly like the generated accessors, so computed fields are
+    /// computed and absent values are loaded. Unlike `dyn Model::get`, a field that is merely
+    /// empty comes back as `None` instead of raising `RequiredFieldEmpty`.
+    pub fn read<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        ids: &Mode,
+        fields: &[&str],
+    ) -> Result<Vec<MapOfFields>> {
+        let mut result: Vec<MapOfFields> = ids
+            .get_ids_ref()
+            .iter()
+            .map(|id| {
+                let mut map = MapOfFields::default();
+                map.insert_field_type("id", FieldType::Ref(*id));
+                map
+            })
+            .collect();
+
+        for field_name in fields {
+            if *field_name == "id" {
+                continue;
+            }
+            // Cloned so the borrow of `self` ends before the next field is read.
+            let values: Vec<Option<FieldType>> = self
+                .get_fields_value(model_name, field_name, ids)?
+                .into_iter()
+                .map(|value| value.cloned())
+                .collect();
+            for (index, value) in values.into_iter().enumerate() {
+                result[index].insert_option(field_name, value);
+            }
+        }
+        Ok(result)
     }
 
     /// Get the value of given field for given id.
@@ -41,7 +131,7 @@ impl<'mm> Environment<'mm> {
     /// If field is not in cache, load it
     ///
     /// If field needs to be computed, compute it
-    pub(crate) fn get_field_value<'a>(
+    pub fn get_field_value<'a>(
         &'a mut self,
         model_name: &str,
         field_name: &str,
@@ -57,7 +147,7 @@ impl<'mm> Environment<'mm> {
             .get_field_from_cache(model_name, field_name, &id.get_id()))
     }
 
-    pub(crate) fn get_fields_value<Mode: IdMode>(
+    pub fn get_fields_value<Mode: IdMode>(
         &mut self,
         model_name: &str,
         field_name: &str,
@@ -99,8 +189,8 @@ impl<'mm> Environment<'mm> {
 
         if !ids_not_in_cache.is_empty() || !ids_to_recompute.is_empty() {
             // Load given fields
-            let model_info = self.model_manager.get_model(model_name);
-            let field_info = model_info.get_internal_field(field_name);
+            let model_info = self.model_manager.try_get_model(model_name)?;
+            let field_info = model_info.try_get_internal_field(field_name)?;
             let is_computed_method = field_info.compute.is_some();
             if !ids_to_recompute.is_empty() && is_computed_method {
                 self.call_compute_method(model_name, &ids_to_recompute, &[field_name])?;
@@ -140,6 +230,7 @@ impl<'mm> Environment<'mm> {
                     &[inverse_field],
                     &make_domain!([(inverse_field, "=", ids_not_in_cache)]),
                     self.model_manager,
+                    &SearchOptions::default(),
                 )?;
                 for (id, mut map) in database_result {
                     // Data should exist in database, and should not be empty, so we unwrap 2 times

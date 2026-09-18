@@ -18,6 +18,7 @@ impl Plugin for TestLibPlugin {
 
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::Invoice<_>>();
+        model_manager.register_model::<models::MeterReading<_>>();
         model_manager.register_model::<models::SaleOrder<_>>();
         model_manager.register_model::<models::SaleOrderLine<_>>();
     }

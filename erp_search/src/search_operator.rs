@@ -8,6 +8,15 @@ pub enum SearchOperator {
     GreaterEqual,
     Lower,
     LowerEqual,
+    /// Case-sensitive pattern match, with SQL wildcards: `%` for any run, `_` for one character.
+    Like,
+    /// Case-insensitive [`SearchOperator::Like`].
+    ILike,
+    /// Membership. `Equal` against an array means the same thing and stays valid; this spelling
+    /// is the explicit one, and rejects a right-hand side that is not an array.
+    In,
+    /// Negated [`SearchOperator::In`].
+    NotIn,
 }
 
 impl TryFrom<&str> for SearchOperator {
@@ -21,6 +30,10 @@ impl TryFrom<&str> for SearchOperator {
             ">=" => SearchOperator::GreaterEqual,
             "<" => SearchOperator::Lower,
             "<=" => SearchOperator::LowerEqual,
+            "like" => SearchOperator::Like,
+            "ilike" => SearchOperator::ILike,
+            "in" => SearchOperator::In,
+            "not in" => SearchOperator::NotIn,
             _ => {
                 return Err(UnknownSearchOperatorError {
                     search_operator: str.to_string(),

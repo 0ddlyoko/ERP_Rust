@@ -30,7 +30,7 @@ impl From<&str> for &PluginState {
 impl EnumType for PluginState {}
 
 #[derive(Model)]
-#[erp(table_name = "plugin")]
+#[erp(id = "plugin")]
 #[allow(dead_code)]
 pub struct Plugin<Mode: IdMode> {
     id: Mode,

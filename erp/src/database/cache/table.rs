@@ -27,4 +27,12 @@ impl Table {
         self.last_id = self.last_id.max(id);
         self.rows.insert(id, Row { cells: row.cells });
     }
+
+    /// Remove a row.
+    ///
+    /// `last_id` is deliberately left alone: ids are handed out by the shared store and must never
+    /// be reused, or a deleted record's id could come back attached to a different record.
+    pub(crate) fn delete_row(&mut self, id: &u32) -> bool {
+        self.rows.remove(id).is_some()
+    }
 }

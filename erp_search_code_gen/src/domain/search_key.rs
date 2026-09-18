@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use syn::__private::ToTokens;
 use syn::__private::quote::quote;
 use syn::Expr;
@@ -83,22 +83,12 @@ impl ToTokens for SearchTuple {
 impl ToTokens for SearchOperator {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let quote = match self {
-            SearchOperator::Operator(operator) => match operator {
-                erp_search::SearchOperator::Equal => quote! { erp_search::SearchOperator::Equal },
-                erp_search::SearchOperator::NotEqual => {
-                    quote! { erp_search::SearchOperator::NotEqual }
-                }
-                erp_search::SearchOperator::Greater => {
-                    quote! { erp_search::SearchOperator::Greater }
-                }
-                erp_search::SearchOperator::GreaterEqual => {
-                    quote! { erp_search::SearchOperator::GreaterEqual }
-                }
-                erp_search::SearchOperator::Lower => quote! { erp_search::SearchOperator::Lower },
-                erp_search::SearchOperator::LowerEqual => {
-                    quote! { erp_search::SearchOperator::LowerEqual }
-                }
-            },
+            SearchOperator::Operator(operator) => {
+                // Driven by the variant name rather than by a hand-written arm per operator, so
+                // adding an operator never leaves this emitter behind.
+                let variant = Ident::new(&format!("{operator:?}"), Span::call_site());
+                quote! { erp_search::SearchOperator::#variant }
+            }
             SearchOperator::Expr(expr) => quote! {#expr.try_into()?},
         };
 

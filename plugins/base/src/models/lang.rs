@@ -2,7 +2,7 @@ use code_gen::Model;
 use erp::types::field::IdMode;
 
 #[derive(Model)]
-#[erp(table_name = "lang")]
+#[erp(id = "lang")]
 #[allow(dead_code)]
 pub struct Lang<Mode: IdMode> {
     id: Mode,

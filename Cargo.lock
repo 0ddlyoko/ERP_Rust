@@ -286,6 +286,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_derive",
+ "serde_json",
  "serial_test",
  "test_plugin",
  "test_utilities",
@@ -307,6 +308,7 @@ name = "erp_internal_types"
 version = "0.1.0"
 dependencies = [
  "erp_types",
+ "thiserror",
 ]
 
 [[package]]
@@ -335,6 +337,7 @@ dependencies = [
  "chrono",
  "erp_search",
  "rust_decimal",
+ "serde",
  "thiserror",
 ]
 

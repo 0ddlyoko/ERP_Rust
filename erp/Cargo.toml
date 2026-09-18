@@ -28,3 +28,4 @@ test_utilities = { path = "test_utilities" }
 test_plugin = { path = "../plugins/test_plugin" }
 base = { path = "../plugins/base" }
 serial_test.workspace = true
+serde_json.workspace = true

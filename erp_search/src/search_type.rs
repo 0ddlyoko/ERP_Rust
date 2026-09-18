@@ -8,6 +8,7 @@ pub enum SearchType {
     And(Box<SearchType>, Box<SearchType>),
     Or(Box<SearchType>, Box<SearchType>),
     Tuple(SearchTuple),
+    /// No filter at all, which selects every record of the model.
     Nothing,
 }
 

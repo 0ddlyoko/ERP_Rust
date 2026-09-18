@@ -35,6 +35,7 @@ impl<'mm> Environment<'mm> {
                             &[target_field],
                             &make_domain!([(target_field, "=", current_ids.clone())]),
                             self.model_manager,
+                            &SearchOptions::default(),
                         )?;
                         current_ids = database_result
                             .into_iter()

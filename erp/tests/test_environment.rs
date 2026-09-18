@@ -1,5 +1,6 @@
 use erp::app::Application;
 use erp::database::Database;
+use erp_search::SearchOptions;
 use erp_search_code_gen::make_domain;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
@@ -352,6 +353,7 @@ fn test_save_fields_to_db() -> Result<()> {
         &["name", "state", "total_price"],
         &make_domain!([("name", "=", "0ddlyoko")]),
         env.model_manager,
+        &SearchOptions::default(),
     )?;
     assert!(!sale_order_vec.is_empty());
     // Default values should be applied here
@@ -436,6 +438,7 @@ fn test_save_fields_to_db() -> Result<()> {
         &["name", "state"],
         &make_domain!([("name", "=", "1ddlyoko")]),
         env.model_manager,
+        &SearchOptions::default(),
     )?;
     assert!(!sale_order_vec.is_empty());
     assert_eq!(sale_order_vec.len(), 1);

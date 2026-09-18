@@ -1,4 +1,5 @@
 use crate::FinalInternalField;
+use crate::errors::FieldNotFound;
 use crate::field::InternalField;
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::{FieldCompute, FieldType, MultipleIds};
@@ -33,7 +34,10 @@ impl InternalModel {
 ///
 /// Represent all combined InternalModel
 pub struct FinalInternalModel {
+    /// Identity of the model: cache key, registry key, API name.
     pub name: String,
+    /// Physical table, the only name the database layer ever sees.
+    pub table_name: String,
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
@@ -50,6 +54,7 @@ impl FinalInternalModel {
     pub fn new(model_name: &str) -> FinalInternalModel {
         FinalInternalModel {
             name: model_name.to_string(),
+            table_name: model_name.to_string(),
             description: "".to_string(),
             models: HashMap::new(),
             fields: HashMap::new(),
@@ -66,12 +71,22 @@ impl FinalInternalModel {
 
         let ModelDescriptor {
             name: _name,
+            table_name,
             description,
             fields,
         } = model_descriptor;
 
         if name != _name {
             panic!("Model name mismatch! {name} != {_name}");
+        }
+        // Every struct contributing to a model must agree on where it is stored.
+        if self.models.is_empty() {
+            self.table_name = table_name;
+        } else if self.table_name != table_name {
+            panic!(
+                "Table name mismatch for model {name}: {} != {table_name}",
+                self.table_name
+            );
         }
 
         let mut final_fields = HashMap::new();
@@ -185,18 +200,52 @@ impl FinalInternalModel {
         self.fields.get(field_name).is_some_and(|f| f.is_stored())
     }
 
-    /// TODO Do not panic, but instead return an Option
-    pub fn get_internal_field(&self, field_name: &str) -> &FinalInternalField {
-        self.fields
-            .get(field_name)
-            .unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
+    /// Look a field up by name.
+    ///
+    /// This is the entry point for any name that did not come from the framework itself, such as
+    /// one carried by an API request, and the only one that does not panic on a typo.
+    pub fn try_get_internal_field(
+        &self,
+        field_name: &str,
+    ) -> std::result::Result<&FinalInternalField, FieldNotFound> {
+        self.fields.get(field_name).ok_or_else(|| FieldNotFound {
+            model_name: self.name.clone(),
+            field_name: field_name.to_string(),
+        })
     }
 
-    /// TODO Do not panic, but instead return an Option
-    pub fn get_internal_field_mut(&mut self, field_name: &str) -> &mut FinalInternalField {
+    /// Same as [`FinalInternalModel::try_get_internal_field`], for mutable access.
+    pub fn try_get_internal_field_mut(
+        &mut self,
+        field_name: &str,
+    ) -> std::result::Result<&mut FinalInternalField, FieldNotFound> {
+        let model_name = self.name.clone();
         self.fields
             .get_mut(field_name)
-            .unwrap_or_else(|| panic!("Field {} is not present in model {}", field_name, self.name))
+            .ok_or_else(|| FieldNotFound {
+                model_name,
+                field_name: field_name.to_string(),
+            })
+    }
+
+    /// Look a field up by a name the framework itself produced.
+    ///
+    /// # Panics
+    /// Panics if the field is unknown. Callers pass names fixed at compile time by the derive
+    /// macro, so a failure here is a framework bug rather than bad input. Use
+    /// [`FinalInternalModel::try_get_internal_field`] for anything else.
+    pub fn get_internal_field(&self, field_name: &str) -> &FinalInternalField {
+        self.try_get_internal_field(field_name)
+            .unwrap_or_else(|err| panic!("{err}"))
+    }
+
+    /// Same as [`FinalInternalModel::get_internal_field`], for mutable access.
+    ///
+    /// # Panics
+    /// Panics if the field is unknown; see [`FinalInternalModel::get_internal_field`].
+    pub fn get_internal_field_mut(&mut self, field_name: &str) -> &mut FinalInternalField {
+        self.try_get_internal_field_mut(field_name)
+            .unwrap_or_else(|err| panic!("{err}"))
     }
 
     /// Return default value for given field.

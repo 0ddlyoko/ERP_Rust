@@ -188,6 +188,12 @@ impl Cache {
         cache_models.clear_dirty(ids.as_ref());
     }
 
+    /// Forget the given records: values, dirty flags and pending recomputations.
+    pub fn remove_records<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
+        let cache_models = self.get_cache_models_mut(model_name);
+        cache_models.remove_models(ids.as_ref());
+    }
+
     // Compute
 
     pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
