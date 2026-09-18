@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 argon2.workspace = true
 erp = { path = "../../erp" }
+# The domain macro expands to `erp_search::` paths, so it has to be nameable here.
+erp_search = { path = "../../erp_search" }
+erp_search_code_gen = { path = "../../erp_search_code_gen" }
 code_gen = { path = "../../code_gen" }
 
 [lib]

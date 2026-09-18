@@ -1,3 +1,4 @@
+use base::models::Users;
 use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD, auth};
 use erp::app::Application;
 use erp::data;
@@ -14,6 +15,15 @@ fn new_app() -> Result<Application> {
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.load_plugin("base")?;
     Ok(app)
+}
+
+/// Log in, keeping only the id so the assertions stay readable.
+fn login(
+    env: &mut erp::environment::Environment,
+    login: &str,
+    password: &str,
+) -> Result<Option<u32>> {
+    Ok(Users::authenticate(env, login, password)?.map(|user| user.get_id()))
 }
 
 fn create_user(
@@ -60,7 +70,7 @@ fn test_authenticate_accepts_the_right_password() -> Result<()> {
     let mut env = app.new_env()?;
 
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
-    assert_eq!(auth::authenticate(&mut env, "alice", "s3cret")?, Some(uid));
+    assert_eq!(login(&mut env, "alice", "s3cret")?, Some(uid));
     Ok(())
 }
 
@@ -70,7 +80,7 @@ fn test_authenticate_rejects_a_wrong_password() -> Result<()> {
     let mut env = app.new_env()?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
-    assert_eq!(auth::authenticate(&mut env, "alice", "wrong")?, None);
+    assert_eq!(login(&mut env, "alice", "wrong")?, None);
     Ok(())
 }
 
@@ -81,7 +91,7 @@ fn test_authenticate_rejects_an_unknown_login() -> Result<()> {
     let mut env = app.new_env()?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
-    assert_eq!(auth::authenticate(&mut env, "mallory", "s3cret")?, None);
+    assert_eq!(login(&mut env, "mallory", "s3cret")?, None);
     Ok(())
 }
 
@@ -91,7 +101,7 @@ fn test_inactive_account_cannot_log_in() -> Result<()> {
     let mut env = app.new_env()?;
 
     create_user(&mut env, "retired", "s3cret", false)?;
-    assert_eq!(auth::authenticate(&mut env, "retired", "s3cret")?, None);
+    assert_eq!(login(&mut env, "retired", "s3cret")?, None);
     Ok(())
 }
 
@@ -102,10 +112,11 @@ fn test_changing_a_password() -> Result<()> {
     let mut env = app.new_env()?;
 
     let uid = create_user(&mut env, "alice", "old", true)?;
-    auth::set_password(&mut env, uid, "new")?;
+    let user: Users<SingleId> = env.get_record(uid.into());
+    user.change_password(&mut env, "new")?;
 
-    assert_eq!(auth::authenticate(&mut env, "alice", "new")?, Some(uid));
-    assert_eq!(auth::authenticate(&mut env, "alice", "old")?, None);
+    assert_eq!(login(&mut env, "alice", "new")?, Some(uid));
+    assert_eq!(login(&mut env, "alice", "old")?, None);
     Ok(())
 }
 
@@ -119,7 +130,7 @@ fn test_credentials_persist() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    assert_eq!(auth::authenticate(&mut env, "alice", "s3cret")?, Some(uid));
+    assert_eq!(login(&mut env, "alice", "s3cret")?, Some(uid));
     Ok(())
 }
 
@@ -131,10 +142,10 @@ fn test_admin_is_seeded_and_usable() -> Result<()> {
 
     let admin = data::resolve(&mut env, "base.user_admin")?.expect("admin must exist");
     assert_eq!(
-        auth::authenticate(&mut env, "admin", DEFAULT_ADMIN_PASSWORD)?,
+        login(&mut env, "admin", DEFAULT_ADMIN_PASSWORD)?,
         Some(admin)
     );
-    assert_eq!(auth::authenticate(&mut env, "admin", "nope")?, None);
+    assert_eq!(login(&mut env, "admin", "nope")?, None);
     Ok(())
 }
 
@@ -148,9 +159,8 @@ fn test_user_belongs_to_groups() -> Result<()> {
     let group_admin = data::resolve(&mut env, "base.group_admin")?.unwrap();
     let group_user = data::resolve(&mut env, "base.group_user")?.unwrap();
 
-    let mut values = MapOfFields::new(HashMap::new());
-    values.insert("groups", vec![group_user, group_admin]);
-    env.write("users", &SingleId::from(admin), values)?;
+    let admin_record: Users<SingleId> = env.get_record(admin.into());
+    admin_record.set_groups(vec![group_user, group_admin].into(), &mut env)?;
 
     let rows = env.read("group", &SingleId::from(group_admin), &["users"])?;
     assert_eq!(
@@ -193,5 +203,60 @@ fn test_listing_users_does_not_expose_hashes() -> Result<()> {
         !rows[0].contains_key("password"),
         "only the fields asked for come back"
     );
+    Ok(())
+}
+
+/// Checking a password is a question you ask a user, not a free function.
+#[test]
+fn test_check_password_on_the_record() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let uid = create_user(&mut env, "alice", "s3cret", true)?;
+    let user: Users<SingleId> = env.get_record(uid.into());
+
+    assert!(user.check_password(&mut env, "s3cret")?);
+    assert!(!user.check_password(&mut env, "wrong")?);
+    assert!(user.has_password(&mut env)?);
+    Ok(())
+}
+
+/// Authenticating hands back the user, not just an id.
+#[test]
+fn test_authenticate_returns_the_record() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    create_user(&mut env, "alice", "s3cret", true)?;
+    let user = Users::authenticate(&mut env, "alice", "s3cret")?.expect("should log in");
+
+    assert_eq!(user.get_login(&mut env)?, &"alice".to_string());
+    assert!(*user.get_active(&mut env)?);
+    Ok(())
+}
+
+/// A field changed through the record is saved without anything else being asked for.
+///
+/// The setter marks it dirty in cache; closing the environment writes it. No explicit write, no
+/// explicit flush.
+#[test]
+fn test_a_record_change_persists_on_its_own() -> Result<()> {
+    let app = new_app()?;
+
+    let mut env = app.new_env()?;
+    let uid = create_user(&mut env, "alice", "old", true)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let user: Users<SingleId> = env.get_record(uid.into());
+    user.change_password(&mut env, "new")?;
+    user.set_name("Alice".to_string(), &mut env)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    assert_eq!(login(&mut env, "alice", "new")?, Some(uid));
+    assert_eq!(login(&mut env, "alice", "old")?, None);
+    let user: Users<SingleId> = env.get_record(uid.into());
+    assert_eq!(user.get_name(&mut env)?, &"Alice".to_string());
     Ok(())
 }

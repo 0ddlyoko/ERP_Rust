@@ -1,6 +1,7 @@
 use erp::environment::Environment;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
+use erp::types::field::SingleId;
 use std::error::Error;
 
 pub mod auth;
@@ -39,8 +40,9 @@ impl Plugin for BasePlugin {
         let Some(admin) = erp::data::resolve(env, "base.user_admin")? else {
             return Ok(());
         };
-        if !auth::has_password(env, admin)? {
-            auth::set_password(env, admin, DEFAULT_ADMIN_PASSWORD)?;
+        let admin: models::Users<SingleId> = env.get_record(admin.into());
+        if !admin.has_password(env)? {
+            admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
         }
         Ok(())
     }

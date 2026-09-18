@@ -62,6 +62,8 @@ dependencies = [
  "argon2",
  "code_gen",
  "erp",
+ "erp_search",
+ "erp_search_code_gen",
 ]
 
 [[package]]
