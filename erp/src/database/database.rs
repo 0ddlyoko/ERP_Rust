@@ -25,6 +25,13 @@ pub trait Database {
     /// Initialize this database
     fn initialize(&mut self) -> Result<()>;
 
+    /// Bring the physical schema in line with a model's declared fields.
+    ///
+    /// A schemaless backend has nothing to do here.
+    fn sync_model(&mut self, _model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        Ok(())
+    }
+
     /// Make a search request to a specific model, and only return ids that match this search request
     ///
     /// ModelManager is needed to know the current structure of the database, and to make correct

@@ -108,6 +108,22 @@ impl From<DateTime<Utc>> for RightTuple {
     }
 }
 
+/// Lets a domain say "is empty": `("signed_on", "=", None::<NaiveDate>)`.
+///
+/// Both backends already give `RightTuple::None` the meaning of SQL `NULL`; this is what lets a
+/// caller build one.
+impl<E> From<Option<E>> for RightTuple
+where
+    E: Into<RightTuple>,
+{
+    fn from(value: Option<E>) -> Self {
+        match value {
+            Some(value) => value.into(),
+            None => RightTuple::None,
+        }
+    }
+}
+
 impl From<bool> for RightTuple {
     fn from(b: bool) -> Self {
         Self::Boolean(b)
@@ -120,11 +136,5 @@ where
 {
     fn from(v: Vec<E>) -> Self {
         Self::Array(v.into_iter().map(Into::into).collect())
-    }
-}
-
-impl From<Option<RightTuple>> for RightTuple {
-    fn from(v: Option<RightTuple>) -> Self {
-        v.unwrap_or(Self::None)
     }
 }

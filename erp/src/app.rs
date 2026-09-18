@@ -144,8 +144,20 @@ impl Application {
         self.model_manager.post_register();
         self.model_manager.current_plugin_loading = None;
 
-        // TODO Get all registered models, to update the database
-        let _registered_models = self.model_manager.get_all_models_for_plugin(plugin_name);
+        // Bring the schema in line with what this plugin declared. It runs after
+        // `post_register`, so relational links are complete, and in dependency order, so a plugin
+        // extending another's model finds the base columns already there.
+        let mut database = database;
+        let model_names: Vec<String> = self
+            .model_manager
+            .get_all_models_for_plugin(plugin_name)
+            .iter()
+            .map(|model| model.name.clone())
+            .collect();
+        for model_name in model_names {
+            let model = self.model_manager.try_get_model(&model_name)?;
+            database.sync_model(model)?;
+        }
 
         let mut env = Environment::new(&self.model_manager, database)?;
         env.savepoint(|env| plugin.post_init(env))?;

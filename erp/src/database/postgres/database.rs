@@ -1,9 +1,10 @@
-use crate::database::{Database, DatabaseConfig, ErrorType, SearchedRow};
+use super::{QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_ident};
+use crate::database::{Database, DatabaseConfig, ErrorType, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
 use postgres::{Client, NoTls};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -12,6 +13,8 @@ pub struct PostgresDatabase {
     pub client: Client,
     schema: String,
     is_transaction: bool,
+    /// Model identity to physical table, learned while synchronising the schema.
+    tables: HashMap<String, String>,
 }
 
 impl PostgresDatabase {
@@ -22,18 +25,63 @@ impl PostgresDatabase {
     {
         // Built field by field rather than as a URL: a password containing '@', '/', '?' or
         // '#' would otherwise corrupt the connection string.
-        let client = postgres::Config::new()
-            .user(&config.user)
-            .password(&config.password)
-            .host(&config.url)
-            .port(config.port)
-            .dbname(&config.name)
-            .connect(NoTls)?;
+        let mut connection = postgres::Config::new();
+        connection.user(&config.user).dbname(&config.name);
+        if config.url.starts_with('/') {
+            // A path means a unix socket, which is how most local installs authenticate.
+            connection.host_path(&config.url);
+        } else {
+            connection.host(&config.url).port(config.port);
+        }
+        if !config.password.is_empty() {
+            connection.password(&config.password);
+        }
+        let mut client = connection.connect(NoTls)?;
+        // Without this the configured schema would only ever be consulted by `is_installed`,
+        // and every query would look for tables somewhere else.
+        client
+            .batch_execute(&format!(
+                "SET search_path TO {}",
+                quote_ident(&config.schema)
+            ))
+            .map_err(ErrorType::Postgres)?;
         Ok(Self {
             client,
             schema: config.schema.clone(),
             is_transaction: false,
+            tables: HashMap::new(),
         })
+    }
+}
+
+impl PostgresDatabase {
+    /// Table backing a model, quoted and schema-qualified.
+    ///
+    /// The mapping is learned during schema synchronisation, because the write methods do not
+    /// receive the model registry. A model that was never synchronised falls back to its own
+    /// name, which is also the default table name.
+    fn qualified_table(&self, model_name: &str) -> Result<String> {
+        let table = self
+            .tables
+            .get(model_name)
+            .map_or(model_name, String::as_str);
+        Ok(format!(
+            "{}.{}",
+            quote_ident(&self.schema),
+            quote_ident(table)
+        ))
+    }
+
+    /// Columns the table already has.
+    fn existing_columns(&mut self, table_name: &str) -> Result<HashSet<String>> {
+        let rows = self.client.query(
+            "SELECT \"column_name\" FROM \"information_schema\".\"columns\" \
+             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
+            &[&self.schema, &table_name],
+        )?;
+        rows.iter()
+            .map(|row| Ok(row.try_get::<_, String>(0)?))
+            .collect()
     }
 }
 
@@ -49,72 +97,227 @@ impl Database for PostgresDatabase {
         Ok(result.try_get(0)?)
     }
 
-    /// Initialize this database
+    /// Initialize this database.
+    ///
+    /// Only the bootstrap table is created here; every other table comes from the models
+    /// themselves, through [`Database::sync_model`].
     fn initialize(&mut self) -> Result<()> {
-        // TODO Put this in a file
-        self.client.batch_execute(
-            "
-            CREATE TABLE plugin (
-                id              SERIAL PRIMARY KEY,
-                name            VARCHAR NOT NULL,
-                description     TEXT,
-                website         TEXT,
-                url             TEXT,
-                state           VARCHAR NOT NULL
-            )
-            ",
-        )?;
+        let schema = quote_ident(&self.schema);
+        self.client.batch_execute(&format!(
+            "CREATE SCHEMA IF NOT EXISTS {schema};
+             CREATE TABLE IF NOT EXISTS {schema}.\"plugin\" (
+                \"id\"          SERIAL PRIMARY KEY,
+                \"name\"        TEXT NOT NULL,
+                \"description\" TEXT,
+                \"website\"     TEXT,
+                \"url\"         TEXT,
+                \"state\"       TEXT NOT NULL
+             )"
+        ))?;
+        Ok(())
+    }
+
+    /// Create the model's table, or add the columns it has gained.
+    ///
+    /// Driven by introspection rather than by migration files: nothing records a schema version
+    /// yet, so the current shape of the database is the only reference available.
+    fn sync_model(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        self.tables
+            .insert(model.name.clone(), model.table_name.clone());
+        let qualified = format!(
+            "{}.{}",
+            quote_ident(&self.schema),
+            quote_ident(&model.table_name)
+        );
+
+        // `id` is never in the registry, so it is synthesised here.
+        self.client.batch_execute(&format!(
+            "CREATE TABLE IF NOT EXISTS {qualified} (\"id\" SERIAL PRIMARY KEY)"
+        ))?;
+
+        let existing = self.existing_columns(&model.table_name)?;
+        for (field_name, field) in &model.fields {
+            if existing.contains(field_name) {
+                continue;
+            }
+            let Some(column_type) = column_type(field.kind) else {
+                // A one2many has no column: it is read from the other side's foreign key.
+                continue;
+            };
+            self.client.batch_execute(&format!(
+                "ALTER TABLE {qualified} ADD COLUMN {} {column_type}",
+                quote_ident(field_name)
+            ))?;
+        }
         Ok(())
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
     fn browse(
         &mut self,
-        _model_name: &str,
-        _domain: &SearchType,
-        _model_manager: &ModelManager,
-        _options: &SearchOptions,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<u32>> {
-        todo!()
+        let mut builder = QueryBuilder::new();
+        let sql = builder.select_ids(model_name, domain, model_manager, options)?;
+        let rows = self.client.query(&sql, &builder.params())?;
+        rows.iter()
+            .map(|row| id_from_sql(row.try_get::<_, i32>(0)?))
+            .collect()
     }
 
     fn count(
         &mut self,
-        _model_name: &str,
-        _domain: &SearchType,
-        _model_manager: &ModelManager,
+        model_name: &str,
+        domain: &SearchType,
+        model_manager: &ModelManager,
     ) -> Result<u32> {
-        todo!()
+        let mut builder = QueryBuilder::new();
+        let sql = builder.select_count(model_name, domain, model_manager)?;
+        let row = self.client.query_one(&sql, &builder.params())?;
+        Ok(row.try_get::<_, i64>(0)? as u32)
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     fn search<'a>(
         &mut self,
-        _model_name: &str,
-        _fields: &[&'a str],
-        _domain: &SearchType,
-        _model_manager: &ModelManager,
-        _options: &SearchOptions,
+        model_name: &str,
+        fields: &[&'a str],
+        domain: &SearchType,
+        model_manager: &ModelManager,
+        options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>> {
-        todo!()
+        let model = model_manager.try_get_model(model_name)?;
+        let mut builder = QueryBuilder::new();
+        let sql = builder.select_columns(model_name, fields, domain, model_manager, options)?;
+        let rows = self.client.query(&sql, &builder.params())?;
+
+        // The statement selects the id first, then the stored fields in the order asked for.
+        let stored: Vec<&'a str> = fields
+            .iter()
+            .filter(|field| **field != "id")
+            .filter(|field| {
+                model
+                    .try_get_internal_field(field)
+                    .is_ok_and(|f| f.kind.is_stored())
+            })
+            .copied()
+            .collect();
+
+        let mut result = Vec::with_capacity(rows.len());
+        for row in rows {
+            let id = id_from_sql(row.try_get::<_, i32>(0)?)?;
+            let mut values = HashMap::with_capacity(fields.len());
+            for field in fields {
+                if *field == "id" {
+                    values.insert(*field, Some(FieldType::UInteger(id)));
+                }
+            }
+            for (index, field) in stored.iter().enumerate() {
+                let kind = model.try_get_internal_field(field)?.kind;
+                values.insert(*field, from_row(&row, index + 1, kind)?);
+            }
+            // Fields with no column of their own simply come back empty.
+            for field in fields {
+                values.entry(*field).or_insert(None);
+            }
+            result.push((id, values));
+        }
+        Ok(result)
     }
 
-    fn create(&mut self, _model_name: &str, _data: &[&MapOfFields]) -> Result<Vec<u32>> {
-        todo!()
+    /// Insert records and return their ids, in the order the data was given.
+    ///
+    /// One statement per record: the maps may not share the same set of fields, and grouping
+    /// them would trade clarity for a round trip that the flush already batches elsewhere.
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
+        let table = self.qualified_table(model_name)?;
+        let mut ids = Vec::with_capacity(data.len());
+        for record in data {
+            let mut builder = QueryBuilder::new();
+            let mut columns = Vec::new();
+            let mut placeholders = Vec::new();
+            for (field_name, value) in &record.fields {
+                if field_name == "id" {
+                    continue;
+                }
+                let Some(value) = value else {
+                    continue;
+                };
+                columns.push(quote_ident(field_name));
+                placeholders.push(builder.push_value(&value.clone().into())?);
+            }
+            let sql = if columns.is_empty() {
+                format!(
+                    "INSERT INTO {table} DEFAULT VALUES RETURNING {}",
+                    quote_ident("id")
+                )
+            } else {
+                format!(
+                    "INSERT INTO {table} ({}) VALUES ({}) RETURNING {}",
+                    columns.join(", "),
+                    placeholders.join(", "),
+                    quote_ident("id")
+                )
+            };
+            let row = self.client.query_one(&sql, &builder.params())?;
+            ids.push(id_from_sql(row.try_get::<_, i32>(0)?)?);
+        }
+        Ok(ids)
     }
 
-    fn update(&mut self, _model_name: &str, _data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
-        todo!()
+    /// Update records, returning how many rows were actually touched.
+    ///
+    /// An id that is not there is skipped rather than reported, mirroring the in-memory backend.
+    fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
+        let table = self.qualified_table(model_name)?;
+        let mut updated = 0;
+        for (id, record) in data {
+            let mut builder = QueryBuilder::new();
+            let mut assignments = Vec::new();
+            for (field_name, value) in &record.fields {
+                if field_name == "id" {
+                    continue;
+                }
+                let placeholder = match value {
+                    Some(value) => builder.push_value(&value.clone().into())?,
+                    None => "NULL".to_string(),
+                };
+                assignments.push(format!("{} = {placeholder}", quote_ident(field_name)));
+            }
+            if assignments.is_empty() {
+                continue;
+            }
+            let id_placeholder = builder.push_value(&FieldType::UInteger(*id))?;
+            let sql = format!(
+                "UPDATE {table} SET {} WHERE {} = {id_placeholder}",
+                assignments.join(", "),
+                quote_ident("id")
+            );
+            updated += self.client.execute(&sql, &builder.params())? as u32;
+        }
+        Ok(updated)
     }
 
-    fn delete(&mut self, _model_name: &str, _ids: &[u32]) -> Result<u32> {
-        todo!()
+    fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        let table = self.qualified_table(model_name)?;
+        let ids: Vec<i32> = ids.iter().copied().map(id_to_sql).collect::<Result<_>>()?;
+        let sql = format!("DELETE FROM {table} WHERE {} = ANY($1)", quote_ident("id"));
+        Ok(self.client.execute(&sql, &[&ids])? as u32)
     }
 
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
         let mut result = vec![];
         for row in self.client.query(
-            "SELECT \"name\" FROM \"plugin\" WHERE \"state\"=\'installed\'",
+            &format!(
+                "SELECT \"name\" FROM {}.\"plugin\" WHERE \"state\" = 'installed'",
+                quote_ident(&self.schema)
+            ),
             &[],
         )? {
             let name: &str = row.get(0);

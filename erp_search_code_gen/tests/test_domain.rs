@@ -87,8 +87,8 @@ fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error + Send + Syn
         )
     );
 
-    // None
-    let domain = make_domain!([("test", "=", None)]);
+    // None — any Option now spells NULL, so the inner type has to be named.
+    let domain = make_domain!([("test", "=", None::<String>)]);
     assert_eq!(
         domain,
         SearchType::Tuple(SearchTuple {

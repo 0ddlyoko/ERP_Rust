@@ -29,6 +29,13 @@ impl Database for DatabaseType {
         }
     }
 
+    fn sync_model(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.sync_model(model),
+            DatabaseType::Postgres(postgres) => postgres.sync_model(model),
+        }
+    }
+
     fn browse(
         &mut self,
         model_name: &str,

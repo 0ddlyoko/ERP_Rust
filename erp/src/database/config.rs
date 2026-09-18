@@ -4,14 +4,15 @@ fn default_port() -> u16 {
     5432
 }
 
-#[derive(Debug, Deserialize, Default)]
-#[allow(dead_code)]
+/// Fields are public so an embedder — or a test — can configure the database in code
+/// instead of through a file.
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct DatabaseConfig {
-    pub(crate) url: String,
+    pub url: String,
     #[serde(default = "default_port")]
-    pub(crate) port: u16,
-    pub(crate) name: String,
-    pub(crate) schema: String,
-    pub(crate) user: String,
-    pub(crate) password: String,
+    pub port: u16,
+    pub name: String,
+    pub schema: String,
+    pub user: String,
+    pub password: String,
 }
