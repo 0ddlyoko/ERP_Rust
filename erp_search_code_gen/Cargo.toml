@@ -9,6 +9,6 @@ proc-macro = true
 [dependencies]
 proc-macro2.workspace = true
 quote.workspace = true
-syn.workspace = true
+syn = { workspace = true, features = ["full"] }
 
 erp_search = { path = "../erp_search" }
