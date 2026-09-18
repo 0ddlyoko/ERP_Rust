@@ -1,0 +1,17 @@
+<erp>
+    <record id="main_order" model="sale_order">
+        <field name="name">Seeded order</field>
+    </record>
+
+    <record id="first_line" model="sale_order_line">
+        <field name="price">7</field>
+        <field name="amount">6</field>
+        <field name="order" ref="main_order"/>
+    </record>
+
+    <record id="reference_invoice" model="invoice" noupdate="1">
+        <field name="name">Untouchable</field>
+        <field name="amount_untaxed">1234.56</field>
+        <field name="due_date">2026-09-30</field>
+    </record>
+</erp>

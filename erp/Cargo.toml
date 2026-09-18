@@ -12,6 +12,7 @@ config.workspace = true
 directories.workspace = true
 libloading.workspace = true
 postgres.workspace = true
+roxmltree.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
 uuid.workspace = true

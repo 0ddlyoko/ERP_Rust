@@ -279,34 +279,40 @@ pub struct ParseFieldTypeError {
 }
 
 impl FieldType {
-    /// Read `raw` as a value of the same variant as `self`.
+    /// Read `raw` as a value of the same kind as `self`.
     ///
     /// Serialization writes bare values, so nothing in `"4"` says whether it is an integer or a
-    /// reference. The field's declared default carries that answer — it is the type tag the
-    /// registry already relies on — so parsing is always driven by a template.
+    /// reference; the field's declared kind carries that answer.
     pub fn parse_like(&self, raw: &str) -> Result<FieldType, ParseFieldTypeError> {
-        let expected = self.kind();
+        self.kind().parse(raw)
+    }
+}
+
+impl FieldKind {
+    /// Read `raw` as a value of this kind.
+    pub fn parse(&self, raw: &str) -> Result<FieldType, ParseFieldTypeError> {
+        let expected = *self;
         let fail = || ParseFieldTypeError {
             raw: raw.to_string(),
             expected,
         };
         Ok(match self {
-            FieldType::String(_) => FieldType::String(raw.to_string()),
-            FieldType::Integer(_) => FieldType::Integer(raw.parse().map_err(|_| fail())?),
-            FieldType::Decimal(_) => {
+            FieldKind::String => FieldType::String(raw.to_string()),
+            FieldKind::Integer => FieldType::Integer(raw.parse().map_err(|_| fail())?),
+            FieldKind::Decimal => {
                 FieldType::Decimal(Decimal::from_str_exact(raw).map_err(|_| fail())?)
             }
-            FieldType::Bool(_) => match raw {
+            FieldKind::Bool => match raw {
                 "true" | "True" | "1" => FieldType::Bool(true),
                 "false" | "False" | "0" => FieldType::Bool(false),
                 _ => return Err(fail()),
             },
-            FieldType::Date(_) => FieldType::Date(raw.parse().map_err(|_| fail())?),
-            FieldType::DateTime(_) => {
+            FieldKind::Date => FieldType::Date(raw.parse().map_err(|_| fail())?),
+            FieldKind::DateTime => {
                 FieldType::DateTime(raw.parse::<DateTime<Utc>>().map_err(|_| fail())?)
             }
-            FieldType::Ref(_) => FieldType::Ref(raw.parse().map_err(|_| fail())?),
-            FieldType::Refs(_) => {
+            FieldKind::Ref => FieldType::Ref(raw.parse().map_err(|_| fail())?),
+            FieldKind::Refs => {
                 let ids = raw
                     .split(',')
                     .map(str::trim)

@@ -17,6 +17,7 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Contact<_>>();
         model_manager.register_model::<models::Country<_>>();
         model_manager.register_model::<models::Lang<_>>();
+        model_manager.register_model::<models::ModelData<_>>();
         model_manager.register_model::<models::Plugin<_>>();
     }
 

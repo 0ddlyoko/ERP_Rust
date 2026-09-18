@@ -32,6 +32,15 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     /// Unload this plugin
+    /// XML documents this plugin ships.
+    ///
+    /// Returned as contents rather than paths, through `include_str!`: a plugin is a dynamic
+    /// library with no reliable base directory at runtime, so embedding removes the problem
+    /// instead of working around it.
+    fn data(&self) -> Vec<&'static str> {
+        Vec::new()
+    }
+
     fn unload(&mut self) {}
 
     /// Returns dependencies of this plugin

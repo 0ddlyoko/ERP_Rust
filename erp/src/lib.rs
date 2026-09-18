@@ -1,5 +1,6 @@
 pub mod app;
 pub mod config;
+pub mod data;
 pub mod database;
 pub mod environment;
 pub mod errors;

@@ -159,8 +159,16 @@ impl Application {
             database.sync_model(model)?;
         }
 
+        // Data is loaded before `post_init`, so a plugin finds its own records in place by the
+        // time its code runs.
+        let data = plugin.data();
         let mut env = Environment::new(&self.model_manager, database)?;
-        env.savepoint(|env| plugin.post_init(env))?;
+        env.savepoint(|env| {
+            for document in &data {
+                crate::data::load(env, plugin_name, document)?;
+            }
+            plugin.post_init(env)
+        })?;
         env.close()?;
 
         Ok(())

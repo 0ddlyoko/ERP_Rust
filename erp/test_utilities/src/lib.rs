@@ -23,3 +23,26 @@ impl Plugin for TestLibPlugin {
         model_manager.register_model::<models::SaleOrderLine<_>>();
     }
 }
+
+/// Ships a data file, to exercise the loader end to end.
+///
+/// Kept apart from [`TestLibPlugin`] so tests that do not care about data need neither `base`
+/// nor the external identifier registry.
+pub struct SeedPlugin;
+
+impl Plugin for SeedPlugin {
+    fn name(&self) -> String {
+        "seed_plugin".to_string()
+    }
+
+    /// External identifiers are recorded in `model_data`, which `base` declares.
+    fn get_depends(&self) -> Vec<String> {
+        vec!["base".to_string(), "test_lib_plugin".to_string()]
+    }
+
+    fn data(&self) -> Vec<&'static str> {
+        vec![include_str!("../data/orders.xml")]
+    }
+
+    fn init_models(&self, _model_manager: &mut ModelManager) {}
+}
