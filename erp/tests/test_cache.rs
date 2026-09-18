@@ -1,4 +1,5 @@
 use erp::app::Application;
+use erp::environment::make_cache;
 use erp::model::ModelManager;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
@@ -6,10 +7,9 @@ use erp_types::field::{IdMode, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
-use erp::environment::make_cache;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_get_and_insert_field() {

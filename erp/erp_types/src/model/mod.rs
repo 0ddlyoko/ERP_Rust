@@ -1,11 +1,11 @@
 mod map_of_fields;
 mod model_descriptor;
 
-use std::error::Error;
-pub use map_of_fields::*;
-pub use model_descriptor::*;
 use crate::environment::ErasedEnvironment;
 use crate::field::{IdMode, MultipleIds};
+pub use map_of_fields::*;
+pub use model_descriptor::*;
+use std::error::Error;
 
 /// BaseModel that represent a model, but not a single model instance by itself.
 ///
@@ -24,7 +24,7 @@ pub trait CommonModel<Mode: IdMode> {
     /// Get this model name
     fn _get_model_name() -> &'static str
     where
-        Self: Sized
+        Self: Sized,
     {
         Self::BaseModel::_get_model_name()
     }
@@ -55,7 +55,7 @@ pub trait CommonModel<Mode: IdMode> {
         field_name: &str,
         id: MultipleIds,
         env: &mut dyn ErasedEnvironment,
-    ) -> Result<(), Box<dyn Error>>
+    ) -> Result<(), Box<dyn Error + Send + Sync>>
     where
         Self: Sized;
 }

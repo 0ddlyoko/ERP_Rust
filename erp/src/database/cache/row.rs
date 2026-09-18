@@ -1,10 +1,10 @@
 use crate::database::FieldType;
 use erp_search::{RightTuple, SearchOperator};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[derive(Default, Clone)]
 pub(crate) struct Row {
-    pub(crate) id: u32,
     pub(crate) cells: HashMap<String, Option<FieldType>>,
 }
 
@@ -15,6 +15,23 @@ impl Row {
 
     pub(crate) fn set_cell(&mut self, field_name: &str, cell: Option<FieldType>) {
         self.cells.insert(field_name.to_string(), cell);
+    }
+
+    /// Order a cell against a domain's right-hand value.
+    ///
+    /// Returns `None` when the two sides are not of comparable types, which the caller reports as
+    /// "does not match" rather than as an error.
+    fn compare(cell: &FieldType, right: &RightTuple) -> Option<Ordering> {
+        match (cell, right) {
+            (FieldType::String(cell), RightTuple::String(right)) => Some(cell.cmp(right)),
+            (FieldType::Integer(cell), RightTuple::Integer(right)) => Some(cell.cmp(right)),
+            (FieldType::UInteger(cell), RightTuple::UInteger(right)) => Some(cell.cmp(right)),
+            (FieldType::Decimal(cell), RightTuple::Decimal(right)) => Some(cell.cmp(right)),
+            (FieldType::Boolean(cell), RightTuple::Boolean(right)) => Some(cell.cmp(right)),
+            (FieldType::Date(cell), RightTuple::Date(right)) => Some(cell.cmp(right)),
+            (FieldType::DateTime(cell), RightTuple::DateTime(right)) => Some(cell.cmp(right)),
+            _ => None,
+        }
     }
 
     /// Check if this row is valid for given domain
@@ -36,70 +53,20 @@ impl Row {
                 (left, Some(right)) => left != right,
                 _ => true,
             },
-            SearchOperator::Greater => match (right, cell_value) {
-                (RightTuple::None, None) => false,
-                (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => {
-                    cell_value > right
+            _ => {
+                let Some(cell_value) = cell_value else {
+                    return false;
+                };
+                let Some(ordering) = Self::compare(cell_value, right) else {
+                    return false;
+                };
+                match operator {
+                    SearchOperator::Greater => ordering.is_gt(),
+                    SearchOperator::GreaterEqual => ordering.is_ge(),
+                    SearchOperator::Lower => ordering.is_lt(),
+                    _ => ordering.is_le(),
                 }
-                (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => {
-                    cell_value > right
-                }
-                (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => {
-                    cell_value > right
-                }
-                (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => {
-                    cell_value > right
-                }
-                _ => false,
-            },
-            SearchOperator::GreaterEqual => match (right, cell_value) {
-                (RightTuple::None, None) => false,
-                (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => {
-                    cell_value >= right
-                }
-                (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => {
-                    cell_value >= right
-                }
-                (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => {
-                    cell_value >= right
-                }
-                (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => {
-                    cell_value >= right
-                }
-                _ => false,
-            },
-            SearchOperator::Lower => match (right, cell_value) {
-                (RightTuple::None, None) => false,
-                (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => {
-                    cell_value < right
-                }
-                (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => {
-                    cell_value < right
-                }
-                (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => {
-                    cell_value < right
-                }
-                (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => {
-                    cell_value < right
-                }
-                _ => false,
-            },
-            SearchOperator::LowerEqual => match (right, cell_value) {
-                (RightTuple::None, None) => false,
-                (RightTuple::Integer(right), Some(FieldType::Integer(cell_value))) => {
-                    cell_value <= right
-                }
-                (RightTuple::UInteger(right), Some(FieldType::UInteger(cell_value))) => {
-                    cell_value <= right
-                }
-                (RightTuple::Float(right), Some(FieldType::Float(cell_value))) => {
-                    cell_value <= right
-                }
-                (RightTuple::Boolean(right), Some(FieldType::Boolean(cell_value))) => {
-                    cell_value <= right
-                }
-                _ => false,
-            },
+            }
         }
     }
 }

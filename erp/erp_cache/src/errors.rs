@@ -1,19 +1,8 @@
-use std::{error, fmt};
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error("Records {ids:?} not found for model {model_name}")]
 pub struct RecordsNotFoundError {
     pub(crate) model_name: String,
     pub(crate) ids: Vec<u32>,
 }
-
-impl fmt::Display for RecordsNotFoundError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Records {:?} not found for model {}",
-            self.ids, self.model_name
-        )
-    }
-}
-
-impl error::Error for RecordsNotFoundError {}

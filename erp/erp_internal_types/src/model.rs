@@ -1,13 +1,13 @@
-use std::any::TypeId;
-use std::collections::HashMap;
-use std::error::Error;
+use crate::FinalInternalField;
+use crate::field::InternalField;
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::{FieldCompute, FieldType, MultipleIds};
 use erp_types::model::{CommonModel, ModelDescriptor};
-use crate::field::InternalField;
-use crate::FinalInternalField;
+use std::any::TypeId;
+use std::collections::HashMap;
+use std::error::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
@@ -39,11 +39,7 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
 }
 
-fn compute_wrapper<M>(
-    field: &str,
-    ids: MultipleIds,
-    env: &mut dyn ErasedEnvironment,
-) -> Result<()>
+fn compute_wrapper<M>(field: &str, ids: MultipleIds, env: &mut dyn ErasedEnvironment) -> Result<()>
 where
     M: CommonModel<MultipleIds> + 'static,
 {
@@ -217,7 +213,7 @@ impl FinalInternalModel {
     pub fn is_computed_field(&self, field_name: &str) -> bool {
         self.fields
             .get(field_name)
-            .map_or(false, |field| field.compute.is_some())
+            .is_some_and(|field| field.compute.is_some())
     }
 
     /// Return the internal model linked to the computed given field.

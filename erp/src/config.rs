@@ -14,11 +14,13 @@ pub struct Config {
 impl Config {
     pub fn try_default() -> Result<Config, ConfigError> {
         let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
-            panic!("Impossible to have a config");
+            return Err(ConfigError::Message(
+                "Cannot determine the user configuration directory".to_string(),
+            ));
         };
         let config_file = Path::join(config_dir.config_dir(), "config.toml");
 
-        println!("Loading config from {config_file:?}");
+        tracing::info!(?config_file, "Loading config");
         let config = config::Config::builder()
             .set_default("database.url", "localhost")?
             .set_default("database.name", "erp")?
@@ -30,8 +32,7 @@ impl Config {
                     .separator("_")
                     .list_separator(" "),
             )
-            .build()
-            .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {err:?}"));
+            .build()?;
 
         config.try_deserialize()
     }

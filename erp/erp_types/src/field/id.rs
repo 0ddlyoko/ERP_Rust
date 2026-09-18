@@ -239,7 +239,7 @@ impl From<MultipleIds> for RightTuple {
 
 impl From<&MultipleIds> for RightTuple {
     fn from(id: &MultipleIds) -> Self {
-        id.ids.iter().copied().collect::<Vec<u32>>().into()
+        id.ids.to_vec().into()
     }
 }
 

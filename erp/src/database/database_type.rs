@@ -1,13 +1,13 @@
 use crate::database::cache::CacheConnection;
 use crate::database::postgres::PostgresDatabase;
-use crate::database::{Database, FieldType};
+use crate::database::{Database, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::SearchType;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub enum DatabaseType {
     Cache(CacheConnection),
@@ -47,7 +47,7 @@ impl Database for DatabaseType {
         fields: &[&'a str],
         domain: &SearchType,
         model_manager: &ModelManager,
-    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    ) -> Result<Vec<SearchedRow<'a>>> {
         match self {
             DatabaseType::Cache(cache) => cache.search(model_name, fields, domain, model_manager),
             DatabaseType::Postgres(postgres) => {
@@ -56,7 +56,7 @@ impl Database for DatabaseType {
         }
     }
 
-    fn create(&mut self, model_name: &str, data: &Vec<&MapOfFields>) -> Result<Vec<u32>> {
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
         match self {
             DatabaseType::Cache(cache) => cache.create(model_name, data),
             DatabaseType::Postgres(postgres) => postgres.create(model_name, data),

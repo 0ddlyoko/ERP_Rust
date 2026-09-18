@@ -15,3 +15,14 @@ pub use field_reference::*;
 pub use field_type::*;
 pub use id::*;
 pub use reference::*;
+
+/// Re-exported so generated model code and plugins can name the field types without depending on
+/// `chrono` and `rust_decimal` directly.
+pub use chrono::{DateTime, NaiveDate, Utc};
+pub use rust_decimal::Decimal;
+
+/// Timestamp field type.
+///
+/// Aliased because the derive macro keys a field on the last path segment of its type and drops
+/// generic arguments, so `DateTime<Utc>` cannot be written directly in a model.
+pub type Timestamp = DateTime<Utc>;

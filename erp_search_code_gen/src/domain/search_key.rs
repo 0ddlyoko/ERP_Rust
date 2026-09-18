@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
-use syn::Expr;
-use syn::__private::quote::quote;
 use syn::__private::ToTokens;
+use syn::__private::quote::quote;
+use syn::Expr;
 
 pub enum SearchType {
     And(Box<SearchType>, Box<SearchType>),

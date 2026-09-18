@@ -5,7 +5,9 @@ use directories::ProjectDirs;
 
 pub(crate) fn build_config() -> Result<erp::config::Config, ConfigError> {
     let Some(config_dir) = ProjectDirs::from("me", "oddlyoko", "erp") else {
-        panic!("Impossible to have a config");
+        return Err(ConfigError::Message(
+            "Cannot determine the user configuration directory".to_string(),
+        ));
     };
     let config_file = Path::join(config_dir.config_dir(), "config.toml");
     let config_test_file = Path::join(config_dir.config_dir(), "config_test.toml");
@@ -22,8 +24,7 @@ pub(crate) fn build_config() -> Result<erp::config::Config, ConfigError> {
                 .separator("_")
                 .list_separator(" "),
         )
-        .build()
-        .unwrap_or_else(|err| panic!("Cannot parse config file. Error: {:?}", err));
+        .build()?;
 
     config.try_deserialize()
 }

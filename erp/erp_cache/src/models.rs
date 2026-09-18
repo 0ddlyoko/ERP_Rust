@@ -1,8 +1,8 @@
+use crate::CacheModel;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
-use crate::CacheModel;
 
 /// Cache for a specific model type
 ///
@@ -12,20 +12,27 @@ use crate::CacheModel;
 /// - "To recompute" fields
 #[derive(Clone)]
 pub struct CacheModels {
-    name: String,
     pub models: HashMap<u32, CacheModel>,
     pub dirty: HashMap<u32, HashSet<String>>,
     pub to_recompute: HashMap<String, HashSet<u32>>,
 }
 
+impl Default for CacheModels {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CacheModels {
-    pub fn new(model_name: String) -> Self {
-        let to_recompute = HashMap::new();
+    /// Create the cache slot of a model.
+    ///
+    /// The model name is not stored: callers reach a `CacheModels` through the map keyed by that
+    /// very name.
+    pub fn new() -> Self {
         Self {
-            name: model_name,
             models: HashMap::default(),
             dirty: HashMap::default(),
-            to_recompute,
+            to_recompute: HashMap::new(),
         }
     }
 
@@ -58,12 +65,11 @@ impl CacheModels {
         let cache_model = self.get_model_or_create(id);
         let result = cache_model.insert_field(field_name, field_value.clone(), update_if_exists);
         let is_some = result.is_some();
-        if matches!(update_dirty, Dirty::UpdateDirty) {
-            if let Some((_cache_field, dirty)) = &result {
-                if *dirty {
-                    self.add_dirty(id, vec![field_name.to_string()]);
-                }
-            }
+        if matches!(update_dirty, Dirty::UpdateDirty)
+            && let Some((_cache_field, dirty)) = &result
+            && *dirty
+        {
+            self.add_dirty(id, vec![field_name.to_string()]);
         }
         is_some
     }
@@ -108,23 +114,23 @@ impl CacheModels {
     {
         let mut result: HashMap<u32, MapOfFields> = HashMap::new();
         for id in ids {
-            if let Some(cache_model) = self.get_model(id) {
-                if let Some(dirty_fields) = self.dirty.get(id) {
-                    let map: HashMap<String, Option<FieldType>> = dirty_fields
-                        .iter()
-                        .filter_map(|dirty_field| {
-                            if !field_filter(dirty_field) {
-                                return None;
-                            }
+            if let Some(cache_model) = self.get_model(id)
+                && let Some(dirty_fields) = self.dirty.get(id)
+            {
+                let map: HashMap<String, Option<FieldType>> = dirty_fields
+                    .iter()
+                    .filter_map(|dirty_field| {
+                        if !field_filter(dirty_field) {
+                            return None;
+                        }
 
-                            let field = cache_model.get_field(dirty_field)?;
-                            Some((dirty_field.clone(), field.get().cloned()))
-                        })
-                        .collect();
+                        let field = cache_model.get_field(dirty_field)?;
+                        Some((dirty_field.clone(), field.get().cloned()))
+                    })
+                    .collect();
 
-                    if !map.is_empty() {
-                        result.insert(*id, MapOfFields::new(map));
-                    }
+                if !map.is_empty() {
+                    result.insert(*id, MapOfFields::new(map));
                 }
             }
         }
@@ -172,7 +178,7 @@ impl CacheModels {
     pub fn is_field_dirty(&self, field_name: &str, id: &u32) -> bool {
         self.dirty
             .get(id)
-            .map_or(false, |d| d.iter().any(|f| f == field_name))
+            .is_some_and(|d| d.iter().any(|f| f == field_name))
     }
 
     pub fn get_dirty(&self, id: &u32) -> Option<&HashSet<String>> {
@@ -225,7 +231,7 @@ impl CacheModels {
 
     pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
         self.get_to_recompute(field_name)
-            .map_or(false, |set| set.contains(id))
+            .is_some_and(|set| set.contains(id))
     }
 
     pub fn get_to_recompute(&self, field_name: &str) -> Option<&HashSet<u32>> {

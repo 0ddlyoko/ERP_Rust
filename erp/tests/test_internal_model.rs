@@ -1,6 +1,6 @@
+use erp_internal_types::{FinalInternalModel, InternalField};
 use erp_types::field::FieldType;
 use std::any::TypeId;
-use erp_internal_types::{FinalInternalModel, InternalField};
 
 #[test]
 fn test_get_fields_name() {

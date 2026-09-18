@@ -1,4 +1,4 @@
-use crate::model::attrs::{parse_attributes, AllowedFieldAttrs};
+use crate::model::attrs::{AllowedFieldAttrs, parse_attributes};
 use crate::model::util::{
     gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error,
     gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value,
@@ -71,15 +71,15 @@ impl FieldGen {
                             }
                         }
                         Lit::Float(f) => {
-                            let float = f.base10_parse::<f32>();
-                            if float.is_ok() {
-                                FieldType::Float(float?)
-                            } else {
-                                return Err(gen_wrong_default_value(
-                                    f.span(),
-                                    f.base10_digits(),
-                                    field_name.as_str(),
-                                ));
+                            match rust_decimal::Decimal::from_str_exact(f.base10_digits()) {
+                                Ok(decimal) => FieldType::Decimal(decimal),
+                                Err(_) => {
+                                    return Err(gen_wrong_default_value(
+                                        f.span(),
+                                        f.base10_digits(),
+                                        field_name.as_str(),
+                                    ));
+                                }
                             }
                         }
                         Lit::Bool(b) => {
@@ -193,8 +193,8 @@ impl FieldGen {
                         }
                         field_type = Some(segments[0].ident.clone());
                     }
-                    if is_reference {
-                        if let GenericArgument::Type(Type::Path(TypePath {
+                    if is_reference
+                        && let GenericArgument::Type(Type::Path(TypePath {
                             qself: _,
                             path:
                                 Path {
@@ -202,12 +202,11 @@ impl FieldGen {
                                     segments,
                                 },
                         })) = &args[1]
-                        {
-                            if segments.len() != 1 {
-                                return Err(gen_field_no_field_error(segments.span()));
-                            }
-                            is_reference_multi = segments[0].ident == "MultipleIds";
+                    {
+                        if segments.len() != 1 {
+                            return Err(gen_field_no_field_error(segments.span()));
                         }
+                        is_reference_multi = segments[0].ident == "MultipleIds";
                     }
                 }
             } else {
@@ -218,10 +217,8 @@ impl FieldGen {
         }
 
         // "inverse" should only work on MultipleIds
-        if !is_reference_multi {
-            if let Some((inverse_ident, _)) = inverse {
-                return Err(gen_inverse_not_multiple_ids(inverse_ident.span()));
-            }
+        if !is_reference_multi && let Some((inverse_ident, _)) = inverse {
+            return Err(gen_inverse_not_multiple_ids(inverse_ident.span()));
         }
 
         Ok(FieldGen {

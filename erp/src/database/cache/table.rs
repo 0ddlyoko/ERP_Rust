@@ -1,5 +1,5 @@
-use crate::database::cache::Row;
 use crate::database::FieldType;
+use crate::database::cache::Row;
 use std::collections::HashMap;
 
 #[derive(Default, Clone)]
@@ -25,16 +25,6 @@ impl Table {
         row.cells
             .insert("id".to_string(), Some(FieldType::UInteger(id)));
         self.last_id = self.last_id.max(id);
-        self.rows.insert(
-            id,
-            Row {
-                id,
-                cells: row.cells,
-            },
-        );
-    }
-
-    pub(crate) fn delete_row(&mut self, id: &u32) {
-        self.rows.remove(id);
+        self.rows.insert(id, Row { cells: row.cells });
     }
 }

@@ -2,7 +2,7 @@ use erp_search::{RightTuple, SearchOperator, SearchTuple, SearchType};
 use erp_search_code_gen::make_domain;
 
 #[test]
-fn test_domain_macro() -> Result<(), Box<dyn std::error::Error>> {
+fn test_domain_macro() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Empty
     let domain = make_domain!([]);
     assert_eq!(domain, SearchType::Nothing);
@@ -11,7 +11,7 @@ fn test_domain_macro() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error>> {
+fn test_domain_macro_copy() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Simple one
     let domain = make_domain!([("test", "=", "lol")]);
     assert_eq!(

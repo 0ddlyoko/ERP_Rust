@@ -1,35 +1,15 @@
-use std::{error, fmt};
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error(
+    "Plugin \"{plugin_name}\" is already registered, or a plugin with the same name already exist"
+)]
 pub struct PluginAlreadyRegisteredError {
     pub(crate) plugin_name: String,
 }
 
-impl fmt::Display for PluginAlreadyRegisteredError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Plugin \"{}\" is already registered, or a plugin with the same name already exist",
-            self.plugin_name
-        )
-    }
-}
-
-impl error::Error for PluginAlreadyRegisteredError {}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error("Plugin \"{plugin_name}\" doesn't exist. Please check if it's in the plugin path")]
 pub struct PluginNotFoundError {
     pub(crate) plugin_name: String,
 }
-
-impl fmt::Display for PluginNotFoundError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Plugin \"{}\" doesn't exist. Please check if it's in the plugin path",
-            self.plugin_name
-        )
-    }
-}
-
-impl error::Error for PluginNotFoundError {}

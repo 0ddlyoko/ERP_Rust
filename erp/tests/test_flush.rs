@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Application {
     let mut app = Application::new_test();

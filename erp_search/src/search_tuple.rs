@@ -1,4 +1,6 @@
 use crate::{SearchOperator, UnknownSearchOperatorError};
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SearchTuple {
@@ -56,8 +58,10 @@ pub enum RightTuple {
     String(String),
     Integer(i32),
     UInteger(u32),
-    Float(f32),
+    Decimal(Decimal),
     Boolean(bool),
+    Date(NaiveDate),
+    DateTime(DateTime<Utc>),
     Array(Vec<RightTuple>),
     None,
 }
@@ -86,9 +90,21 @@ impl From<u32> for RightTuple {
     }
 }
 
-impl From<f32> for RightTuple {
-    fn from(f: f32) -> Self {
-        Self::Float(f)
+impl From<Decimal> for RightTuple {
+    fn from(d: Decimal) -> Self {
+        Self::Decimal(d)
+    }
+}
+
+impl From<NaiveDate> for RightTuple {
+    fn from(d: NaiveDate) -> Self {
+        Self::Date(d)
+    }
+}
+
+impl From<DateTime<Utc>> for RightTuple {
+    fn from(dt: DateTime<Utc>) -> Self {
+        Self::DateTime(dt)
     }
 }
 

@@ -1,13 +1,13 @@
 use erp::app::Application;
+use erp_internal_types::{FinalInternalField, InternalField};
 use erp_types::field::FieldType;
 use erp_types::field::{FieldCompute, FieldReferenceType};
 use std::any::TypeId;
 use std::error::Error;
-use erp_internal_types::{FinalInternalField, InternalField};
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_register_field() {

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tracing.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+thiserror.workspace = true
 config.workspace = true
 directories.workspace = true
 libloading.workspace = true

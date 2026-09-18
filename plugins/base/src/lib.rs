@@ -20,7 +20,7 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Plugin<_>>();
     }
 
-    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
         // TODO Insert all plugins in database, if needed
 
         Ok(())

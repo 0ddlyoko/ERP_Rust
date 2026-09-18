@@ -1,5 +1,7 @@
+use chrono::{DateTime, NaiveDate, Utc};
 use erp_search::RightTuple;
 use erp_types::field as field_type;
+use rust_decimal::Decimal;
 use std::fmt::{Display, Formatter};
 
 #[macro_export]
@@ -22,8 +24,10 @@ pub enum FieldType {
     String(String),
     Integer(i32),
     UInteger(u32),
-    Float(f32),
+    Decimal(Decimal),
     Boolean(bool),
+    Date(NaiveDate),
+    DateTime(DateTime<Utc>),
 }
 
 impl Display for FieldType {
@@ -32,8 +36,10 @@ impl Display for FieldType {
             FieldType::String(s) => write!(f, "{}", s),
             FieldType::Integer(i) => write!(f, "{}", i),
             FieldType::UInteger(b) => write!(f, "{}", b),
-            FieldType::Float(fl) => write!(f, "{}", fl),
+            FieldType::Decimal(d) => write!(f, "{}", d),
             FieldType::Boolean(e) => write!(f, "{}", e),
+            FieldType::Date(d) => write!(f, "{}", d),
+            FieldType::DateTime(dt) => write!(f, "{}", dt),
         }
     }
 }
@@ -46,8 +52,10 @@ impl PartialEq for FieldType {
             FieldType::String,
             FieldType::Integer,
             FieldType::UInteger,
-            FieldType::Float,
-            FieldType::Boolean
+            FieldType::Decimal,
+            FieldType::Boolean,
+            FieldType::Date,
+            FieldType::DateTime
         )
     }
 }
@@ -58,8 +66,10 @@ impl From<FieldType> for RightTuple {
             FieldType::String(value) => RightTuple::String(value),
             FieldType::Integer(value) => RightTuple::Integer(value),
             FieldType::UInteger(value) => RightTuple::UInteger(value),
-            FieldType::Float(value) => RightTuple::Float(value),
+            FieldType::Decimal(value) => RightTuple::Decimal(value),
             FieldType::Boolean(value) => RightTuple::Boolean(value),
+            FieldType::Date(value) => RightTuple::Date(value),
+            FieldType::DateTime(value) => RightTuple::DateTime(value),
         }
     }
 }
@@ -70,8 +80,10 @@ impl PartialEq<RightTuple> for FieldType {
             (FieldType::String(value), RightTuple::String(other_value)) => value == other_value,
             (FieldType::Integer(value), RightTuple::Integer(other_value)) => value == other_value,
             (FieldType::UInteger(value), RightTuple::UInteger(other_value)) => value == other_value,
-            (FieldType::Float(value), RightTuple::Float(other_value)) => value == other_value,
+            (FieldType::Decimal(value), RightTuple::Decimal(other_value)) => value == other_value,
             (FieldType::Boolean(value), RightTuple::Boolean(other_value)) => value == other_value,
+            (FieldType::Date(value), RightTuple::Date(other_value)) => value == other_value,
+            (FieldType::DateTime(value), RightTuple::DateTime(other_value)) => value == other_value,
             (value, RightTuple::Array(other_value)) => other_value.contains(&value.clone().into()),
             _ => false,
         }
@@ -90,8 +102,10 @@ impl From<field_type::FieldType> for FieldType {
         match value {
             field_type::FieldType::String(v) => FieldType::String(v),
             field_type::FieldType::Integer(v) => FieldType::Integer(v),
-            field_type::FieldType::Float(v) => FieldType::Float(v),
+            field_type::FieldType::Decimal(v) => FieldType::Decimal(v),
             field_type::FieldType::Bool(v) => FieldType::Boolean(v),
+            field_type::FieldType::Date(v) => FieldType::Date(v),
+            field_type::FieldType::DateTime(v) => FieldType::DateTime(v),
             field_type::FieldType::Ref(v) => FieldType::UInteger(v),
             // This should not occur
             field_type::FieldType::Refs(_v) => {
@@ -107,8 +121,10 @@ impl From<FieldType> for field_type::FieldType {
             FieldType::String(v) => field_type::FieldType::String(v),
             FieldType::Integer(v) => field_type::FieldType::Integer(v),
             FieldType::UInteger(v) => field_type::FieldType::Ref(v),
-            FieldType::Float(v) => field_type::FieldType::Float(v),
+            FieldType::Decimal(v) => field_type::FieldType::Decimal(v),
             FieldType::Boolean(v) => field_type::FieldType::Bool(v),
+            FieldType::Date(v) => field_type::FieldType::Date(v),
+            FieldType::DateTime(v) => field_type::FieldType::DateTime(v),
         }
     }
 }

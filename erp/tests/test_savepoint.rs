@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug, Clone)]
 pub struct UselessError {}

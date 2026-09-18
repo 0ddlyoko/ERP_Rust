@@ -5,11 +5,11 @@ use crate::domain::util::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Expr::{Lit, Tuple};
+use syn::Lit::Str;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::Expr::{Lit, Tuple};
-use syn::Lit::Str;
 use syn::{Expr, ExprLit, Result};
 
 pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {

@@ -9,7 +9,7 @@ use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
 use std::error::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub struct Application {
     config: Config,

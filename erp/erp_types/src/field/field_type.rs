@@ -1,3 +1,5 @@
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use std::fmt::{Debug, Display, Formatter};
 
 #[macro_export]
@@ -19,8 +21,11 @@ macro_rules! field_type_make_eq {
 pub enum FieldType {
     String(String),
     Integer(i32),
-    Float(f32),
+    /// Fixed-point decimal. Money and any other exact quantity belongs here, never in a float.
+    Decimal(Decimal),
     Bool(bool),
+    Date(NaiveDate),
+    DateTime(DateTime<Utc>),
     Ref(u32),
     Refs(Vec<u32>),
 }
@@ -30,8 +35,10 @@ impl Display for FieldType {
         match self {
             FieldType::String(s) => write!(f, "{s}"),
             FieldType::Integer(i) => write!(f, "{i}"),
-            FieldType::Float(fl) => write!(f, "{fl}"),
+            FieldType::Decimal(d) => write!(f, "{d}"),
             FieldType::Bool(b) => write!(f, "{b}"),
+            FieldType::Date(d) => write!(f, "{d}"),
+            FieldType::DateTime(dt) => write!(f, "{dt}"),
             FieldType::Ref(id) => write!(f, "{id}"),
             FieldType::Refs(ids) => write!(f, "{ids:?}"),
         }
@@ -45,8 +52,10 @@ impl PartialEq for FieldType {
             other,
             FieldType::String,
             FieldType::Integer,
-            FieldType::Float,
+            FieldType::Decimal,
             FieldType::Bool,
+            FieldType::Date,
+            FieldType::DateTime,
             FieldType::Ref,
             FieldType::Refs
         )
@@ -103,25 +112,69 @@ impl From<&i32> for FieldType {
     }
 }
 
-// f32
-impl<'a> From<&'a FieldType> for Option<&'a f32> {
+// Decimal
+impl<'a> From<&'a FieldType> for Option<&'a Decimal> {
     fn from(t: &'a FieldType) -> Self {
         match t {
-            FieldType::Float(f) => Some(f),
+            FieldType::Decimal(d) => Some(d),
             _ => None,
         }
     }
 }
 
-impl From<f32> for FieldType {
-    fn from(t: f32) -> Self {
-        FieldType::Float(t)
+impl From<Decimal> for FieldType {
+    fn from(t: Decimal) -> Self {
+        FieldType::Decimal(t)
     }
 }
 
-impl From<&f32> for FieldType {
-    fn from(t: &f32) -> Self {
-        FieldType::Float(*t)
+impl From<&Decimal> for FieldType {
+    fn from(t: &Decimal) -> Self {
+        FieldType::Decimal(*t)
+    }
+}
+
+// NaiveDate
+impl<'a> From<&'a FieldType> for Option<&'a NaiveDate> {
+    fn from(t: &'a FieldType) -> Self {
+        match t {
+            FieldType::Date(d) => Some(d),
+            _ => None,
+        }
+    }
+}
+
+impl From<NaiveDate> for FieldType {
+    fn from(t: NaiveDate) -> Self {
+        FieldType::Date(t)
+    }
+}
+
+impl From<&NaiveDate> for FieldType {
+    fn from(t: &NaiveDate) -> Self {
+        FieldType::Date(*t)
+    }
+}
+
+// DateTime<Utc>
+impl<'a> From<&'a FieldType> for Option<&'a DateTime<Utc>> {
+    fn from(t: &'a FieldType) -> Self {
+        match t {
+            FieldType::DateTime(dt) => Some(dt),
+            _ => None,
+        }
+    }
+}
+
+impl From<DateTime<Utc>> for FieldType {
+    fn from(t: DateTime<Utc>) -> Self {
+        FieldType::DateTime(t)
+    }
+}
+
+impl From<&DateTime<Utc>> for FieldType {
+    fn from(t: &DateTime<Utc>) -> Self {
+        FieldType::DateTime(*t)
     }
 }
 

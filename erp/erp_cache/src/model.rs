@@ -1,8 +1,8 @@
+use crate::CacheField;
 use erp_types::cache::Update;
 use erp_types::field::FieldType;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use crate::CacheField;
 
 #[derive(Clone)]
 pub struct CacheModel {
@@ -90,10 +90,10 @@ impl CacheModel {
         let mut dirty_fields = Vec::new();
         for (name, value) in fields.fields {
             let result = self.insert_field(name.as_str(), value, update_if_exists);
-            if let Some(result) = result {
-                if result.1 {
-                    dirty_fields.push(name);
-                }
+            if let Some(result) = result
+                && result.1
+            {
+                dirty_fields.push(name);
             }
         }
         dirty_fields
@@ -111,9 +111,9 @@ impl CacheModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::{CacheField, CacheModel};
     use erp_types::field::FieldType;
     use std::collections::HashMap;
-    use crate::{CacheField, CacheModel};
 
     #[test]
     fn test_access_valid_fields() {

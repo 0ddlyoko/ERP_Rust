@@ -33,8 +33,8 @@ impl CacheField {
 
 #[cfg(test)]
 mod tests {
-    use erp_types::field::FieldType;
     use crate::CacheField;
+    use erp_types::field::FieldType;
 
     #[test]
     fn test() {

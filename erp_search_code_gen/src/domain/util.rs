@@ -8,7 +8,10 @@ pub fn gen_invalid_or_unknown_attribute(span: Span) -> Error {
 
 pub fn gen_invalid_search_string(span: Span, name: &str, valid_strings: &[&str]) -> Error {
     let joined_str = valid_strings.join(", ");
-    Error::new(span, format!("Invalid attribute \"{name}\". Valid keys are: {joined_str}"))
+    Error::new(
+        span,
+        format!("Invalid attribute \"{name}\". Valid keys are: {joined_str}"),
+    )
 }
 
 pub fn gen_invalid_tuple_len(span: Span) -> Error {

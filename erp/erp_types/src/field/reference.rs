@@ -1,9 +1,9 @@
+use crate::field::{FieldType, IdMode, MultipleIds, SingleId};
+use crate::model::{BaseModel, CommonModel};
 use std::marker::PhantomData;
 use std::ops;
 use std::slice::Iter;
 use std::vec::IntoIter;
-use crate::field::{FieldType, IdMode, MultipleIds, SingleId};
-use crate::model::{BaseModel, CommonModel};
 
 #[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {

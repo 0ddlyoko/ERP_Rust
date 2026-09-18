@@ -56,7 +56,7 @@ impl FinalInternalField {
                 if a != b {
                     panic!(
                         "Default values are of different type (name: {}, first default value: {}, second default value: {}",
-                        self.name, &self.default_value, &default_value
+                        self.name, self.default_value, default_value
                     );
                 }
             }

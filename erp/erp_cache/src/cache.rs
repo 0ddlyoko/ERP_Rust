@@ -1,16 +1,15 @@
+use crate::CacheModels;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
 use erp_types::field::IdMode;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use crate::CacheModels;
 
 pub struct Cache {
     pub cache: HashMap<String, CacheModels>,
 }
 
 impl Cache {
-
     /// Check if a given record is present in cache. If CacheModels not found, panic
     pub fn is_record_present(&self, model_name: &str, id: &u32) -> bool {
         self.get_cache_models(model_name).is_record_present(id)
@@ -192,9 +191,9 @@ impl Cache {
     // Compute
 
     pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
-        self.cache.get(model_name).map_or(false, |cache_models| {
-            cache_models.is_to_recompute(field_name, id)
-        })
+        self.cache
+            .get(model_name)
+            .is_some_and(|cache_models| cache_models.is_to_recompute(field_name, id))
     }
 
     /// Check if given record field are present in cache, and return those who are not in cache

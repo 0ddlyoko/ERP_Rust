@@ -1,4 +1,4 @@
-use crate::model::attrs::{parse_attributes, AllowedModelAttrs};
+use crate::model::attrs::{AllowedModelAttrs, parse_attributes};
 use crate::model::field::FieldGen;
 use crate::model::util::gen_missing_key_error;
 use syn::punctuated::Punctuated;

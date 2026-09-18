@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, ExprArray};
+use syn::{ExprArray, parse_macro_input};
 
 mod domain;
 

@@ -1,5 +1,5 @@
 use crate::database::cache::{Row, Table};
-use crate::database::{Database, FieldType};
+use crate::database::{Database, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchTuple, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Committed state of the in-memory database, shared by every connection opened on it.
 ///
@@ -176,7 +176,7 @@ impl CacheConnection {
 
         let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
 
-        let ids = if matches!(
+        if matches!(
             final_field.default_value,
             erp_types::field::FieldType::Ref(_)
         ) {
@@ -203,9 +203,7 @@ impl CacheConnection {
                     target_model.name, current_field
                 )
             }
-        };
-
-        ids
+        }
     }
 
     fn _get_rows(
@@ -262,7 +260,7 @@ impl Database for CacheConnection {
         fields: &[&'a str],
         domain: &SearchType,
         model_manager: &ModelManager,
-    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    ) -> Result<Vec<SearchedRow<'a>>> {
         // We don't care about searching 2 times (one to retrieve ids and one to retrieve fields), as it's cache
         let ids = self.browse(model_name, domain, model_manager)?;
         if ids.is_empty() {
@@ -292,7 +290,7 @@ impl Database for CacheConnection {
         Ok(result)
     }
 
-    fn create(&mut self, model_name: &str, data: &Vec<&MapOfFields>) -> Result<Vec<u32>> {
+    fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
         let ids = {
             let mut store = self.store.lock().expect("cache database mutex poisoned");
             store.reserve_ids(model_name, data.len())
@@ -307,7 +305,7 @@ impl Database for CacheConnection {
                     (k.clone(), v)
                 })
                 .collect::<HashMap<_, _>>();
-            table.insert_row(*id, Row { id: *id, cells });
+            table.insert_row(*id, Row { cells });
         }
         self.mark_written(model_name, ids.iter().copied());
         Ok(ids)
@@ -373,7 +371,9 @@ impl Database for CacheConnection {
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
         // TODO Create real errors
         match self.savepoints.last() {
-            Some(Savepoint { name: Some(last), .. }) if last == name => {
+            Some(Savepoint {
+                name: Some(last), ..
+            }) if last == name => {
                 self.savepoints.pop();
                 Ok(())
             }
@@ -384,7 +384,9 @@ impl Database for CacheConnection {
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
         match self.savepoints.last() {
-            Some(Savepoint { name: Some(last), .. }) if last == name => {
+            Some(Savepoint {
+                name: Some(last), ..
+            }) if last == name => {
                 let savepoint = self.savepoints.pop().expect("checked just above");
                 self.tables = savepoint.tables;
                 self.written_rows = savepoint.written_rows;

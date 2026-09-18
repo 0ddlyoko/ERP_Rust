@@ -8,7 +8,7 @@ use test_plugin::TestPlugin;
 use test_plugin::TestPlugin2;
 use test_plugin::TestPlugin3;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_load_same_plugin_twice() -> Result<()> {

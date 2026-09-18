@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use test_utilities::models::{SaleOrder, SaleOrderLine};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Application {
     let mut app = Application::new_test();
@@ -47,7 +47,11 @@ fn test_several_environments_coexist() -> Result<()> {
 
     let mut env = app.new_env()?;
     for amount in 1..=3 {
-        assert_eq!(count_lines(&mut env, amount)?, 1, "amount {amount} must be committed");
+        assert_eq!(
+            count_lines(&mut env, amount)?,
+            1,
+            "amount {amount} must be committed"
+        );
     }
     Ok(())
 }
@@ -99,8 +103,16 @@ fn test_rollback_does_not_leak_to_other_environments() -> Result<()> {
     drop(discarded);
 
     let mut env = app.new_env()?;
-    assert_eq!(count_lines(&mut env, 7)?, 1, "the committed row must survive");
-    assert_eq!(count_lines(&mut env, 9)?, 0, "the dropped environment must roll back");
+    assert_eq!(
+        count_lines(&mut env, 7)?,
+        1,
+        "the committed row must survive"
+    );
+    assert_eq!(
+        count_lines(&mut env, 9)?,
+        0,
+        "the dropped environment must roll back"
+    );
     Ok(())
 }
 

@@ -53,7 +53,10 @@ pub struct SaleOrder<Mode: IdMode> {
 }
 
 impl SaleOrder<MultipleIds> {
-    pub fn compute_total_price<'mm>(&self, env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    pub fn compute_total_price(
+        &self,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for sale_order in self {
             let lines: SaleOrderLine<_> = sale_order.get_lines(env)?;
             let total_prices = lines.get_total_price(env)?;

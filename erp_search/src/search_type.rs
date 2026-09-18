@@ -2,8 +2,6 @@ use crate::{
     InvalidDomainError, LeftTuple, RightTuple, SearchKey, SearchOperator, SearchTuple,
     UnknownSearchOperatorError,
 };
-use std::error;
-use std::fmt::Display;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum SearchType {
@@ -55,22 +53,13 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum ErrorType {
-    InvalidDomain(InvalidDomainError),
-    UnknownSearchOperator(UnknownSearchOperatorError),
+    #[error(transparent)]
+    InvalidDomain(#[from] InvalidDomainError),
+    #[error(transparent)]
+    UnknownSearchOperator(#[from] UnknownSearchOperatorError),
 }
-
-impl Display for ErrorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorType::InvalidDomain(e) => e.fmt(f),
-            ErrorType::UnknownSearchOperator(e) => e.fmt(f),
-        }
-    }
-}
-
-impl error::Error for ErrorType {}
 
 impl TryFrom<Vec<SearchKey>> for SearchType {
     type Error = ErrorType;

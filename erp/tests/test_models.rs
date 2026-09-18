@@ -1,14 +1,14 @@
-use base::models::{Contact, Lang};
 use base::BasePlugin;
+use base::models::{Contact, Lang};
 use erp::app::Application;
 use erp_types::field::{FieldDepend, Reference};
 use erp_types::field::{IdMode, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::error::Error;
-use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 use test_utilities::TestLibPlugin;
+use test_utilities::models::{BaseSaleOrder, SaleOrder, SaleOrderLine, SaleOrderState};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_models() -> Result<()> {

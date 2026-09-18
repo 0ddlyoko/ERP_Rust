@@ -27,7 +27,7 @@ pub trait Plugin: Any + Send + Sync {
     /// Post-Initialize this plugin
     ///
     /// This method is called once this plugin is fully initialized (after the call to init_models)
-    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error>> {
+    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
         Ok(())
     }
 

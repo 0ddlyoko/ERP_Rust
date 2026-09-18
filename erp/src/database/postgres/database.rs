@@ -1,4 +1,4 @@
-use crate::database::{Database, DatabaseConfig, ErrorType, FieldType};
+use crate::database::{Database, DatabaseConfig, ErrorType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::SearchType;
 use erp_types::model::MapOfFields;
@@ -6,7 +6,7 @@ use postgres::{Client, NoTls};
 use std::collections::HashMap;
 use std::error::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub struct PostgresDatabase {
     pub client: Client,
@@ -20,16 +20,18 @@ impl PostgresDatabase {
     where
         Self: Sized,
     {
-        let user = &config.user;
-        let password = &config.password;
-        let url = &config.url;
-        let db_name = &config.name;
-        let schema = &config.schema;
-        let connect = format!("postgresql://{user}:{password}@{url}/{db_name}");
-        let client = Client::connect(connect.as_str(), NoTls)?;
+        // Built field by field rather than as a URL: a password containing '@', '/', '?' or
+        // '#' would otherwise corrupt the connection string.
+        let client = postgres::Config::new()
+            .user(&config.user)
+            .password(&config.password)
+            .host(&config.url)
+            .port(config.port)
+            .dbname(&config.name)
+            .connect(NoTls)?;
         Ok(Self {
             client,
-            schema: schema.clone(),
+            schema: config.schema.clone(),
             is_transaction: false,
         })
     }
@@ -82,11 +84,11 @@ impl Database for PostgresDatabase {
         _fields: &[&'a str],
         _domain: &SearchType,
         _model_manager: &ModelManager,
-    ) -> Result<Vec<(u32, HashMap<&'a str, Option<FieldType>>)>> {
+    ) -> Result<Vec<SearchedRow<'a>>> {
         todo!()
     }
 
-    fn create(&mut self, _model_name: &str, _data: &Vec<&MapOfFields>) -> Result<Vec<u32>> {
+    fn create(&mut self, _model_name: &str, _data: &[&MapOfFields]) -> Result<Vec<u32>> {
         todo!()
     }
 
@@ -115,9 +117,7 @@ impl Database for PostgresDatabase {
     }
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
-        Ok(self
-            .client
-            .batch_execute(&format!("ROLLBACK TO {name}"))?)
+        Ok(self.client.batch_execute(&format!("ROLLBACK TO {name}"))?)
     }
 
     fn start_transaction(&mut self) -> Result<()> {

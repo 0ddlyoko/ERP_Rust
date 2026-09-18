@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_env_drop_rollback() -> Result<()> {

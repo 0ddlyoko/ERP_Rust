@@ -1,18 +1,14 @@
-use std::{error, fmt};
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error("Model \"{model_name}\" is not present in registries!")]
 pub struct ModelNotFound {
     pub model_name: String,
 }
 
-impl fmt::Display for ModelNotFound {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Model \"{}\" is not present in registries!",
-            self.model_name
-        )
-    }
+#[derive(Debug, Clone, Error)]
+#[error("Field \"{model_name}\".\"{field_name}\" is not present in registries!")]
+pub struct FieldNotFound {
+    pub model_name: String,
+    pub field_name: String,
 }
-
-impl error::Error for ModelNotFound {}

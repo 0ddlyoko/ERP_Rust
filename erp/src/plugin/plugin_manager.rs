@@ -1,6 +1,6 @@
-use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginNotFoundError};
 use crate::plugin::InternalPluginState::{Installed, NotInstalled};
 use crate::plugin::Plugin;
+use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginNotFoundError};
 use crate::plugin::{InternalPlugin, InternalPluginType};
 use crate::util::dependency;
 use libloading::{Error, Library, Symbol};
@@ -37,8 +37,8 @@ impl PluginManager {
     pub fn register_plugins(
         &mut self,
         directory_path: &String,
-    ) -> Result<(), Box<dyn error::Error>> {
-        println!("Registering plugins from {}", directory_path);
+    ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
+        tracing::info!(directory = %directory_path, "Registering plugins from directory");
         let dll_extension = env::consts::DLL_EXTENSION;
         let paths = fs::read_dir(directory_path)?;
         for path in paths {
@@ -55,9 +55,9 @@ impl PluginManager {
     pub fn register_plugin(
         &mut self,
         plugin: Box<dyn Plugin>,
-    ) -> Result<(), Box<dyn error::Error>> {
+    ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
         let plugin_name = plugin.name();
-        println!("Registering plugin: {}", plugin_name);
+        tracing::info!(plugin = %plugin_name, "Registering plugin");
         if self.plugins.contains_key(&plugin_name) {
             return Err(PluginAlreadyRegisteredError {
                 plugin_name: plugin_name.to_string(),
@@ -80,12 +80,12 @@ impl PluginManager {
     pub fn register_plugin_from_file(
         &mut self,
         plugin_path: &PathBuf,
-    ) -> Result<(), Box<dyn error::Error>> {
+    ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
         // TODO Add a custom exception here with the path, if error
         let internal_plugin = unsafe { read_plugin_from_file(plugin_path)? };
 
         let plugin_name = internal_plugin.plugin.name();
-        println!("Registering plugin: {}", plugin_name);
+        tracing::info!(plugin = %plugin_name, "Registering plugin");
         if self.plugins.contains_key(&plugin_name) {
             let InternalPlugin {
                 plugin,
@@ -109,11 +109,11 @@ impl PluginManager {
     pub(crate) fn load_plugin(
         &mut self,
         plugin_name: &str,
-    ) -> Result<&mut InternalPlugin, Box<dyn error::Error>> {
+    ) -> Result<&mut InternalPlugin, Box<dyn error::Error + Send + Sync>> {
         let plugin = self
             .get_plugin_mut(plugin_name)
             .unwrap_or_else(|| panic!("Plugin {} is not registered", plugin_name));
-        println!("Loading plugin: {}", plugin_name);
+        tracing::info!(plugin = %plugin_name, "Loading plugin");
         plugin.state = Installed;
         Ok(plugin)
     }
@@ -154,7 +154,7 @@ impl PluginManager {
 
     pub(crate) fn _get_ordered_dependencies_of_all_plugins(
         &self,
-    ) -> Result<Vec<&str>, Box<dyn error::Error>> {
+    ) -> Result<Vec<&str>, Box<dyn error::Error + Send + Sync>> {
         let plugins = self.plugins.keys().collect::<Vec<_>>();
         self._get_ordered_dependencies(plugins)
     }
@@ -162,7 +162,7 @@ impl PluginManager {
     pub(crate) fn _get_ordered_dependencies<'a>(
         &self,
         plugins: Vec<&'a String>,
-    ) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
+    ) -> Result<Vec<&'a str>, Box<dyn error::Error + Send + Sync>> {
         let dependencies: Vec<(&'a str, Vec<&str>)> = plugins
             .iter()
             .map(|&plugin_name| {
@@ -184,7 +184,7 @@ impl PluginManager {
 
         let dependencies = dependencies.into_iter().collect();
 
-        let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error>> =
+        let sorted_dependencies: Result<Vec<&'a str>, Box<dyn error::Error + Send + Sync>> =
             dependency::sort_dependencies(&dependencies);
         sorted_dependencies
     }

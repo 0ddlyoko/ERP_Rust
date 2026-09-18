@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 erp = { path = "erp" }
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [workspace]
 members = [
@@ -21,6 +23,10 @@ members = [
 
 [workspace.dependencies]
 
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = "1.38"
 config = { version = "0.15", default-features = false, features = ["toml"] }
 directories = "6.0"
 libloading = "0.9"
@@ -31,4 +37,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serial_test = "3.2.0"
 syn = "2.0"
+thiserror = "2.0"
 uuid = { version = "1.16.0", features = ["v4"] }

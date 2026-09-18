@@ -1,44 +1,22 @@
 use std::collections::{HashMap, HashSet};
-use std::{error, fmt};
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error("Missing dependency '{dependency_name}' for plugin '{plugin_name}'")]
 pub struct MissingDependencyError {
     pub(crate) plugin_name: String,
     pub(crate) dependency_name: String,
 }
 
-impl fmt::Display for MissingDependencyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Missing dependency '{}' for plugin '{}'",
-            self.dependency_name, self.plugin_name
-        )
-    }
-}
-
-impl error::Error for MissingDependencyError {}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
+#[error("Circular dependency detected for plugin '{plugin_name}'")]
 pub struct CircularDependencyError {
     pub(crate) plugin_name: String,
 }
 
-impl fmt::Display for CircularDependencyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Circular dependency detected for plugin '{}'",
-            self.plugin_name
-        )
-    }
-}
-
-impl error::Error for CircularDependencyError {}
-
 pub fn sort_dependencies<'a>(
     dependencies: &HashMap<&'a str, Vec<&str>>,
-) -> Result<Vec<&'a str>, Box<dyn error::Error>> {
+) -> Result<Vec<&'a str>, Box<dyn std::error::Error + Send + Sync>> {
     let mut sorted = Vec::new();
     let mut visited = HashSet::new();
     let mut visiting = HashSet::new();
@@ -64,7 +42,7 @@ fn visit<'a>(
     sorted: &mut Vec<&'a str>,
     visited: &mut HashSet<&'a str>,
     visiting: &mut HashSet<&'a str>,
-) -> Result<(), Box<dyn error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if visiting.contains(plugin) {
         return Err(Box::new(CircularDependencyError {
             plugin_name: plugin.to_string(),
@@ -98,7 +76,7 @@ fn visit<'a>(
 #[cfg(test)]
 mod tests {
     use crate::util::dependency::{
-        sort_dependencies, CircularDependencyError, MissingDependencyError,
+        CircularDependencyError, MissingDependencyError, sort_dependencies,
     };
     use std::collections::HashMap;
 

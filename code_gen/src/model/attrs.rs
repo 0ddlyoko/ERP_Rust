@@ -4,7 +4,7 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Comma, Eq};
-use syn::{bracketed, Attribute, Lit, LitStr};
+use syn::{Attribute, Lit, LitStr, bracketed};
 
 #[allow(dead_code)]
 pub trait MySpanned {

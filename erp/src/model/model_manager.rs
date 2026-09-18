@@ -1,4 +1,5 @@
 use crate::model::Model;
+use crate::model::ModelNotFound;
 use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
@@ -188,12 +189,46 @@ impl ModelManager {
         &self.models
     }
 
-    pub fn get_model(&self, model_name: &str) -> &FinalInternalModel {
-        self.models.get(model_name).unwrap()
+    /// Look a model up by name.
+    ///
+    /// This is the entry point for any name that did not come from the framework itself, such as
+    /// one carried by an API request, and the only one that does not panic on a typo.
+    pub fn try_get_model(&self, model_name: &str) -> Result<&FinalInternalModel, ModelNotFound> {
+        self.models.get(model_name).ok_or_else(|| ModelNotFound {
+            model_name: model_name.to_string(),
+        })
     }
 
+    /// Same as [`ModelManager::try_get_model`], for mutable access.
+    pub fn try_get_model_mut(
+        &mut self,
+        model_name: &str,
+    ) -> Result<&mut FinalInternalModel, ModelNotFound> {
+        self.models
+            .get_mut(model_name)
+            .ok_or_else(|| ModelNotFound {
+                model_name: model_name.to_string(),
+            })
+    }
+
+    /// Look a model up by a name the framework itself produced.
+    ///
+    /// # Panics
+    /// Panics if the model is unknown. Callers pass names obtained from `M::_get_model_name()`,
+    /// which the derive macro fixes at compile time, so a failure here is a framework bug rather
+    /// than bad input. Use [`ModelManager::try_get_model`] for anything else.
+    pub fn get_model(&self, model_name: &str) -> &FinalInternalModel {
+        self.try_get_model(model_name)
+            .unwrap_or_else(|err| panic!("{err}"))
+    }
+
+    /// Same as [`ModelManager::get_model`], for mutable access.
+    ///
+    /// # Panics
+    /// Panics if the model is unknown; see [`ModelManager::get_model`].
     pub fn get_model_mut(&mut self, model_name: &str) -> &mut FinalInternalModel {
-        self.models.get_mut(model_name).unwrap()
+        self.try_get_model_mut(model_name)
+            .unwrap_or_else(|err| panic!("{err}"))
     }
 
     pub fn is_valid_model(&self, model_name: &str) -> bool {
