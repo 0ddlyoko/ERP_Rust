@@ -472,3 +472,123 @@ fn test_many2many_against_postgres() -> Result<()> {
     );
     Ok(())
 }
+
+/// Values reach the database as bound parameters, never as SQL text.
+///
+/// Each attempt below would drop a table if it were interpolated; the table is checked
+/// afterwards.
+#[test]
+fn test_values_cannot_inject_sql() -> Result<()> {
+    let app = app_or_skip!("t_inject");
+
+    let hostile = "'); DROP TABLE \"invoice\"; --";
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", hostile);
+    env.create_records("invoice", vec![map])?;
+    env.close()?;
+
+    // Stored verbatim, and found verbatim.
+    let mut env = app.new_env()?;
+    assert_eq!(
+        env.count("invoice", &make_domain!([("name", "=", hostile)]))?,
+        1
+    );
+    assert_eq!(
+        env.count("invoice", &make_domain!([("name", "like", hostile)]))?,
+        1
+    );
+    assert_eq!(
+        env.count("invoice", &make_domain!([("name", "!=", hostile)]))?,
+        0
+    );
+
+    let members = vec![hostile, "harmless"];
+    assert_eq!(
+        env.count("invoice", &make_domain!([("name", "in", members)]))?,
+        1
+    );
+    Ok(())
+}
+
+/// The table is still there after all of that.
+#[test]
+fn test_injection_attempts_leave_the_schema_intact() -> Result<()> {
+    let app = app_or_skip!("t_inject_schema");
+
+    let mut env = app.new_env()?;
+    for hostile in [
+        "'; DROP TABLE \"invoice\"; --",
+        "\" ; DROP TABLE \"invoice\" ; --",
+        "1 OR 1=1",
+        "\\'; DELETE FROM \"invoice\"; --",
+    ] {
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", hostile);
+        env.create_records("invoice", vec![map])?;
+    }
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    assert_eq!(
+        env.count("invoice", &make_domain!([]))?,
+        4,
+        "every hostile string was stored as data"
+    );
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let tables: i64 = connection
+        .client
+        .query_one(
+            "SELECT COUNT(*) FROM information_schema.tables \
+             WHERE table_schema = 't_inject_schema' AND table_name = 'invoice'",
+            &[],
+        )?
+        .get(0);
+    assert_eq!(tables, 1, "the table must still exist");
+    Ok(())
+}
+
+/// A hostile model or field name is refused by the registry before any SQL is built.
+#[test]
+fn test_hostile_names_are_refused() -> Result<()> {
+    let app = app_or_skip!("t_inject_names");
+    let mut env = app.new_env()?;
+
+    let hostile_model = "invoice\"; DROP TABLE \"invoice\"; --";
+    assert!(
+        env.search_ids(hostile_model, &make_domain!([])).is_err(),
+        "an unknown model must be refused"
+    );
+
+    let ids = env.create_records("invoice", vec![MapOfFields::new(HashMap::new())])?;
+    let hostile_field = "name\"; DROP TABLE \"invoice\"; --";
+    assert!(
+        env.read("invoice", &ids, &[hostile_field]).is_err(),
+        "an unknown field must be refused"
+    );
+    assert!(
+        env.count("invoice", &make_domain!([(hostile_field, "=", "x")]))
+            .is_err(),
+        "and so must one inside a domain"
+    );
+    Ok(())
+}
+
+/// A sort key that is not a declared field is refused rather than reaching the database.
+#[test]
+fn test_hostile_order_is_refused() -> Result<()> {
+    let app = app_or_skip!("t_inject_order");
+    let mut env = app.new_env()?;
+
+    let options = SearchOptions::new().order_by(OrderBy::asc("name\"; DROP TABLE \"invoice\"; --"));
+    assert!(
+        env.search_ids_with("invoice", &make_domain!([]), &options)
+            .is_err(),
+        "an unknown sort key must be refused"
+    );
+    Ok(())
+}

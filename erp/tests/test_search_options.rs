@@ -340,3 +340,24 @@ fn test_search_read_computes_fields() -> Result<()> {
     );
     Ok(())
 }
+
+/// A sort key that is not a declared field is refused before any backend sees it.
+#[test]
+fn test_unknown_sort_key_is_refused() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(&mut env, &["a"])?;
+
+    let err = env
+        .search_ids_with(
+            "invoice",
+            &make_domain!([]),
+            &SearchOptions::new().order_by(OrderBy::asc("not_a_field")),
+        )
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("not_a_field"),
+        "the error must name the offending key, got: {err}"
+    );
+    Ok(())
+}

@@ -47,6 +47,15 @@ impl<'mm> Environment<'mm> {
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
         self.save_domain_fields_to_db(model_name, domain)?;
+        // Sort keys are checked against the registry before any backend sees them. Identifiers
+        // are quoted on the way into SQL, so an unchecked name could not inject anything — but
+        // it would reach PostgreSQL as an unknown column and come back as a database error,
+        // while the in-memory backend would quietly sort on nothing. Refusing it here makes both
+        // behave alike, and gives a caller something it can act on.
+        let model = self.model_manager.try_get_model(model_name)?;
+        for order in &options.order {
+            model.try_get_internal_field(&order.field)?;
+        }
         // Ordering reads stored values, so anything still dirty has to reach the database first.
         for order in &options.order {
             self.save_fields_to_db(model_name, &[order.field.as_str()])?;

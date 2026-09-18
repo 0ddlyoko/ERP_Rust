@@ -417,15 +417,23 @@ impl Database for PostgresDatabase {
     }
 
     fn savepoint(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("SAVEPOINT {name}"))?)
+        // Quoted like any other identifier. Names are generated internally today, so this
+        // guards a door nobody can reach — which is the point of guarding it.
+        Ok(self
+            .client
+            .batch_execute(&format!("SAVEPOINT {}", quote_ident(name)))?)
     }
 
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("RELEASE {name}"))?)
+        Ok(self
+            .client
+            .batch_execute(&format!("RELEASE {}", quote_ident(name)))?)
     }
 
     fn savepoint_rollback(&mut self, name: &str) -> Result<()> {
-        Ok(self.client.batch_execute(&format!("ROLLBACK TO {name}"))?)
+        Ok(self
+            .client
+            .batch_execute(&format!("ROLLBACK TO {}", quote_ident(name)))?)
     }
 
     fn start_transaction(&mut self) -> Result<()> {
