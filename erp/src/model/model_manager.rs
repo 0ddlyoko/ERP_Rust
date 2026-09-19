@@ -1,9 +1,11 @@
+use crate::model::HasMethods;
 use crate::model::Model;
 use crate::model::ModelNotFound;
 use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
+use erp_types::method::{MethodFn, MethodTag, model_of};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -13,9 +15,10 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
+    /// Register a model, and with it the overridable methods its struct declares.
     pub fn register_model<M>(&mut self)
     where
-        M: Model<MultipleIds> + 'static,
+        M: Model<MultipleIds> + HasMethods + 'static,
     {
         let plugin_name = match &self.current_plugin_loading {
             Some(plugin_name) => plugin_name,
@@ -27,6 +30,23 @@ impl ModelManager {
             .entry(model_name.to_string())
             .or_insert_with(|| FinalInternalModel::new(model_name))
             .register_internal_model::<M>(plugin_name);
+
+        let plugin_name = plugin_name.to_string();
+        M::register_methods(self, &plugin_name);
+    }
+
+    /// Add one implementation to a method's chain.
+    ///
+    /// Called by generated code; the model must already be registered.
+    pub fn register_method<T>(&mut self, link: MethodFn<T>, plugin_name: &str)
+    where
+        T: MethodTag,
+    {
+        self.models
+            .entry(model_of::<T>().to_string())
+            .or_insert_with(|| FinalInternalModel::new(model_of::<T>()))
+            .methods
+            .register(link, plugin_name);
     }
 
     /// Execute some final modification when models are registered, like:

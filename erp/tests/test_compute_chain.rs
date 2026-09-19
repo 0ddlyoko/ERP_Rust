@@ -3,6 +3,7 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use test_plugin::TestPlugin;
+use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -10,6 +11,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 /// for `replaced`.
 fn new_app() -> Result<Application> {
     let mut app = Application::new_test();
+    app.register_plugin(Box::new(TestLibPlugin {}))?;
     app.register_plugin(Box::new(TestPlugin {}))?;
     app.load_plugin("test_plugin")?;
     Ok(app)

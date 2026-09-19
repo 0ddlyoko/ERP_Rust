@@ -1,3 +1,4 @@
+use crate::models::machine_discounted::MachineDiscounted;
 use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
@@ -15,6 +16,12 @@ impl Plugin for TestPlugin {
         tracing::debug!("init_models");
         model_manager.register_model::<SaleOrderTest<_>>();
         model_manager.register_model::<SaleOrderTest2<_>>();
+        model_manager.register_model::<MachineDiscounted<_>>();
+    }
+
+    /// `machine` is declared by `test_lib_plugin`, which must therefore be loaded first.
+    fn get_depends(&self) -> Vec<String> {
+        vec!["test_lib_plugin".to_string()]
     }
 }
 

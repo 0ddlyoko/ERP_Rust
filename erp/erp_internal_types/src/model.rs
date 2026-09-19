@@ -1,6 +1,7 @@
 use crate::FinalInternalField;
 use crate::errors::FieldNotFound;
 use crate::field::InternalField;
+use crate::method::MethodRegistry;
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::{ComputeFn, FieldCompute, FieldType, MultipleIds, Super};
 use erp_types::model::{CommonModel, ModelDescriptor};
@@ -42,6 +43,8 @@ pub struct FinalInternalModel {
     pub description: String,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
+    /// Methods a plugin may override, keyed by the name a caller uses.
+    pub methods: MethodRegistry,
 }
 
 fn compute_wrapper<M>(
@@ -64,6 +67,7 @@ impl FinalInternalModel {
             description: "".to_string(),
             models: HashMap::new(),
             fields: HashMap::new(),
+            methods: MethodRegistry::default(),
         }
     }
 

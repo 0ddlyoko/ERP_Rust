@@ -24,6 +24,7 @@ mod compute;
 mod create;
 mod delete;
 mod flush;
+mod method;
 mod read;
 mod transaction;
 mod write;

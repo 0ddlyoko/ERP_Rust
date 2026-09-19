@@ -13,6 +13,8 @@ pub struct ModelGen {
     pub table_name: String,
     pub description: Option<String>,
     pub derived_model: Option<String>,
+    /// Whether an `#[erp_methods]` block contributes overridable methods.
+    pub has_methods: bool,
     pub fields: Vec<FieldGen>,
 }
 
@@ -26,6 +28,7 @@ impl ModelGen {
         let mut table_name = None;
         let mut description = None;
         let mut derived_model = None;
+        let mut has_methods = false;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -33,6 +36,7 @@ impl ModelGen {
                 AllowedModelAttrs::TableName(_, value) => table_name = Some(value.value()),
                 AllowedModelAttrs::Description(_, value) => description = Some(value.value()),
                 AllowedModelAttrs::DerivedModel(_, value) => derived_model = Some(value.value()),
+                AllowedModelAttrs::Methods(_) => has_methods = true,
             }
         }
         if id.is_empty() {
@@ -62,6 +66,7 @@ impl ModelGen {
             table_name,
             description,
             derived_model,
+            has_methods,
             fields,
         })
     }

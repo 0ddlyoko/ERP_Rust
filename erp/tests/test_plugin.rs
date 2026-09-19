@@ -7,6 +7,7 @@ use std::error::Error;
 use test_plugin::TestPlugin;
 use test_plugin::TestPlugin2;
 use test_plugin::TestPlugin3;
+use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -14,6 +15,8 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 fn test_load_same_plugin_twice() -> Result<()> {
     let mut app = Application::new_test();
 
+    app.register_plugin(Box::new(TestLibPlugin {}))
+        .expect("test_lib_plugin");
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 
@@ -28,6 +31,8 @@ fn test_load_same_plugin_twice() -> Result<()> {
 #[test]
 fn test_load_plugin_init_models() -> Result<()> {
     let mut app = Application::new_test();
+    app.register_plugin(Box::new(TestLibPlugin {}))
+        .expect("test_lib_plugin");
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
 
@@ -45,6 +50,8 @@ fn test_load_plugin_init_models() -> Result<()> {
 fn test_load_plugin_depends() -> Result<()> {
     let mut app = Application::new_test();
 
+    app.register_plugin(Box::new(TestLibPlugin {}))
+        .expect("test_lib_plugin");
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
     app.register_plugin(Box::new(TestPlugin2 {}))
@@ -66,6 +73,8 @@ fn test_load_plugin_depends() -> Result<()> {
 fn test_load_plugin_with_depend_not_register_should_fail() {
     let mut app = Application::new_test();
 
+    app.register_plugin(Box::new(TestLibPlugin {}))
+        .expect("test_lib_plugin");
     app.register_plugin(Box::new(TestPlugin {}))
         .expect("Plugin should load");
     app.register_plugin(Box::new(TestPlugin3 {}))
