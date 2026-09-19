@@ -1,3 +1,4 @@
+mod deserialize;
 mod errors;
 mod search_key;
 mod search_operator;

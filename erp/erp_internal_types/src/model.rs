@@ -2,7 +2,7 @@ use crate::FinalInternalField;
 use crate::errors::FieldNotFound;
 use crate::field::InternalField;
 use crate::method::MethodRegistry;
-use erp_types::field::{FieldType, MultipleIds};
+use erp_types::field::{FieldKind, FieldKinds, FieldType, MultipleIds};
 use erp_types::method::MethodFn;
 use erp_types::model::{CommonModel, ModelDescriptor};
 use std::any::TypeId;
@@ -292,5 +292,12 @@ impl FinalInternalModel {
             }
         }
         result
+    }
+}
+
+/// Lets a record be read off the wire straight against the registry.
+impl FieldKinds for FinalInternalModel {
+    fn kind_of(&self, field_name: &str) -> Option<FieldKind> {
+        self.fields.get(field_name).map(|field| field.kind)
     }
 }
