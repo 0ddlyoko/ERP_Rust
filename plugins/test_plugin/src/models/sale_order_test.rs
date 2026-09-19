@@ -21,12 +21,7 @@ pub struct SaleOrderTest<Mode: IdMode> {
 #[erp_methods]
 impl SaleOrderTest<MultipleIds> {
     /// Base implementation of the chain.
-    #[erp(overridable)]
-    pub fn compute_label(
-        &self,
-        env: &mut Environment,
-        _parent: Super,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_label(&self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
         for record in self {
             let name = record.get_name(env)?.clone();
             record.set_label(format!("base:{name}"), env)?;
@@ -34,11 +29,9 @@ impl SaleOrderTest<MultipleIds> {
         Ok(())
     }
 
-    #[erp(overridable)]
     pub fn compute_replaced(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for record in self {
             record.set_replaced("base".to_string(), env)?;
@@ -46,11 +39,9 @@ impl SaleOrderTest<MultipleIds> {
         Ok(())
     }
 
-    #[erp(overridable)]
     pub fn compute_narrowed(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for record in self {
             record.set_narrowed("base".to_string(), env)?;
@@ -78,7 +69,6 @@ pub struct SaleOrderTest2<Mode: IdMode> {
 #[erp_methods]
 impl SaleOrderTest2<MultipleIds> {
     /// Extends the base: calls it, then appends to what it produced.
-    #[erp(overridable)]
     pub fn compute_label(
         &self,
         env: &mut Environment,
@@ -94,11 +84,9 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Replaces the base: never calls it.
-    #[erp(overridable)]
     pub fn compute_replaced(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for record in self {
             record.set_replaced("derived".to_string(), env)?;
@@ -107,7 +95,6 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Handles some records itself and hands only the rest down the chain.
-    #[erp(overridable)]
     pub fn compute_narrowed(
         &self,
         env: &mut Environment,

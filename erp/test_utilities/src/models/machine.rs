@@ -21,17 +21,14 @@ pub struct Machine<Mode: IdMode> {
 #[erp_methods]
 impl Machine<MultipleIds> {
     /// What one day of this machine costs.
-    #[erp(overridable)]
-    pub fn daily_rate(
-        &self,
-        env: &mut Environment,
-        sup: Super,
-    ) -> Result<i32, Box<dyn Error + Send + Sync>> {
-        debug_assert!(!sup.exists(), "the base implementation ends the chain");
+    ///
+    /// Declares no cursor: it ends the chain and has nothing to call down to. An override still
+    /// reaches it through its own.
+    pub fn daily_rate(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
         Ok(self.get_base_rate(env)?.into_iter().sum())
     }
 
-    /// Carries no attribute of its own, and still reaches an override through `daily_rate`.
+    /// Reaches an override through `daily_rate`, though it was compiled before one existed.
     pub fn quote(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
         let rate = self.daily_rate(env)?;
         let days: i32 = self.get_days(env)?.into_iter().sum();

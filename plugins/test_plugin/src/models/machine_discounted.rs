@@ -18,7 +18,6 @@ pub struct MachineDiscounted<Mode: IdMode> {
 impl MachineDiscounted<MultipleIds> {
     /// Same name, same signature, same model: that alone puts it ahead of the one
     /// `test_lib_plugin` declared, which `sup` then reaches.
-    #[erp(overridable)]
     pub fn daily_rate(
         &self,
         env: &mut Environment,
@@ -27,5 +26,12 @@ impl MachineDiscounted<MultipleIds> {
         let base = sup.call(env)?;
         let discount: i32 = self.get_discount(env)?.into_iter().sum();
         Ok(base - discount)
+    }
+
+    /// Appelle `daily_rate` depuis une méthode voisine du modèle qui l'override.
+    ///
+    /// Passe par la tête de chaîne, donc par la surcharge, et non par l'implémentation d'à côté.
+    pub fn weekly_rate(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
+        Ok(self.daily_rate(env)? * 7)
     }
 }

@@ -56,11 +56,9 @@ pub struct SaleOrder<Mode: IdMode> {
 
 #[erp_methods]
 impl SaleOrder<MultipleIds> {
-    #[erp(overridable)]
     pub fn compute_total_price(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for sale_order in self {
             let lines: SaleOrderLine<_> = sale_order.get_lines(env)?;

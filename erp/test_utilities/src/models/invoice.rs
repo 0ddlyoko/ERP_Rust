@@ -28,11 +28,9 @@ pub struct Invoice<Mode: IdMode> {
 
 #[erp_methods]
 impl Invoice<MultipleIds> {
-    #[erp(overridable)]
     pub fn compute_tag_summary(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for invoice in self {
             let tags: Tag<MultipleIds> = invoice.get_tags(env)?;

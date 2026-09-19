@@ -4,6 +4,7 @@ use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
 use std::error::Error;
 use test_plugin::TestPlugin;
+use test_plugin::models::machine_discounted::MachineDiscounted;
 use test_utilities::TestLibPlugin;
 use test_utilities::models::Machine;
 
@@ -174,13 +175,7 @@ mod conflicting {
 
     #[erp_methods]
     impl Declares<MultipleIds> {
-        #[erp(overridable)]
-        pub fn total(
-            &self,
-            env: &mut Environment,
-            sup: Super,
-        ) -> Result<i32, Box<dyn Error + Send + Sync>> {
-            let _ = sup;
+        pub fn total(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
             Ok(self.get_amount(env)?.into_iter().sum())
         }
     }
@@ -196,13 +191,8 @@ mod conflicting {
     #[erp_methods]
     impl Disagrees<MultipleIds> {
         /// Same model, same name, wider return type.
-        #[erp(overridable)]
-        pub fn total(
-            &self,
-            env: &mut Environment,
-            sup: Super,
-        ) -> Result<i64, Box<dyn Error + Send + Sync>> {
-            let _ = (env, sup);
+        pub fn total(&self, env: &mut Environment) -> Result<i64, Box<dyn Error + Send + Sync>> {
+            let _ = env;
             Ok(0)
         }
     }
@@ -217,3 +207,21 @@ fn test_disagreeing_signatures_are_refused_at_registration() {
     app.model_manager
         .register_model::<conflicting::Disagrees<_>>();
 }
+
+/// A method calling an overridden one from the model that overrides it reaches the head of the
+/// chain, not the implementation sitting next to it.
+#[test]
+fn test_a_sibling_call_reaches_the_head_of_the_chain() -> Result<()> {
+    let app = with_override()?;
+    let mut env = app.new_env()?;
+    let ids = machine(&mut env, &[("base_rate", 100), ("discount", 30)])?;
+
+    let record: MachineDiscounted<MultipleIds> = env.get_record(ids);
+    assert_eq!(
+        record.weekly_rate(&mut env)?,
+        490,
+        "seven days at the overridden rate of 70, not at the base rate of 100"
+    );
+    Ok(())
+}
+

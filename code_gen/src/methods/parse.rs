@@ -7,63 +7,57 @@ pub struct ParsedMethod {
     pub args: Vec<(syn::Ident, Type)>,
     /// Type the method yields, unwrapped from its `Result`.
     pub ret: Type,
+    /// Whether the method declared a `super` cursor.
+    ///
+    /// Optional, because most implementations never call the one they override, and a parameter
+    /// nothing reads is noise.
+    pub has_sup: bool,
     /// The method as written, with the `super` cursor still untyped.
     pub item: ImplItemFn,
 }
 
-/// Whether a method carries `#[erp(overridable)]`.
+/// Reject the per-method attribute that opting in used to need.
 ///
-/// A plain method passes through untouched: being overridable is a commitment, so it is opted
-/// into rather than assumed. Declaring and overriding use the same attribute, because a
-/// contributor has no way of knowing whether it is the first — and should not have to.
-pub fn is_overridable(item: &ImplItemFn) -> Result<bool> {
-    let mut found = false;
-    for attr in item.attrs.iter().filter(|a| a.meta.path().is_ident("erp")) {
-        attr.parse_args_with(|input: syn::parse::ParseStream| {
-            let key: syn::Ident = input.parse()?;
-            match key.to_string().as_str() {
-                "overridable" => Ok(()),
-                other => Err(Error::new(
-                    key.span(),
-                    format!("Unknown key {other}. The only key on a method is: overridable"),
-                )),
-            }
-        })?;
-        if found {
-            return Err(Error::new(attr.span(), "Duplicate #[erp(overridable)]"));
-        }
-        found = true;
+/// Every method of an `#[erp_methods]` block is overridable now: the block is the boundary, and
+/// repeating the fact on each method said nothing. Methods whose signature cannot be a chain link
+/// — anything borrowing — belong in a plain `impl` block beside it.
+pub fn check_no_stale_attribute(item: &ImplItemFn) -> Result<()> {
+    match item.attrs.iter().find(|a| a.meta.path().is_ident("erp")) {
+        Some(attr) => Err(Error::new(
+            attr.span(),
+            "Every method of an #[erp_methods] block is overridable, so this attribute is not \
+             needed. A method that should not be is declared in a plain impl block instead.",
+        )),
+        None => Ok(()),
     }
-    Ok(found)
 }
 
-/// Split a marked method into the pieces the generator needs.
+/// Split a method into the pieces the generator needs.
 ///
-/// The shape is fixed — `&self`, the environment, the declared arguments, then the `super`
-/// cursor — because every contributor to a chain has to agree on it, and a positional rule is
-/// what lets the macro tell the arguments from the rest.
+/// The shape is positional — `&self`, the environment, the declared arguments, and optionally a
+/// `sup: Super` cursor last — because every contributor to a chain has to agree on it, and
+/// position is what lets the macro tell the arguments from the rest.
 pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
-    let signature_help = "An overridable method takes &self, an &mut Environment, its own \
-                          arguments, then a `sup: Super` cursor";
+    let signature_help = "A method of an #[erp_methods] block takes &self, an &mut Environment, \
+                          its own arguments, and may end with a `sup: Super` cursor";
     let inputs: Vec<&FnArg> = item.sig.inputs.iter().collect();
 
     let Some(FnArg::Receiver(_)) = inputs.first() else {
         return Err(Error::new(item.sig.span(), signature_help));
     };
-    if inputs.len() < 3 {
+    if inputs.len() < 2 {
         return Err(Error::new(item.sig.span(), signature_help));
     }
 
-    let sup = inputs[inputs.len() - 1];
-    if !is_super(sup) {
-        return Err(Error::new(
-            sup.span(),
-            "The last argument of an overridable method must be the `Super` cursor",
-        ));
-    }
+    let has_sup = inputs.last().is_some_and(|last| is_super(last));
+    let last_arg = if has_sup {
+        inputs.len() - 1
+    } else {
+        inputs.len()
+    };
 
     let mut args = Vec::new();
-    for input in &inputs[2..inputs.len() - 1] {
+    for input in &inputs[2..last_arg] {
         let FnArg::Typed(PatType { pat, ty, .. }) = input else {
             return Err(Error::new(input.span(), signature_help));
         };
@@ -82,6 +76,7 @@ pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
         name: item.sig.ident.clone(),
         args,
         ret,
+        has_sup,
         item,
     })
 }

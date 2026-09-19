@@ -27,11 +27,9 @@ pub struct SaleOrderLine<Mode: IdMode> {
 
 #[erp_methods]
 impl SaleOrderLine<MultipleIds> {
-    #[erp(overridable)]
     pub fn compute_total_price(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for sale_order_line in self {
             let price = *sale_order_line.get_price(env)?;
@@ -42,11 +40,9 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
-    #[erp(overridable)]
     pub fn compute_siblings_total(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for line in self {
             let total = match line.get_order::<SaleOrder<SingleId>>(env)? {
@@ -61,11 +57,9 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
-    #[erp(overridable)]
     pub fn compute_order_tags(
         &self,
         env: &mut Environment,
-        _parent: Super,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for line in self {
             let summary = match line.get_order::<SaleOrder<SingleId>>(env)? {

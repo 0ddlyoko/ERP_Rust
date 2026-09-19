@@ -1,4 +1,4 @@
-use crate::methods::parse::{ParsedMethod, is_overridable, parse_method};
+use crate::methods::parse::{ParsedMethod, check_no_stale_attribute, parse_method};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
@@ -15,10 +15,8 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             kept.push(entry);
             continue;
         };
-        match is_overridable(&func)? {
-            true => parsed.push(parse_method(func)?),
-            false => kept.push(ImplItem::Fn(func)),
-        }
+        check_no_stale_attribute(&func)?;
+        parsed.push(parse_method(func)?);
     }
 
     let mut in_impl = Vec::new();
@@ -129,9 +127,13 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
     func.sig.ident = names.body.clone();
     func.vis = syn::Visibility::Inherited;
 
-    let sup_ty = super_type(method);
-    if let Some(syn::FnArg::Typed(sup)) = func.sig.inputs.last_mut() {
-        *sup.ty = syn::parse_quote! { #sup_ty };
+    // Only when the author asked for a cursor: otherwise the last parameter is an ordinary
+    // argument, and rewriting its type would silently replace it.
+    if method.has_sup {
+        let sup_ty = super_type(method);
+        if let Some(syn::FnArg::Typed(sup)) = func.sig.inputs.last_mut() {
+            *sup.ty = syn::parse_quote! { #sup_ty };
+        }
     }
     quote! {
         #[doc(hidden)]
@@ -194,6 +196,15 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
         let index = syn::Index::from(index);
         quote! { ::core::clone::Clone::clone(&args.#index) }
     });
+    // A method that never calls the one it overrides does not have to declare the cursor.
+    let call = if method.has_sup {
+        quote! { record.#body(env, #(#forwarded,)* sup) }
+    } else {
+        quote! {
+            let _ = sup;
+            record.#body(env, #(#forwarded,)*)
+        }
+    };
 
     quote! {
         #[doc(hidden)]
@@ -211,7 +222,7 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
             let record = <#self_ty as erp::types::model::CommonModel<
                 erp::types::field::MultipleIds,
             >>::create_instance(ids);
-            record.#body(env, #(#forwarded,)* sup)
+            #call
         }
     }
 }

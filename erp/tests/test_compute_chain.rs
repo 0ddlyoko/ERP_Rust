@@ -254,13 +254,11 @@ mod two_methods_one_field {
 
     #[erp_methods]
     impl Declares<MultipleIds> {
-        #[erp(overridable)]
         pub fn compute_label(
             &self,
             env: &mut Environment,
-            sup: Super,
         ) -> Result<(), Box<dyn Error + Send + Sync>> {
-            let _ = (env, sup);
+            let _ = env;
             Ok(())
         }
     }
@@ -278,13 +276,11 @@ mod two_methods_one_field {
 
     #[erp_methods]
     impl Disagrees<MultipleIds> {
-        #[erp(overridable)]
         pub fn compute_something_else(
             &self,
             env: &mut Environment,
-            sup: Super,
         ) -> Result<(), Box<dyn Error + Send + Sync>> {
-            let _ = (env, sup);
+            let _ = env;
             Ok(())
         }
     }
