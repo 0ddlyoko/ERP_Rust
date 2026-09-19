@@ -152,3 +152,68 @@ fn test_a_call_on_an_unregistered_model_is_reported() -> Result<()> {
     );
     Ok(())
 }
+
+/// Two structs contributing the same method to one model, disagreeing on the return type.
+///
+/// Nothing links them but the model id and the method name, so the disagreement cannot be caught
+/// by the compiler — it has to be caught when the registry puts them on the same chain.
+mod conflicting {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "conflict", methods)]
+    #[allow(dead_code)]
+    pub struct Declares<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(default = 0)]
+        amount: i32,
+    }
+
+    #[erp_methods]
+    impl Declares<MultipleIds> {
+        #[erp(overridable)]
+        pub fn total(
+            &self,
+            env: &mut Environment,
+            sup: Super,
+        ) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            let _ = sup;
+            Ok(self.get_amount(env)?.into_iter().sum())
+        }
+    }
+
+    #[derive(Model)]
+    #[erp(id = "conflict", methods)]
+    #[erp(derived_model = "")]
+    #[allow(dead_code)]
+    pub struct Disagrees<Mode: IdMode> {
+        pub id: Mode,
+    }
+
+    #[erp_methods]
+    impl Disagrees<MultipleIds> {
+        /// Same model, same name, wider return type.
+        #[erp(overridable)]
+        pub fn total(
+            &self,
+            env: &mut Environment,
+            sup: Super,
+        ) -> Result<i64, Box<dyn Error + Send + Sync>> {
+            let _ = (env, sup);
+            Ok(0)
+        }
+    }
+}
+
+#[test]
+#[should_panic(expected = "declared with two different signatures")]
+fn test_disagreeing_signatures_are_refused_at_registration() {
+    let mut app = Application::new_test();
+    app.model_manager
+        .register_model::<conflicting::Declares<_>>();
+    app.model_manager
+        .register_model::<conflicting::Disagrees<_>>();
+}

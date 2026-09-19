@@ -5,7 +5,7 @@ use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
-use erp_types::method::{MethodFn, MethodTag, model_of};
+use erp_types::method::MethodFn;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -37,16 +37,22 @@ impl ModelManager {
 
     /// Add one implementation to a method's chain.
     ///
-    /// Called by generated code; the model must already be registered.
-    pub fn register_method<T>(&mut self, link: MethodFn<T>, plugin_name: &str)
-    where
-        T: MethodTag,
+    /// Called by generated code, right after the model itself is registered.
+    pub fn register_method<A, R>(
+        &mut self,
+        model_name: &str,
+        method_name: &str,
+        link: MethodFn<A, R>,
+        plugin_name: &str,
+    ) where
+        A: 'static,
+        R: 'static,
     {
         self.models
-            .entry(model_of::<T>().to_string())
-            .or_insert_with(|| FinalInternalModel::new(model_of::<T>()))
+            .entry(model_name.to_string())
+            .or_insert_with(|| FinalInternalModel::new(model_name))
             .methods
-            .register(link, plugin_name);
+            .register(model_name, method_name, link, plugin_name);
     }
 
     /// Execute some final modification when models are registered, like:

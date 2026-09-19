@@ -24,6 +24,7 @@ erp_search = { path = "../erp_search" }
 erp_search_code_gen = { path = "../erp_search_code_gen" }
 
 [dev-dependencies]
+code_gen = { path = "../code_gen" }
 test_utilities = { path = "test_utilities" }
 # Temporary solution. To remove later
 test_plugin = { path = "../plugins/test_plugin" }

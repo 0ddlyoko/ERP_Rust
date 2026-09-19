@@ -1,5 +1,32 @@
-use erp_types::method::{MethodFn, MethodTag, model_of};
-use std::any::{Any, TypeId};
+use erp_types::method::MethodFn;
+use std::any::{Any, TypeId, type_name};
+use std::collections::HashMap;
+use std::fmt;
+
+/// What two contributors to one method have to agree on.
+///
+/// Held as the two type names rather than the whole function pointer, because those are what an
+/// author writes and what they have to change to agree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Signature {
+    pub args: &'static str,
+    pub returns: &'static str,
+}
+
+impl Signature {
+    fn of<A: 'static, R: 'static>() -> Self {
+        Self {
+            args: type_name::<A>(),
+            returns: type_name::<R>(),
+        }
+    }
+}
+
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "arguments {}, returning {}", self.args, self.returns)
+    }
+}
 
 /// Every implementation of one overridable method, most-derived first.
 ///
@@ -7,85 +34,96 @@ use std::any::{Any, TypeId};
 /// signatures, and recovered with a single downcast per call: the arguments and the return value
 /// are never erased, so a call costs one type check and then runs fully typed.
 pub struct MethodChain {
-    /// Identity of the tag the links were registered under.
-    ///
-    /// Two structs contributing to the same method under different tags disagree on its
-    /// signature, which is what this catches.
-    tag: TypeId,
-    /// `Vec<MethodFn<T>>` for the `T` that `tag` identifies.
+    /// `Vec<MethodFn<A, R>>` for the argument and return types the contributors agreed on.
     links: Box<dyn Any + Send + Sync>,
-    /// Plugins that contributed, in registration order, to name them in an error.
+    /// Spelled out for the error a disagreeing contributor gets.
+    signature: Signature,
+    /// Plugins that contributed, in registration order, to name them in that error.
     contributors: Vec<String>,
 }
 
 impl MethodChain {
-    fn new<T: MethodTag>() -> Self {
+    fn new<A: 'static, R: 'static>() -> Self {
         Self {
-            tag: TypeId::of::<T>(),
-            links: Box::new(Vec::<MethodFn<T>>::new()),
+            links: Box::new(Vec::<MethodFn<A, R>>::new()),
+            signature: Signature::of::<A, R>(),
             contributors: Vec::new(),
         }
     }
 
-    /// Whether this chain carries the signature `T` describes.
-    fn holds<T: MethodTag>(&self) -> bool {
-        self.tag == TypeId::of::<T>()
-    }
-
-    fn push<T: MethodTag>(&mut self, link: MethodFn<T>, plugin_name: &str) {
-        let Some(links) = self.links.downcast_mut::<Vec<MethodFn<T>>>() else {
-            panic!(
-                "Method \"{}\".\"{}\" is declared with two different signatures: by {} and now by \
-                 {plugin_name}. Every struct overriding a method must name the tag of the struct \
-                 that declared it.",
-                model_of::<T>(),
-                T::NAME,
-                self.contributors.join(", "),
-            );
-        };
-        // Registration follows plugin load order, so the newest contributor is the most derived
-        // and must run first.
-        links.insert(0, link);
-        self.contributors.push(plugin_name.to_string());
-    }
-
-    fn links<T: MethodTag>(&self) -> Option<&[MethodFn<T>]> {
-        self.links
-            .downcast_ref::<Vec<MethodFn<T>>>()
-            .map(Vec::as_slice)
+    fn holds<A: 'static, R: 'static>(&self) -> bool {
+        self.links.as_ref().type_id() == TypeId::of::<Vec<MethodFn<A, R>>>()
     }
 
     /// Plugins that contributed an implementation, in registration order.
     pub fn contributors(&self) -> &[String] {
         &self.contributors
     }
+
+    /// The signature every contributor has to agree on.
+    pub fn signature(&self) -> Signature {
+        self.signature
+    }
 }
 
 /// Registry of the overridable methods of one model.
+///
+/// Keyed by the method name alone. Two structs contributing the same name to the same model land
+/// on the same chain without either naming anything the other declared — the relationship a
+/// computed field already gets from its field declaration.
 #[derive(Default)]
 pub struct MethodRegistry {
-    chains: std::collections::HashMap<String, MethodChain>,
+    chains: HashMap<String, MethodChain>,
 }
 
 impl MethodRegistry {
-    pub fn register<T: MethodTag>(&mut self, link: MethodFn<T>, plugin_name: &str) {
-        self.chains
-            .entry(T::NAME.to_string())
-            .or_insert_with(MethodChain::new::<T>)
-            .push(link, plugin_name);
-    }
-
-    /// Implementations of `T`, most-derived first.
+    /// Add one implementation, ahead of the ones registered before it.
     ///
-    /// `None` when nothing registered under that name, or when what did registered a different
-    /// signature — both are programming errors the caller reports with the name in hand.
-    pub fn chain<T: MethodTag>(&self) -> Option<&[MethodFn<T>]> {
-        let chain = self.chains.get(T::NAME)?;
-        chain.holds::<T>().then(|| chain.links::<T>())?
+    /// Panics when a contributor disagrees on the signature. It happens at startup, with both
+    /// plugin names in hand, rather than at the first call.
+    pub fn register<A: 'static, R: 'static>(
+        &mut self,
+        model_name: &str,
+        method_name: &str,
+        link: MethodFn<A, R>,
+        plugin_name: &str,
+    ) {
+        let chain = self
+            .chains
+            .entry(method_name.to_string())
+            .or_insert_with(MethodChain::new::<A, R>);
+
+        let Some(links) = chain.links.downcast_mut::<Vec<MethodFn<A, R>>>() else {
+            panic!(
+                "Method \"{model_name}\".\"{method_name}\" is declared with two different \
+                 signatures.\n  {} declared: {}\n  {plugin_name} declares: {}\n\
+                 Overriding a method means matching the arguments and the return type of the one \
+                 already declared.",
+                chain.contributors.join(", "),
+                chain.signature,
+                Signature::of::<A, R>(),
+            );
+        };
+        // Registration follows plugin load order, so the newest contributor is the most derived
+        // and must run first.
+        links.insert(0, link);
+        chain.contributors.push(plugin_name.to_string());
     }
 
-    pub fn get(&self, name: &str) -> Option<&MethodChain> {
-        self.chains.get(name)
+    /// Implementations of a method, most-derived first.
+    ///
+    /// `None` when nothing registered under that name; a signature that does not match is a
+    /// programming error the registration already refused.
+    pub fn chain<A: 'static, R: 'static>(&self, method_name: &str) -> Option<&[MethodFn<A, R>]> {
+        let chain = self.chains.get(method_name)?;
+        chain
+            .holds::<A, R>()
+            .then(|| chain.links.downcast_ref::<Vec<MethodFn<A, R>>>())?
+            .map(Vec::as_slice)
+    }
+
+    pub fn get(&self, method_name: &str) -> Option<&MethodChain> {
+        self.chains.get(method_name)
     }
 
     pub fn names(&self) -> impl Iterator<Item = &str> {

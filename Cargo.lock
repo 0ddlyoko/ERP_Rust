@@ -343,6 +343,7 @@ version = "0.1.0"
 dependencies = [
  "base",
  "chrono",
+ "code_gen",
  "config",
  "directories",
  "erp_cache",

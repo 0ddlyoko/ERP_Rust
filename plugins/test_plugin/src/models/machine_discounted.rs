@@ -16,8 +16,9 @@ pub(crate) struct MachineDiscounted<Mode: IdMode> {
 
 #[erp_methods]
 impl MachineDiscounted<MultipleIds> {
-    /// Takes the rate the declaring plugin computed, and knocks the discount off it.
-    #[erp(overrides = "test_utilities::models::MachineDailyRate")]
+    /// Same name, same signature, same model: that alone puts it ahead of the one
+    /// `test_lib_plugin` declared, which `sup` then reaches.
+    #[erp(overridable)]
     pub fn daily_rate(
         &self,
         env: &mut Environment,

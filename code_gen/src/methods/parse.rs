@@ -1,16 +1,7 @@
 use syn::spanned::Spanned;
-use syn::{Error, FnArg, ImplItemFn, Pat, PatType, Path, Result, ReturnType, Type};
-
-/// What an `#[erp(...)]` attribute on a method asks for.
-pub enum MethodRole {
-    /// Declares a new override point, and owns its tag.
-    Overridable,
-    /// Contributes to an override point another struct declared.
-    Overrides(Path),
-}
+use syn::{Error, FnArg, ImplItemFn, Pat, PatType, Result, ReturnType, Type};
 
 pub struct ParsedMethod {
-    pub role: MethodRole,
     pub name: syn::Ident,
     /// Arguments between the environment and the `super` cursor.
     pub args: Vec<(syn::Ident, Type)>,
@@ -20,40 +11,30 @@ pub struct ParsedMethod {
     pub item: ImplItemFn,
 }
 
-/// Read the `#[erp(...)]` attribute a method carries, if it has one.
+/// Whether a method carries `#[erp(overridable)]`.
 ///
-/// Returns `None` for a plain method, which the macro passes through untouched: being overridable
-/// is a commitment, so it is opted into rather than assumed.
-pub fn role_of(item: &ImplItemFn) -> Result<Option<MethodRole>> {
-    let mut role = None;
+/// A plain method passes through untouched: being overridable is a commitment, so it is opted
+/// into rather than assumed. Declaring and overriding use the same attribute, because a
+/// contributor has no way of knowing whether it is the first — and should not have to.
+pub fn is_overridable(item: &ImplItemFn) -> Result<bool> {
+    let mut found = false;
     for attr in item.attrs.iter().filter(|a| a.meta.path().is_ident("erp")) {
-        let parsed = attr.parse_args_with(|input: syn::parse::ParseStream| {
+        attr.parse_args_with(|input: syn::parse::ParseStream| {
             let key: syn::Ident = input.parse()?;
             match key.to_string().as_str() {
-                "overridable" => Ok(MethodRole::Overridable),
-                "overrides" => {
-                    input.parse::<syn::Token![=]>()?;
-                    let path: syn::LitStr = input.parse()?;
-                    Ok(MethodRole::Overrides(path.parse()?))
-                }
+                "overridable" => Ok(()),
                 other => Err(Error::new(
                     key.span(),
-                    format!(
-                        "Unknown key {other}. Valid keys are: overridable, \
-                         overrides = \"plugin::Tag\""
-                    ),
+                    format!("Unknown key {other}. The only key on a method is: overridable"),
                 )),
             }
         })?;
-        if role.is_some() {
-            return Err(Error::new(
-                attr.span(),
-                "A method declares its role once: either overridable, or overrides",
-            ));
+        if found {
+            return Err(Error::new(attr.span(), "Duplicate #[erp(overridable)]"));
         }
-        role = Some(parsed);
+        found = true;
     }
-    Ok(role)
+    Ok(found)
 }
 
 /// Split a marked method into the pieces the generator needs.
@@ -61,7 +42,7 @@ pub fn role_of(item: &ImplItemFn) -> Result<Option<MethodRole>> {
 /// The shape is fixed — `&self`, the environment, the declared arguments, then the `super`
 /// cursor — because every contributor to a chain has to agree on it, and a positional rule is
 /// what lets the macro tell the arguments from the rest.
-pub fn parse_method(item: ImplItemFn, role: MethodRole) -> Result<ParsedMethod> {
+pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
     let signature_help = "An overridable method takes &self, an &mut Environment, its own \
                           arguments, then a `sup: Super` cursor";
     let inputs: Vec<&FnArg> = item.sig.inputs.iter().collect();
@@ -98,7 +79,6 @@ pub fn parse_method(item: ImplItemFn, role: MethodRole) -> Result<ParsedMethod> 
 
     let ret = unwrap_result(&item.sig.output)?;
     Ok(ParsedMethod {
-        role,
         name: item.sig.ident.clone(),
         args,
         ret,

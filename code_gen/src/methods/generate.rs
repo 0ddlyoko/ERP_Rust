@@ -1,5 +1,4 @@
-use crate::methods::parse::{MethodRole, ParsedMethod, parse_method, role_of};
-use erp::util::string::StringTransform;
+use crate::methods::parse::{ParsedMethod, is_overridable, parse_method};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
@@ -7,7 +6,7 @@ use syn::{Error, ImplItem, ItemImpl, Result, Type};
 
 pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     let struct_ident = self_struct_ident(&item.self_ty)?;
-    let self_ty = &item.self_ty;
+    let self_ty = item.self_ty.clone();
 
     let mut parsed = Vec::new();
     let mut kept = Vec::new();
@@ -16,27 +15,33 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             kept.push(entry);
             continue;
         };
-        match role_of(&func)? {
-            Some(role) => parsed.push(parse_method(func, role)?),
-            None => kept.push(ImplItem::Fn(func)),
+        match is_overridable(&func)? {
+            true => parsed.push(parse_method(func)?),
+            false => kept.push(ImplItem::Fn(func)),
         }
     }
 
-    let mut declarations = Vec::new();
     let mut in_impl = Vec::new();
     let mut links = Vec::new();
     let mut registrations = Vec::new();
 
     for method in &parsed {
         let names = Names::of(&struct_ident, method);
-        declarations.push(declaration(method, &names, self_ty)?);
         in_impl.push(renamed_body(method, &names));
-        in_impl.push(dispatcher(method, &names));
-        links.push(link(method, &names, self_ty));
-        let tag = &names.tag;
+        in_impl.push(dispatcher(method));
+        links.push(link(method, &names, &self_ty));
+
         let link_ident = &names.link;
+        let name = method.name.to_string();
         registrations.push(quote! {
-            model_manager.register_method::<#tag>(#link_ident, plugin_name);
+            model_manager.register_method(
+                <Self as erp::types::model::CommonModel<
+                    erp::types::field::MultipleIds,
+                >>::_get_model_name(),
+                #name,
+                #link_ident,
+                plugin_name,
+            );
         });
     }
 
@@ -53,6 +58,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
                     model_manager: &mut erp::model::ModelManager,
                     plugin_name: &str,
                 ) {
+                    use erp::types::model::BaseModel;
                     #(#registrations)*
                 }
             }
@@ -68,8 +74,6 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     });
 
     Ok(quote! {
-        #(#declarations)*
-
         #item
 
         impl #self_ty {
@@ -84,14 +88,6 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
 
 /// Names the generated items answer to.
 struct Names {
-    tag: TokenStream,
-    args: TokenStream,
-    /// Defined only when this struct declares the method rather than overriding one.
-    owned_tag: Option<Ident>,
-    owned_args: Option<Ident>,
-    /// Alias through which the argument struct is built, which is what lets an override construct
-    /// the declaring struct's type without naming it.
-    args_alias: Ident,
     body: Ident,
     link: Ident,
 }
@@ -99,94 +95,27 @@ struct Names {
 impl Names {
     fn of(struct_ident: &Ident, method: &ParsedMethod) -> Self {
         let method_name = method.name.to_string();
-        let camel = method_name.replace('_', " ").to_camel_case();
-        let prefix = format!("{struct_ident}{camel}");
-        let args_alias = Ident::new(
-            &format!("__ErpArgs{struct_ident}{camel}"),
-            Span::call_site(),
-        );
-        let body = Ident::new(&format!("__erp_impl_{method_name}"), Span::call_site());
-        let link = Ident::new(
-            &format!("__erp_link_{struct_ident}_{method_name}"),
-            Span::call_site(),
-        );
-
-        match &method.role {
-            MethodRole::Overridable => {
-                let tag = Ident::new(&prefix, Span::call_site());
-                let args = Ident::new(&format!("{prefix}Args"), Span::call_site());
-                Self {
-                    tag: quote! { #tag },
-                    args: quote! { #args },
-                    owned_tag: Some(tag),
-                    owned_args: Some(args),
-                    args_alias,
-                    body,
-                    link,
-                }
-            }
-            MethodRole::Overrides(path) => Self {
-                tag: quote! { #path },
-                args: quote! {
-                    <#path as erp::types::method::MethodTag>::Args
-                },
-                owned_tag: None,
-                owned_args: None,
-                args_alias,
-                body,
-                link,
-            },
+        Self {
+            body: Ident::new(&format!("__erp_impl_{method_name}"), Span::call_site()),
+            link: Ident::new(
+                &format!("__erp_link_{struct_ident}_{method_name}"),
+                Span::call_site(),
+            ),
         }
     }
 }
 
-/// The tag and argument struct, emitted once by the struct that declares the method.
-fn declaration(method: &ParsedMethod, names: &Names, self_ty: &Type) -> Result<TokenStream> {
-    let args_alias = &names.args_alias;
-    let args_ty = &names.args;
-    let alias = quote! {
-        #[doc(hidden)]
-        #[allow(non_camel_case_types)]
-        type #args_alias = #args_ty;
-    };
+/// The arguments, as the tuple every contributor's chain is keyed on.
+fn args_tuple(method: &ParsedMethod) -> TokenStream {
+    let types = method.args.iter().map(|(_, ty)| ty);
+    quote! { (#(#types,)*) }
+}
 
-    let (Some(tag), Some(args)) = (&names.owned_tag, &names.owned_args) else {
-        return Ok(alias);
-    };
-
-    let name = method.name.to_string();
+/// The cursor type, spelled out so the author does not have to.
+fn super_type(method: &ParsedMethod) -> TokenStream {
+    let args = args_tuple(method);
     let ret = &method.ret;
-    let fields = method.args.iter().map(|(ident, ty)| {
-        quote! { pub #ident: #ty }
-    });
-    let doc = format!("Arguments of the overridable method `{name}`.");
-    let tag_doc = format!(
-        "Override point for `{name}`. A plugin extending this model names it in \
-         `#[erp(overrides = \"...\")]`, which is what makes a mismatched signature a compile error."
-    );
-
-    Ok(quote! {
-        #[doc = #tag_doc]
-        #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-        pub struct #tag;
-
-        #[doc = #doc]
-        #[derive(Debug, Clone)]
-        pub struct #args {
-            #(#fields,)*
-        }
-
-        impl erp::types::method::MethodTag for #tag {
-            type Model = <#self_ty as erp::types::model::CommonModel<
-                erp::types::field::MultipleIds,
-            >>::BaseModel;
-            type Args = #args;
-            type Ret = #ret;
-            const NAME: &'static str = #name;
-        }
-
-        #alias
-    })
+    quote! { erp::types::method::Super<'_, #args, #ret> }
 }
 
 /// The method as written, under a name nothing calls directly.
@@ -200,11 +129,9 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
     func.sig.ident = names.body.clone();
     func.vis = syn::Visibility::Inherited;
 
-    let tag = &names.tag;
+    let sup_ty = super_type(method);
     if let Some(syn::FnArg::Typed(sup)) = func.sig.inputs.last_mut() {
-        *sup.ty = syn::parse_quote! {
-            erp::types::method::Super<'_, #tag>
-        };
+        *sup.ty = syn::parse_quote! { #sup_ty };
     }
     quote! {
         #[doc(hidden)]
@@ -213,14 +140,13 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
 }
 
 /// The name the author wrote, now resolving to the top of the chain.
-fn dispatcher(method: &ParsedMethod, names: &Names) -> TokenStream {
+fn dispatcher(method: &ParsedMethod) -> TokenStream {
     let name = &method.name;
-    let tag = &names.tag;
-    let args_alias = &names.args_alias;
     let output = &method.item.sig.output;
     let vis = &method.item.vis;
     let params = method.args.iter().map(|(ident, ty)| quote! { #ident: #ty });
-    let fields = method.args.iter().map(|(ident, _)| quote! { #ident });
+    let values = method.args.iter().map(|(ident, _)| quote! { #ident });
+    let method_name = name.to_string();
     let docs: Vec<_> = method
         .item
         .attrs
@@ -238,10 +164,18 @@ fn dispatcher(method: &ParsedMethod, names: &Names) -> TokenStream {
             env: &mut erp::environment::Environment,
             #(#params,)*
         ) #output {
+            use erp::types::model::BaseModel;
             let ids: erp::types::field::MultipleIds =
                 erp::types::model::CommonModel::get_id_mode(self).clone();
-            let args = #args_alias { #(#fields,)* };
-            env.call_method::<#tag>(&ids, &args)
+            let args = (#(#values,)*);
+            env.call_method(
+                <Self as erp::types::model::CommonModel<
+                    erp::types::field::MultipleIds,
+                >>::_get_model_name(),
+                #method_name,
+                &ids,
+                &args,
+            )
         }
     }
 }
@@ -251,11 +185,14 @@ fn dispatcher(method: &ParsedMethod, names: &Names) -> TokenStream {
 /// Takes the recordset as ids and rebuilds this struct from them, because the contributors to one
 /// chain are different Rust types and cannot share a pointer naming any one of them.
 fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
-    let tag = &names.tag;
     let body = &names.body;
     let link = &names.link;
-    let forwarded = method.args.iter().map(|(ident, _)| {
-        quote! { ::core::clone::Clone::clone(&args.#ident) }
+    let args = args_tuple(method);
+    let ret = &method.ret;
+    let sup_ty = super_type(method);
+    let forwarded = method.args.iter().enumerate().map(|(index, _)| {
+        let index = syn::Index::from(index);
+        quote! { ::core::clone::Clone::clone(&args.#index) }
     });
 
     quote! {
@@ -264,10 +201,10 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
         fn #link(
             ids: erp::types::field::MultipleIds,
             env: &mut dyn erp::types::environment::ErasedEnvironment,
-            args: &<#tag as erp::types::method::MethodTag>::Args,
-            sup: erp::types::method::Super<'_, #tag>,
+            args: &#args,
+            sup: #sup_ty,
         ) -> ::core::result::Result<
-            <#tag as erp::types::method::MethodTag>::Ret,
+            #ret,
             ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
         > {
             let env = erp::environment::Environment::from_erased(env);
