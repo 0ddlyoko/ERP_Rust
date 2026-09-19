@@ -1,6 +1,7 @@
 use crate::model::HasMethods;
 use crate::model::Model;
 use crate::model::ModelNotFound;
+use crate::model::rpc::{RpcFn, RpcRegistry};
 use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
@@ -11,6 +12,9 @@ use std::collections::{HashMap, HashSet};
 #[derive(Default)]
 pub struct ModelManager {
     models: HashMap<String, FinalInternalModel>,
+    /// Methods a remote caller may reach. Held here rather than on the model, so that the crates
+    /// describing types never have to know about JSON.
+    pub rpc: RpcRegistry,
     pub(crate) current_plugin_loading: Option<String>,
 }
 
@@ -33,6 +37,13 @@ impl ModelManager {
 
         let plugin_name = plugin_name.to_string();
         M::register_methods(self, &plugin_name);
+    }
+
+    /// Expose a method to remote callers.
+    ///
+    /// Called by generated code for methods carrying `#[erp(rpc)]`, and by nothing else.
+    pub fn register_rpc(&mut self, model_name: &str, method_name: &str, call: RpcFn) {
+        self.rpc.register(model_name, method_name, call);
     }
 
     /// Add one implementation to a method's chain.

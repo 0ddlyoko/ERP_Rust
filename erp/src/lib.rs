@@ -14,3 +14,7 @@ pub use erp_types as types;
 pub use erp_cache as cache;
 pub use erp_internal_types as internal_types;
 pub use erp_search as search;
+// Named by generated RPC wrappers, which live in plugin crates and would otherwise each have to
+// declare the dependency and agree on its version.
+pub use serde;
+pub use serde_json;

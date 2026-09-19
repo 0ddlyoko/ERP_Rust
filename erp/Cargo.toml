@@ -15,6 +15,7 @@ postgres.workspace = true
 roxmltree.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
+serde_json.workspace = true
 uuid.workspace = true
 
 erp_cache = { path = "erp_cache" }

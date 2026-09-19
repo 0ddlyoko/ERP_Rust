@@ -89,4 +89,19 @@ impl<'mm> Environment<'mm> {
             .push((model_name.to_string(), method_name.to_string()));
         Ok(())
     }
+
+    /// Call a method a remote caller named.
+    ///
+    /// Goes through the wrapper the method was exposed with, which calls it by its own name — so
+    /// a remote call reaches the most derived implementation, exactly like an internal one.
+    pub fn call_rpc(
+        &mut self,
+        model_name: &str,
+        method_name: &str,
+        ids: MultipleIds,
+        args: &serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let call = self.model_manager.rpc.get(model_name, method_name)?;
+        call(ids, args, self)
+    }
 }

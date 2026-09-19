@@ -1,6 +1,6 @@
-use crate::methods::parse::{ParsedMethod, check_no_stale_attribute, parse_method};
+use crate::methods::parse::{ParsedMethod, parse_method};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{Error, ImplItem, ItemImpl, Result, Type};
 
@@ -15,7 +15,6 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             kept.push(entry);
             continue;
         };
-        check_no_stale_attribute(&func)?;
         parsed.push(parse_method(func)?);
     }
 
@@ -41,6 +40,20 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
                 plugin_name,
             );
         });
+
+        if method.is_rpc {
+            let rpc_ident = &names.rpc;
+            links.push(rpc_wrapper(method, &names, &self_ty));
+            registrations.push(quote! {
+                model_manager.register_rpc(
+                    <Self as erp::types::model::CommonModel<
+                        erp::types::field::MultipleIds,
+                    >>::_get_model_name(),
+                    #name,
+                    #rpc_ident,
+                );
+            });
+        }
     }
 
     item.items = kept;
@@ -88,6 +101,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
 struct Names {
     body: Ident,
     link: Ident,
+    rpc: Ident,
 }
 
 impl Names {
@@ -97,6 +111,10 @@ impl Names {
             body: Ident::new(&format!("__erp_impl_{method_name}"), Span::call_site()),
             link: Ident::new(
                 &format!("__erp_link_{struct_ident}_{method_name}"),
+                Span::call_site(),
+            ),
+            rpc: Ident::new(
+                &format!("__erp_rpc_{struct_ident}_{method_name}"),
                 Span::call_site(),
             ),
         }
@@ -236,4 +254,67 @@ fn self_struct_ident(self_ty: &Type) -> Result<Ident> {
         .last()
         .map(|segment| segment.ident.clone())
         .ok_or_else(|| Error::new(self_ty.span(), "Expected a struct"))
+}
+
+/// The method, wrapped so a remote caller can reach it.
+///
+/// Calls the method by its own name rather than the renamed body, so a remote call goes through
+/// the override chain exactly like an internal one.
+///
+/// Arguments arrive named rather than positional: a caller that sends `{"days": 3}` keeps
+/// working when a second argument is added, one that sends `[3]` does not. The struct is local to
+/// the wrapper, so nothing outside ever names it.
+fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
+    let call = &method.name;
+    let rpc = &names.rpc;
+    let ret = &method.ret;
+    let fields = method.args.iter().map(|(ident, ty)| quote! { #ident: #ty });
+    let values = method.args.iter().map(|(ident, _)| quote! { args.#ident });
+
+    // Asserted separately from the wrapper's own use of them, so a missing impl is reported on
+    // the type the author wrote rather than deep inside generated code where the name means
+    // nothing.
+    let arg_bounds = method.args.iter().map(|(ident, ty)| {
+        quote_spanned! {ty.span()=>
+            let _ = |_: &#ty| {
+                fn assert_argument_is_readable_from_json<
+                    T: for<'de> erp::serde::Deserialize<'de>,
+                >() {}
+                assert_argument_is_readable_from_json::<#ty>();
+                stringify!(#ident)
+            };
+        }
+    });
+    let ret_bound = quote_spanned! {method.ret.span()=>
+        fn assert_return_is_writable_to_json<T: erp::serde::Serialize>() {}
+        assert_return_is_writable_to_json::<#ret>();
+    };
+
+    quote! {
+        #[doc(hidden)]
+        #[allow(non_snake_case)]
+        fn #rpc(
+            ids: erp::types::field::MultipleIds,
+            raw: &erp::serde_json::Value,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<
+            erp::serde_json::Value,
+            ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
+        > {
+            #(#arg_bounds)*
+            #ret_bound
+
+            #[derive(erp::serde::Deserialize)]
+            #[serde(crate = "erp::serde")]
+            struct Args {
+                #(#fields,)*
+            }
+            let args: Args = erp::serde_json::from_value(raw.clone())?;
+            let record = <#self_ty as erp::types::model::CommonModel<
+                erp::types::field::MultipleIds,
+            >>::create_instance(ids);
+            let out = record.#call(env, #(#values,)*)?;
+            Ok(erp::serde_json::to_value(out)?)
+        }
+    }
 }

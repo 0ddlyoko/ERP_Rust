@@ -7,6 +7,8 @@ pub struct ParsedMethod {
     pub args: Vec<(syn::Ident, Type)>,
     /// Type the method yields, unwrapped from its `Result`.
     pub ret: Type,
+    /// Whether the method answers to a remote caller.
+    pub is_rpc: bool,
     /// Whether the method declared a `super` cursor.
     ///
     /// Optional, because most implementations never call the one they override, and a parameter
@@ -16,20 +18,38 @@ pub struct ParsedMethod {
     pub item: ImplItemFn,
 }
 
-/// Reject the per-method attribute that opting in used to need.
+/// Whether the method is reachable from outside the process.
 ///
-/// Every method of an `#[erp_methods]` block is overridable now: the block is the boundary, and
-/// repeating the fact on each method said nothing. Methods whose signature cannot be a chain link
-/// — anything borrowing — belong in a plain `impl` block beside it.
-pub fn check_no_stale_attribute(item: &ImplItemFn) -> Result<()> {
-    match item.attrs.iter().find(|a| a.meta.path().is_ident("erp")) {
-        Some(attr) => Err(Error::new(
-            attr.span(),
-            "Every method of an #[erp_methods] block is overridable, so this attribute is not \
-             needed. A method that should not be is declared in a plain impl block instead.",
-        )),
-        None => Ok(()),
+/// Overridability is not asked for — every method of an `#[erp_methods]` block has it, the block
+/// being the boundary. Being callable remotely is asked for every time, because the two are
+/// different trust boundaries: a plugin calling a method already runs in process with full access
+/// to the database, a remote caller does not. Forgetting the attribute leaves an endpoint that
+/// does not exist, which is the safe direction to fail in.
+pub fn read_rpc_attribute(item: &ImplItemFn) -> Result<bool> {
+    let mut is_rpc = false;
+    for attr in item.attrs.iter().filter(|a| a.meta.path().is_ident("erp")) {
+        attr.parse_args_with(|input: syn::parse::ParseStream| {
+            let key: syn::Ident = input.parse()?;
+            match key.to_string().as_str() {
+                "rpc" => Ok(()),
+                "overridable" => Err(Error::new(
+                    key.span(),
+                    "Every method of an #[erp_methods] block is overridable, so this is not \
+                     needed. A method that should not be is declared in a plain impl block \
+                     instead.",
+                )),
+                other => Err(Error::new(
+                    key.span(),
+                    format!("Unknown key {other}. The only key on a method is: rpc"),
+                )),
+            }
+        })?;
+        if is_rpc {
+            return Err(Error::new(attr.span(), "Duplicate #[erp(rpc)]"));
+        }
+        is_rpc = true;
     }
+    Ok(is_rpc)
 }
 
 /// Split a method into the pieces the generator needs.
@@ -38,6 +58,7 @@ pub fn check_no_stale_attribute(item: &ImplItemFn) -> Result<()> {
 /// `sup: Super` cursor last — because every contributor to a chain has to agree on it, and
 /// position is what lets the macro tell the arguments from the rest.
 pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
+    let is_rpc = read_rpc_attribute(&item)?;
     let signature_help = "A method of an #[erp_methods] block takes &self, an &mut Environment, \
                           its own arguments, and may end with a `sup: Super` cursor";
     let inputs: Vec<&FnArg> = item.sig.inputs.iter().collect();
@@ -76,6 +97,7 @@ pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
         name: item.sig.ident.clone(),
         args,
         ret,
+        is_rpc,
         has_sup,
         item,
     })
