@@ -180,7 +180,7 @@ impl Database for PostgresDatabase {
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
-    fn browse(
+    fn find_ids(
         &mut self,
         model_name: &str,
         domain: &SearchType,

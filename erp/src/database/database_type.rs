@@ -36,7 +36,7 @@ impl Database for DatabaseType {
         }
     }
 
-    fn browse(
+    fn find_ids(
         &mut self,
         model_name: &str,
         domain: &SearchType,
@@ -44,9 +44,11 @@ impl Database for DatabaseType {
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
         match self {
-            DatabaseType::Cache(cache) => cache.browse(model_name, domain, model_manager, options),
+            DatabaseType::Cache(cache) => {
+                cache.find_ids(model_name, domain, model_manager, options)
+            }
             DatabaseType::Postgres(postgres) => {
-                postgres.browse(model_name, domain, model_manager, options)
+                postgres.find_ids(model_name, domain, model_manager, options)
             }
         }
     }

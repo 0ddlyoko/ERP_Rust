@@ -61,7 +61,7 @@ impl<'mm> Environment<'mm> {
             self.save_fields_to_db(model_name, &[order.field.as_str()])?;
         }
         self.database
-            .browse(model_name, domain, self.model_manager, options)
+            .find_ids(model_name, domain, self.model_manager, options)
     }
 
     /// Same as [`Environment::search`], ordered and paginated.
@@ -78,7 +78,7 @@ impl<'mm> Environment<'mm> {
     /// Paging and ordering are applied by the database, so only the records that will be returned
     /// are ever materialised. Values then come back through the cache like [`Environment::read`],
     /// which means computed fields are computed.
-    pub fn search_read(
+    pub fn read_matching(
         &mut self,
         model_name: &str,
         fields: &[&str],

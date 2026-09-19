@@ -36,7 +36,7 @@ pub trait Database {
     ///
     /// ModelManager is needed to know the current structure of the database, and to make correct
     /// links between the domain and the database
-    fn browse(
+    fn find_ids(
         &mut self,
         model_name: &str,
         domain: &SearchType,

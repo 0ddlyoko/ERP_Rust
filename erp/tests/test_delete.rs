@@ -49,7 +49,7 @@ fn test_deletion_survives_a_commit() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    assert_eq!(env.unlink("sale_order", &ids)?, 1);
+    assert_eq!(env.delete("sale_order", &ids)?, 1);
     env.close()?;
 
     let mut env = app.new_env()?;
@@ -69,7 +69,7 @@ fn test_deletion_is_rolled_back_with_the_transaction() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    assert_eq!(env.unlink("sale_order", &ids)?, 1);
+    assert_eq!(env.delete("sale_order", &ids)?, 1);
     drop(env);
 
     let mut env = app.new_env()?;
@@ -94,7 +94,7 @@ fn test_children_are_detached_not_deleted() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    env.unlink("sale_order", &order.id)?;
+    env.delete("sale_order", &order.id)?;
     env.close()?;
 
     let mut env = app.new_env()?;
@@ -129,7 +129,7 @@ fn test_dotted_path_search_ignores_deleted_records() -> Result<()> {
     let before: SaleOrder<MultipleIds> = env.search(&make_domain!([("lines.amount", "=", 5)]))?;
     assert_eq!(before.id.get_ids_ref().len(), 2);
 
-    env.unlink("sale_order", &removed.id)?;
+    env.delete("sale_order", &removed.id)?;
     let after: SaleOrder<MultipleIds> = env.search(&make_domain!([("lines.amount", "=", 5)]))?;
     assert_eq!(
         after.id.get_ids_ref(),
@@ -153,7 +153,7 @@ fn test_deleted_record_is_not_resurrected_by_compute() -> Result<()> {
     let mut env = app.new_env()?;
     // Dirties the line and flags the order's total_price for recomputation.
     line.set_amount(99, &mut env)?;
-    env.unlink("sale_order_line", &line.id)?;
+    env.delete("sale_order_line", &line.id)?;
     env.save_all_to_db()?;
     env.close()?;
 
@@ -179,7 +179,7 @@ fn test_delete_counts_only_what_existed() -> Result<()> {
     let mut ids: MultipleIds = order.id.clone().into();
     ids += MultipleIds::from(vec![9999]);
     assert_eq!(
-        env.unlink("sale_order", &ids)?,
+        env.delete("sale_order", &ids)?,
         1,
         "only the row that existed counts"
     );
@@ -192,16 +192,16 @@ fn test_delete_empty_set_is_a_noop() -> Result<()> {
     let app = new_app();
     let mut env = app.new_env()?;
     assert_eq!(
-        env.unlink("sale_order", &MultipleIds::from(Vec::<u32>::new()))?,
+        env.delete("sale_order", &MultipleIds::from(Vec::<u32>::new()))?,
         0
     );
     Ok(())
 }
 
-/// Rows removed without going through `unlink` leave dangling foreign keys behind. A relational
+/// Rows removed without going through `delete` leave dangling foreign keys behind. A relational
 /// search must neither trip over them nor surface the record they point at.
 ///
-/// `unlink` detaches children first, so this is only reachable by deleting at the backend level —
+/// `delete` detaches children first, so this is only reachable by deleting at the backend level —
 /// which is exactly what a future `on_delete` policy other than set-null would do.
 #[test]
 fn test_relational_search_tolerates_dangling_references() -> Result<()> {
@@ -229,7 +229,7 @@ fn test_relational_search_tolerates_dangling_references() -> Result<()> {
 
 /// Deleting a record recomputes what depended on it.
 ///
-/// `unlink` clears the record's relational fields through the normal write path, which is what
+/// `delete` clears the record's relational fields through the normal write path, which is what
 /// flags the dependents, and flushes before the row goes.
 #[test]
 fn test_deleting_a_line_recomputes_the_order_total() -> Result<()> {
@@ -250,7 +250,7 @@ fn test_deleting_a_line_recomputes_the_order_total() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    env.unlink("sale_order_line", &line_ids[1])?;
+    env.delete("sale_order_line", &line_ids[1])?;
     assert_eq!(
         *order.get_total_price(&mut env)?,
         6,

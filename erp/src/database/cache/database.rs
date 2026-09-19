@@ -315,7 +315,7 @@ impl Database for CacheConnection {
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request
-    fn browse(
+    fn find_ids(
         &mut self,
         model_name: &str,
         domain: &SearchType,
@@ -352,11 +352,11 @@ impl Database for CacheConnection {
         options: &SearchOptions,
     ) -> Result<Vec<SearchedRow<'a>>> {
         // We don't care about searching 2 times (one to retrieve ids and one to retrieve fields), as it's cache
-        let ids = self.browse(model_name, domain, model_manager, options)?;
+        let ids = self.find_ids(model_name, domain, model_manager, options)?;
         if ids.is_empty() {
             return Ok(vec![]);
         }
-        // Following error should never occur, as if table doesn't exist then .browse should return an empty list
+        // Following error should never occur, as if table doesn't exist then .find_ids should return an empty list
         let table = self
             .tables
             .get(model_name)
@@ -364,7 +364,7 @@ impl Database for CacheConnection {
         let mut result = vec![];
         for id in ids.iter() {
             let mut fields_result = HashMap::new();
-            // Following error should never occur, as ids returned by "browse" method are ids already present in table
+            // Following error should never occur, as ids returned by "find_ids" method are ids already present in table
             let row = table.get_row(id).unwrap_or_else(|| {
                 panic!("Row with id {id} in table {model_name} should exist in cache")
             });

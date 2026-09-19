@@ -278,7 +278,7 @@ fn test_order_sees_uncommitted_writes() -> Result<()> {
     Ok(())
 }
 
-/// `search_read` pages at the database, not after the fact: only the records that come back are
+/// `read_matching` pages at the database, not after the fact: only the records that come back are
 /// ever materialised.
 #[test]
 fn test_search_read_applies_the_options() -> Result<()> {
@@ -286,7 +286,7 @@ fn test_search_read_applies_the_options() -> Result<()> {
     let mut env = app.new_env()?;
     seed(&mut env, &["delta", "alpha", "charlie", "bravo"])?;
 
-    let page = env.search_read(
+    let page = env.read_matching(
         "invoice",
         &["name"],
         &make_domain!([]),
@@ -300,7 +300,7 @@ fn test_search_read_applies_the_options() -> Result<()> {
         .collect();
     assert_eq!(names, vec!["alpha", "bravo"]);
 
-    let second_page = env.search_read(
+    let second_page = env.read_matching(
         "invoice",
         &["name"],
         &make_domain!([]),
@@ -317,7 +317,7 @@ fn test_search_read_applies_the_options() -> Result<()> {
     Ok(())
 }
 
-/// `search_read` goes through the cache, so a computed field is computed rather than read stale.
+/// `read_matching` goes through the cache, so a computed field is computed rather than read stale.
 #[test]
 fn test_search_read_computes_fields() -> Result<()> {
     let app = new_app();
@@ -328,7 +328,7 @@ fn test_search_read_computes_fields() -> Result<()> {
     map.insert("amount_untaxed", Decimal::from_str("100")?);
     env.create_records("invoice", vec![map])?;
 
-    let rows = env.search_read(
+    let rows = env.read_matching(
         "invoice",
         &["name", "amount_untaxed"],
         &make_domain!([("name", "=", "taxed")]),

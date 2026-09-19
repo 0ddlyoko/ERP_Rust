@@ -255,7 +255,7 @@ fn test_unlink_against_postgres() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    assert_eq!(env.unlink("sale_order", &order.id)?, 1);
+    assert_eq!(env.delete("sale_order", &order.id)?, 1);
     env.close()?;
 
     let mut env = app.new_env()?;
@@ -285,7 +285,7 @@ fn test_order_limit_and_offset() -> Result<()> {
     env.close()?;
 
     let mut env = app.new_env()?;
-    let page = env.search_read(
+    let page = env.read_matching(
         "invoice",
         &["name"],
         &make_domain!([]),

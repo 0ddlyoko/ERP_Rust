@@ -13,7 +13,7 @@ impl<'mm> Environment<'mm> {
     ///
     /// The deletion is written straight to the database, like creation is; rolling the
     /// environment back therefore undoes it.
-    pub fn unlink<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
+    pub fn delete<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
         if ids.is_empty() {
             return Ok(0);
         }
