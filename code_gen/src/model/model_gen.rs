@@ -89,25 +89,25 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         if *is_reference {
             if *is_reference_multi {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error + Send + Sync>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<M, Box<dyn std::error::Error + Send + Sync>>
                     where
                         M: erp::model::Model<erp::types::field::MultipleIds, BaseModel=#field_type_keyword>,
                     {
                         (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_references::<M, #field_type_keyword>(#field_name, env)
                     }
-                    pub fn #set_field_ident(&self, value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                    pub fn #set_field_ident(&self, value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).set_references(#field_name, value, env)
                     }
                 })
             } else {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<Option<M>, Box<dyn std::error::Error + Send + Sync>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<Option<M>, Box<dyn std::error::Error + Send + Sync>>
                     where
                         M: erp::model::Model<erp::types::field::SingleId, BaseModel=#field_type_keyword>,
                     {
                         (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_reference::<M, #field_type_keyword>(#field_name, env)
                     }
-                    pub fn #set_field_ident(&self, value: Option<erp::types::field::Reference<#field_type_keyword, erp::types::field::SingleId>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                    pub fn #set_field_ident(&self, value: Option<erp::types::field::Reference<#field_type_keyword, erp::types::field::SingleId>>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         if let Some(value) = value {
                             (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).set_reference(#field_name, value, env)
                         } else {
@@ -118,20 +118,20 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             }
         } else if *is_required {
             Some(quote! {
-                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<&'a #field_type_keyword, Box<dyn std::error::Error + Send + Sync>>
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<&'a #field_type_keyword, Box<dyn std::error::Error + Send + Sync>>
                 {
                     (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get(#field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).set(#field_name, value, env)
                 }
             })
         } else {
             Some(quote! {
-                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Option<&'a #field_type_keyword>, Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<Option<&'a #field_type_keyword>, Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_option(#field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).set_option(#field_name, value, env)
                 }
             })
@@ -156,25 +156,25 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         if *is_reference {
             if *is_reference_multi {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error + Send + Sync>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<M, Box<dyn std::error::Error + Send + Sync>>
                     where
                         M: erp::model::Model<erp::types::field::MultipleIds, BaseModel=#field_type_keyword>,
                     {
                         (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).get_references::<M, #field_type_keyword>(#field_name, env)
                     }
-                    pub fn #set_field_ident(&self, value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                    pub fn #set_field_ident(&self, value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).set_references(#field_name, value, env)
                     }
                 })
             } else {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> Result<M, Box<dyn std::error::Error + Send + Sync>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<M, Box<dyn std::error::Error + Send + Sync>>
                     where
                         M: erp::model::Model<erp::types::field::MultipleIds, BaseModel=#field_type_keyword>,
                     {
                         (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).get_references::<M, #field_type_keyword>(#field_name, env)
                     }
-                    pub fn #set_field_ident(&self, value: Option<erp::types::field::Reference<#field_type_keyword, erp::types::field::SingleId>>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                    pub fn #set_field_ident(&self, value: Option<erp::types::field::Reference<#field_type_keyword, erp::types::field::SingleId>>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         if let Some(value) = value {
                             (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).set_reference(#field_name, value, env)
                         } else {
@@ -185,25 +185,147 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             }
         } else if *is_required {
             Some(quote! {
-                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Vec<&'a #field_type_keyword>, Box<dyn std::error::Error + Send + Sync>>
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<Vec<&'a #field_type_keyword>, Box<dyn std::error::Error + Send + Sync>>
                 {
                     (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).gets(#field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).set(#field_name, value, env)
                 }
             })
         } else {
             Some(quote! {
-                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> Result<Vec<Option<&'a #field_type_keyword>>, Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #get_field_ident<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<Vec<Option<&'a #field_type_keyword>>, Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).get_options(#field_name, env)
                 }
-                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     (self as &dyn erp::model::Model<erp::types::field::MultipleIds, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::BaseModel>).set_option(#field_name, value, env)
                 }
             })
         }
     });
+
+    // The verbs of the ORM, on the model itself: `SaleOrder::search(...)` rather than
+    // `env.search::<SaleOrder<_>>(...)`. Generated as inherent methods rather than put on a
+    // trait, so that reaching them never asks for an import.
+    let err = quote! { ::std::boxed::Box<dyn ::std::error::Error + Send + Sync> };
+    let model_name_multi = quote! {
+        <Self as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::_get_model_name()
+    };
+    let model_name_single = quote! {
+        <Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::_get_model_name()
+    };
+
+    let verbs_multi = quote! {
+        /// Records matching a domain.
+        pub fn search(
+            domain: &erp::search::SearchType,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Self, #err> {
+            env.search::<Self>(domain)
+        }
+
+        /// Same, limited, offset or ordered.
+        pub fn search_with(
+            domain: &erp::search::SearchType,
+            options: &erp::search::SearchOptions,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Self, #err> {
+            env.search_with::<Self>(domain, options)
+        }
+
+        /// How many records match, before any limit would apply.
+        pub fn count(
+            domain: &erp::search::SearchType,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<u32, #err> {
+            env.count(#model_name_multi, domain)
+        }
+
+        /// A recordset over ids already known, without asking the database.
+        pub fn from_ids(
+            ids: impl Into<erp::types::field::MultipleIds>,
+            env: &erp::environment::Environment,
+        ) -> Self {
+            env.get_record::<Self, erp::types::field::MultipleIds>(ids.into())
+        }
+
+        /// Create one record per set of values.
+        pub fn create(
+            values: Vec<erp::types::model::MapOfFields>,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Self, #err> {
+            env.create_new_records_from_maps::<Self>(values)
+        }
+
+        /// Read fields of these records, one map per record.
+        pub fn read(
+            &self,
+            fields: &[&str],
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Vec<erp::types::model::MapOfFields>, #err> {
+            env.read(#model_name_multi, &self.id, fields)
+        }
+
+        /// Write the same values to every record of the set.
+        pub fn write(
+            &self,
+            values: erp::types::model::MapOfFields,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<(), #err> {
+            env.write(#model_name_multi, &self.id, values)
+        }
+
+        /// Delete these records, and report how many went.
+        pub fn delete(
+            &self,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<u32, #err> {
+            env.delete(#model_name_multi, &self.id)
+        }
+    };
+
+    let verbs_single = quote! {
+        /// A record over an id already known, without asking the database.
+        pub fn from_id(id: u32, env: &erp::environment::Environment) -> Self {
+            env.get_record::<Self, erp::types::field::SingleId>(id.into())
+        }
+
+        /// Create one record.
+        pub fn create(
+            values: erp::types::model::MapOfFields,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Self, #err> {
+            env.create_new_record_from_map::<Self>(values)
+        }
+
+        /// Read fields of this record.
+        pub fn read(
+            &self,
+            fields: &[&str],
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<Vec<erp::types::model::MapOfFields>, #err> {
+            env.read(#model_name_single, &self.id, fields)
+        }
+
+        /// Write values to this record.
+        pub fn write(
+            &self,
+            values: erp::types::model::MapOfFields,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<(), #err> {
+            env.write(#model_name_single, &self.id, values)
+        }
+
+        /// Delete this record.
+        pub fn delete(
+            &self,
+            env: &mut erp::environment::Environment,
+        ) -> ::core::result::Result<u32, #err> {
+            env.delete(#model_name_single, &self.id)
+        }
+    };
+
     let impl_model = quote! {
 
         impl #struct_name_ident<erp::types::field::SingleId> {
@@ -213,6 +335,8 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             pub fn get_id_ref(&self) -> &u32 {
                 self.id.get_id_ref()
             }
+
+            #verbs_single
 
             #(#impl_model_fields_single)*
         }
@@ -225,6 +349,8 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             pub fn get_ids_ref(&self) -> &Vec<u32> {
                 &self.id.get_ids_ref()
             }
+
+            #verbs_multi
 
             #(#impl_model_fields_multi)*
         }

@@ -234,10 +234,15 @@ impl<'mm> Environment<'mm> {
         fields: &[&str],
     ) -> Result<()> {
         let final_internal_model = self.model_manager.get_model(model_name);
-        let methods: Vec<&str> = fields
-            .iter()
-            .filter_map(|field| final_internal_model.compute_method(field))
-            .collect();
+        // One method may fill several fields, and asking for both would otherwise run it twice.
+        let mut methods: Vec<&str> = Vec::new();
+        for field in fields {
+            if let Some(method) = final_internal_model.compute_method(field)
+                && !methods.contains(&method)
+            {
+                methods.push(method);
+            }
+        }
         if methods.is_empty() {
             return Ok(());
         }
