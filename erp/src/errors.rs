@@ -9,3 +9,19 @@ pub struct MaximumRecursionDepthCompute {
     pub fields_name: Vec<String>,
     pub ids: Vec<u32>,
 }
+
+/// Raised when methods call each other without ever coming back.
+///
+/// Dispatch goes through generated code, so the depth is known at every hop and the cycle can be
+/// reported instead of taking the process down with a stack overflow.
+#[derive(Debug, Clone, Error)]
+#[error(
+    "Maximum call depth ({limit}) reached — these methods are calling each other without \
+     returning:\n  {}",
+    .path.join("\n  ")
+)]
+pub struct MaximumCallDepth {
+    pub limit: usize,
+    /// The innermost calls, in the order they were made.
+    pub path: Vec<String>,
+}

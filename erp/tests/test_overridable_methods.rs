@@ -225,3 +225,120 @@ fn test_a_sibling_call_reaches_the_head_of_the_chain() -> Result<()> {
     Ok(())
 }
 
+/// Methods that call each other without returning.
+///
+/// Dispatch always restarts from the head of the chain, so a method reaching its own name — or
+/// two of them reaching each other — never comes back. The stack dies around 1300 frames, which
+/// takes the process with it; this has to be caught before that.
+mod cycles {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "cycle", methods)]
+    #[allow(dead_code)]
+    pub struct Cycle<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(default = 0)]
+        depth: i32,
+    }
+
+    #[erp_methods]
+    impl Cycle<MultipleIds> {
+        /// Reaches its own name, which dispatch sends back to the head.
+        pub fn straight_at_itself(
+            &self,
+            env: &mut Environment,
+        ) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            self.straight_at_itself(env)
+        }
+
+        /// The shape a real cycle takes: two methods, neither of them obviously wrong.
+        pub fn ping(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            self.pong(env)
+        }
+
+        pub fn pong(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            self.ping(env)
+        }
+
+        /// Nesting that terminates must stay unaffected.
+        pub fn shallow(&self, env: &mut Environment) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            Ok(*self.get_depth(env)?.first().copied().unwrap_or(&0))
+        }
+
+        pub fn calls_shallow(
+            &self,
+            env: &mut Environment,
+        ) -> Result<i32, Box<dyn Error + Send + Sync>> {
+            Ok(self.shallow(env)? + 1)
+        }
+    }
+}
+
+fn cycling_app() -> Result<(Application, MultipleIds)> {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<cycles::Cycle<_>>();
+    app.model_manager.post_register();
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("depth", 41);
+    let ids = env.create_records("cycle", vec![map])?;
+    env.close()?;
+    Ok((app, ids))
+}
+
+/// A method reaching its own name is reported, not crashed on.
+#[test]
+fn test_a_direct_cycle_is_refused() -> Result<()> {
+    let (app, ids) = cycling_app()?;
+    let mut env = app.new_env()?;
+    let record: cycles::Cycle<MultipleIds> = env.get_record(ids);
+
+    let err = record.straight_at_itself(&mut env).unwrap_err().to_string();
+    assert!(
+        err.contains("Maximum call depth"),
+        "expected the depth guard, got: {err}"
+    );
+    assert!(
+        err.contains("cycle.straight_at_itself"),
+        "the error must name the method, got: {err}"
+    );
+    Ok(())
+}
+
+/// The shape that actually happens: two methods calling each other.
+#[test]
+fn test_an_indirect_cycle_names_both_methods() -> Result<()> {
+    let (app, ids) = cycling_app()?;
+    let mut env = app.new_env()?;
+    let record: cycles::Cycle<MultipleIds> = env.get_record(ids);
+
+    let err = record.ping(&mut env).unwrap_err().to_string();
+    assert!(
+        err.contains("cycle.ping") && err.contains("cycle.pong"),
+        "the error must show the cycle, not just a depth, got: {err}"
+    );
+    Ok(())
+}
+
+/// Nesting that returns is untouched, and the stack is left clean for the next call.
+#[test]
+fn test_nesting_that_terminates_still_works() -> Result<()> {
+    let (app, ids) = cycling_app()?;
+    let mut env = app.new_env()?;
+    let record: cycles::Cycle<MultipleIds> = env.get_record(ids.clone());
+
+    assert_eq!(record.calls_shallow(&mut env)?, 42);
+
+    // A refused cycle must not leave frames behind.
+    let _ = record.ping(&mut env);
+    assert_eq!(
+        record.calls_shallow(&mut env)?,
+        42,
+        "the call stack must unwind even when a call fails"
+    );
+    Ok(())
+}

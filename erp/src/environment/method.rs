@@ -1,6 +1,7 @@
 //! Calling an overridable method.
 
-use super::{Environment, Result};
+use super::{Environment, MAX_CALL_DEPTH, Result};
+use crate::errors::MaximumCallDepth;
 use crate::model::MethodNotRegistered;
 use erp_types::field::MultipleIds;
 use erp_types::method::{MethodFn, Super};
@@ -50,14 +51,42 @@ impl<'mm> Environment<'mm> {
         R: 'static,
     {
         let chain = self.method_chain::<A, R>(model_name, method_name)?;
-        Super::head(chain, ids, args)
-            .try_call(self)?
-            .ok_or_else(|| {
-                MethodNotRegistered {
-                    model_name: model_name.to_string(),
-                    method_name: method_name.to_string(),
-                }
-                .into()
-            })
+        self.enter_call(model_name, method_name)?;
+        let result = Super::head(chain, ids, args).try_call(self);
+        self.call_stack.pop();
+
+        result?.ok_or_else(|| {
+            MethodNotRegistered {
+                model_name: model_name.to_string(),
+                method_name: method_name.to_string(),
+            }
+            .into()
+        })
+    }
+
+    /// Record that a method is running, and refuse to go deeper than the stack can take.
+    ///
+    /// Checked before pushing, so the reported path is the one that led here rather than one
+    /// frame past it.
+    fn enter_call(&mut self, model_name: &str, method_name: &str) -> Result<()> {
+        if self.call_stack.len() >= MAX_CALL_DEPTH {
+            // The tail rather than the whole stack: a cycle repeats, and two hundred lines of it
+            // say nothing the last dozen do not.
+            let path = self
+                .call_stack
+                .iter()
+                .skip(self.call_stack.len().saturating_sub(12))
+                .map(|(model, method)| format!("{model}.{method}"))
+                .chain(std::iter::once(format!("{model_name}.{method_name}")))
+                .collect();
+            return Err(MaximumCallDepth {
+                limit: MAX_CALL_DEPTH,
+                path,
+            }
+            .into());
+        }
+        self.call_stack
+            .push((model_name.to_string(), method_name.to_string()));
+        Ok(())
     }
 }

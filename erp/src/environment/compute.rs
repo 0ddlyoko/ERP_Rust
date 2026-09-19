@@ -83,7 +83,7 @@ impl<'mm> Environment<'mm> {
     /// Call computed method on all stored fields that need to be computed for given model
     pub(super) fn call_computed_method_on_all_fields(&mut self, model_name: &str) -> Result<()> {
         let model = self.model_manager.get_model(model_name);
-        for i in 0..=MAX_NUMBER_OF_RECURSION {
+        for i in 0..=MAX_RECOMPUTE_ROUNDS {
             let cache_models = self.cache.get_cache_models(model_name);
             // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
             if let Some((key, value)) = cache_models
@@ -105,7 +105,7 @@ impl<'mm> Environment<'mm> {
             {
                 break;
             }
-            if i == MAX_NUMBER_OF_RECURSION {
+            if i == MAX_RECOMPUTE_ROUNDS {
                 return Err(MaximumRecursionDepthCompute {
                     model_name: model_name.to_string(),
                     fields_name: cache_models.to_recompute.keys().cloned().collect(),
@@ -129,7 +129,7 @@ impl<'mm> Environment<'mm> {
         model_name: &str,
         fields: &[&str],
     ) -> Result<()> {
-        for i in 0..=MAX_NUMBER_OF_RECURSION {
+        for i in 0..=MAX_RECOMPUTE_ROUNDS {
             let cache_models = self.cache.get_cache_models(model_name);
             if let Some((key, value)) = cache_models
                 .to_recompute
@@ -149,7 +149,7 @@ impl<'mm> Environment<'mm> {
             {
                 break;
             }
-            if i == MAX_NUMBER_OF_RECURSION {
+            if i == MAX_RECOMPUTE_ROUNDS {
                 return Err(MaximumRecursionDepthCompute {
                     model_name: model_name.to_string(),
                     fields_name: cache_models.to_recompute.keys().cloned().collect(),
@@ -174,7 +174,7 @@ impl<'mm> Environment<'mm> {
         ids: &[u32],
     ) -> Result<()> {
         let model = self.model_manager.get_model(model_name);
-        for i in 0..=MAX_NUMBER_OF_RECURSION {
+        for i in 0..=MAX_RECOMPUTE_ROUNDS {
             let cache_models = self.cache.get_cache_models(model_name);
             if let Some((field, value)) =
                 cache_models.to_recompute.iter().find_map(|(field, value)| {
@@ -204,7 +204,7 @@ impl<'mm> Environment<'mm> {
             }) {
                 break;
             }
-            if i == MAX_NUMBER_OF_RECURSION {
+            if i == MAX_RECOMPUTE_ROUNDS {
                 return Err(MaximumRecursionDepthCompute {
                     model_name: model_name.to_string(),
                     fields_name: cache_models.to_recompute.keys().cloned().collect(),

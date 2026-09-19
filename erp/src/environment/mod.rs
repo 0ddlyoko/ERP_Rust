@@ -29,7 +29,19 @@ mod read;
 mod transaction;
 mod write;
 
-const MAX_NUMBER_OF_RECURSION: i32 = 1024;
+/// Rounds the recompute driver may go through before it declares a computed field unstable.
+///
+/// Counts turns of a flat loop, not nesting: it catches a compute that keeps dirtying what it
+/// just wrote, never a method calling itself.
+const MAX_RECOMPUTE_ROUNDS: i32 = 1024;
+
+/// Methods that may be on the stack at once.
+///
+/// Measured rather than guessed: nesting dies around 1300 frames on a 2 MB thread in a debug
+/// build, which is the worst configuration the tests run in. This leaves a margin of six while
+/// staying an order of magnitude above any legitimate nesting — a method reaching its own name
+/// is a cycle, not a deep call.
+const MAX_CALL_DEPTH: usize = 200;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -50,6 +62,11 @@ pub struct Environment<'mm> {
     /// `None` means nobody in particular: booting, loading plugins, system work. Carried here
     /// rather than passed around because retrofitting it later would touch every signature.
     uid: Option<u32>,
+    /// Methods currently running, outermost first.
+    ///
+    /// Kept as names rather than a depth counter: a real cycle is almost never a method calling
+    /// itself, it is two of them calling each other, and only the path shows that.
+    call_stack: Vec<(String, String)>,
     closed: bool,
 }
 
@@ -83,6 +100,7 @@ impl<'mm> Environment<'mm> {
             model_manager,
             database,
             uid,
+            call_stack: Vec::new(),
             closed: false,
         };
         env.database.start_transaction()?;
