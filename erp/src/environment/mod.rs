@@ -14,7 +14,7 @@ use erp_types::cache::{Dirty, Update};
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::FieldType;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
-use erp_types::field::{IdMode, MultipleIds, SingleId, Super};
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;

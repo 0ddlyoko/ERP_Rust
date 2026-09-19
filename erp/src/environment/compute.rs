@@ -223,6 +223,10 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Call computed methods of given fields of the given model for given ids
+    ///
+    /// A compute is an overridable method taking no arguments and returning nothing, so this goes
+    /// through the same dispatch as any other: the most derived implementation runs first, and
+    /// reaches the ones it overrides through `super`.
     pub(super) fn call_compute_method<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -230,14 +234,19 @@ impl<'mm> Environment<'mm> {
         fields: &[&str],
     ) -> Result<()> {
         let final_internal_model = self.model_manager.get_model(model_name);
+        let methods: Vec<&str> = fields
+            .iter()
+            .filter_map(|field| final_internal_model.compute_method(field))
+            .collect();
+        if methods.is_empty() {
+            return Ok(());
+        }
         let ids: MultipleIds = ids.get_ids_ref().into();
         // One savepoint for the whole chain: a compute is a single logical operation, so a link
         // that fails must take the ones before it with it.
         self.savepoint(move |env| {
-            for field in fields {
-                if let Some(chain) = final_internal_model.compute_chain(field) {
-                    Super::head(chain, field, &ids).call(env)?;
-                }
+            for method in methods {
+                env.call_method::<(), ()>(model_name, method, &ids, &())?;
             }
             Ok(())
         })

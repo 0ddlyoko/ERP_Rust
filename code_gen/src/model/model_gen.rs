@@ -19,21 +19,6 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         ..
     } = ModelGen::from_item(item)?;
 
-    let compute_fields = fields.iter().filter_map(|f| {
-        let FieldGen {
-            field_name,
-            compute,
-            ..
-        } = f;
-        let compute = compute.as_ref()?.to_string();
-        let compute_method_ident = Ident::new(&compute, Span::call_site());
-        Some(quote! {
-            if field_name == #field_name {
-                return record.#compute_method_ident(env, parent);
-            }
-        })
-    });
-
     let struct_name_ident = Ident::new(struct_name.as_str(), Span::call_site());
     // Derived from the identity, not the table: renaming the physical table must not rename
     // the generated Rust type.
@@ -368,10 +353,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 quote! { vec![] }
             };
 
+            let method = compute.as_ref().map(ToString::to_string).unwrap_or_default();
             quote! {
                 Some(erp::types::field::FieldCompute {
-                    // We don't care about the "type_id" type here, as it's taken later during the initialization of the erp
-                    type_id: std::any::TypeId::of::<String>(),
+                    method: #method.to_string(),
                     depends: #depends,
                 })
             }
@@ -465,17 +450,6 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 }
             }
 
-            fn call_compute_method(
-                field_name: &str,
-                id: erp::types::field::MultipleIds,
-                env: &mut dyn erp::types::environment::ErasedEnvironment,
-                parent: erp::types::field::Super<'_>,
-            ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-                let env = erp::environment::Environment::from_erased(env);
-                let record = #ident::<erp::types::field::MultipleIds>::create_instance(id);
-                #(#compute_fields)*
-                Ok(())
-            }
         }
     };
 

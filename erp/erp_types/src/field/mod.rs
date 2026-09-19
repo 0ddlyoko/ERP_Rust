@@ -1,4 +1,3 @@
-mod compute_chain;
 mod error;
 mod field_compute;
 mod field_depends;
@@ -8,7 +7,6 @@ mod field_type;
 mod id;
 mod reference;
 
-pub use compute_chain::*;
 pub use error::*;
 pub use field_compute::*;
 pub use field_depends::*;

@@ -1,13 +1,12 @@
 use crate::models::{BaseTag, Tag};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::types::field::Super;
 use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, Timestamp};
 use std::error::Error;
 
 /// Exercises the field types an ERP cannot do without: exact money, a due date and an audit stamp.
 #[derive(Model)]
-#[erp(id = "invoice")]
+#[erp(id = "invoice", methods)]
 #[allow(dead_code)]
 pub struct Invoice<Mode: IdMode> {
     pub id: Mode,
@@ -27,7 +26,9 @@ pub struct Invoice<Mode: IdMode> {
     tag_summary: String,
 }
 
+#[erp_methods]
 impl Invoice<MultipleIds> {
+    #[erp(overridable)]
     pub fn compute_tag_summary(
         &self,
         env: &mut Environment,

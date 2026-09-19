@@ -1,7 +1,7 @@
 use crate::models::{BaseSaleOrderLine, BaseTag, SaleOrderLine};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::types::field::{EnumType, IdMode, MultipleIds, Reference, Super};
+use erp::types::field::{EnumType, IdMode, MultipleIds, Reference};
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -39,7 +39,7 @@ impl From<&str> for &SaleOrderState {
 impl EnumType for SaleOrderState {}
 
 #[derive(Model)]
-#[erp(id = "sale_order")]
+#[erp(id = "sale_order", methods)]
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     pub id: Mode,
@@ -54,7 +54,9 @@ pub struct SaleOrder<Mode: IdMode> {
     tags: Reference<BaseTag, MultipleIds>,
 }
 
+#[erp_methods]
 impl SaleOrder<MultipleIds> {
+    #[erp(overridable)]
     pub fn compute_total_price(
         &self,
         env: &mut Environment,

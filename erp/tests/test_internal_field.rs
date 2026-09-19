@@ -2,59 +2,39 @@ use erp::app::Application;
 use erp_internal_types::{FinalInternalField, InternalField};
 use erp_types::field::{FieldCompute, FieldReferenceType};
 use erp_types::field::{FieldKind, FieldType};
-use std::any::TypeId;
 use std::error::Error;
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-/// Stand-in for a real compute: these tests exercise registration, not execution.
-fn no_compute(
-    _field: &str,
-    _ids: erp_types::field::MultipleIds,
-    _env: &mut dyn erp_types::environment::ErasedEnvironment,
-    _parent: erp_types::field::Super,
-) -> std::result::Result<(), Box<dyn Error + Send + Sync>> {
-    Ok(())
-}
-
 #[test]
 fn test_register_field() {
-    let type_id = TypeId::of::<InternalField>();
     let mut field_name = FinalInternalField::new("name");
     let mut field_age = FinalInternalField::new("age");
 
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: Some(FieldType::String("0ddlyoko".to_string())),
-            description: Some("This is the name".to_string()),
-            required: false,
-            compute: Some(FieldCompute {
-                type_id,
-                depends: vec!["age".to_string(), "test".to_string()],
-            }),
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: Some(FieldType::String("0ddlyoko".to_string())),
+        description: Some("This is the name".to_string()),
+        required: false,
+        compute: Some(FieldCompute {
+            method: "compute_it".to_string(),
+            depends: vec!["age".to_string(), "test".to_string()],
+        }),
+        field_ref: None,
+    });
 
-    field_age.register_internal_field(
-        &InternalField {
-            name: "age".to_string(),
-            kind: FieldKind::Integer,
-            default_value: Some(FieldType::Integer(42)),
-            description: Some("This is the age of the person".to_string()),
-            required: false,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_age.register_internal_field(&InternalField {
+        name: "age".to_string(),
+        kind: FieldKind::Integer,
+        default_value: Some(FieldType::Integer(42)),
+        description: Some("This is the age of the person".to_string()),
+        required: false,
+        compute: None,
+        field_ref: None,
+    });
 
     assert_eq!(field_name.name, "name");
     assert_eq!(field_name.description, "This is the name".to_string());
@@ -80,19 +60,15 @@ fn test_register_field() {
     assert!(field_age.compute.is_none());
 
     // Register a new existing field ("name") should override data
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: Some(FieldType::String("1ddlyoko".to_string())),
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: Some(FieldType::String("1ddlyoko".to_string())),
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
 
     assert_eq!(field_name.name, "name");
     assert_eq!(field_name.description, "This is the name".to_string());
@@ -109,22 +85,18 @@ fn test_register_field() {
     );
 
     // Again
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: None,
-            description: Some("This is another description".to_string()),
-            required: true,
-            compute: Some(FieldCompute {
-                type_id,
-                depends: vec!["age".to_string(), "test2".to_string()],
-            }),
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: None,
+        description: Some("This is another description".to_string()),
+        required: true,
+        compute: Some(FieldCompute {
+            method: "compute_it".to_string(),
+            depends: vec!["age".to_string(), "test2".to_string()],
+        }),
+        field_ref: None,
+    });
 
     assert_eq!(field_name.name, "name");
     assert_eq!(
@@ -144,22 +116,18 @@ fn test_register_field() {
     );
 
     // Again
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: None,
-            description: Some("This is another description".to_string()),
-            required: true,
-            compute: Some(FieldCompute {
-                type_id,
-                depends: vec!["age".to_string()],
-            }),
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: None,
+        description: Some("This is another description".to_string()),
+        required: true,
+        compute: Some(FieldCompute {
+            method: "compute_it".to_string(),
+            depends: vec!["age".to_string()],
+        }),
+        field_ref: None,
+    });
 
     assert_eq!(field_name.name, "name");
     assert_eq!(
@@ -181,23 +149,18 @@ fn test_register_field() {
 
 #[test]
 fn test_register_field_without_default_value_is_allowed() {
-    let type_id = TypeId::of::<InternalField>();
     let mut field_name = FinalInternalField::new("field_name");
 
     // The type is carried by `kind`, so a field no longer needs a default to be declarable.
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: None,
-            description: Some("This is the name".to_string()),
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: None,
+        description: Some("This is the name".to_string()),
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
 
     assert_eq!(field_name.kind, FieldKind::String);
     assert_eq!(field_name.default_value, None);
@@ -207,36 +170,27 @@ fn test_register_field_without_default_value_is_allowed() {
 #[test]
 #[should_panic]
 fn test_register_field_with_another_default_type_should_fail() {
-    let type_id = TypeId::of::<InternalField>();
     let mut field_name = FinalInternalField::new("field_name");
 
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::String,
-            default_value: Some(FieldType::String("0ddlyoko".to_string())),
-            description: Some("This is the name".to_string()),
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: Some(FieldType::String("0ddlyoko".to_string())),
+        description: Some("This is the name".to_string()),
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
 
-    field_name.register_internal_field(
-        &InternalField {
-            name: "name".to_string(),
-            kind: FieldKind::Integer,
-            default_value: Some(FieldType::Integer(42)),
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field_name.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::Integer,
+        default_value: Some(FieldType::Integer(42)),
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
 }
 
 #[test]

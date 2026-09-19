@@ -1,21 +1,10 @@
 use erp::app::Application;
 use erp_internal_types::{FinalInternalField, InternalField};
 use erp_types::field::{FieldKind, FieldType};
-use std::any::TypeId;
 use std::error::Error;
 use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
-
-/// Stand-in for a real compute: these tests exercise registration, not execution.
-fn no_compute(
-    _field: &str,
-    _ids: erp_types::field::MultipleIds,
-    _env: &mut dyn erp_types::environment::ErasedEnvironment,
-    _parent: erp_types::field::Super,
-) -> std::result::Result<(), Box<dyn Error + Send + Sync>> {
-    Ok(())
-}
 
 fn new_app() -> Application {
     let mut app = Application::new_test();
@@ -121,71 +110,53 @@ fn test_default_follows_optionality() -> Result<()> {
 #[test]
 #[should_panic(expected = "declared as")]
 fn test_conflicting_kinds_are_rejected() {
-    let type_id = TypeId::of::<InternalField>();
     let mut field = FinalInternalField::new("amount");
 
-    field.register_internal_field(
-        &InternalField {
-            name: "amount".to_string(),
-            kind: FieldKind::Integer,
-            default_value: None,
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
-    field.register_internal_field(
-        &InternalField {
-            name: "amount".to_string(),
-            kind: FieldKind::Decimal,
-            default_value: None,
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field.register_internal_field(&InternalField {
+        name: "amount".to_string(),
+        kind: FieldKind::Integer,
+        default_value: None,
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
+    field.register_internal_field(&InternalField {
+        name: "amount".to_string(),
+        kind: FieldKind::Decimal,
+        default_value: None,
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
 }
 
 /// An extension may add a default to a field that had none, without redeclaring its type.
 #[test]
 fn test_an_extension_can_supply_a_default() {
-    let type_id = TypeId::of::<InternalField>();
     let mut field = FinalInternalField::new("label");
 
-    field.register_internal_field(
-        &InternalField {
-            name: "label".to_string(),
-            kind: FieldKind::String,
-            default_value: None,
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field.register_internal_field(&InternalField {
+        name: "label".to_string(),
+        kind: FieldKind::String,
+        default_value: None,
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
     assert_eq!(field.default_value, None);
 
-    field.register_internal_field(
-        &InternalField {
-            name: "label".to_string(),
-            kind: FieldKind::String,
-            default_value: Some(FieldType::String("draft".to_string())),
-            description: None,
-            required: true,
-            compute: None,
-            field_ref: None,
-        },
-        &type_id,
-        no_compute,
-    );
+    field.register_internal_field(&InternalField {
+        name: "label".to_string(),
+        kind: FieldKind::String,
+        default_value: Some(FieldType::String("draft".to_string())),
+        description: None,
+        required: true,
+        compute: None,
+        field_ref: None,
+    });
     assert_eq!(
         field.default_value,
         Some(FieldType::String("draft".to_string()))

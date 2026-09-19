@@ -1,8 +1,10 @@
 use erp::app::Application;
+use erp_types::field::MultipleIds;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use test_plugin::TestPlugin;
+use test_plugin::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
 use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -184,4 +186,116 @@ fn test_narrowing_to_nothing_is_a_noop() -> Result<()> {
     let rows = env.read("sale_order_test", &ids, &["narrowed"])?;
     assert_eq!(rows[0].get::<&String>("narrowed"), &"skipped".to_string());
     Ok(())
+}
+
+/// A compute is an ordinary overridable method, so calling it by its own name dispatches from the
+/// head of the chain — not from the implementation sitting next to the call.
+#[test]
+fn test_calling_a_compute_by_name_dispatches_virtually() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "direct");
+    let ids = env.create_records("sale_order_test", vec![map])?;
+
+    // Called on the *base* struct, which on its own would produce "base:direct".
+    let record: SaleOrderTest<MultipleIds> = env.get_record(ids.clone());
+    record.compute_label(&mut env)?;
+
+    let rows = env.read("sale_order_test", &ids, &["label"])?;
+    assert_eq!(
+        rows[0].get::<&String>("label"),
+        &"base:direct+derived".to_string(),
+        "the derived implementation must run, even though the call was made on the base struct"
+    );
+    Ok(())
+}
+
+/// The same call made on the derived struct lands on the same chain.
+#[test]
+fn test_a_compute_chain_does_not_depend_on_the_struct_called_from() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "direct");
+    let ids = env.create_records("sale_order_test", vec![map])?;
+
+    let record: SaleOrderTest2<MultipleIds> = env.get_record(ids.clone());
+    record.compute_label(&mut env)?;
+
+    let rows = env.read("sale_order_test", &ids, &["label"])?;
+    assert_eq!(
+        rows[0].get::<&String>("label"),
+        &"base:direct+derived".to_string()
+    );
+    Ok(())
+}
+
+/// One field, one chain, one method name.
+///
+/// Two structs naming different methods for the same field would each get their own chain, and
+/// only one of them would ever run. Refused where it is still cheap to see.
+mod two_methods_one_field {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "two_computes", methods)]
+    #[allow(dead_code)]
+    pub struct Declares<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(compute = "compute_label", depends = [])]
+        label: String,
+    }
+
+    #[erp_methods]
+    impl Declares<MultipleIds> {
+        #[erp(overridable)]
+        pub fn compute_label(
+            &self,
+            env: &mut Environment,
+            sup: Super,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = (env, sup);
+            Ok(())
+        }
+    }
+
+    #[derive(Model)]
+    #[erp(id = "two_computes", methods)]
+    #[erp(derived_model = "")]
+    #[allow(dead_code)]
+    pub struct Disagrees<Mode: IdMode> {
+        pub id: Mode,
+        /// Same field, different method.
+        #[erp(compute = "compute_something_else", depends = [])]
+        label: String,
+    }
+
+    #[erp_methods]
+    impl Disagrees<MultipleIds> {
+        #[erp(overridable)]
+        pub fn compute_something_else(
+            &self,
+            env: &mut Environment,
+            sup: Super,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = (env, sup);
+            Ok(())
+        }
+    }
+}
+
+#[test]
+#[should_panic(expected = "must name the same method")]
+fn test_a_field_computed_by_two_different_methods_is_refused() {
+    let mut app = Application::new_test();
+    app.model_manager
+        .register_model::<two_methods_one_field::Declares<_>>();
+    app.model_manager
+        .register_model::<two_methods_one_field::Disagrees<_>>();
 }

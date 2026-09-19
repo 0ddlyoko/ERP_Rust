@@ -1,12 +1,12 @@
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, Super};
+use erp::types::field::{IdMode, MultipleIds};
 use std::error::Error;
 
 #[derive(Model)]
-#[erp(id = "sale_order_test")]
+#[erp(id = "sale_order_test", methods)]
 #[allow(dead_code)]
-pub(crate) struct SaleOrderTest<Mode: IdMode> {
+pub struct SaleOrderTest<Mode: IdMode> {
     id: Mode,
     name: String,
     age: i32,
@@ -18,8 +18,10 @@ pub(crate) struct SaleOrderTest<Mode: IdMode> {
     narrowed: String,
 }
 
+#[erp_methods]
 impl SaleOrderTest<MultipleIds> {
     /// Base implementation of the chain.
+    #[erp(overridable)]
     pub fn compute_label(
         &self,
         env: &mut Environment,
@@ -32,6 +34,7 @@ impl SaleOrderTest<MultipleIds> {
         Ok(())
     }
 
+    #[erp(overridable)]
     pub fn compute_replaced(
         &self,
         env: &mut Environment,
@@ -43,6 +46,7 @@ impl SaleOrderTest<MultipleIds> {
         Ok(())
     }
 
+    #[erp(overridable)]
     pub fn compute_narrowed(
         &self,
         env: &mut Environment,
@@ -56,10 +60,10 @@ impl SaleOrderTest<MultipleIds> {
 }
 
 #[derive(Model)]
-#[erp(id = "sale_order_test")]
+#[erp(id = "sale_order_test", methods)]
 #[erp(derived_model = "")]
 #[allow(dead_code)]
-pub(crate) struct SaleOrderTest2<Mode: IdMode> {
+pub struct SaleOrderTest2<Mode: IdMode> {
     id: Mode,
     #[erp(description = "New name of the SO")]
     name: String,
@@ -71,8 +75,10 @@ pub(crate) struct SaleOrderTest2<Mode: IdMode> {
     narrowed: String,
 }
 
+#[erp_methods]
 impl SaleOrderTest2<MultipleIds> {
     /// Extends the base: calls it, then appends to what it produced.
+    #[erp(overridable)]
     pub fn compute_label(
         &self,
         env: &mut Environment,
@@ -88,6 +94,7 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Replaces the base: never calls it.
+    #[erp(overridable)]
     pub fn compute_replaced(
         &self,
         env: &mut Environment,
@@ -100,6 +107,7 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Handles some records itself and hands only the rest down the chain.
+    #[erp(overridable)]
     pub fn compute_narrowed(
         &self,
         env: &mut Environment,

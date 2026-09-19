@@ -2,34 +2,18 @@ use crate::FinalInternalField;
 use crate::errors::FieldNotFound;
 use crate::field::InternalField;
 use crate::method::MethodRegistry;
-use erp_types::environment::ErasedEnvironment;
-use erp_types::field::{ComputeFn, FieldCompute, FieldType, MultipleIds, Super};
+use erp_types::field::{FieldType, MultipleIds};
+use erp_types::method::MethodFn;
 use erp_types::model::{CommonModel, ModelDescriptor};
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Model descriptor represented by a single struct model
 pub struct InternalModel {
     pub name: String,
     pub description: Option<String>,
     pub fields: HashMap<String, InternalField>,
-    pub computed_method: ComputeFn,
     pub plugin_name: String,
-}
-
-impl InternalModel {
-    pub fn call_computed_method(
-        &self,
-        field_name: &str,
-        id: MultipleIds,
-        env: &mut dyn ErasedEnvironment,
-        parent: Super<'_>,
-    ) -> Result<()> {
-        (self.computed_method)(field_name, id, env, parent)
-    }
 }
 
 /// Final descriptor of a model.
@@ -45,18 +29,6 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
     pub methods: MethodRegistry,
-}
-
-fn compute_wrapper<M>(
-    field: &str,
-    ids: MultipleIds,
-    env: &mut dyn ErasedEnvironment,
-    parent: Super<'_>,
-) -> Result<()>
-where
-    M: CommonModel<MultipleIds> + 'static,
-{
-    M::call_compute_method(field, ids, env, parent)
 }
 
 impl FinalInternalModel {
@@ -111,7 +83,7 @@ impl FinalInternalModel {
                 compute: field.compute,
                 field_ref: field.field_ref,
             };
-            self.register_internal_field(&internal_field, &type_id, compute_wrapper::<M>);
+            self.register_internal_field(&internal_field);
             final_fields.insert(field_name, internal_field);
         }
 
@@ -119,7 +91,6 @@ impl FinalInternalModel {
             name: name.to_string(),
             description,
             fields: final_fields,
-            computed_method: compute_wrapper::<M>,
             plugin_name: plugin_name.to_string(),
         };
 
@@ -129,18 +100,13 @@ impl FinalInternalModel {
         self.models.insert(type_id, internal_model);
     }
 
-    pub fn register_internal_field(
-        &mut self,
-        field_descriptor: &InternalField,
-        type_id: &TypeId,
-        compute_fn: ComputeFn,
-    ) {
+    pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
         let name = &field_descriptor.name;
         let internal_field = self
             .fields
             .entry(name.to_string())
             .or_insert_with(|| FinalInternalField::new(name));
-        internal_field.register_internal_field(field_descriptor, type_id, compute_fn);
+        internal_field.register_internal_field(field_descriptor);
     }
 
     pub fn first(&self) -> &InternalModel {
@@ -287,15 +253,25 @@ impl FinalInternalModel {
         })
     }
 
+    /// Method that fills a field, if it is computed at all.
+    pub fn compute_method(&self, field_name: &str) -> Option<&str> {
+        let field = self.fields.get(field_name)?;
+        field
+            .compute
+            .as_ref()
+            .map(|compute| compute.method.as_str())
+    }
+
     /// Implementations of a field's compute, most-derived first.
     ///
-    /// `None` when the field is unknown or carries no compute at all.
-    pub fn compute_chain(&self, field_name: &str) -> Option<&[ComputeFn]> {
-        let field = self.fields.get(field_name)?;
-        if field.compute_chain.is_empty() {
-            return None;
-        }
-        Some(&field.compute_chain)
+    /// A compute is an overridable method taking no arguments and returning nothing, so its
+    /// implementations live in the same registry as every other method's.
+    ///
+    /// `None` when the field is unknown, carries no compute, or names a method no struct
+    /// implemented.
+    pub fn compute_chain(&self, field_name: &str) -> Option<&[MethodFn<(), ()>]> {
+        self.methods
+            .chain::<(), ()>(self.compute_method(field_name)?)
     }
 
     /// Return true if given field is a computed field.
@@ -305,34 +281,6 @@ impl FinalInternalModel {
         self.fields
             .get(field_name)
             .is_some_and(|field| field.compute.is_some())
-    }
-
-    /// Return the internal model linked to the computed given field.
-    ///
-    /// If field is not present on this model, return None
-    ///
-    /// If field is not a computed field, return None
-    pub fn get_computed_field(&self, field_name: &str) -> Option<&InternalModel> {
-        let field = self.fields.get(field_name)?;
-        if let Some(FieldCompute { type_id, .. }) = field.compute {
-            self.models.get(&type_id)
-        } else {
-            None
-        }
-    }
-
-    /// Return the internal model linked to the computed given field.
-    ///
-    /// If field is not present on this model, return None
-    ///
-    /// If field is not a computed field, return None
-    pub fn get_computed_field_mut(&mut self, field_name: &str) -> Option<&mut InternalModel> {
-        let field = self.fields.get(field_name)?;
-        if let Some(FieldCompute { type_id, .. }) = field.compute {
-            self.models.get_mut(&type_id)
-        } else {
-            None
-        }
     }
 
     /// Retrieves all models created by a specific plugin

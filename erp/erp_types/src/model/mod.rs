@@ -1,11 +1,9 @@
 mod map_of_fields;
 mod model_descriptor;
 
-use crate::environment::ErasedEnvironment;
-use crate::field::{IdMode, MultipleIds, Super};
+use crate::field::IdMode;
 pub use map_of_fields::*;
 pub use model_descriptor::*;
-use std::error::Error;
 
 /// BaseModel that represent a model, but not a single model instance by itself.
 ///
@@ -41,22 +39,6 @@ pub trait CommonModel<Mode: IdMode> {
 
     /// Create a new instance of this model with given id
     fn create_instance(id: Mode) -> Self
-    where
-        Self: Sized;
-
-    /// Call a given computed method
-    ///
-    /// This method will only be called with a `Model<MultipleIds>`, not with `Model<SingleId>`
-    ///
-    /// So, when you implement this method in `Model<SingleId>`, you can return Ok(()), as this
-    ///  method will never be called on SingleId
-    fn call_compute_method(
-        // &self,
-        field_name: &str,
-        id: MultipleIds,
-        env: &mut dyn ErasedEnvironment,
-        parent: Super<'_>,
-    ) -> Result<(), Box<dyn Error + Send + Sync>>
     where
         Self: Sized;
 }

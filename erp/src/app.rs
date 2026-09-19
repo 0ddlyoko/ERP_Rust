@@ -176,9 +176,9 @@ impl Application {
 
     /// Tear this application down.
     ///
-    /// The model registry is cleared before the plugins: it holds `computed_method` function
-    /// pointers and `TypeId`s originating from the plugin dylibs, which dangle once those
-    /// libraries are unloaded.
+    /// The model registry is cleared before the plugins: it holds the function pointers of every
+    /// overridable method and the `TypeId`s keying them, all originating from the plugin dylibs,
+    /// which dangle once those libraries are unloaded.
     pub fn unload(mut self) {
         self.model_manager = ModelManager::default();
         self.plugin_manager.unload();

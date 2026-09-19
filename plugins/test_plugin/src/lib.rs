@@ -3,7 +3,7 @@ use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 
-mod models;
+pub mod models;
 
 pub struct TestPlugin;
 

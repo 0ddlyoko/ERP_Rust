@@ -1,7 +1,4 @@
-use erp_types::field::{
-    ComputeFn, FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType,
-};
-use std::any::TypeId;
+use erp_types::field::{FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType};
 use std::collections::HashSet;
 
 /// Field descriptor represented by a single field in a single struct model
@@ -30,11 +27,6 @@ pub struct FinalInternalField {
     // If the type is M2O, O2M or M2M, there is an inverse here (but the field could be empty)
     pub inverse: Option<FieldReference>,
     pub depends: Vec<Vec<FieldDepend>>,
-    /// Implementations of this field's compute, most-derived first.
-    ///
-    /// Each one receives a cursor over the rest, which is how a plugin reaches the implementation
-    /// it overrides.
-    pub compute_chain: Vec<ComputeFn>,
     is_init: bool,
 }
 
@@ -49,7 +41,6 @@ impl FinalInternalField {
             compute: None,
             inverse: None,
             depends: Vec::new(),
-            compute_chain: Vec::new(),
             is_init: false,
         }
     }
@@ -59,12 +50,7 @@ impl FinalInternalField {
         self.kind.is_stored()
     }
 
-    pub fn register_internal_field(
-        &mut self,
-        field_descriptor: &InternalField,
-        type_id: &TypeId,
-        compute_fn: ComputeFn,
-    ) {
+    pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
         // Every struct contributing to a field must agree on its type.
         if self.is_init && self.kind != field_descriptor.kind {
             panic!(
@@ -81,11 +67,16 @@ impl FinalInternalField {
         }
         self.required = field_descriptor.required;
         if let Some(new_compute) = &field_descriptor.compute {
-            // Registration follows plugin load order, so the newest contributor is the most
-            // derived and must run first.
-            self.compute_chain.insert(0, compute_fn);
             if let Some(existing_compute) = &mut self.compute {
-                existing_compute.type_id = *type_id;
+                // The field has one chain, held under one method name. Two structs naming
+                // different methods would each get their own, and only one would ever run.
+                if existing_compute.method != new_compute.method {
+                    panic!(
+                        "Field {} is computed by {} and by {} in two different structs. Every \
+                         struct contributing to a computed field must name the same method.",
+                        self.name, existing_compute.method, new_compute.method
+                    );
+                }
                 existing_compute
                     .depends
                     .append(&mut new_compute.depends.clone());
@@ -96,7 +87,7 @@ impl FinalInternalField {
                     .retain(|dep| seen.insert(dep.clone()));
             } else {
                 self.compute = Some(FieldCompute {
-                    type_id: *type_id,
+                    method: new_compute.method.clone(),
                     depends: new_compute.depends.clone(),
                 });
             }

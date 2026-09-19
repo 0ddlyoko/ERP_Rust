@@ -8,7 +8,7 @@ use std::error::Error;
 #[erp(id = "machine", methods)]
 #[erp(derived_model = "test_utilities::models")]
 #[allow(dead_code)]
-pub(crate) struct MachineDiscounted<Mode: IdMode> {
+pub struct MachineDiscounted<Mode: IdMode> {
     id: Mode,
     #[erp(default = 0)]
     discount: i32,

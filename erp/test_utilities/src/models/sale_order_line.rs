@@ -1,12 +1,12 @@
 use crate::models::sale_order::BaseSaleOrder;
 use crate::models::{SaleOrder, Tag};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, Reference, SingleId, Super};
+use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use std::error::Error;
 
 #[derive(Model, Debug)]
-#[erp(id = "sale_order_line")]
+#[erp(id = "sale_order_line", methods)]
 #[allow(dead_code)]
 pub struct SaleOrderLine<Mode: IdMode> {
     pub id: Mode,
@@ -25,7 +25,9 @@ pub struct SaleOrderLine<Mode: IdMode> {
     order_tags: String,
 }
 
+#[erp_methods]
 impl SaleOrderLine<MultipleIds> {
+    #[erp(overridable)]
     pub fn compute_total_price(
         &self,
         env: &mut Environment,
@@ -40,6 +42,7 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
+    #[erp(overridable)]
     pub fn compute_siblings_total(
         &self,
         env: &mut Environment,
@@ -58,6 +61,7 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
+    #[erp(overridable)]
     pub fn compute_order_tags(
         &self,
         env: &mut Environment,
