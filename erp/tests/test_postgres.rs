@@ -13,13 +13,17 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
-use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
+use test_utilities::models::{Invoice, MeterReading, SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 const DATABASE: &str = "erp_rust_test";
 
 fn config_for(schema: &str) -> Config {
+    config_with_pool(schema, 10)
+}
+
+fn config_with_pool(schema: &str, pool_size: u32) -> Config {
     Config {
         database: DatabaseConfig {
             // A path means a unix socket, which is how a local server authenticates by peer.
@@ -31,8 +35,11 @@ fn config_for(schema: &str) -> Config {
                 .or_else(|_| std::env::var("USER"))
                 .unwrap_or_default(),
             password: std::env::var("PGPASSWORD").unwrap_or_default(),
+            pool_size,
+            connection_timeout: 10,
         },
         plugin_path: String::new(),
+        max_concurrent_requests: 0,
     }
 }
 
@@ -45,6 +52,7 @@ fn postgres_app(schema: &str) -> Option<Application> {
     app.model_manager.register_model::<SaleOrder<_>>();
     app.model_manager.register_model::<SaleOrderLine<_>>();
     app.model_manager.register_model::<Tag<_>>();
+    app.model_manager.register_model::<MeterReading<_>>();
     app.model_manager.post_register();
 
     let mut database = match app.create_new_database() {
@@ -60,9 +68,21 @@ fn postgres_app(schema: &str) -> Option<Application> {
         .batch_execute(&format!("DROP SCHEMA IF EXISTS \"{schema}\" CASCADE"))
         .ok()?;
     database.initialize().ok()?;
-    for name in ["invoice", "sale_order", "sale_order_line", "tag"] {
+    let names = [
+        "invoice",
+        "sale_order",
+        "sale_order_line",
+        "tag",
+        "meter_reading",
+    ];
+    for name in names {
         let model = app.model_manager.get_model(name);
         database.sync_model(model).ok()?;
+    }
+    // Constraints need every table they point at, so they come once all of them exist.
+    for name in names {
+        let model = app.model_manager.get_model(name);
+        database.sync_constraints(model).ok()?;
     }
     drop(database);
     Some(app)
@@ -589,6 +609,367 @@ fn test_hostile_order_is_refused() -> Result<()> {
         env.search_ids_with("invoice", &make_domain!([]), &options)
             .is_err(),
         "an unknown sort key must be refused"
+    );
+    Ok(())
+}
+
+/// Several environments, several real connections, at the same time.
+///
+/// Every environment opens its own connection and its own transaction, so this is meant to work
+/// by construction — but until now only the in-memory backend was ever asked to prove it, and
+/// the in-memory backend shares a process-wide store rather than a server.
+#[test]
+fn test_environments_commit_from_parallel_threads() -> Result<()> {
+    let app = app_or_skip!("parallel_commit");
+    const THREADS: i32 = 8;
+
+    std::thread::scope(|scope| {
+        for n in 0..THREADS {
+            let app = &app;
+            scope.spawn(move || {
+                let mut env = app.new_env().expect("its own connection");
+                let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+                map.insert("name", format!("thread {n}"));
+                map.insert("amount_untaxed", Decimal::from(n));
+                env.create_records("invoice", vec![map]).expect("create");
+                env.close().expect("commit");
+            });
+        }
+    });
+
+    let mut env = app.new_env()?;
+    assert_eq!(
+        env.count("invoice", &make_domain!([]))?,
+        THREADS as u32,
+        "every thread's commit must have landed, and none overwritten another"
+    );
+    Ok(())
+}
+
+/// One environment's uncommitted work is invisible to another, against the real server.
+#[test]
+fn test_parallel_environments_do_not_see_each_other_before_commit() -> Result<()> {
+    let app = app_or_skip!("parallel_isolation");
+
+    let mut writer = app.new_env()?;
+    let mut reader = app.new_env()?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "in flight");
+    writer.create_records("invoice", vec![map])?;
+    writer.save_all_to_db()?;
+
+    assert_eq!(
+        reader.count("invoice", &make_domain!([]))?,
+        0,
+        "flushed is not committed, and another connection must not see it"
+    );
+
+    writer.close()?;
+    let mut after = app.new_env()?;
+    assert_eq!(after.count("invoice", &make_domain!([]))?, 1);
+    Ok(())
+}
+
+/// A rolled back environment leaves nothing behind for the others.
+#[test]
+fn test_a_rollback_does_not_reach_parallel_environments() -> Result<()> {
+    let app = app_or_skip!("parallel_rollback");
+
+    let mut kept = app.new_env()?;
+    let mut discarded = app.new_env()?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "kept");
+    kept.create_records("invoice", vec![map])?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "discarded");
+    discarded.create_records("invoice", vec![map])?;
+
+    kept.close()?;
+    drop(discarded);
+
+    let mut env = app.new_env()?;
+    assert_eq!(env.count("invoice", &make_domain!([]))?, 1);
+    assert_eq!(
+        env.count("invoice", &make_domain!([("name", "=", "discarded")]))?,
+        0
+    );
+    Ok(())
+}
+
+/// A model stored under a different table name must reach that table from any connection.
+///
+/// The mapping is learned while synchronising the schema, on whichever connection did it. Every
+/// other one starts with an empty map.
+#[test]
+fn test_an_aliased_table_is_reached_from_a_fresh_connection() -> Result<()> {
+    let app = app_or_skip!("aliased_table");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("reference", "meter one");
+    map.insert("value", Decimal::from_str("42.5")?);
+    env.create_records("meter_reading", vec![map])?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    assert_eq!(
+        env.count(
+            "meter_reading",
+            &make_domain!([("reference", "=", "meter one")])
+        )?,
+        1,
+        "the record must be found where the model says it is stored"
+    );
+
+    // And it really is in the aliased table, not in one named after the model.
+    let rows: Vec<MapOfFields> = env.read_matching(
+        "meter_reading",
+        &["reference", "value"],
+        &make_domain!([]),
+        &SearchOptions::new(),
+    )?;
+    assert_eq!(
+        rows[0].get::<&Decimal>("value"),
+        &Decimal::from_str("42.5")?
+    );
+    Ok(())
+}
+
+/// Deleting a record leaves no pair behind in the relation table.
+///
+/// Asked of the server directly rather than through the ORM: a row nothing reads is still a row,
+/// and it comes back the day PostgreSQL reuses the id.
+#[test]
+fn test_deleting_a_record_clears_the_relation_table() -> Result<()> {
+    let app = app_or_skip!("m2m_delete");
+
+    let (invoice, kept) = {
+        let mut env = app.new_env()?;
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", "doomed");
+        let doomed: MultipleIds = env.create_records("invoice", vec![map])?;
+        let doomed = doomed.get_ids_ref()[0];
+
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", "kept");
+        let kept: MultipleIds = env.create_records("invoice", vec![map])?;
+        let kept = kept.get_ids_ref()[0];
+
+        let mut tags: Vec<u32> = Vec::new();
+        for name in ["first", "second"] {
+            let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+            map.insert("name", name);
+            let created: MultipleIds = env.create_records("tag", vec![map])?;
+            tags.push(created.get_ids_ref()[0]);
+        }
+
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("tags", tags.clone());
+        env.write("invoice", &SingleId::from(doomed), map)?;
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("tags", vec![tags[0]]);
+        env.write("invoice", &SingleId::from(kept), map)?;
+        env.close()?;
+        (doomed, kept)
+    };
+
+    assert_eq!(pairs_of(&app, invoice)?, 2, "the links were written");
+
+    let mut env = app.new_env()?;
+    env.delete("invoice", &SingleId::from(invoice))?;
+    env.close()?;
+
+    assert_eq!(
+        pairs_of(&app, invoice)?,
+        0,
+        "every pair naming the deleted record must be gone from the relation table"
+    );
+    assert_eq!(
+        pairs_of(&app, kept)?,
+        1,
+        "and no other record's links touched"
+    );
+    Ok(())
+}
+
+/// Rows of the relation table naming an invoice, counted by asking the server.
+fn pairs_of(app: &Application, invoice: u32) -> Result<i64> {
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!("this test only runs against PostgreSQL");
+    };
+    let row = connection.client.query_one(
+        "SELECT COUNT(*) FROM m2m_delete.invoice_tag_rel WHERE invoice_id = $1",
+        &[&(invoice as i32)],
+    )?;
+    Ok(row.get(0))
+}
+
+/// The relation table is tied to both ends, so the server refuses an orphan pair and removes one
+/// whose record goes — whether or not the ORM was the one to do it.
+#[test]
+fn test_the_relation_table_cascades_on_delete() -> Result<()> {
+    let app = app_or_skip!("m2m_cascade");
+
+    let (invoice, tag) = {
+        let mut env = app.new_env()?;
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", "invoice");
+        let invoice: MultipleIds = env.create_records("invoice", vec![map])?;
+        let invoice = invoice.get_ids_ref()[0];
+
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", "tag");
+        let tag: MultipleIds = env.create_records("tag", vec![map])?;
+        let tag = tag.get_ids_ref()[0];
+
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("tags", vec![tag]);
+        env.write("invoice", &SingleId::from(invoice), map)?;
+        env.close()?;
+        (invoice, tag)
+    };
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!("this test only runs against PostgreSQL");
+    };
+
+    // A pair naming a record that does not exist must be refused outright.
+    assert!(
+        connection
+            .client
+            .execute(
+                "INSERT INTO m2m_cascade.invoice_tag_rel (invoice_id, tag_id) VALUES ($1, $2)",
+                &[&(invoice as i32), &999_999_i32],
+            )
+            .is_err(),
+        "an orphan pair must not be insertable"
+    );
+
+    // And deleting the row behind an existing pair must take the pair with it, without the ORM.
+    connection.client.execute(
+        "DELETE FROM m2m_cascade.tag WHERE id = $1",
+        &[&(tag as i32)],
+    )?;
+    let row = connection.client.query_one(
+        "SELECT COUNT(*) FROM m2m_cascade.invoice_tag_rel WHERE invoice_id = $1",
+        &[&(invoice as i32)],
+    )?;
+    assert_eq!(
+        row.get::<_, i64>(0),
+        0,
+        "the server must have cascaded, since nothing else could have"
+    );
+    Ok(())
+}
+
+/// Connections are handed out from a pool and given back, so a pool smaller than the number of
+/// callers still serves all of them.
+///
+/// Without the giving back, a pool of two would deadlock on the third caller until the timeout.
+#[test]
+fn test_a_small_pool_serves_more_callers_than_it_holds() -> Result<()> {
+    // The schema has to exist before the narrow pool is used, so it is prepared with the usual one.
+    let prepared = app_or_skip!("small_pool");
+    drop(prepared);
+
+    let mut app = Application::new(config_with_pool("small_pool", 2));
+    app.model_manager.register_model::<Invoice<_>>();
+    app.model_manager.register_model::<Tag<_>>();
+    app.model_manager.post_register();
+
+    const CALLERS: i32 = 8;
+    std::thread::scope(|scope| {
+        for n in 0..CALLERS {
+            let app = &app;
+            scope.spawn(move || {
+                let mut env = app.new_env().expect("a connection, once one is free");
+                let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+                map.insert("name", format!("caller {n}"));
+                env.create_records("invoice", vec![map]).expect("create");
+                env.close().expect("commit");
+            });
+        }
+    });
+
+    let mut env = app.new_env()?;
+    assert_eq!(
+        env.count("invoice", &make_domain!([]))?,
+        CALLERS as u32,
+        "every caller got a connection in turn"
+    );
+    Ok(())
+}
+
+/// The pool never opens more than it was allowed, whatever the pressure.
+#[test]
+fn test_a_pool_never_exceeds_its_size() -> Result<()> {
+    let prepared = app_or_skip!("pool_ceiling");
+    drop(prepared);
+
+    let mut app = Application::new(config_with_pool("pool_ceiling", 3));
+    app.model_manager.register_model::<Invoice<_>>();
+    app.model_manager.register_model::<Tag<_>>();
+    app.model_manager.post_register();
+
+    let seen = std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        for _ in 0..12 {
+            let (app, seen) = (&app, &seen);
+            scope.spawn(move || {
+                let mut env = app.new_env().expect("a connection");
+                let _ = env.count("invoice", &make_domain!([]));
+                seen.fetch_max(
+                    app.pool_size().unwrap_or(0),
+                    std::sync::atomic::Ordering::SeqCst,
+                );
+                env.close().expect("commit");
+            });
+        }
+    });
+
+    assert!(
+        seen.load(std::sync::atomic::Ordering::SeqCst) <= 3,
+        "opened {} connections for a pool of 3",
+        seen.load(std::sync::atomic::Ordering::SeqCst)
+    );
+    Ok(())
+}
+
+/// A saturated pool gives up and says so, rather than waiting for good.
+#[test]
+fn test_a_saturated_pool_reports_instead_of_hanging() -> Result<()> {
+    let prepared = app_or_skip!("pool_timeout");
+    drop(prepared);
+
+    let mut config = config_with_pool("pool_timeout", 1);
+    config.database.connection_timeout = 1;
+    let mut app = Application::new(config);
+    app.model_manager.register_model::<Invoice<_>>();
+    app.model_manager.register_model::<Tag<_>>();
+    app.model_manager.post_register();
+
+    // The only connection stays out for the whole test.
+    let _held = app.new_env()?;
+
+    let started = std::time::Instant::now();
+    let refused = app.new_env();
+    assert!(refused.is_err(), "the second caller cannot have got one");
+    let message = refused
+        .err()
+        .map(|error| error.to_string())
+        .unwrap_or_default();
+    assert!(
+        message.contains("in use"),
+        "the error must say the pool is saturated, got: {message}"
+    );
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "it must give up near the timeout, not hang"
     );
     Ok(())
 }

@@ -9,6 +9,12 @@ use std::path::Path;
 pub struct Config {
     pub database: DatabaseConfig,
     pub plugin_path: String,
+    /// Requests served at once. `0` means no bound.
+    ///
+    /// Separate from the pool: a request waiting for room has not taken a connection yet, which
+    /// is what keeps a burst from holding the pool open while it queues.
+    #[serde(default)]
+    pub max_concurrent_requests: usize,
 }
 
 impl Config {

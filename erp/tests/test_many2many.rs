@@ -291,3 +291,76 @@ fn test_recompute_reaches_every_linked_source() -> Result<()> {
     assert_eq!(summary_of(&mut env, untouched)?, "");
     Ok(())
 }
+
+/// Deleting a record takes its half of every link with it.
+///
+/// The relation table has no foreign keys, so nothing but this cleans it: a pair left behind
+/// would point at a record that no longer exists, and would come back the day the id is reused.
+#[test]
+fn test_deleting_a_record_removes_its_links() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let invoice = create(&mut env, "invoice", "invoice")?;
+    let kept = create(&mut env, "invoice", "kept")?;
+    let first = create(&mut env, "tag", "first")?;
+    let second = create(&mut env, "tag", "second")?;
+    set_tags(&mut env, invoice, vec![first, second])?;
+    set_tags(&mut env, kept, vec![first])?;
+
+    env.delete("invoice", &SingleId::from(invoice))?;
+
+    assert_eq!(
+        invoices_of(&mut env, first)?,
+        vec![kept],
+        "the deleted invoice must be gone from the tag it shared"
+    );
+    assert!(
+        invoices_of(&mut env, second)?.is_empty(),
+        "and from the one only it carried"
+    );
+    Ok(())
+}
+
+/// The same from the other side: deleting a tag unlinks it from the invoices listing it.
+#[test]
+fn test_deleting_the_other_side_removes_its_links() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let invoice = create(&mut env, "invoice", "invoice")?;
+    let doomed = create(&mut env, "tag", "doomed")?;
+    let kept = create(&mut env, "tag", "kept")?;
+    set_tags(&mut env, invoice, vec![doomed, kept])?;
+
+    env.delete("tag", &SingleId::from(doomed))?;
+
+    assert_eq!(tags_of(&mut env, invoice)?, vec![kept]);
+    Ok(())
+}
+
+/// The links are gone from storage too, not only from the cache.
+#[test]
+fn test_the_links_do_not_come_back_after_a_commit() -> Result<()> {
+    let app = new_app();
+
+    let (invoice, tag) = {
+        let mut env = app.new_env()?;
+        let invoice = create(&mut env, "invoice", "invoice")?;
+        let tag = create(&mut env, "tag", "tag")?;
+        set_tags(&mut env, invoice, vec![tag])?;
+        env.close()?;
+        (invoice, tag)
+    };
+
+    let mut env = app.new_env()?;
+    env.delete("invoice", &SingleId::from(invoice))?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    assert!(
+        invoices_of(&mut env, tag)?.is_empty(),
+        "a pair left in storage would resurface here"
+    );
+    Ok(())
+}

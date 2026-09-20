@@ -253,6 +253,17 @@ impl ModelManager {
         &self.models
     }
 
+    /// Where each model is stored, for the backends that address tables by name.
+    ///
+    /// Read from the registry rather than learned while synchronising a schema: every connection
+    /// needs it, and only one of them ever runs the synchronisation.
+    pub fn tables(&self) -> HashMap<String, String> {
+        self.models
+            .iter()
+            .map(|(name, model)| (name.clone(), model.table_name.clone()))
+            .collect()
+    }
+
     /// Look a model up by name.
     ///
     /// This is the entry point for any name that did not come from the framework itself, such as

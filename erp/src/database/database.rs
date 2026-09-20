@@ -16,6 +16,9 @@ pub enum ErrorType {
     Postgres(#[from] postgres::Error),
     #[error(transparent)]
     Other(#[from] Box<dyn Error + Send + Sync>),
+    /// The pool could not hand out a connection: none free before the timeout, or none openable.
+    #[error("No database connection available: {0}")]
+    Pool(String),
 }
 
 pub trait Database {
@@ -98,6 +101,14 @@ pub trait Database {
         id: u32,
         targets: &[u32],
     ) -> Result<()>;
+
+    /// Add the constraints a model's relations need, once every table they point at exists.
+    ///
+    /// Separate from [`Database::sync_model`] because a many2many's relation table references
+    /// two model tables, and the model declaring it is not necessarily synchronised last.
+    fn sync_constraints(&mut self, _model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        Ok(())
+    }
 
     /// Delete the given records, and return how many rows were actually removed.
     ///

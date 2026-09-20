@@ -1,6 +1,7 @@
+use crate::concurrency::Gate;
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
-use crate::database::postgres::PostgresDatabase;
+use crate::database::postgres::{ConnectionPool, PostgresDatabase};
 use crate::database::{Database, DatabaseType};
 use crate::environment::Environment;
 use crate::model::ModelManager;
@@ -8,6 +9,7 @@ use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
 use std::error::Error;
+use std::sync::OnceLock;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -17,17 +19,25 @@ pub struct Application {
     pub plugin_manager: PluginManager,
     pub is_test: bool,
     pub cache_db: CacheDatabase,
+    /// Opened on first use rather than at construction, so an application that never reaches the
+    /// database — a test, a `--help` — never tries to.
+    pool: OnceLock<ConnectionPool>,
+    /// How many requests may be served at once.
+    pub gate: Gate,
 }
 
 impl Application {
     /// Create a new instance of this application with given config
     pub fn new(config: Config) -> Application {
+        let config_gate = config.max_concurrent_requests;
         Application {
             config,
             model_manager: ModelManager::default(),
             plugin_manager: PluginManager::default(),
             is_test: false,
             cache_db: CacheDatabase::default(),
+            pool: OnceLock::new(),
+            gate: Gate::new(config_gate),
         }
     }
 
@@ -42,16 +52,41 @@ impl Application {
             plugin_manager: PluginManager::default(),
             is_test: true,
             cache_db: CacheDatabase::default(),
+            pool: OnceLock::new(),
+            gate: Gate::unlimited(),
         }
     }
 
     /// Create a new connection to the database
     /// Open a new, independent connection to the configured database.
+    /// The connection pool, opened the first time anything asks for one.
+    fn pool(&self) -> Result<&ConnectionPool> {
+        if let Some(pool) = self.pool.get() {
+            return Ok(pool);
+        }
+        let pool = ConnectionPool::new(&self.config.database);
+        // Another thread may have won the race; either pool is as good, so the loser's is
+        // dropped and the winner's used.
+        let _ = self.pool.set(pool);
+        Ok(self.pool.get().expect("just set"))
+    }
+
+    /// How many database connections exist right now, for whoever is watching the load.
+    ///
+    /// `None` before anything has asked for one, and for an application that never will.
+    pub fn pool_size(&self) -> Option<usize> {
+        self.pool.get().map(ConnectionPool::open)
+    }
+
     pub fn create_new_database(&self) -> Result<DatabaseType> {
         Ok(if self.is_test {
             DatabaseType::Cache(self.cache_db.connect())
         } else {
-            DatabaseType::Postgres(Box::new(PostgresDatabase::connect(&self.config.database)?))
+            DatabaseType::Postgres(Box::new(PostgresDatabase::connect(
+                self.pool()?,
+                &self.config.database.schema,
+                self.model_manager.tables(),
+            )?))
         })
     }
 
@@ -154,9 +189,15 @@ impl Application {
             .iter()
             .map(|model| model.name.clone())
             .collect();
-        for model_name in model_names {
-            let model = self.model_manager.try_get_model(&model_name)?;
+        for model_name in &model_names {
+            let model = self.model_manager.try_get_model(model_name)?;
             database.sync_model(model)?;
+        }
+        // A second pass, because a relation table references two model tables and the model
+        // declaring it is not necessarily synchronised last.
+        for model_name in &model_names {
+            let model = self.model_manager.try_get_model(model_name)?;
+            database.sync_constraints(model)?;
         }
 
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the
@@ -193,6 +234,11 @@ impl Application {
     }
 
     /// Open a new environment on behalf of a user.
+    /// Same, for a caller that may or may not be anyone in particular.
+    pub fn new_env_as_option(&self, uid: Option<u32>) -> Result<Environment<'_>> {
+        Environment::new_as(&self.model_manager, self.create_new_database()?, uid)
+    }
+
     pub fn new_env_as(&self, uid: u32) -> Result<Environment<'_>> {
         Environment::new_as(&self.model_manager, self.create_new_database()?, Some(uid))
     }

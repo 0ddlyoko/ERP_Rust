@@ -1,56 +1,42 @@
+use super::pool::{ConnectionPool, PooledConnection};
 use super::{QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_ident};
-use crate::database::{Database, DatabaseConfig, ErrorType, FieldType, SearchedRow};
+use crate::database::{Database, ErrorType, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{SearchOptions, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
-use postgres::{Client, NoTls};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub struct PostgresDatabase {
-    pub client: Client,
+    pub client: PooledConnection,
     schema: String,
     is_transaction: bool,
-    /// Model identity to physical table, learned while synchronising the schema.
+    /// Model identity to physical table.
+    ///
+    /// Seeded from the registry when the connection is opened, because a model stored under
+    /// another name has to be reachable from every connection, not only the one that created
+    /// its table.
     tables: HashMap<String, String>,
 }
 
 impl PostgresDatabase {
-    /// Make a connection to this database
-    pub(crate) fn connect(config: &DatabaseConfig) -> std::result::Result<Self, ErrorType>
-    where
-        Self: Sized,
-    {
-        // Built field by field rather than as a URL: a password containing '@', '/', '?' or
-        // '#' would otherwise corrupt the connection string.
-        let mut connection = postgres::Config::new();
-        connection.user(&config.user).dbname(&config.name);
-        if config.url.starts_with('/') {
-            // A path means a unix socket, which is how most local installs authenticate.
-            connection.host_path(&config.url);
-        } else {
-            connection.host(&config.url).port(config.port);
-        }
-        if !config.password.is_empty() {
-            connection.password(&config.password);
-        }
-        let mut client = connection.connect(NoTls)?;
-        // Without this the configured schema would only ever be consulted by `is_installed`,
-        // and every query would look for tables somewhere else.
-        client
-            .batch_execute(&format!(
-                "SET search_path TO {}",
-                quote_ident(&config.schema)
-            ))
-            .map_err(ErrorType::Postgres)?;
+    /// Take a connection from the pool.
+    ///
+    /// Held for as long as the environment that asked for it, so the pool's size is the ceiling
+    /// on transactions running at once. Returned by dropping, including on rollback.
+    pub(crate) fn connect(
+        pool: &ConnectionPool,
+        schema: &str,
+        tables: HashMap<String, String>,
+    ) -> std::result::Result<Self, ErrorType> {
         Ok(Self {
-            client,
-            schema: config.schema.clone(),
+            client: pool.get()?,
+            schema: schema.to_string(),
             is_transaction: false,
-            tables: HashMap::new(),
+            tables,
         })
     }
 }
@@ -58,9 +44,8 @@ impl PostgresDatabase {
 impl PostgresDatabase {
     /// Table backing a model, quoted and schema-qualified.
     ///
-    /// The mapping is learned during schema synchronisation, because the write methods do not
-    /// receive the model registry. A model that was never synchronised falls back to its own
-    /// name, which is also the default table name.
+    /// A model the registry never mentioned falls back to its own name, which is also the
+    /// default table name.
     fn qualified_table(&self, model_name: &str) -> Result<String> {
         let table = self
             .tables
@@ -79,6 +64,17 @@ impl PostgresDatabase {
     }
 
     /// Columns the table already has.
+    fn existing_constraints(&mut self, table_name: &str) -> Result<HashSet<String>> {
+        let rows = self.client.query(
+            "SELECT \"constraint_name\" FROM \"information_schema\".\"table_constraints\" \
+             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
+            &[&self.schema, &table_name],
+        )?;
+        rows.iter()
+            .map(|row| Ok(row.try_get::<_, String>(0)?))
+            .collect()
+    }
+
     fn existing_columns(&mut self, table_name: &str) -> Result<HashSet<String>> {
         let rows = self.client.query(
             "SELECT \"column_name\" FROM \"information_schema\".\"columns\" \
@@ -159,7 +155,7 @@ impl Database for PostgresDatabase {
                     ..
                 }) = &field.inverse
                 {
-                    self.client.batch_execute(&format!(
+                    let statement = format!(
                         "CREATE TABLE IF NOT EXISTS {} ({} INTEGER NOT NULL, {} INTEGER NOT NULL, \
                          PRIMARY KEY ({}, {}))",
                         self.qualified_relation(relation),
@@ -167,7 +163,8 @@ impl Database for PostgresDatabase {
                         quote_ident(target_column),
                         quote_ident(column),
                         quote_ident(target_column)
-                    ))?;
+                    );
+                    self.client.batch_execute(&statement)?;
                 }
                 continue;
             };
@@ -175,6 +172,57 @@ impl Database for PostgresDatabase {
                 "ALTER TABLE {qualified} ADD COLUMN {} {column_type}",
                 quote_ident(field_name)
             ))?;
+        }
+        Ok(())
+    }
+
+    /// Tie each relation table to the two tables it pairs, so a deleted record cannot leave a
+    /// pair behind.
+    ///
+    /// The relation table carries no data of its own — a pair that outlives one of its ends is
+    /// never anything but wrong, and would resurface the day the database reuses the id. Letting
+    /// the server enforce it also means a row removed by hand, or by a migration, stays
+    /// consistent.
+    fn sync_constraints(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        for field in model.fields.values() {
+            let Some(FieldReference {
+                target_model,
+                inverse_field:
+                    FieldReferenceType::M2M {
+                        relation,
+                        column,
+                        target_column,
+                    },
+            }) = &field.inverse
+            else {
+                continue;
+            };
+            let existing = self.existing_constraints(relation)?;
+            let target_table = self
+                .tables
+                .get(target_model)
+                .map_or(target_model.as_str(), String::as_str);
+            let sides = [
+                (column, model.table_name.as_str()),
+                (target_column, target_table),
+            ];
+            for (side, table) in sides {
+                let name = format!("{relation}_{side}_fkey");
+                if existing.contains(&name) {
+                    continue;
+                }
+                let statement = format!(
+                    "ALTER TABLE {} ADD CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {}.{} ({}) \
+                     ON DELETE CASCADE",
+                    self.qualified_relation(relation),
+                    quote_ident(&name),
+                    quote_ident(side),
+                    quote_ident(&self.schema),
+                    quote_ident(table),
+                    quote_ident("id"),
+                );
+                self.client.batch_execute(&statement)?;
+            }
         }
         Ok(())
     }
