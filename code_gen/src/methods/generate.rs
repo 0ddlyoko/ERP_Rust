@@ -258,18 +258,32 @@ fn self_struct_ident(self_ty: &Type) -> Result<Ident> {
 
 /// The method, wrapped so a remote caller can reach it.
 ///
+/// Takes the request's parameters as they arrived, like everything else reachable by name, and
+/// reads the shape it expects out of them: the records to act on, and the arguments.
+///
 /// Calls the method by its own name rather than the renamed body, so a remote call goes through
 /// the override chain exactly like an internal one.
 ///
 /// Arguments arrive named rather than positional: a caller that sends `{"days": 3}` keeps
-/// working when a second argument is added, one that sends `[3]` does not. The struct is local to
-/// the wrapper, so nothing outside ever names it.
+/// working when a second argument is added, one that sends `[3]` does not. The structs are local
+/// to the wrapper, so nothing outside ever names them.
 fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
     let call = &method.name;
     let rpc = &names.rpc;
     let ret = &method.ret;
     let fields = method.args.iter().map(|(ident, ty)| quote! { #ident: #ty });
     let values = method.args.iter().map(|(ident, _)| quote! { args.#ident });
+
+    // A method taking nothing is called without saying so; one taking something is not, because
+    // a missing argument is a mistake rather than a default.
+    let (args_derive, args_default) = if method.args.is_empty() {
+        (
+            quote! { #[derive(erp::serde::Deserialize, Default)] },
+            quote! { #[serde(default)] },
+        )
+    } else {
+        (quote! { #[derive(erp::serde::Deserialize)] }, quote! {})
+    };
 
     // Asserted separately from the wrapper's own use of them, so a missing impl is reported on
     // the type the author wrote rather than deep inside generated code where the name means
@@ -294,9 +308,9 @@ fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStr
         #[doc(hidden)]
         #[allow(non_snake_case)]
         fn #rpc(
-            ids: erp::types::field::MultipleIds,
-            raw: &erp::serde_json::Value,
             env: &mut erp::environment::Environment,
+            _model: &str,
+            params: &erp::serde_json::Value,
         ) -> ::core::result::Result<
             erp::serde_json::Value,
             ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
@@ -304,15 +318,26 @@ fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStr
             #(#arg_bounds)*
             #ret_bound
 
-            #[derive(erp::serde::Deserialize)]
+            #args_derive
             #[serde(crate = "erp::serde")]
             struct Args {
                 #(#fields,)*
             }
-            let args: Args = erp::serde_json::from_value(raw.clone())?;
+
+            #[derive(erp::serde::Deserialize)]
+            #[serde(crate = "erp::serde")]
+            struct Call {
+                #[serde(default)]
+                ids: Vec<u32>,
+                #args_default
+                args: Args,
+            }
+
+            let call: Call = erp::serde_json::from_value(params.clone())?;
+            let args = call.args;
             let record = <#self_ty as erp::types::model::CommonModel<
                 erp::types::field::MultipleIds,
-            >>::create_instance(ids);
+            >>::create_instance(erp::types::field::MultipleIds::from(call.ids));
             let out = record.#call(env, #(#values,)*)?;
             Ok(erp::serde_json::to_value(out)?)
         }

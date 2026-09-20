@@ -4,7 +4,7 @@
 //! the wire, and forgetting the mark leaves a missing endpoint rather than an open one.
 
 use erp::app::Application;
-use erp_types::field::MultipleIds;
+use erp_types::field::{IdMode, MultipleIds};
 use erp_types::model::MapOfFields;
 use serde_json::json;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ fn test_an_exposed_method_answers() -> Result<()> {
     let mut env = app.new_env()?;
     let ids = machine(&mut env, &[("base_rate", 100), ("days", 3)])?;
 
-    let out = env.call_rpc("machine", "quote", ids, &json!({}))?;
+    let out = env.call_rpc("machine", "quote", &json!({"ids": ids.get_ids_ref()}))?;
     assert_eq!(out, json!(300));
     Ok(())
 }
@@ -53,7 +53,11 @@ fn test_arguments_arrive_named() -> Result<()> {
     let mut env = app.new_env()?;
     let ids = machine(&mut env, &[("base_rate", 50)])?;
 
-    let out = env.call_rpc("machine", "quote_for", ids, &json!({"days": 4}))?;
+    let out = env.call_rpc(
+        "machine",
+        "quote_for",
+        &json!({"ids": ids.get_ids_ref(), "args": {"days": 4}}),
+    )?;
     assert_eq!(out, json!(200));
     Ok(())
 }
@@ -68,7 +72,7 @@ fn test_a_remote_call_reaches_the_override() -> Result<()> {
         &[("base_rate", 100), ("days", 3), ("discount", 30)],
     )?;
 
-    let out = env.call_rpc("machine", "quote", ids, &json!({}))?;
+    let out = env.call_rpc("machine", "quote", &json!({"ids": ids.get_ids_ref()}))?;
     assert_eq!(
         out,
         json!(210),
@@ -85,7 +89,11 @@ fn test_an_unmarked_method_is_not_reachable() -> Result<()> {
     let ids = machine(&mut env, &[("base_rate", 100)])?;
 
     let err = env
-        .call_rpc("machine", "internal_rate", ids, &json!({}))
+        .call_rpc(
+            "machine",
+            "internal_rate",
+            &json!({"ids": ids.get_ids_ref()}),
+        )
         .unwrap_err()
         .to_string();
     assert!(err.contains("cannot be called remotely"), "got: {err}");
@@ -100,11 +108,19 @@ fn test_absence_and_refusal_are_indistinguishable() -> Result<()> {
     let ids = machine(&mut env, &[("base_rate", 100)])?;
 
     let unmarked = env
-        .call_rpc("machine", "internal_rate", ids.clone(), &json!({}))
+        .call_rpc(
+            "machine",
+            "internal_rate",
+            &json!({"ids": ids.get_ids_ref()}),
+        )
         .unwrap_err()
         .to_string();
     let absent = env
-        .call_rpc("machine", "no_such_method", ids, &json!({}))
+        .call_rpc(
+            "machine",
+            "no_such_method",
+            &json!({"ids": ids.get_ids_ref()}),
+        )
         .unwrap_err()
         .to_string();
     assert_eq!(
@@ -123,13 +139,17 @@ fn test_bad_arguments_are_refused() -> Result<()> {
     let ids = machine(&mut env, &[("base_rate", 50)])?;
 
     assert!(
-        env.call_rpc("machine", "quote_for", ids.clone(), &json!({}))
+        env.call_rpc("machine", "quote_for", &json!({"ids": ids.get_ids_ref()}))
             .is_err(),
         "a missing argument"
     );
     assert!(
-        env.call_rpc("machine", "quote_for", ids, &json!({"days": "four"}))
-            .is_err(),
+        env.call_rpc(
+            "machine",
+            "quote_for",
+            &json!({"ids": ids.get_ids_ref(), "args": {"days": "four"}})
+        )
+        .is_err(),
         "an argument of the wrong type"
     );
     Ok(())

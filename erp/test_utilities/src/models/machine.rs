@@ -46,6 +46,15 @@ impl Machine<MultipleIds> {
         Ok(self.daily_rate(env)? * days)
     }
 
+    /// Writes, then refuses. What it did must not outlive the call.
+    #[erp(rpc)]
+    pub fn refuse_after_writing(&self, env: &mut Environment) -> Result<i32> {
+        for machine in self {
+            machine.set_name("written before failing".to_string(), env)?;
+        }
+        Err("refused on purpose".into())
+    }
+
     /// Not exposed: reachable from Rust, absent from the wire.
     pub fn internal_rate(&self, env: &mut Environment) -> Result<i32> {
         self.daily_rate(env)

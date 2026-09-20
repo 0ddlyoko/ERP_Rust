@@ -98,10 +98,9 @@ impl<'mm> Environment<'mm> {
         &mut self,
         model_name: &str,
         method_name: &str,
-        ids: MultipleIds,
-        args: &serde_json::Value,
+        params: &serde_json::Value,
     ) -> Result<serde_json::Value> {
-        let call = self.model_manager.rpc.get(model_name, method_name)?;
-        call(ids, args, self)
+        let call = self.model_manager.rpc.resolve(model_name, method_name)?;
+        call(self, model_name, params)
     }
 }
