@@ -220,7 +220,13 @@ impl QueryBuilder {
         let model = model_manager.try_get_model(model_name)?;
         // "id" is a real column but is not in the registry.
         if field_name != "id" {
-            model.try_get_internal_field(field_name)?;
+            let field = model.try_get_internal_field(field_name)?;
+            if let Some(reference) = &field.inverse
+                && let Some(sql) =
+                    self.relation_leaf(model, reference, operator, right, model_manager)?
+            {
+                return Ok(sql);
+            }
         }
         let column = quote_ident(field_name);
         let condition = self.condition(&column, operator, right)?;
@@ -229,6 +235,93 @@ impl QueryBuilder {
             quote_ident("id"),
             quote_ident(&model.table_name)
         ))
+    }
+
+    /// Compare a whole relation against records, for the sides that have no column of their own.
+    ///
+    /// A one2many lives in the children's foreign key and a many2many in a table of pairs, so
+    /// neither can be read off the row. Without this they compared against a column that is not
+    /// there, and a reasonable-looking domain quietly matched nothing.
+    ///
+    /// `None` for a many2one, which does have a column and is already handled.
+    fn relation_leaf(
+        &mut self,
+        model: &erp_internal_types::FinalInternalModel,
+        reference: &FieldReference,
+        operator: &SearchOperator,
+        right: &RightTuple,
+        model_manager: &ModelManager,
+    ) -> Result<Option<String>> {
+        // A many2one has a column of its own and is already handled. Checked before anything
+        // else: binding a parameter and then declining would leave it in the statement with
+        // nothing to compare it to, and PostgreSQL refuses a parameter whose type it cannot
+        // infer.
+        if matches!(reference.inverse_field, FieldReferenceType::M2O { .. }) {
+            return Ok(None);
+        }
+
+        // A relation is a set, so only membership means anything against it as a whole. The
+        // negative forms run the positive search and take the complement, because a record with
+        // no link at all would never appear in a negated subquery.
+        let negated = match operator {
+            SearchOperator::Equal | SearchOperator::In => false,
+            SearchOperator::NotEqual | SearchOperator::NotIn => true,
+            _ => {
+                return Err(format!(
+                    "Operator {operator:?} does not apply to a relation as a whole; compare a \
+                     field through it instead"
+                )
+                .into());
+            }
+        };
+        // "has no link" is the complement of "has one", so an empty right-hand side flips it.
+        let negated = negated != matches!(right, RightTuple::None);
+
+        let linked = match &reference.inverse_field {
+            FieldReferenceType::M2O { .. } => unreachable!("declined above"),
+            FieldReferenceType::O2M { inverse_field } => {
+                let target = model_manager.try_get_model(&reference.target_model)?;
+                let inverse = quote_ident(inverse_field);
+                let condition = match right {
+                    RightTuple::None => "TRUE".to_string(),
+                    _ => self.condition(&quote_ident("id"), &SearchOperator::In, &as_set(right))?,
+                };
+                format!(
+                    "SELECT {inverse} FROM {} WHERE {condition} AND {inverse} IS NOT NULL",
+                    quote_ident(&target.table_name)
+                )
+            }
+            FieldReferenceType::M2M {
+                relation,
+                column,
+                target_column,
+            } => {
+                let condition = match right {
+                    RightTuple::None => "TRUE".to_string(),
+                    _ => self.condition(
+                        &quote_ident(target_column),
+                        &SearchOperator::In,
+                        &as_set(right),
+                    )?,
+                };
+                format!(
+                    "SELECT {} FROM {} WHERE {condition}",
+                    quote_ident(column),
+                    quote_ident(relation)
+                )
+            }
+        };
+
+        Ok(Some(if negated {
+            format!(
+                "SELECT {} FROM {} WHERE {} NOT IN ({linked})",
+                quote_ident("id"),
+                quote_ident(&model.table_name),
+                quote_ident("id")
+            )
+        } else {
+            linked
+        }))
     }
 
     /// Translate one comparison, reproducing the in-memory backend's NULL and array semantics.
@@ -341,4 +434,12 @@ fn right_to_field(right: &RightTuple) -> Option<FieldType> {
         RightTuple::DateTime(value) => FieldType::DateTime(*value),
         RightTuple::Array(_) | RightTuple::None => return None,
     })
+}
+
+/// A right-hand side as the set it stands for, so a lone id reads like a set of one.
+fn as_set(right: &RightTuple) -> RightTuple {
+    match right {
+        RightTuple::Array(_) => right.clone(),
+        other => RightTuple::Array(vec![other.clone()]),
+    }
 }

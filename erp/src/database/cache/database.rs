@@ -206,7 +206,7 @@ impl CacheConnection {
                 let mut path = path.clone();
                 path.reverse();
                 let result =
-                    self._search_path(model_name, &mut path, operator, right, model_manager);
+                    self._search_path(model_name, &mut path, operator, right, model_manager)?;
                 HashSet::<_>::from_iter(result).into_iter().collect()
             }
             // An empty domain filters nothing, so it selects every record. Without this there
@@ -227,10 +227,18 @@ impl CacheConnection {
         operator: &SearchOperator,
         right: &RightTuple,
         model_manager: &ModelManager,
-    ) -> Vec<u32> {
+    ) -> Result<Vec<u32>> {
         let current_field = path.pop().unwrap();
         if path.is_empty() {
-            return self._get_rows(model_name, &current_field, operator, right);
+            let model = model_manager.get_model(model_name);
+            if current_field != "id"
+                && let Ok(field) = model.try_get_internal_field(&current_field)
+                && let Some(reference) = &field.inverse
+                && let Some(ids) = self._relation_rows(model_name, reference, operator, right)?
+            {
+                return Ok(ids);
+            }
+            return Ok(self._get_rows(model_name, &current_field, operator, right));
         }
         let model = model_manager.get_model(model_name);
         let final_field = model.get_internal_field(&current_field);
@@ -238,22 +246,22 @@ impl CacheConnection {
         let FieldReference { target_model, inverse_field } = final_field.inverse.as_ref().unwrap_or_else(|| panic!("Field {model_name}.{current_field} doesn't have any inverse fields. This should not occur, as this is checked in method get_fields_to_save"));
         let target_model = model_manager.get_model(target_model);
 
-        let ids = self._search_path(&target_model.name, path, operator, right, model_manager);
+        let ids = self._search_path(&target_model.name, path, operator, right, model_manager)?;
 
         if final_field.kind == erp_types::field::FieldKind::Ref {
-            self._get_rows(
+            Ok(self._get_rows(
                 &model.name,
                 &final_field.name,
                 &SearchOperator::Equal,
                 &ids.into(),
-            )
+            ))
         } else {
             let mut result: Vec<u32> = Vec::new();
             // Both lookups below tolerate a missing row: deleting a record leaves the ids of
             // rows that pointed at it behind, and a search must not surface — or trip over —
             // something that is gone.
             let Some(table) = self.tables.get(&target_model.name) else {
-                return result;
+                return Ok(result);
             };
             let owner_table = self.tables.get(model_name);
             if let FieldReferenceType::O2M { inverse_field } = inverse_field {
@@ -267,7 +275,7 @@ impl CacheConnection {
                         result.push(*id)
                     }
                 }
-                result
+                Ok(result)
             } else {
                 panic!(
                     "Field {}.{} is of type M2O. This should not be possible here",
@@ -275,6 +283,113 @@ impl CacheConnection {
                 )
             }
         }
+    }
+
+    /// Compare a whole relation against records, for the sides that have no cell of their own.
+    ///
+    /// A one2many lives in the children's foreign key and a many2many in a table of pairs, so
+    /// neither can be read off the row. The PostgreSQL backend says the same thing in SQL, and
+    /// both are exercised by the same tests.
+    ///
+    /// `None` for a many2one, which does have a cell and is already handled.
+    fn _relation_rows(
+        &self,
+        model_name: &str,
+        reference: &FieldReference,
+        operator: &SearchOperator,
+        right: &RightTuple,
+    ) -> Result<Option<Vec<u32>>> {
+        // A relation is a set, so only membership means anything against it as a whole. Refused
+        // rather than answered emptily, and refused the same way the PostgreSQL backend does.
+        let negated = match operator {
+            SearchOperator::Equal | SearchOperator::In => false,
+            SearchOperator::NotEqual | SearchOperator::NotIn => true,
+            _ => {
+                return Err(format!(
+                    "Operator {operator:?} does not apply to a relation as a whole; compare a \
+                     field through it instead"
+                )
+                .into());
+            }
+        };
+        // Against nothing, the question is whether any link exists at all, so an empty
+        // right-hand side flips the sense.
+        let wanted = match right {
+            RightTuple::None => None,
+            other => Some(as_ids(other)),
+        };
+        let negated = negated != wanted.is_none();
+
+        let mut linked: Vec<u32> = Vec::new();
+        match &reference.inverse_field {
+            FieldReferenceType::M2O { .. } => return Ok(None),
+            FieldReferenceType::O2M { inverse_field } => {
+                let Some(table) = self.tables.get(&reference.target_model) else {
+                    return Ok(Some(if negated {
+                        self._all_rows(model_name)
+                    } else {
+                        Vec::new()
+                    }));
+                };
+                for (id, row) in &table.rows {
+                    if wanted.as_ref().is_some_and(|wanted| !wanted.contains(id)) {
+                        continue;
+                    }
+                    if let Some(FieldType::UInteger(owner)) = row.get_cell(inverse_field) {
+                        linked.push(*owner);
+                    }
+                }
+            }
+            FieldReferenceType::M2M {
+                relation,
+                column,
+                target_column,
+            } => {
+                let Some(table) = self.tables.get(relation) else {
+                    return Ok(Some(if negated {
+                        self._all_rows(model_name)
+                    } else {
+                        Vec::new()
+                    }));
+                };
+                for row in table.rows.values() {
+                    let (Some(FieldType::UInteger(owner)), Some(FieldType::UInteger(target))) =
+                        (row.get_cell(column), row.get_cell(target_column))
+                    else {
+                        continue;
+                    };
+                    if wanted
+                        .as_ref()
+                        .is_some_and(|wanted| !wanted.contains(target))
+                    {
+                        continue;
+                    }
+                    linked.push(*owner);
+                }
+            }
+        }
+
+        let mut linked: HashSet<u32> = linked.into_iter().collect();
+        if negated {
+            let mut rest: Vec<u32> = self
+                ._all_rows(model_name)
+                .into_iter()
+                .filter(|id| !linked.remove(id) && !linked.contains(id))
+                .collect();
+            rest.sort_unstable();
+            return Ok(Some(rest));
+        }
+        let mut linked: Vec<u32> = linked.into_iter().collect();
+        linked.sort_unstable();
+        Ok(Some(linked))
+    }
+
+    /// Every record of a model, for the complement of a relation search.
+    fn _all_rows(&self, model_name: &str) -> Vec<u32> {
+        self.tables
+            .get(model_name)
+            .map(|table| table.rows.keys().copied().collect())
+            .unwrap_or_default()
     }
 
     fn _get_rows(
@@ -600,5 +715,15 @@ impl Database for CacheConnection {
             }
         }
         Err("No transaction to roll back".into())
+    }
+}
+
+/// A right-hand side as the set of ids it stands for.
+fn as_ids(right: &RightTuple) -> HashSet<u32> {
+    match right {
+        RightTuple::Array(members) => members.iter().flat_map(as_ids).collect(),
+        RightTuple::UInteger(id) => HashSet::from([*id]),
+        RightTuple::Integer(id) => u32::try_from(*id).ok().into_iter().collect(),
+        _ => HashSet::new(),
     }
 }
