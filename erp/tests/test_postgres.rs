@@ -37,6 +37,7 @@ fn config_with_pool(schema: &str, pool_size: u32) -> Config {
             password: std::env::var("PGPASSWORD").unwrap_or_default(),
             pool_size,
             connection_timeout: 10,
+            revalidate_after: 0,
         },
         plugin_path: String::new(),
         max_concurrent_requests: 0,

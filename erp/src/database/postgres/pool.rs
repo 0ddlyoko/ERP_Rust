@@ -10,8 +10,9 @@
 use crate::database::{DatabaseConfig, ErrorType};
 use postgres::{Client, NoTls};
 use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 type Result<T> = std::result::Result<T, ErrorType>;
 
@@ -30,16 +31,32 @@ struct Shared {
     schema: String,
     max_size: usize,
     timeout: Duration,
+    /// How long a connection may sit idle before it is asked whether it is still there.
+    ///
+    /// Zero by default, which asks every time. `is_closed` is not a substitute: it reports only
+    /// what the client already noticed, and a socket the server closed a moment ago has not been
+    /// noticed yet — a connection killed just before it is lent out passes that check and then
+    /// fails the request. Raising this trades that window for a saved round trip.
+    revalidate_after: Duration,
     state: Mutex<State>,
     returned: Condvar,
+    /// Connections asked whether they were still alive, for whoever is watching the cost.
+    revalidations: AtomicUsize,
+    /// Connections found dead and thrown away.
+    discarded: AtomicUsize,
 }
 
 #[derive(Default)]
 struct State {
-    /// Connections nobody is using.
-    idle: Vec<Client>,
+    /// Connections nobody is using, with the moment each came back.
+    idle: Vec<Idle>,
     /// Connections that exist at all, idle or lent out. Never above `max_size`.
     open: usize,
+}
+
+struct Idle {
+    client: Client,
+    returned_at: Instant,
 }
 
 impl ConnectionPool {
@@ -58,6 +75,9 @@ impl ConnectionPool {
         if !config.password.is_empty() {
             settings.password(&config.password);
         }
+        // Named so `pg_stat_activity` says which application a backend belongs to, and so a
+        // tool — or a test — can act on this pool's connections without touching anyone else's.
+        settings.application_name(&format!("erp:{}", config.schema));
 
         Self {
             inner: Arc::new(Shared {
@@ -65,8 +85,11 @@ impl ConnectionPool {
                 schema: config.schema.clone(),
                 max_size: (config.pool_size as usize).max(1),
                 timeout: Duration::from_secs(config.connection_timeout),
+                revalidate_after: Duration::from_secs(config.revalidate_after),
                 state: Mutex::new(State::default()),
                 returned: Condvar::new(),
+                revalidations: AtomicUsize::new(0),
+                discarded: AtomicUsize::new(0),
             }),
         }
     }
@@ -83,6 +106,18 @@ impl ConnectionPool {
     /// The most this pool will ever open.
     pub fn max_size(&self) -> usize {
         self.inner.max_size
+    }
+
+    /// How many connections were asked whether they were still alive.
+    ///
+    /// A connection handed straight back out is not asked, so under load this stays near zero.
+    pub fn revalidations(&self) -> usize {
+        self.inner.revalidations.load(Ordering::Relaxed)
+    }
+
+    /// How many connections were found dead and thrown away.
+    pub fn discarded(&self) -> usize {
+        self.inner.discarded.load(Ordering::Relaxed)
     }
 
     /// Borrow a connection, waiting for one if they are all out.
@@ -106,11 +141,29 @@ impl Shared {
         loop {
             // A connection the server hung up on is worse than no connection: discard them
             // rather than hand one over.
-            while let Some(client) = state.idle.pop() {
-                if !client.is_closed() {
+            while let Some(idle) = state.idle.pop() {
+                if idle.client.is_closed() {
+                    state.open -= 1;
+                    self.discarded.fetch_add(1, Ordering::Relaxed);
+                    continue;
+                }
+                if idle.returned_at.elapsed() < self.revalidate_after {
+                    // Back too recently for anything to have changed, so no round trip.
+                    return Ok(idle.client);
+                }
+                // Asking talks to the server, so it happens without the lock.
+                drop(state);
+                self.revalidations.fetch_add(1, Ordering::Relaxed);
+                let mut client = idle.client;
+                let alive = client.is_valid(self.timeout).is_ok();
+                state = self.state.lock().expect("not poisoned");
+                if alive {
                     return Ok(client);
                 }
                 state.open -= 1;
+                self.discarded.fetch_add(1, Ordering::Relaxed);
+                // Room came free, so whoever was waiting for one may now open it.
+                self.returned.notify_one();
             }
 
             if state.open < self.max_size {
@@ -167,8 +220,12 @@ impl Shared {
         let mut state = self.state.lock().expect("not poisoned");
         if client.is_closed() {
             state.open -= 1;
+            self.discarded.fetch_add(1, Ordering::Relaxed);
         } else {
-            state.idle.push(client);
+            state.idle.push(Idle {
+                client,
+                returned_at: Instant::now(),
+            });
         }
         // One waiter, because one connection came free.
         self.returned.notify_one();

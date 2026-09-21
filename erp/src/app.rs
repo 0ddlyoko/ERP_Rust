@@ -78,6 +78,16 @@ impl Application {
         self.pool.get().map(ConnectionPool::open)
     }
 
+    /// How many connections were asked whether they were still alive.
+    pub fn pool_revalidations(&self) -> Option<usize> {
+        self.pool.get().map(ConnectionPool::revalidations)
+    }
+
+    /// How many connections were found dead and thrown away.
+    pub fn pool_discarded(&self) -> Option<usize> {
+        self.pool.get().map(ConnectionPool::discarded)
+    }
+
     pub fn create_new_database(&self) -> Result<DatabaseType> {
         Ok(if self.is_test {
             DatabaseType::Cache(self.cache_db.connect())
