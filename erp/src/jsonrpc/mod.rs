@@ -19,9 +19,8 @@ use serde_json::Value;
 
 /// Answer one request, or a batch of them.
 ///
-/// Every call waits its turn at the application's gate, because every one of them reaches the
-/// database. Work that does not — moving a file, answering from memory — does not come through
-/// here and is not held back by a queue it has no part in.
+/// How many of these run at once is decided by whoever schedules them, not here: waiting for a
+/// turn should not cost a thread, and only the scheduler knows how to wait cheaply.
 ///
 /// `None` when nothing is owed: a lone notification, or a batch of them.
 pub fn handle(app: &Application, uid: Option<u32>, body: &str) -> Option<Value> {
@@ -96,10 +95,6 @@ fn run(app: &Application, uid: Option<u32>, request: &Request) -> Result<Value, 
     {
         return Err(RpcError::method_not_found(&request.method));
     }
-
-    // Taken before the connection, so a request queuing for its turn is not also holding one of
-    // the pool's connections open while it waits.
-    let _pass = app.gate.enter();
 
     // One environment per request, so one transaction per request: it commits when the call
     // returns, and rolls back by being dropped when it does not.

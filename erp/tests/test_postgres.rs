@@ -40,7 +40,7 @@ fn config_with_pool(schema: &str, pool_size: u32) -> Config {
             revalidate_after: 0,
         },
         plugin_path: String::new(),
-        max_concurrent_requests: 0,
+        server: erp::server_config::ServerConfig::default(),
     }
 }
 

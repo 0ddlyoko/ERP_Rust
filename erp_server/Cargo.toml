@@ -1,0 +1,29 @@
+[package]
+name = "erp_server"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "erp_server"
+path = "src/main.rs"
+
+[lib]
+name = "erp_server"
+path = "src/lib.rs"
+
+[dependencies]
+axum.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "signal"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+erp = { path = "../erp" }
+base = { path = "../plugins/base" }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["json"] }
+serde_json.workspace = true
+test_utilities = { path = "../erp/test_utilities" }
+test_plugin = { path = "../plugins/test_plugin" }
+axum.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "test-util", "time"] }

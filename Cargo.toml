@@ -16,6 +16,7 @@ members = [
     "erp/erp_internal_types",
     "erp/erp_types",
     "erp_search",
+    "erp_server",
     "erp_search_code_gen",
     "plugins/base",
     "plugins/test_plugin",
@@ -23,6 +24,9 @@ members = [
 
 [workspace.dependencies]
 
+axum = "0.8"
+tokio = "1"
+reqwest = { version = "0.12", default-features = false }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = { version = "0.4", features = ["serde"] }

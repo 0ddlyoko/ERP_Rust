@@ -36,7 +36,7 @@ fn config(schema: &str, pool_size: u32, revalidate_after: u64) -> Config {
             revalidate_after,
         },
         plugin_path: String::new(),
-        max_concurrent_requests: 0,
+        server: erp::server_config::ServerConfig::default(),
     }
 }
 

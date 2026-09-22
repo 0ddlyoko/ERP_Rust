@@ -1,4 +1,3 @@
-use crate::concurrency::Gate;
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
 use crate::database::postgres::{ConnectionPool, PostgresDatabase};
@@ -22,14 +21,11 @@ pub struct Application {
     /// Opened on first use rather than at construction, so an application that never reaches the
     /// database — a test, a `--help` — never tries to.
     pool: OnceLock<ConnectionPool>,
-    /// How many requests may be served at once.
-    pub gate: Gate,
 }
 
 impl Application {
     /// Create a new instance of this application with given config
     pub fn new(config: Config) -> Application {
-        let config_gate = config.max_concurrent_requests;
         Application {
             config,
             model_manager: ModelManager::default(),
@@ -37,7 +33,6 @@ impl Application {
             is_test: false,
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
-            gate: Gate::new(config_gate),
         }
     }
 
@@ -53,7 +48,6 @@ impl Application {
             is_test: true,
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
-            gate: Gate::unlimited(),
         }
     }
 
@@ -76,6 +70,25 @@ impl Application {
     /// `None` before anything has asked for one, and for an application that never will.
     pub fn pool_size(&self) -> Option<usize> {
         self.pool.get().map(ConnectionPool::open)
+    }
+
+    /// Replace the configuration, for a test that needs different settings on a test
+    /// application.
+    pub fn set_config(&mut self, config: Config) {
+        self.config = config;
+    }
+
+    /// How many requests may be served at once, `0` meaning no bound.
+    ///
+    /// Read by whatever schedules requests rather than enforced here: waiting for a turn should
+    /// not cost a thread, and only the scheduler knows how to wait cheaply.
+    pub fn max_concurrent_requests(&self) -> usize {
+        self.config.server.max_concurrent_requests
+    }
+
+    /// What the server should listen on.
+    pub fn server_config(&self) -> &crate::server_config::ServerConfig {
+        &self.config.server
     }
 
     /// How many connections were asked whether they were still alive.

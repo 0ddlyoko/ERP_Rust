@@ -260,3 +260,21 @@ impl Drop for PooledConnection {
         }
     }
 }
+
+impl Drop for Shared {
+    /// Close the idle connections somewhere blocking is allowed.
+    ///
+    /// Closing one blocks, because the driver is synchronous, and blocking on a thread that is
+    /// driving an async runtime aborts the process — a panic while unwinding cannot itself
+    /// unwind. A pool can be let go from anywhere, including a request handler or a test, so the
+    /// rule is kept here rather than asked of every caller.
+    fn drop(&mut self) {
+        let idle = std::mem::take(&mut self.state.get_mut().expect("not poisoned").idle);
+        if idle.is_empty() {
+            return;
+        }
+        // Detached on purpose: nothing needs to wait for a socket to close, and at process exit
+        // the operating system closes them anyway.
+        std::thread::spawn(move || drop(idle));
+    }
+}

@@ -8,6 +8,7 @@ pub mod errors;
 pub mod jsonrpc;
 pub mod model;
 pub mod plugin;
+pub mod server_config;
 pub mod util;
 
 pub use erp_types as types;

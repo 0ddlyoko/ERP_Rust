@@ -1,4 +1,5 @@
 use crate::database::DatabaseConfig;
+use crate::server_config::ServerConfig;
 use config::ConfigError;
 use directories::ProjectDirs;
 use serde_derive::Deserialize;
@@ -8,13 +9,9 @@ use std::path::Path;
 #[allow(dead_code)]
 pub struct Config {
     pub database: DatabaseConfig,
-    pub plugin_path: String,
-    /// Requests served at once. `0` means no bound.
-    ///
-    /// Separate from the pool: a request waiting for room has not taken a connection yet, which
-    /// is what keeps a burst from holding the pool open while it queues.
     #[serde(default)]
-    pub max_concurrent_requests: usize,
+    pub server: ServerConfig,
+    pub plugin_path: String,
 }
 
 impl Config {
@@ -31,6 +28,8 @@ impl Config {
             .set_default("database.url", "localhost")?
             .set_default("database.name", "erp")?
             .set_default("database.schema", "public")?
+            .set_default("server.host", "127.0.0.1")?
+            .set_default("server.port", 8080)?
             .add_source(config::File::from(config_file).required(true))
             .add_source(
                 config::Environment::with_prefix("ERP")

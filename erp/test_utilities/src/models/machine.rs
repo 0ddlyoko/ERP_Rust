@@ -2,6 +2,10 @@ use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds};
 use std::error::Error;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static RUNNING: AtomicUsize = AtomicUsize::new(0);
+static HIGH_WATER: AtomicUsize = AtomicUsize::new(0);
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -53,6 +57,25 @@ impl Machine<MultipleIds> {
             machine.set_name("written before failing".to_string(), env)?;
         }
         Err("refused on purpose".into())
+    }
+
+    /// Records how many copies of itself are running, so a test can see a concurrency limit
+    /// from the inside rather than inferring it from a stopwatch.
+    #[erp(rpc)]
+    pub fn busy(&self, env: &mut Environment) -> Result<i32> {
+        let _ = env;
+        let now = RUNNING.fetch_add(1, Ordering::SeqCst) + 1;
+        HIGH_WATER.fetch_max(now, Ordering::SeqCst);
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        RUNNING.fetch_sub(1, Ordering::SeqCst);
+        Ok(now as i32)
+    }
+
+    /// The most that were ever running at the same time.
+    #[erp(rpc)]
+    pub fn high_water(&self, env: &mut Environment) -> Result<i32> {
+        let _ = env;
+        Ok(HIGH_WATER.load(Ordering::SeqCst) as i32)
     }
 
     /// Not exposed: reachable from Rust, absent from the wire.
