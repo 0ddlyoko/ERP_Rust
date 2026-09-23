@@ -9,7 +9,7 @@
 
 use axum::Router;
 use axum::extract::{ConnectInfo, State};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use erp::app::Application;
@@ -125,10 +125,12 @@ async fn interrupted() {
 async fn call(
     State(server): State<Arc<Server>>,
     ConnectInfo(caller): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     body: String,
 ) -> Response {
     let started = Instant::now();
     let asked = asked_for(&body);
+    let token = bearer(&headers);
 
     // Taken before any thread is occupied: a request waiting its turn is a suspended future, not
     // a parked worker.
@@ -140,13 +142,24 @@ async fn call(
     // The ORM is synchronous down to the database driver, so the work happens on a thread that
     // is allowed to block rather than on the runtime's.
     //
-    // Nobody is identified yet: every call runs as the system until sessions land.
-    let answer = tokio::task::spawn_blocking(move || jsonrpc::handle(&app, None, &body)).await;
+    // The token travels no further than this: what it identifies is resolved down there, where a
+    // database connection is already open.
+    let answer =
+        tokio::task::spawn_blocking(move || jsonrpc::handle(&app, token.as_deref(), &body)).await;
 
     let response = match answer {
         // A notification is owed nothing, which over HTTP is an empty answer rather than an
         // empty body with a content type promising JSON.
         Ok(None) => StatusCode::NO_CONTENT.into_response(),
+        Ok(Some(value)) if names_nobody(&value) => (
+            StatusCode::UNAUTHORIZED,
+            [
+                (header::CONTENT_TYPE, "application/json"),
+                (header::WWW_AUTHENTICATE, "Bearer"),
+            ],
+            value.to_string(),
+        )
+            .into_response(),
         Ok(Some(value)) => (
             StatusCode::OK,
             [(header::CONTENT_TYPE, "application/json")],
@@ -176,6 +189,32 @@ async fn call(
         started.elapsed(),
     );
     response
+}
+
+/// The bearer token a caller presented, if it presented one.
+///
+/// The scheme is matched without regard to case, which is what the specification for the header
+/// asks for and what several clients rely on.
+fn bearer(headers: &HeaderMap) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
+    let (scheme, token) = value.split_once(' ')?;
+    scheme
+        .eq_ignore_ascii_case("Bearer")
+        .then(|| token.trim().to_string())
+        .filter(|token| !token.is_empty())
+}
+
+/// Whether the answer is a refusal of the caller's identity.
+///
+/// The protocol layer knows nothing about statuses, so it says so with a code of its own and this
+/// is where that code becomes the status HTTP already has for it. A batch is left alone: its
+/// entries are independent calls, and one of them being refused is not the response's verdict.
+fn names_nobody(answer: &erp::serde_json::Value) -> bool {
+    answer
+        .get("error")
+        .and_then(|error| error.get("code"))
+        .and_then(erp::serde_json::Value::as_i64)
+        == Some(i64::from(erp::jsonrpc::RpcError::UNAUTHORIZED))
 }
 
 /// What a body asks for, for the log.

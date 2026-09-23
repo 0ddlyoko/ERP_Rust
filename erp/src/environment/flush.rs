@@ -44,6 +44,12 @@ impl<'mm> Environment<'mm> {
         for field in fields {
             let mut current_model = model;
             for elem in &field.path {
+                // The primary key is a real column that no model declares, and it is never
+                // dirty. Both backends already answer a domain on it; without this they never
+                // get the chance, because looking it up in the registry fails first.
+                if elem == "id" {
+                    continue;
+                }
                 let final_field = current_model.try_get_internal_field(elem)?;
                 let is_stored = final_field.is_stored();
                 if is_stored {

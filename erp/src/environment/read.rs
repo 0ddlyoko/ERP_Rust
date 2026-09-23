@@ -52,12 +52,21 @@ impl<'mm> Environment<'mm> {
         // it would reach PostgreSQL as an unknown column and come back as a database error,
         // while the in-memory backend would quietly sort on nothing. Refusing it here makes both
         // behave alike, and gives a caller something it can act on.
+        //
+        // The primary key is the exception: a real column that no model declares, which both
+        // backends can already sort on, and which nothing has to flush because it is never dirty.
         let model = self.model_manager.try_get_model(model_name)?;
         for order in &options.order {
+            if order.field == "id" {
+                continue;
+            }
             model.try_get_internal_field(&order.field)?;
         }
         // Ordering reads stored values, so anything still dirty has to reach the database first.
         for order in &options.order {
+            if order.field == "id" {
+                continue;
+            }
             self.save_fields_to_db(model_name, &[order.field.as_str()])?;
         }
         self.database

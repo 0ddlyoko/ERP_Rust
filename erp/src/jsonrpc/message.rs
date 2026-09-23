@@ -116,4 +116,14 @@ impl RpcError {
     pub fn internal(detail: impl Into<String>) -> Self {
         Self::new(-32603, detail)
     }
+
+    /// The caller presented a token that names nobody.
+    ///
+    /// Named as a constant so a transport can recognise it — HTTP has a status that says exactly
+    /// this — without the protocol layer having to know what a status is.
+    pub const UNAUTHORIZED: i32 = -32001;
+
+    pub fn unauthorized() -> Self {
+        Self::new(Self::UNAUTHORIZED, "This token identifies nobody")
+    }
 }

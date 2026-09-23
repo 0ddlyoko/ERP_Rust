@@ -7,6 +7,21 @@
         <name>Administrator</name>
     </group>
 
+    <!-- Neither of the two accounts below is ever given a password, and neither can be: an
+         account with none holds an empty hash, which no password verifies against. They exist to
+         be acted as from inside the process, not to be logged into. -->
+    <users id="user_root" noupdate="1">
+        <login>root</login>
+        <name>System</name>
+        <active>false</active>
+    </users>
+
+    <users id="user_portal" noupdate="1">
+        <login>portal</login>
+        <name>Portal</name>
+        <active>false</active>
+    </users>
+
     <!-- The password is left to post_init, which sets a default one only if the account has
          none. noupdate then keeps a later reload from touching the account. -->
     <users id="user_admin" noupdate="1">

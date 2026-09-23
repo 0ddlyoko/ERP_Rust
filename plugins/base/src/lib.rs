@@ -25,23 +25,38 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Lang<_>>();
         model_manager.register_model::<models::ModelData<_>>();
         model_manager.register_model::<models::Plugin<_>>();
+        model_manager.register_model::<models::Session<_>>();
+        // What the core knows about identity is that something answers it. This is the something.
+        model_manager
+            .identities
+            .register(models::Session::<SingleId>::resolve);
     }
 
     fn data(&self) -> Vec<&'static str> {
         vec![include_str!("../data/users.xml")]
     }
 
-    /// Give the seeded administrator a password, only if it has none.
+    /// Finish the seeded accounts, and say which two of them the framework needs by name.
     ///
-    /// A hash cannot be written in a data file — it is salted per account — so the account is
-    /// declared there and finished here. `noupdate` keeps later loads away from it.
+    /// The administrator's password cannot go in a data file — a hash is salted per account — so
+    /// the account is declared there and finished here, only if it has none. `noupdate` keeps
+    /// later loads away from it.
+    ///
+    /// The other two are told to the core rather than looked up by it: `erp` knows that somebody
+    /// is the caller before authentication and somebody bypasses every rule, and nothing about
+    /// which records those are.
     fn post_init(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let Some(admin) = erp::data::resolve(env, "base.user_admin")? else {
-            return Ok(());
-        };
-        let admin: models::Users<SingleId> = env.get_record(admin.into());
-        if !admin.has_password(env)? {
-            admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
+        if let Some(admin) = erp::data::resolve(env, "base.user_admin")? {
+            let admin: models::Users<SingleId> = env.get_record(admin.into());
+            if !admin.has_password(env)? {
+                admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
+            }
+        }
+        if let Some(portal) = erp::data::resolve(env, "base.user_portal")? {
+            env.model_manager.identities.set_default_user(portal)?;
+        }
+        if let Some(root) = erp::data::resolve(env, "base.user_root")? {
+            env.model_manager.identities.set_root_user(root)?;
         }
         Ok(())
     }

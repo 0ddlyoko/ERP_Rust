@@ -1,9 +1,25 @@
 //! A secret that is only ever held hashed.
 
-use argon2::Argon2;
-use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::rand_core::{OsRng, RngCore};
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use argon2::{Algorithm, Argon2, Params, Version};
 use std::fmt::{Debug, Display, Formatter};
+
+/// How many bytes a generated secret carries.
+///
+/// 256 bits, which is why [`Password::from_random`] may hash them cheaply: there is nothing to
+/// guess.
+const SECRET_BYTES: usize = 32;
+
+/// A secret this process drew, in hexadecimal.
+///
+/// Lives here because this is where the operating system's generator is already reached, and
+/// because what it produces is only ever destined for [`Password::from_random`].
+pub fn generate_secret() -> String {
+    let mut bytes = [0u8; SECRET_BYTES];
+    OsRng.fill_bytes(&mut bytes);
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
 
 /// Raised when a clear password cannot be hashed.
 #[derive(Debug, Clone, thiserror::Error)]
@@ -36,6 +52,29 @@ impl Password {
             .map_err(|error| HashError {
                 reason: error.to_string(),
             })?;
+        Ok(Self(hash.to_string()))
+    }
+
+    /// Hash a secret this process drew, rather than one a person chose.
+    ///
+    /// Far cheaper parameters, deliberately. The cost of [`Password::new`] buys time against
+    /// guessing, which is worth 12ms for the handful of words a person can remember and worth
+    /// nothing for 256 random bits — and a session token is verified on every single request,
+    /// where 12ms is the whole budget. Verification needs no telling apart: argon2 reads its
+    /// parameters back out of the stored string, so [`Password::is_same_password`] answers for
+    /// both without knowing which it holds.
+    pub fn from_random(secret: &str) -> Result<Self, HashError> {
+        let params =
+            Params::new(Params::MIN_M_COST.max(64), 1, 1, None).map_err(|error| HashError {
+                reason: error.to_string(),
+            })?;
+        let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash = argon.hash_password(secret.as_bytes(), &salt).map_err(
+            |error: argon2::password_hash::Error| HashError {
+                reason: error.to_string(),
+            },
+        )?;
         Ok(Self(hash.to_string()))
     }
 

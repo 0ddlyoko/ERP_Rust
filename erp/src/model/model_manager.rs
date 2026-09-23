@@ -1,3 +1,4 @@
+use crate::identity::Identities;
 use crate::model::HasMethods;
 use crate::model::Model;
 use crate::model::ModelNotFound;
@@ -15,6 +16,9 @@ pub struct ModelManager {
     /// Methods a remote caller may reach. Held here rather than on the model, so that the crates
     /// describing types never have to know about JSON.
     pub rpc: RpcRegistry,
+    /// How a token identifies its caller. Beside the registry for the same reason as `rpc`: it is
+    /// what a plugin contributes about reaching models, not what a model is.
+    pub identities: Identities,
     pub(crate) current_plugin_loading: Option<String>,
 }
 

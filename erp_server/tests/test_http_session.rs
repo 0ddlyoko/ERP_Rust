@@ -1,0 +1,196 @@
+//! Carrying an identity over HTTP.
+//!
+//! What a token *means* is settled by the protocol tests, which need no server. These check the
+//! part only a socket has: the header the token arrives in, and the status a refusal comes back
+//! with. The protocol layer knows nothing about statuses — it says "this names nobody" with a code
+//! of its own, and the mapping to 401 lives here.
+
+use base::BasePlugin;
+use erp::app::Application;
+use erp_server::{Server, service};
+use serde_json::{Value, json};
+use std::error::Error;
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+
+async fn start() -> Result<(SocketAddr, tokio::task::JoinHandle<()>)> {
+    let mut app = Application::new_test();
+    app.register_plugin(Box::new(BasePlugin {}))?;
+    app.load_plugin("base")?;
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let server = Arc::new(Server::new(app));
+    let handle = tokio::spawn(async move {
+        let _ = axum::serve(listener, service(server)).await;
+    });
+    Ok((address, handle))
+}
+
+struct Answer {
+    status: u16,
+    challenge: Option<String>,
+    body: Option<Value>,
+}
+
+async fn post(address: SocketAddr, authorization: Option<&str>, body: Value) -> Result<Answer> {
+    let mut request = reqwest::Client::new()
+        .post(format!("http://{address}/jsonrpc"))
+        .header("content-type", "application/json");
+    if let Some(authorization) = authorization {
+        request = request.header("authorization", authorization);
+    }
+    let response = request.body(body.to_string()).send().await?;
+    let status = response.status().as_u16();
+    let challenge = response
+        .headers()
+        .get("www-authenticate")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    let text = response.text().await?;
+    Ok(Answer {
+        status,
+        challenge,
+        body: serde_json::from_str(&text).ok(),
+    })
+}
+
+fn request(method: &str, params: Value) -> Value {
+    json!({"jsonrpc": "2.0", "method": method, "params": params, "id": 1})
+}
+
+/// Log in over the wire, and carry the token back.
+async fn token(address: SocketAddr) -> Result<String> {
+    let answer = post(
+        address,
+        None,
+        request(
+            "users.authenticate",
+            json!({"args": {"login": "admin", "password": base::DEFAULT_ADMIN_PASSWORD}}),
+        ),
+    )
+    .await?;
+    assert_eq!(answer.status, 200);
+    let body = answer.body.expect("a body");
+    Ok(body["result"]["token"]
+        .as_str()
+        .unwrap_or_else(|| panic!("a token, got {body}"))
+        .to_string())
+}
+
+/// A bearer token arrives in the header and reaches the call.
+#[tokio::test]
+async fn test_a_bearer_token_identifies_the_caller() -> Result<()> {
+    let (address, _server) = start().await?;
+    let token = token(address).await?;
+
+    let answer = post(
+        address,
+        Some(&format!("Bearer {token}")),
+        request("users.me", json!({})),
+    )
+    .await?;
+
+    assert_eq!(answer.status, 200);
+    let body = answer.body.expect("a body");
+    assert!(body["result"].as_u64().is_some(), "got {body}");
+    Ok(())
+}
+
+/// The scheme is matched without regard to case, as the specification asks.
+#[tokio::test]
+async fn test_the_scheme_is_case_insensitive() -> Result<()> {
+    let (address, _server) = start().await?;
+    let token = token(address).await?;
+
+    let answer = post(
+        address,
+        Some(&format!("bearer {token}")),
+        request("users.me", json!({})),
+    )
+    .await?;
+
+    assert_eq!(answer.status, 200);
+    assert!(answer.body.expect("a body")["result"].as_u64().is_some());
+    Ok(())
+}
+
+/// No header at all is not a refusal: it is a caller who authenticated as nobody, which is the
+/// portal user rather than nobody at all.
+#[tokio::test]
+async fn test_no_header_is_answered_normally() -> Result<()> {
+    let (address, _server) = start().await?;
+
+    let answer = post(address, None, request("users.me", json!({}))).await?;
+
+    assert_eq!(answer.status, 200);
+    assert!(
+        answer.body.expect("a body")["result"].as_u64().is_some(),
+        "the portal user is somebody"
+    );
+    Ok(())
+}
+
+/// A token that names nobody comes back as the status HTTP has for exactly that, with the
+/// challenge the specification requires alongside it.
+#[tokio::test]
+async fn test_a_token_naming_nobody_is_a_401() -> Result<()> {
+    let (address, _server) = start().await?;
+
+    let answer = post(
+        address,
+        Some("Bearer 404.nonsense"),
+        request("users.me", json!({})),
+    )
+    .await?;
+
+    assert_eq!(answer.status, 401);
+    assert_eq!(answer.challenge.as_deref(), Some("Bearer"));
+    let body = answer.body.expect("a body");
+    assert_eq!(body["error"]["code"], json!(-32001), "got {body}");
+    Ok(())
+}
+
+/// A header in another scheme carries no token, so the call runs as nobody rather than being
+/// refused: there is nothing there to refuse.
+#[tokio::test]
+async fn test_another_scheme_is_not_a_token() -> Result<()> {
+    let (address, _server) = start().await?;
+
+    let answer = post(
+        address,
+        Some("Basic YWRtaW46YWRtaW4="),
+        request("users.me", json!({})),
+    )
+    .await?;
+
+    assert_eq!(answer.status, 200);
+    assert!(answer.body.expect("a body")["result"].as_u64().is_some());
+    Ok(())
+}
+
+/// A revoked token stops being accepted by the server, not only by the protocol layer.
+#[tokio::test]
+async fn test_a_revoked_token_is_refused_over_http() -> Result<()> {
+    let (address, _server) = start().await?;
+    let token = token(address).await?;
+    let id: u32 = token.split_once('.').expect("two halves").0.parse()?;
+    let bearer = format!("Bearer {token}");
+
+    let answer = post(
+        address,
+        Some(&bearer),
+        request(
+            "session.write",
+            json!({"ids": [id], "values": {"active": false}}),
+        ),
+    )
+    .await?;
+    assert_eq!(answer.status, 200);
+
+    let answer = post(address, Some(&bearer), request("users.me", json!({}))).await?;
+    assert_eq!(answer.status, 401);
+    Ok(())
+}

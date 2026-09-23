@@ -42,9 +42,28 @@ fn stored_hash(password: &Password) -> String {
     hash
 }
 
-fn call(app: &Application, method: &str, params: Value) -> Value {
+/// A machine with a service key, made from inside the process.
+///
+/// Not over the wire: a hidden field cannot be written from outside, which is what
+/// `test_writing_a_password_over_the_wire_is_refused` is about.
+fn make(app: &Application, name: &str, key: &str) -> Result<Vec<u32>> {
+    let mut env = app.new_env()?;
+    let mut values = MapOfFields::default();
+    values.insert("name", name);
+    values.insert("service_key", Password::new(key)?);
+    let ids: MultipleIds = env.create_records("machine", vec![values])?;
+    let ids = ids.get_ids_ref().clone();
+    env.close()?;
+    Ok(ids)
+}
+
+fn raw(app: &Application, method: &str, params: Value) -> Value {
     let body = json!({"jsonrpc": "2.0", "method": method, "params": params, "id": 1}).to_string();
-    let answer = jsonrpc::handle(app, None, &body).expect("an answer");
+    jsonrpc::handle(app, None, &body).expect("an answer")
+}
+
+fn call(app: &Application, method: &str, params: Value) -> Value {
+    let answer = raw(app, method, params);
     assert!(
         answer.get("error").is_none(),
         "{method} must not fail: {answer}"
@@ -207,44 +226,60 @@ fn test_a_password_field_is_private_without_being_told() -> Result<()> {
 
 // ---- through the API ----
 
-/// A clear password sent over the wire is hashed before anything stores it.
+/// Setting one from outside is refused rather than dropped.
+///
+/// Reading a hidden field is answered empty, because the caller gets the shape it asked for.
+/// Writing cannot be answered that way: a value silently ignored would report a change that never
+/// happened, and nothing the caller can read afterwards would say otherwise.
 #[test]
-fn test_writing_a_password_stores_its_hash() -> Result<()> {
+fn test_writing_a_password_over_the_wire_is_refused() -> Result<()> {
     let app = new_app()?;
-    let ids = call(
+
+    let created = raw(
         &app,
         "machine.create",
         json!({"values": {"name": "m", "service_key": "hunter2"}}),
     );
-
-    let ids: Vec<u32> = serde_json::from_value(ids)?;
-    let mut env = app.new_env()?;
-    let machine: Machine<MultipleIds> = env.get_record(MultipleIds::from(ids));
-    assert!(machine.get_service_key(&mut env)?[0].is_same_password("hunter2"));
-    Ok(())
-}
-
-/// Changing it works the same way, and the old one stops matching.
-#[test]
-fn test_a_password_can_be_replaced_over_the_wire() -> Result<()> {
-    let app = new_app()?;
-    let ids = call(
-        &app,
-        "machine.create",
-        json!({"values": {"name": "m", "service_key": "first"}}),
+    assert!(
+        created["error"]["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("service_key")),
+        "got {created}"
     );
-    call(
+
+    let ids = make(&app, "m", "hunter2")?;
+    let written = raw(
         &app,
         "machine.write",
         json!({"ids": ids, "values": {"service_key": "second"}}),
     );
+    assert!(written.get("result").is_none(), "got {written}");
 
-    let ids: Vec<u32> = serde_json::from_value(ids)?;
     let mut env = app.new_env()?;
     let machine: Machine<MultipleIds> = env.get_record(MultipleIds::from(ids));
-    let stored = machine.get_service_key(&mut env)?;
-    assert!(stored[0].is_same_password("second"));
-    assert!(!stored[0].is_same_password("first"));
+    assert!(
+        machine.get_service_key(&mut env)?[0].is_same_password("hunter2"),
+        "the refused write changed nothing"
+    );
+    Ok(())
+}
+
+/// The same refusal reaches a field that is private without being a password.
+#[test]
+fn test_writing_any_private_field_is_refused() -> Result<()> {
+    let app = new_app()?;
+    let created = raw(
+        &app,
+        "machine.create",
+        json!({"values": {"name": "m", "unlock_code": "s3cret"}}),
+    );
+
+    assert!(
+        created["error"]["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("unlock_code")),
+        "got {created}"
+    );
     Ok(())
 }
 
@@ -252,11 +287,7 @@ fn test_a_password_can_be_replaced_over_the_wire() -> Result<()> {
 #[test]
 fn test_reading_a_password_gives_nothing() -> Result<()> {
     let app = new_app()?;
-    let ids = call(
-        &app,
-        "machine.create",
-        json!({"values": {"name": "m", "service_key": "hunter2"}}),
-    );
+    let ids = make(&app, "m", "hunter2")?;
 
     let rows = call(
         &app,
@@ -273,12 +304,7 @@ fn test_reading_a_password_gives_nothing() -> Result<()> {
 #[test]
 fn test_no_domain_matches_a_password() -> Result<()> {
     let app = new_app()?;
-    let ids = call(
-        &app,
-        "machine.create",
-        json!({"values": {"name": "m", "service_key": "hunter2"}}),
-    );
-    let ids: Vec<u32> = serde_json::from_value(ids)?;
+    let ids = make(&app, "m", "hunter2")?;
     let hash = {
         let mut env = app.new_env()?;
         let machine: Machine<MultipleIds> = env.get_record(MultipleIds::from(ids));
@@ -324,11 +350,7 @@ fn test_a_domain_written_in_rust_matches_no_password() -> Result<()> {
 #[test]
 fn test_ordering_by_a_password_is_dropped() -> Result<()> {
     let app = new_app()?;
-    call(
-        &app,
-        "machine.create",
-        json!({"values": {"name": "m", "service_key": "hunter2"}}),
-    );
+    make(&app, "m", "hunter2")?;
 
     let rows = call(
         &app,

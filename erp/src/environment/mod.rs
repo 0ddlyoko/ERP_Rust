@@ -7,6 +7,7 @@
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::model::{Model, ModelManager};
+use crate::server_config::ServerConfig;
 use erp_cache::{Cache, CacheField, CacheModels};
 use erp_search::{LeftTuple, SearchOptions, SearchType};
 use erp_search_code_gen::make_domain;
@@ -57,6 +58,11 @@ pub struct Environment<'mm> {
     pub cache: Cache,
     pub model_manager: &'mm ModelManager,
     pub database: DatabaseType,
+    /// What the server was configured with.
+    ///
+    /// The server's half of the configuration and not the whole of it: a model's code has
+    /// business knowing how long a session lasts, and none knowing the database password.
+    server_config: &'mm ServerConfig,
     /// Who this unit of work runs on behalf of.
     ///
     /// `None` means nobody in particular: booting, loading plugins, system work. Carried here
@@ -85,13 +91,18 @@ impl Drop for Environment<'_> {
 }
 
 impl<'mm> Environment<'mm> {
-    pub fn new(model_manager: &'mm ModelManager, database: DatabaseType) -> Result<Self> {
-        Self::new_as(model_manager, database, None)
+    pub fn new(
+        model_manager: &'mm ModelManager,
+        server_config: &'mm ServerConfig,
+        database: DatabaseType,
+    ) -> Result<Self> {
+        Self::new_as(model_manager, server_config, database, None)
     }
 
     /// Same, on behalf of a user.
     pub fn new_as(
         model_manager: &'mm ModelManager,
+        server_config: &'mm ServerConfig,
         database: DatabaseType,
         uid: Option<u32>,
     ) -> Result<Self> {
@@ -99,6 +110,7 @@ impl<'mm> Environment<'mm> {
             cache: make_cache(model_manager),
             model_manager,
             database,
+            server_config,
             uid,
             call_stack: Vec::new(),
             closed: false,
@@ -110,6 +122,81 @@ impl<'mm> Environment<'mm> {
     /// Who this environment runs on behalf of, if anyone.
     pub fn uid(&self) -> Option<u32> {
         self.uid
+    }
+
+    /// What the server was configured with.
+    pub fn server_config(&self) -> &ServerConfig {
+        self.server_config
+    }
+
+    /// Whether this runs as the user every rule lets through.
+    ///
+    /// Nothing consults it yet. It is where access rights will ask, so that the question has one
+    /// answer rather than one per rule.
+    pub fn is_root(&self) -> bool {
+        self.uid.is_some() && self.uid == self.model_manager.identities.root_user()
+    }
+
+    /// The same unit of work, carried on as somebody else.
+    ///
+    /// An environment rather than a flag to pass around: what changes is who the work is for, and
+    /// everything else — the cache, the transaction, what has been written and not yet
+    /// committed — is deliberately the same. Two environments would be two transactions, and
+    /// reading back what you just wrote would stop working.
+    ///
+    /// Who it was for comes back when the returned environment is dropped, so a switch cannot
+    /// outlive the lines that asked for it.
+    pub fn as_user(&mut self, uid: u32) -> AsUser<'_, 'mm> {
+        let previous = self.uid;
+        self.uid = Some(uid);
+        AsUser {
+            env: self,
+            previous,
+        }
+    }
+
+    /// The same, as the user every rule lets through.
+    ///
+    /// For work the process does on its own account rather than on a caller's — resolving a
+    /// token, running a scheduled job — where what the caller may see is beside the point.
+    ///
+    /// Fails when no plugin has said which record that is, which is what an application with no
+    /// users looks like. Better than quietly carrying on as somebody who is not root.
+    pub fn as_root(&mut self) -> Result<AsUser<'_, 'mm>> {
+        let root = self.model_manager.identities.root_user().ok_or(
+            "No plugin has said which user every rule lets through, so there is no root to act as",
+        )?;
+        Ok(self.as_user(root))
+    }
+}
+
+/// An environment running as somebody else, for as long as it is held.
+///
+/// Reached through [`Environment::as_user`] and [`Environment::as_root`]. It is the environment it
+/// came from — it dereferences to it, and shares its cache and its transaction — with one
+/// difference, and it puts that difference back on the way out.
+pub struct AsUser<'e, 'mm> {
+    env: &'e mut Environment<'mm>,
+    previous: Option<u32>,
+}
+
+impl<'mm> std::ops::Deref for AsUser<'_, 'mm> {
+    type Target = Environment<'mm>;
+
+    fn deref(&self) -> &Self::Target {
+        self.env
+    }
+}
+
+impl std::ops::DerefMut for AsUser<'_, '_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.env
+    }
+}
+
+impl Drop for AsUser<'_, '_> {
+    fn drop(&mut self) {
+        self.env.uid = self.previous;
     }
 }
 

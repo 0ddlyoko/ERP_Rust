@@ -5,6 +5,7 @@ pub mod data;
 pub mod database;
 pub mod environment;
 pub mod errors;
+pub mod identity;
 pub mod jsonrpc;
 pub mod model;
 pub mod plugin;

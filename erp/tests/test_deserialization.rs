@@ -40,6 +40,21 @@ fn domain(json: &str) -> Result<SearchType> {
     Ok(serde_json::from_str(json)?)
 }
 
+/// A password arrives in clear and is hashed before it is a value at all.
+///
+/// The edge is the last place the clear password exists: nothing further in can be handed one by
+/// mistake, because nothing further in is ever given one.
+#[test]
+fn test_a_password_is_hashed_as_it_is_read() -> Result<()> {
+    let FieldType::Password(password) = read(FieldKind::Password, r#""hunter2""#)? else {
+        panic!("a password");
+    };
+
+    assert!(password.is_same_password("hunter2"));
+    assert!(!password.is_same_password("hunter3"));
+    Ok(())
+}
+
 /// The declared kind decides, not the shape of the value.
 #[test]
 fn test_a_value_is_read_as_its_declared_kind() -> Result<()> {

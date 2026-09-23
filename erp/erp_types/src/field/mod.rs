@@ -22,7 +22,7 @@ pub use reference::*;
 
 /// Re-exported so generated model code and plugins can name the field types without depending on
 /// `chrono` and `rust_decimal` directly.
-pub use chrono::{DateTime, NaiveDate, Utc};
+pub use chrono::{DateTime, NaiveDate, TimeDelta, Utc};
 pub use rust_decimal::Decimal;
 
 /// Timestamp field type.

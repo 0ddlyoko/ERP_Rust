@@ -226,7 +226,7 @@ impl Application {
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the
         // time its code runs.
         let data = plugin.data();
-        let mut env = Environment::new(&self.model_manager, database)?;
+        let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
         env.savepoint(|env| {
             for document in &data {
                 crate::data::load(env, plugin_name, document)?;
@@ -252,17 +252,29 @@ impl Application {
     /// Open a new environment, with its own database connection and transaction.
     ///
     /// Takes `&self`, so any number of environments can be alive at once.
+    /// Opens for whoever a caller is before authenticating, which a plugin names. `None` until
+    /// one has, which is what booting looks like.
     pub fn new_env(&self) -> Result<Environment<'_>> {
-        Environment::new(&self.model_manager, self.create_new_database()?)
+        self.new_env_as_option(self.model_manager.identities.default_user())
     }
 
     /// Open a new environment on behalf of a user.
     /// Same, for a caller that may or may not be anyone in particular.
     pub fn new_env_as_option(&self, uid: Option<u32>) -> Result<Environment<'_>> {
-        Environment::new_as(&self.model_manager, self.create_new_database()?, uid)
+        Environment::new_as(
+            &self.model_manager,
+            &self.config.server,
+            self.create_new_database()?,
+            uid,
+        )
     }
 
     pub fn new_env_as(&self, uid: u32) -> Result<Environment<'_>> {
-        Environment::new_as(&self.model_manager, self.create_new_database()?, Some(uid))
+        Environment::new_as(
+            &self.model_manager,
+            &self.config.server,
+            self.create_new_database()?,
+            Some(uid),
+        )
     }
 }

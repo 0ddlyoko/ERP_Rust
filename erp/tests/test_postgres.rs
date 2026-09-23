@@ -185,6 +185,54 @@ fn test_records_persist_across_connections() -> Result<()> {
     Ok(())
 }
 
+/// A domain on the primary key reaches SQL, where `id` is a column like any other.
+#[test]
+fn test_a_domain_can_name_the_primary_key() -> Result<()> {
+    let app = app_or_skip!("t_primary_key");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "INV-ID");
+    let invoice: Invoice<SingleId> = env.create_new_record_from_map(map)?;
+    let id = invoice.get_id();
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let found: Invoice<MultipleIds> = env.search(&make_domain!([("id", "=", id)]))?;
+    assert_eq!(found.id.get_ids_ref(), &vec![id]);
+
+    let absent = id + 1000;
+    let found: Invoice<MultipleIds> = env.search(&make_domain!([("id", "=", absent)]))?;
+    assert!(found.id.get_ids_ref().is_empty());
+    Ok(())
+}
+
+/// And sorting by it, where `id` is a column like any other.
+#[test]
+fn test_ordering_by_the_primary_key() -> Result<()> {
+    let app = app_or_skip!("t_order_by_id");
+
+    let mut env = app.new_env()?;
+    for name in ["c", "a", "b"] {
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", name);
+        env.create_new_record_from_map::<Invoice<SingleId>>(map)?;
+    }
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let ids = env.search_ids_with(
+        "invoice",
+        &make_domain!([]),
+        &SearchOptions::new().order_by(OrderBy::desc("id")),
+    )?;
+    let mut sorted = ids.clone();
+    sorted.sort_unstable();
+    sorted.reverse();
+    assert_eq!(ids, sorted);
+    Ok(())
+}
+
 /// A rolled back transaction must leave nothing behind.
 #[test]
 fn test_rollback_leaves_nothing() -> Result<()> {

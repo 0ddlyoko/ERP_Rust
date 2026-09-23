@@ -88,6 +88,11 @@ pub fn reserved_names() -> Vec<&'static str> {
 
 /// Whether a field never leaves the process.
 fn is_private(env: &Environment, model_name: &str, field_name: &str) -> Result<bool> {
+    // The primary key is a real column that no model declares, so asking the registry about it
+    // fails. It is never hidden: a caller that can read a record already holds its id.
+    if field_name == "id" {
+        return Ok(false);
+    }
     let model = env.model_manager.try_get_model(model_name)?;
     Ok(model.try_get_internal_field(field_name)?.private)
 }
@@ -112,6 +117,31 @@ fn split_private(
         }
     }
     Ok((readable, hidden))
+}
+
+/// Refuse a write that touches a hidden field.
+///
+/// Reading one is answered empty, so a caller gets back the shape it asked for. Writing cannot be
+/// treated the same way: dropping the value in silence would report a change that never happened,
+/// and nothing the caller can read afterwards would say so. Until access rights exist, a hidden
+/// field is written from inside the process or not at all.
+fn refuse_private_writes(
+    env: &Environment,
+    model_name: &str,
+    values: &[MapOfFields],
+) -> Result<()> {
+    for record in values {
+        for field in record.get_keys() {
+            if is_private(env, model_name, field)? {
+                return Err(format!(
+                    "Field \"{model_name}\".\"{field}\" cannot be written from outside the \
+                     process"
+                )
+                .into());
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Put the hidden fields back, empty, so the answer has the shape that was asked for.
@@ -144,6 +174,9 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
             for segment in &tuple.left.path {
                 if is_private(env, &current, segment)? {
                     return Ok(SearchType::Never);
+                }
+                if segment == "id" {
+                    break;
                 }
                 let model = env.model_manager.try_get_model(&current)?;
                 match &model.try_get_internal_field(segment)?.inverse {
@@ -290,12 +323,14 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
         }
         Verb::Create => {
             let values = records_of(env, model_name, params, "values")?;
+            refuse_private_writes(env, model_name, &values)?;
             let created: MultipleIds = env.create_records(model_name, values)?;
             Ok(json!(created.get_ids_ref()))
         }
         Verb::Write => {
             let IdsParams { ids } = parse(params)?;
             let mut values = records_of(env, model_name, params, "values")?;
+            refuse_private_writes(env, model_name, &values)?;
             let values = values.pop().unwrap_or_default();
             env.write(model_name, &MultipleIds::from(ids), values)?;
             Ok(json!(true))

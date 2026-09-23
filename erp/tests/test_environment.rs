@@ -12,6 +12,99 @@ use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+fn new_app() -> Application {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<SaleOrder<_>>();
+    app.model_manager.register_model::<SaleOrderLine<_>>();
+    app.model_manager.register_model::<Tag<_>>();
+    app.model_manager.post_register();
+    app
+}
+
+/// Switching who the work is for gives back an environment, not a changed one.
+///
+/// The cache and the transaction are the same — that is the point. Two environments would be two
+/// transactions, and reading back what you just wrote would stop working.
+#[test]
+fn test_switching_user_keeps_the_same_work() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env_as(7)?;
+
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("amount", 42);
+    env.create_new_record_from_map::<SaleOrderLine<SingleId>>(map)?;
+
+    {
+        let mut other = env.as_user(9);
+        assert_eq!(other.uid(), Some(9));
+        let found: SaleOrderLine<MultipleIds> =
+            other.search(&make_domain!([("amount", "=", 42)]))?;
+        assert!(
+            !found.id.is_empty(),
+            "the switched environment sees the same uncommitted work"
+        );
+    }
+
+    assert_eq!(env.uid(), Some(7), "who it was for comes back");
+    Ok(())
+}
+
+/// They nest, and each puts back what it found.
+#[test]
+fn test_switching_user_nests() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env_as(7)?;
+
+    {
+        let mut second = env.as_user(9);
+        {
+            let third = second.as_user(11);
+            assert_eq!(third.uid(), Some(11));
+        }
+        assert_eq!(second.uid(), Some(9));
+    }
+    assert_eq!(env.uid(), Some(7));
+    Ok(())
+}
+
+/// Without a plugin saying which record is root, there is nothing to act as, and saying so beats
+/// carrying on as somebody who is not.
+#[test]
+fn test_acting_as_root_needs_a_root() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    assert!(!env.is_root());
+    assert!(env.as_root().is_err());
+    Ok(())
+}
+
+/// A domain on the primary key reaches the database.
+///
+/// `id` is a real column that no model declares, which is why it needs saying: without it the
+/// flush step looks it up in the registry, fails, and the search never happens.
+#[test]
+fn test_a_domain_can_name_the_primary_key() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+
+    let mut first: MapOfFields = MapOfFields::new(HashMap::new());
+    first.insert("amount", 11);
+    let first = env.create_new_record_from_map::<SaleOrderLine<SingleId>>(first)?;
+    let mut second: MapOfFields = MapOfFields::new(HashMap::new());
+    second.insert("amount", 22);
+    env.create_new_record_from_map::<SaleOrderLine<SingleId>>(second)?;
+
+    let id = first.get_id();
+    let found: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("id", "=", id)]))?;
+    assert_eq!(found.id.get_ids_ref(), &vec![id]);
+
+    let absent = id + 1000;
+    let found: SaleOrderLine<MultipleIds> = env.search(&make_domain!([("id", "=", absent)]))?;
+    assert!(found.id.is_empty());
+    Ok(())
+}
+
 #[test]
 fn test_env_drop_rollback() -> Result<()> {
     let mut app = Application::new_test();

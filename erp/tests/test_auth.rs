@@ -23,7 +23,7 @@ fn login(
     login: &str,
     password: &str,
 ) -> Result<Option<u32>> {
-    Ok(Users::authenticate(env, login, password)?.map(|user| user.get_id()))
+    Ok(Users::identified_by(env, login, password)?.map(|user| user.get_id()))
 }
 
 fn create_user(
@@ -170,18 +170,82 @@ fn test_user_belongs_to_groups() -> Result<()> {
     Ok(())
 }
 
-/// The environment carries who it runs for, and nobody by default.
+/// The environment carries who it runs for, and the portal user when nobody authenticated.
 #[test]
 fn test_environment_carries_the_user() -> Result<()> {
     let app = new_app()?;
-
     let mut env = app.new_env()?;
-    assert_eq!(env.uid(), None, "booting runs on behalf of nobody");
+    let portal = data::resolve(&mut env, "base.user_portal")?.expect("a seeded portal user");
+
+    assert_eq!(
+        env.uid(),
+        Some(portal),
+        "a caller who authenticated as nobody is the portal user"
+    );
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
     env.close()?;
 
     let env = app.new_env_as(uid)?;
     assert_eq!(env.uid(), Some(uid));
+    Ok(())
+}
+
+/// Three accounts are seeded, and only one of them is a login.
+#[test]
+fn test_the_seeded_accounts() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    for name in ["base.user_root", "base.user_admin", "base.user_portal"] {
+        assert!(
+            data::resolve(&mut env, name)?.is_some(),
+            "{name} is missing"
+        );
+    }
+
+    assert!(login(&mut env, "admin", DEFAULT_ADMIN_PASSWORD)?.is_some());
+    Ok(())
+}
+
+/// Neither of the two the framework acts as can be logged into.
+///
+/// Not by a rule that forbids it: they hold no password, and an account with none holds an empty
+/// hash, which nothing verifies against — including the empty password.
+#[test]
+fn test_the_framework_accounts_have_no_password() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+
+    for login_name in ["root", "portal"] {
+        let id = data::resolve(&mut env, &format!("base.user_{login_name}"))?.expect("seeded");
+        let account: Users<SingleId> = env.get_record(id.into());
+        assert!(!account.has_password(&mut env)?, "{login_name} has one");
+
+        for attempt in ["", "root", "portal", "admin", DEFAULT_ADMIN_PASSWORD] {
+            assert_eq!(
+                login(&mut env, login_name, attempt)?,
+                None,
+                "{login_name} accepted {attempt:?}"
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Acting as root is something the process does, and it says so about itself.
+#[test]
+fn test_acting_as_root() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+    let root = data::resolve(&mut env, "base.user_root")?.expect("a seeded root user");
+
+    assert!(!env.is_root(), "the portal user is not root");
+    {
+        let acting = env.as_root()?;
+        assert_eq!(acting.uid(), Some(root));
+        assert!(acting.is_root());
+    }
+    assert!(!env.is_root(), "and it is given back");
     Ok(())
 }
 
@@ -224,7 +288,7 @@ fn test_authenticate_returns_the_record() -> Result<()> {
     let mut env = app.new_env()?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
-    let user = Users::authenticate(&mut env, "alice", "s3cret")?.expect("should log in");
+    let user = Users::identified_by(&mut env, "alice", "s3cret")?.expect("should log in");
 
     assert_eq!(user.get_login(&mut env)?, &"alice".to_string());
     assert!(*user.get_active(&mut env)?);

@@ -362,3 +362,33 @@ fn test_unknown_sort_key_is_refused() -> Result<()> {
     );
     Ok(())
 }
+
+/// Sorting by the primary key works, and is the one sort key no model declares.
+#[test]
+fn test_ordering_by_the_primary_key() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(&mut env, &["c", "a", "b"])?;
+
+    let ascending = all(&mut env, &SearchOptions::new().order_by(OrderBy::asc("id")))?;
+    let mut sorted = ascending.clone();
+    sorted.sort_unstable();
+    assert_eq!(ascending, sorted);
+
+    let descending = all(
+        &mut env,
+        &SearchOptions::new().order_by(OrderBy::desc("id")),
+    )?;
+    sorted.reverse();
+    assert_eq!(descending, sorted);
+
+    assert!(
+        all(
+            &mut env,
+            &SearchOptions::new().order_by(OrderBy::asc("nope"))
+        )
+        .is_err(),
+        "an unknown sort key is still refused"
+    );
+    Ok(())
+}

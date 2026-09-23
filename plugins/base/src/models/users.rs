@@ -1,5 +1,5 @@
-use crate::models::BaseGroup;
-use code_gen::Model;
+use crate::models::{BaseGroup, Session};
+use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Password, Reference, SingleId};
 use erp_search_code_gen::make_domain;
@@ -7,7 +7,7 @@ use std::error::Error;
 
 /// Someone who can log in.
 #[derive(Model)]
-#[erp(id = "users")]
+#[erp(id = "users", methods)]
 #[allow(dead_code)]
 pub struct Users<Mode: IdMode> {
     pub id: Mode,
@@ -27,12 +27,18 @@ impl Users<SingleId> {
     ///
     /// An unknown login and a wrong password are answered the same way, and both pay for a
     /// verification, so neither the answer nor the time it takes says whether the account exists.
-    pub fn authenticate(
+    ///
+    /// Not called `authenticate`: that is what a caller asks for over the wire, and it does more
+    /// than this — it opens a session. This only says whose credentials these are.
+    pub fn identified_by(
         env: &mut Environment,
         login: &str,
         password: &str,
     ) -> Result<Option<Users<SingleId>>, Box<dyn Error + Send + Sync>> {
-        let found: Users<MultipleIds> = env.search(&make_domain!([("login", "=", login)]))?;
+        let found: Users<MultipleIds> = env.search(&make_domain!([
+            ("login", "=", login),
+            ("active", "=", true)
+        ]))?;
         let Some(id) = found.id.get_ids_ref().first().copied() else {
             // Deliberate: verifying against a throwaway hash keeps the cost of a missing account
             // close to that of a wrong password.
@@ -74,5 +80,84 @@ impl Users<SingleId> {
         env: &mut Environment,
     ) -> Result<bool, Box<dyn Error + Send + Sync>> {
         Ok(self.get_password(env)?.is_set())
+    }
+}
+
+/// What a caller gets back for its credentials.
+///
+/// The shape of an answer rather than of a record: the token, who it speaks for, and until when.
+/// Built here, where the wire is, instead of by the session itself.
+#[derive(erp::serde::Serialize)]
+#[serde(crate = "erp::serde")]
+pub struct Authenticated {
+    pub token: String,
+    pub uid: u32,
+    pub expires_at: erp::types::field::Timestamp,
+}
+
+#[erp_methods]
+impl Users<MultipleIds> {
+    /// Exchange credentials for a session.
+    ///
+    /// The one door in, and the one place the token is ever handed out. When API keys arrive they
+    /// become a second shape of credential here rather than a second way to get a session.
+    #[erp(rpc)]
+    pub fn authenticate(
+        &self,
+        env: &mut Environment,
+        login: String,
+        password: String,
+    ) -> Result<Authenticated, Box<dyn Error + Send + Sync>> {
+        let _ = self;
+        let Some(user) = Users::<SingleId>::identified_by(env, &login, &password)? else {
+            return Err("These credentials identify nobody".into());
+        };
+        let uid = user.get_id();
+        let opened = Session::open(env, uid)?;
+        Ok(Authenticated {
+            token: opened.token,
+            uid,
+            expires_at: *opened.session.get_expires_at(env)?,
+        })
+    }
+
+    /// Change the caller's own password.
+    ///
+    /// The only way a password is set from outside the process: writing the field is refused, and
+    /// this asks for the current one. Nobody can change anybody else's — not because rights say
+    /// so, there are none yet, but because the record it touches is the caller's own and no
+    /// argument names another.
+    ///
+    /// Knowing the current password is also what keeps the accounts the framework acts as out of
+    /// reach. Neither has one, and an account with no password holds an empty hash, which nothing
+    /// verifies against — so a caller nobody authenticated, who is the portal user, cannot give
+    /// the portal user a password and then log in as it.
+    #[erp(rpc)]
+    pub fn change_own_password(
+        &self,
+        env: &mut Environment,
+        current: String,
+        new: String,
+    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        let _ = self;
+        let Some(uid) = env.uid() else {
+            return Err("Only somebody can change their password".into());
+        };
+        let user = Users::<SingleId>::from_id(uid, env);
+        if !user.check_password(env, &current)? {
+            return Err("That is not the current password".into());
+        }
+        user.change_password(env, &new)?;
+        Ok(true)
+    }
+
+    /// Who the server takes this caller to be.
+    ///
+    /// `None` for a caller that presented no token, which is how a client tells "my token was not
+    /// read" from "my token was read and I am nobody in particular".
+    #[erp(rpc)]
+    pub fn me(&self, env: &mut Environment) -> Result<Option<u32>, Box<dyn Error + Send + Sync>> {
+        let _ = self;
+        Ok(env.uid())
     }
 }

@@ -4,6 +4,12 @@ fn default_host() -> String {
     "127.0.0.1".to_string()
 }
 
+fn default_session_duration() -> u64 {
+    // A day: long enough not to interrupt a day's work, short enough that a token left behind
+    // stops working before the next one starts.
+    86_400
+}
+
 fn default_port() -> u16 {
     // Not 8069: that is Odoo's, and running both on one machine is the normal case here.
     8080
@@ -26,6 +32,13 @@ pub struct ServerConfig {
     /// connection yet, which is what keeps a burst from holding the pool open while it queues.
     #[serde(default)]
     pub max_concurrent_requests: usize,
+    /// How long a session stays usable, in seconds.
+    ///
+    /// Absolute, counted from when it was opened rather than from its last use: a token that
+    /// leaked stops working at a time known in advance, which sliding expiry would push back
+    /// every time the thief used it.
+    #[serde(default = "default_session_duration")]
+    pub session_duration: u64,
 }
 
 impl Default for ServerConfig {
@@ -34,6 +47,7 @@ impl Default for ServerConfig {
             host: default_host(),
             port: default_port(),
             max_concurrent_requests: 0,
+            session_duration: default_session_duration(),
         }
     }
 }
