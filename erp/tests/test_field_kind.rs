@@ -118,6 +118,7 @@ fn test_conflicting_kinds_are_rejected() {
         default_value: None,
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -127,6 +128,7 @@ fn test_conflicting_kinds_are_rejected() {
         default_value: None,
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -143,6 +145,7 @@ fn test_an_extension_can_supply_a_default() {
         default_value: None,
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -154,6 +157,7 @@ fn test_an_extension_can_supply_a_default() {
         default_value: Some(FieldType::String("draft".to_string())),
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });

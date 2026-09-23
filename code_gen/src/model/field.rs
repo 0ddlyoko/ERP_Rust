@@ -26,6 +26,7 @@ pub struct FieldGen {
     pub depends: Option<Vec<String>>,
     pub inverse: Option<String>,
     pub relation: Option<String>,
+    pub is_private: bool,
 }
 
 impl FieldGen {
@@ -49,6 +50,7 @@ impl FieldGen {
         let mut depends = None;
         let mut inverse = None;
         let mut relation = None;
+        let mut is_private = false;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -143,6 +145,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Relation(ident, relation_value) => {
                     relation = Some((ident, relation_value.value()));
+                }
+                AllowedFieldAttrs::Private(_) => {
+                    is_private = true;
                 }
                 AllowedFieldAttrs::Inverse(ident, inverse_value) => {
                     inverse = Some((ident, inverse_value.value()));
@@ -244,6 +249,7 @@ impl FieldGen {
             depends,
             inverse: inverse.map(|inv| inv.1),
             relation: relation.map(|rel| rel.1),
+            is_private,
         })
     }
 }

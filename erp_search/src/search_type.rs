@@ -10,6 +10,12 @@ pub enum SearchType {
     Tuple(SearchTuple),
     /// No filter at all, which selects every record of the model.
     Nothing,
+    /// A filter nothing satisfies, which selects none of them.
+    ///
+    /// The counterpart of [`SearchType::Nothing`], and not expressible as a comparison: a caller
+    /// that must be answered "no records" without being told why needs to say so in the domain
+    /// itself rather than through a condition on some field.
+    Never,
 }
 
 impl SearchType {
@@ -30,7 +36,7 @@ impl SearchType {
             SearchType::Tuple(tuple) => {
                 result.push(&tuple.left);
             }
-            SearchType::Nothing => {}
+            SearchType::Nothing | SearchType::Never => {}
         }
     }
 }

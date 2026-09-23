@@ -11,6 +11,7 @@ fn test_get_fields_name() {
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
         description: Some("This is the name".to_string()),
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -21,6 +22,7 @@ fn test_get_fields_name() {
         default_value: Some(FieldType::Integer(42)),
         description: Some("This is the age of the person".to_string()),
         required: false,
+        private: false,
         compute: None,
         field_ref: None,
     });

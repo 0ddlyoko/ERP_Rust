@@ -86,6 +86,93 @@ pub fn reserved_names() -> Vec<&'static str> {
     Verb::ALL.iter().map(|verb| verb.name()).collect()
 }
 
+/// Whether a field never leaves the process.
+fn is_private(env: &Environment, model_name: &str, field_name: &str) -> Result<bool> {
+    let model = env.model_manager.try_get_model(model_name)?;
+    Ok(model.try_get_internal_field(field_name)?.private)
+}
+
+/// The fields worth asking the ORM for, and the ones to answer empty.
+///
+/// A private field is answered as empty rather than refused, so a caller gets the shape it asked
+/// for. It is dropped before the read rather than blanked after: a value nobody is going to send
+/// has no reason to be fetched.
+fn split_private(
+    env: &Environment,
+    model_name: &str,
+    fields: &[String],
+) -> Result<(Vec<String>, Vec<String>)> {
+    let mut readable = Vec::with_capacity(fields.len());
+    let mut hidden = Vec::new();
+    for field in fields {
+        if is_private(env, model_name, field)? {
+            hidden.push(field.clone());
+        } else {
+            readable.push(field.clone());
+        }
+    }
+    Ok((readable, hidden))
+}
+
+/// Put the hidden fields back, empty, so the answer has the shape that was asked for.
+fn blank_out(rows: &mut [MapOfFields], hidden: &[String]) {
+    for row in rows.iter_mut() {
+        for field in hidden {
+            row.insert_none(field);
+        }
+    }
+}
+
+/// Rewrite a domain so that conditions on hidden fields select nothing.
+///
+/// Every segment of a path, not only the last: crossing a private relation says which records it
+/// links, which is the thing being hidden.
+fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Result<SearchType> {
+    Ok(match domain {
+        SearchType::And(left, right) => SearchType::And(
+            Box::new(blind_domain(env, model_name, left)?),
+            Box::new(blind_domain(env, model_name, right)?),
+        ),
+        SearchType::Or(left, right) => SearchType::Or(
+            Box::new(blind_domain(env, model_name, left)?),
+            Box::new(blind_domain(env, model_name, right)?),
+        ),
+        SearchType::Nothing => SearchType::Nothing,
+        SearchType::Never => SearchType::Never,
+        SearchType::Tuple(tuple) => {
+            let mut current = model_name.to_string();
+            for segment in &tuple.left.path {
+                if is_private(env, &current, segment)? {
+                    return Ok(SearchType::Never);
+                }
+                let model = env.model_manager.try_get_model(&current)?;
+                match &model.try_get_internal_field(segment)?.inverse {
+                    Some(reference) => current = reference.target_model.clone(),
+                    None => break,
+                }
+            }
+            SearchType::Tuple(tuple.clone())
+        }
+    })
+}
+
+/// Drop sort keys naming a hidden field.
+///
+/// Sorting by one would order the records by a value the caller cannot see, which hands over the
+/// comparison it was denied.
+fn visible_order(env: &Environment, model_name: &str, order: &[String]) -> Result<Vec<String>> {
+    let mut kept = Vec::with_capacity(order.len());
+    for key in order {
+        let field = key
+            .rsplit_once(' ')
+            .map_or(key.as_str(), |(field, _)| field);
+        if !is_private(env, model_name, field.trim())? {
+            kept.push(key.clone());
+        }
+    }
+    Ok(kept)
+}
+
 /// Whether a name belongs to the protocol rather than to a model.
 pub fn is_reserved(name: &str) -> bool {
     Verb::parse(name).is_some()
@@ -166,17 +253,23 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
     match verb {
         Verb::Search => {
             let SearchParams { domain, paging } = parse(params)?;
+            let domain = blind_domain(env, model_name, &domain)?;
+            let mut paging = paging;
+            paging.order = visible_order(env, model_name, &paging.order)?;
             let ids = env.search_ids_with(model_name, &domain, &paging.into_options()?)?;
             Ok(json!(ids))
         }
         Verb::Count => {
             let CountParams { domain } = parse(params)?;
+            let domain = blind_domain(env, model_name, &domain)?;
             Ok(json!(env.count(model_name, &domain)?))
         }
         Verb::Read => {
             let ReadParams { ids, fields } = parse(params)?;
-            let names: Vec<&str> = fields.iter().map(String::as_str).collect();
-            let rows = env.read(model_name, &MultipleIds::from(ids), &names)?;
+            let (readable, hidden) = split_private(env, model_name, &fields)?;
+            let names: Vec<&str> = readable.iter().map(String::as_str).collect();
+            let mut rows = env.read(model_name, &MultipleIds::from(ids), &names)?;
+            blank_out(&mut rows, &hidden);
             Ok(serde_json::to_value(rows)?)
         }
         Verb::ReadMatching => {
@@ -185,8 +278,14 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
                 fields,
                 paging,
             } = parse(params)?;
-            let names: Vec<&str> = fields.iter().map(String::as_str).collect();
-            let rows = env.read_matching(model_name, &names, &domain, &paging.into_options()?)?;
+            let (readable, hidden) = split_private(env, model_name, &fields)?;
+            let domain = blind_domain(env, model_name, &domain)?;
+            let mut paging = paging;
+            paging.order = visible_order(env, model_name, &paging.order)?;
+            let names: Vec<&str> = readable.iter().map(String::as_str).collect();
+            let mut rows =
+                env.read_matching(model_name, &names, &domain, &paging.into_options()?)?;
+            blank_out(&mut rows, &hidden);
             Ok(serde_json::to_value(rows)?)
         }
         Verb::Create => {

@@ -80,6 +80,7 @@ impl FinalInternalModel {
                 default_value: field.default_value,
                 description: field.description,
                 required: field.required,
+                private: field.private,
                 compute: field.compute,
                 field_ref: field.field_ref,
             };

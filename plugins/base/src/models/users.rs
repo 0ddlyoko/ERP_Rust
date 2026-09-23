@@ -16,6 +16,7 @@ pub struct Users<Mode: IdMode> {
     login: String,
     /// Argon2 hash. The clear password is never stored, and never recoverable.
     #[erp(default = "")]
+    #[erp(private)]
     password: String,
     #[erp(default = "")]
     name: String,

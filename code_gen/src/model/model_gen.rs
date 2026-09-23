@@ -381,6 +381,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             depends,
             inverse,
             relation,
+            is_private,
             ..
         } = f;
 
@@ -531,6 +532,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     default_value: #default_value,
                     description: #description,
                     required: #is_required,
+                    private: #is_private,
                     compute: #compute,
                     field_ref: #field_reference,
                 }

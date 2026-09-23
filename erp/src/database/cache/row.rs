@@ -26,6 +26,13 @@ impl Row {
             (FieldType::String(cell), RightTuple::String(right)) => Some(cell.cmp(right)),
             (FieldType::Integer(cell), RightTuple::Integer(right)) => Some(cell.cmp(right)),
             (FieldType::UInteger(cell), RightTuple::UInteger(right)) => Some(cell.cmp(right)),
+            // Ordered by value rather than by shape, for the same reason equality is.
+            (FieldType::Integer(cell), RightTuple::UInteger(right)) => {
+                Some(i64::from(*cell).cmp(&i64::from(*right)))
+            }
+            (FieldType::UInteger(cell), RightTuple::Integer(right)) => {
+                Some(i64::from(*cell).cmp(&i64::from(*right)))
+            }
             (FieldType::Decimal(cell), RightTuple::Decimal(right)) => Some(cell.cmp(right)),
             (FieldType::Boolean(cell), RightTuple::Boolean(right)) => Some(cell.cmp(right)),
             (FieldType::Date(cell), RightTuple::Date(right)) => Some(cell.cmp(right)),

@@ -22,6 +22,9 @@ pub struct Machine<Mode: IdMode> {
     base_rate: i32,
     #[erp(default = 1)]
     days: i32,
+    /// Never leaves the process, whatever a caller asks for.
+    #[erp(default = "", private)]
+    unlock_code: String,
 }
 
 #[erp_methods]

@@ -19,6 +19,7 @@ fn test_register_field() {
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
         description: Some("This is the name".to_string()),
         required: false,
+        private: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string(), "test".to_string()],
@@ -32,6 +33,7 @@ fn test_register_field() {
         default_value: Some(FieldType::Integer(42)),
         description: Some("This is the age of the person".to_string()),
         required: false,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -66,6 +68,7 @@ fn test_register_field() {
         default_value: Some(FieldType::String("1ddlyoko".to_string())),
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -91,6 +94,7 @@ fn test_register_field() {
         default_value: None,
         description: Some("This is another description".to_string()),
         required: true,
+        private: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string(), "test2".to_string()],
@@ -122,6 +126,7 @@ fn test_register_field() {
         default_value: None,
         description: Some("This is another description".to_string()),
         required: true,
+        private: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string()],
@@ -158,6 +163,7 @@ fn test_register_field_without_default_value_is_allowed() {
         default_value: None,
         description: Some("This is the name".to_string()),
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -178,6 +184,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
         description: Some("This is the name".to_string()),
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });
@@ -188,6 +195,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         default_value: Some(FieldType::Integer(42)),
         description: None,
         required: true,
+        private: false,
         compute: None,
         field_ref: None,
     });

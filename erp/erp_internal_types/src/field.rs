@@ -8,6 +8,7 @@ pub struct InternalField {
     pub default_value: Option<FieldType>,
     pub description: Option<String>,
     pub required: bool,
+    pub private: bool,
     pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
 }
@@ -19,6 +20,9 @@ pub struct FinalInternalField {
     pub name: String,
     pub description: String,
     pub required: bool,
+    /// Whether the field never leaves the process. Any struct declaring it so makes it so: a
+    /// plugin may hide a field another declared, never reveal one.
+    pub private: bool,
     pub kind: FieldKind,
     /// Value given to the field when a record is created without one. `None` means the field
     /// simply starts empty.
@@ -36,6 +40,7 @@ impl FinalInternalField {
             name: field_name.to_string(),
             description: field_name.to_string(),
             required: false,
+            private: false,
             kind: FieldKind::String,
             default_value: None,
             compute: None,
@@ -66,6 +71,9 @@ impl FinalInternalField {
             self.description = description.clone();
         }
         self.required = field_descriptor.required;
+        // Never taken back: a struct extending a model can hide a field, and no struct can
+        // reveal one that another decided to hide.
+        self.private |= field_descriptor.private;
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

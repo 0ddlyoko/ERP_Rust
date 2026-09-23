@@ -277,3 +277,41 @@ fn test_an_empty_value_survives_the_round_trip() -> Result<()> {
     assert!(back.get_option::<&String>("name").is_none());
     Ok(())
 }
+
+/// A whole number from the wire matches the column that holds it, whatever its sign.
+///
+/// JSON has one kind of number and no sign information, so a positive integer arrives unsigned
+/// while the column may be signed — and an id is unsigned while a count is not. Compared by
+/// shape rather than by value, an ordinary domain matched nothing, in silence.
+#[test]
+fn test_a_whole_number_matches_a_signed_or_unsigned_column() -> Result<()> {
+    let signed = domain(r#"[["amount", "=", 10]]"#)?;
+    let SearchType::Tuple(tuple) = signed else {
+        panic!("expected one condition");
+    };
+    assert_eq!(
+        tuple.right,
+        RightTuple::UInteger(10),
+        "serde hands a positive whole number over unsigned"
+    );
+
+    // What matters is that it compares equal to either shape.
+    use erp::database::FieldType as Stored;
+    assert!(
+        Stored::Integer(10) == tuple.right,
+        "against a signed column"
+    );
+    assert!(
+        Stored::UInteger(10) == tuple.right,
+        "against an unsigned one"
+    );
+    assert!(Stored::Integer(11) != tuple.right);
+
+    let negative = domain(r#"[["amount", "=", -3]]"#)?;
+    let SearchType::Tuple(tuple) = negative else {
+        panic!("expected one condition");
+    };
+    assert_eq!(tuple.right, RightTuple::Integer(-3));
+    assert!(Stored::Integer(-3) == tuple.right);
+    Ok(())
+}

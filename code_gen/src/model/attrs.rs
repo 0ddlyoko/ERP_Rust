@@ -89,6 +89,8 @@ pub enum AllowedFieldAttrs {
     Depends(Ident, Vec<LitStr>),
     Inverse(Ident, LitStr),
     Relation(Ident, LitStr),
+    /// Says the field never leaves the process.
+    Private(Ident),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -98,6 +100,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "depends",
     "inverse",
     "relation",
+    "private",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -139,6 +142,7 @@ impl Parse for AllowedFieldAttrs {
                 name,
                 parse_eq(input, "inverse = \"inverse\"")?,
             )),
+            "private" => Ok(AllowedFieldAttrs::Private(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -157,6 +161,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Depends(ident, _) => ident.span(),
             AllowedFieldAttrs::Inverse(ident, _) => ident.span(),
             AllowedFieldAttrs::Relation(ident, _) => ident.span(),
+            AllowedFieldAttrs::Private(ident) => ident.span(),
         }
     }
 }

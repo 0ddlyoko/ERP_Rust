@@ -80,6 +80,12 @@ impl PartialEq<RightTuple> for FieldType {
             (FieldType::String(value), RightTuple::String(other_value)) => value == other_value,
             (FieldType::Integer(value), RightTuple::Integer(other_value)) => value == other_value,
             (FieldType::UInteger(value), RightTuple::UInteger(other_value)) => value == other_value,
+            (FieldType::Integer(value), RightTuple::UInteger(other_value)) => {
+                i64::from(*value) == i64::from(*other_value)
+            }
+            (FieldType::UInteger(value), RightTuple::Integer(other_value)) => {
+                i64::from(*value) == i64::from(*other_value)
+            }
             (FieldType::Decimal(value), RightTuple::Decimal(other_value)) => value == other_value,
             (FieldType::Boolean(value), RightTuple::Boolean(other_value)) => value == other_value,
             (FieldType::Date(value), RightTuple::Date(other_value)) => value == other_value,

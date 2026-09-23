@@ -122,6 +122,15 @@ impl QueryBuilder {
         model_manager: &ModelManager,
     ) -> Result<String> {
         Ok(match domain {
+            // A domain nothing satisfies, which selects no record.
+            SearchType::Never => {
+                let model = model_manager.try_get_model(model_name)?;
+                format!(
+                    "SELECT {} FROM {} WHERE FALSE",
+                    quote_ident("id"),
+                    quote_ident(&model.table_name)
+                )
+            }
             // An empty domain filters nothing, so it selects everything.
             SearchType::Nothing => {
                 let model = model_manager.try_get_model(model_name)?;

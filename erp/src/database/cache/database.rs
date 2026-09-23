@@ -209,6 +209,8 @@ impl CacheConnection {
                     self._search_path(model_name, &mut path, operator, right, model_manager)?;
                 HashSet::<_>::from_iter(result).into_iter().collect()
             }
+            // A domain nothing satisfies, which selects no record.
+            SearchType::Never => Vec::new(),
             // An empty domain filters nothing, so it selects every record. Without this there
             // is no way to express "list them all", which is what any list view starts from.
             SearchType::Nothing => self
