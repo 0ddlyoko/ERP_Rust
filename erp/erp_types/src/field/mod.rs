@@ -6,6 +6,7 @@ mod field_descriptor;
 mod field_reference;
 mod field_type;
 mod id;
+mod password;
 mod reference;
 
 pub use deserialize::*;
@@ -16,6 +17,7 @@ pub use field_descriptor::*;
 pub use field_reference::*;
 pub use field_type::*;
 pub use id::*;
+pub use password::*;
 pub use reference::*;
 
 /// Re-exported so generated model code and plugins can name the field types without depending on

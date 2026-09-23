@@ -230,6 +230,18 @@ impl QueryBuilder {
         // "id" is a real column but is not in the registry.
         if field_name != "id" {
             let field = model.try_get_internal_field(field_name)?;
+            // A password answers no question about itself, here as in the cache backend. The
+            // API already refuses a domain on it, but a domain written in Rust reaches this
+            // directly — and comparing a value reconstructs it without ever reading it, which is
+            // the one thing the type exists to prevent. Declined before the condition is built,
+            // so no parameter is bound for a clause that never runs.
+            if field.kind == FieldKind::Password {
+                return Ok(format!(
+                    "SELECT {} FROM {} WHERE FALSE",
+                    quote_ident("id"),
+                    quote_ident(&model.table_name)
+                ));
+            }
             if let Some(reference) = &field.inverse
                 && let Some(sql) =
                     self.relation_leaf(model, reference, operator, right, model_manager)?

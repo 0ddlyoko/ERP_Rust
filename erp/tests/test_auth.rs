@@ -1,9 +1,9 @@
 use base::models::Users;
-use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD, auth};
+use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD};
 use erp::app::Application;
 use erp::data;
 use erp_search_code_gen::make_domain;
-use erp_types::field::{IdMode, MultipleIds, SingleId};
+use erp_types::field::{IdMode, MultipleIds, Password, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
@@ -34,7 +34,7 @@ fn create_user(
 ) -> Result<u32> {
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     map.insert("login", login);
-    map.insert("password", auth::hash_password(password)?);
+    map.insert("password", Password::new(password)?);
     map.insert("active", active);
     let ids: MultipleIds = env.create_records("users", vec![map])?;
     Ok(*ids.get_ids_ref().first().unwrap())
@@ -43,25 +43,21 @@ fn create_user(
 /// A clear password is never stored, and two accounts sharing one do not share a hash.
 #[test]
 fn test_hashes_are_salted() -> Result<()> {
-    let first = auth::hash_password("hunter2")?;
-    let second = auth::hash_password("hunter2")?;
+    let first = Password::new("hunter2")?;
+    let second = Password::new("hunter2")?;
 
     assert_ne!(first, second, "each hash carries its own salt");
-    assert!(
-        !first.contains("hunter2"),
-        "the clear password must not appear"
-    );
-    assert!(auth::verify_password("hunter2", &first));
-    assert!(auth::verify_password("hunter2", &second));
-    assert!(!auth::verify_password("hunter3", &first));
+    assert!(first.is_same_password("hunter2"));
+    assert!(second.is_same_password("hunter2"));
+    assert!(!first.is_same_password("hunter3"));
     Ok(())
 }
 
 /// Garbage in place of a hash is rejected rather than accepted or fatal.
 #[test]
 fn test_malformed_hash_never_verifies() {
-    assert!(!auth::verify_password("anything", ""));
-    assert!(!auth::verify_password("anything", "not-a-hash"));
+    assert!(!Password::default().is_same_password("anything"));
+    assert!(!Password::from_hash("not-a-hash").is_same_password("anything"));
 }
 
 #[test]

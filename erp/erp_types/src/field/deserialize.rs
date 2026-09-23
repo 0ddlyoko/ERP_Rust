@@ -8,7 +8,7 @@
 //! the seed carries the kind, works with any format, and keeps this crate free of a dependency on
 //! one.
 
-use crate::field::{FieldKind, FieldType};
+use crate::field::{FieldKind, FieldType, Password};
 use crate::model::MapOfFields;
 use serde::Deserialize;
 use serde::de::{DeserializeSeed, Deserializer, Error, MapAccess, Visitor};
@@ -32,6 +32,14 @@ impl<'de> DeserializeSeed<'de> for FieldKind {
             FieldKind::Date | FieldKind::DateTime => {
                 let raw = String::deserialize(deserializer)?;
                 self.parse(&raw).map_err(Error::custom)
+            }
+            // What arrives is the clear password, and what is kept is its hash: hashing happens
+            // here, at the edge, so no route into the ORM can carry a password any further.
+            FieldKind::Password => {
+                let clear = String::deserialize(deserializer)?;
+                Password::new(&clear)
+                    .map(FieldType::Password)
+                    .map_err(Error::custom)
             }
         }
     }

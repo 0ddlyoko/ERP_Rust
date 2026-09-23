@@ -1,3 +1,4 @@
+use crate::field::Password;
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use std::fmt::{Debug, Display, Formatter};
@@ -28,6 +29,8 @@ pub enum FieldType {
     DateTime(DateTime<Utc>),
     Ref(u32),
     Refs(Vec<u32>),
+    /// A secret, held as its hash. See [`Password`].
+    Password(Password),
 }
 
 impl Display for FieldType {
@@ -41,6 +44,7 @@ impl Display for FieldType {
             FieldType::DateTime(dt) => write!(f, "{dt}"),
             FieldType::Ref(id) => write!(f, "{id}"),
             FieldType::Refs(ids) => write!(f, "{ids:?}"),
+            FieldType::Password(password) => write!(f, "{password}"),
         }
     }
 }
@@ -57,7 +61,8 @@ impl PartialEq for FieldType {
             FieldType::Date,
             FieldType::DateTime,
             FieldType::Ref,
-            FieldType::Refs
+            FieldType::Refs,
+            FieldType::Password
         )
     }
 }
@@ -270,6 +275,28 @@ impl From<&Vec<u32>> for FieldType {
     }
 }
 
+// Password
+impl<'a> From<&'a FieldType> for Option<&'a Password> {
+    fn from(t: &'a FieldType) -> Self {
+        match t {
+            FieldType::Password(password) => Some(password),
+            _ => None,
+        }
+    }
+}
+
+impl From<Password> for FieldType {
+    fn from(t: Password) -> Self {
+        FieldType::Password(t)
+    }
+}
+
+impl From<&Password> for FieldType {
+    fn from(t: &Password) -> Self {
+        FieldType::Password(t.clone())
+    }
+}
+
 /// Raised when text cannot be read as the field type it is destined for.
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Cannot read {raw:?} as a {expected}")]
@@ -321,6 +348,10 @@ impl FieldKind {
                     .collect::<Result<Vec<u32>, _>>()?;
                 FieldType::Refs(ids)
             }
+            // The text is the clear password, hashed on the spot: a data file or a migration
+            // names a password the way a person would, and never holds a hash it could not have
+            // produced anyway, since the salt is drawn per account.
+            FieldKind::Password => FieldType::Password(Password::new(raw).map_err(|_| fail())?),
         })
     }
 }
@@ -344,6 +375,10 @@ impl serde::Serialize for FieldType {
             FieldType::DateTime(value) => serializer.serialize_str(&value.to_rfc3339()),
             FieldType::Ref(value) => serializer.serialize_u32(*value),
             FieldType::Refs(value) => serde::Serialize::serialize(value, serializer),
+            // A password goes out as nothing at all. Every route to here is already closed —
+            // the kind is private, so a read blanks it and a domain on it matches nothing — and
+            // this is the one that would not depend on a caller having got something right.
+            FieldType::Password(_) => serializer.serialize_none(),
         }
     }
 }
@@ -367,6 +402,8 @@ pub enum FieldKind {
     Ref,
     /// one2many, and later many2many
     Refs,
+    /// A secret, stored hashed and never readable. Always private, whatever the field declares.
+    Password,
 }
 
 impl FieldKind {
@@ -395,6 +432,7 @@ impl std::fmt::Display for FieldKind {
             FieldKind::DateTime => "datetime",
             FieldKind::Ref => "reference",
             FieldKind::Refs => "references",
+            FieldKind::Password => "password",
         };
         write!(f, "{name}")
     }
@@ -415,6 +453,7 @@ impl FieldType {
             FieldType::DateTime(_) => FieldKind::DateTime,
             FieldType::Ref(_) => FieldKind::Ref,
             FieldType::Refs(_) => FieldKind::Refs,
+            FieldType::Password(_) => FieldKind::Password,
         }
     }
 }

@@ -4,7 +4,6 @@ use erp::plugin::Plugin;
 use erp::types::field::SingleId;
 use std::error::Error;
 
-pub mod auth;
 pub mod models;
 
 /// Password given to the seeded administrator on a fresh database.

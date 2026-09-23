@@ -1,8 +1,7 @@
-use crate::auth::{hash_password, verify_password};
 use crate::models::BaseGroup;
 use code_gen::Model;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+use erp::types::field::{IdMode, MultipleIds, Password, Reference, SingleId};
 use erp_search_code_gen::make_domain;
 use std::error::Error;
 
@@ -14,10 +13,7 @@ pub struct Users<Mode: IdMode> {
     pub id: Mode,
     #[erp(default = "")]
     login: String,
-    /// Argon2 hash. The clear password is never stored, and never recoverable.
-    #[erp(default = "")]
-    #[erp(private)]
-    password: String,
+    password: Password,
     #[erp(default = "")]
     name: String,
     #[erp(default = true)]
@@ -40,7 +36,7 @@ impl Users<SingleId> {
         let Some(id) = found.id.get_ids_ref().first().copied() else {
             // Deliberate: verifying against a throwaway hash keeps the cost of a missing account
             // close to that of a wrong password.
-            let _ = verify_password(password, &hash_password("")?);
+            let _ = Password::new("")?.is_same_password(password);
             return Ok(None);
         };
 
@@ -57,19 +53,19 @@ impl Users<SingleId> {
         env: &mut Environment,
         password: &str,
     ) -> Result<bool, Box<dyn Error + Send + Sync>> {
-        Ok(verify_password(password, self.get_password(env)?))
+        Ok(self.get_password(env)?.is_same_password(password))
     }
 
     /// Replace the user's password.
     ///
-    /// Not named `set_password`: that is the generated setter for the field, which takes the hash
-    /// rather than the clear password.
+    /// Not named `set_password`: that is the generated setter for the field, which takes a
+    /// [`Password`] — already hashed — rather than the clear password.
     pub fn change_password(
         &self,
         env: &mut Environment,
         password: &str,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        self.set_password(hash_password(password)?, env)
+        self.set_password(Password::new(password)?, env)
     }
 
     /// Whether the user has a usable password yet.
@@ -77,6 +73,6 @@ impl Users<SingleId> {
         &self,
         env: &mut Environment,
     ) -> Result<bool, Box<dyn Error + Send + Sync>> {
-        Ok(!self.get_password(env)?.is_empty())
+        Ok(self.get_password(env)?.is_set())
     }
 }

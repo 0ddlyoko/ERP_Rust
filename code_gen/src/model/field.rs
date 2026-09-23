@@ -1,7 +1,8 @@
 use crate::model::attrs::{AllowedFieldAttrs, parse_attributes};
 use crate::model::util::{
     gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error,
-    gen_option_not_one_generic, gen_reference_not_two_generic, gen_wrong_default_value,
+    gen_option_not_one_generic, gen_password_has_no_default, gen_reference_not_two_generic,
+    gen_wrong_default_value,
 };
 use erp::types::field::FieldType;
 use proc_macro2::{Ident, Span};
@@ -45,6 +46,7 @@ impl FieldGen {
         let mut is_reference = false;
         let mut is_reference_multi = false;
         let mut default = None;
+        let mut default_span = None;
         let mut description = None;
         let mut compute = None;
         let mut depends = None;
@@ -55,6 +57,7 @@ impl FieldGen {
         for attr in parse_attributes(attrs)? {
             match attr.item {
                 AllowedFieldAttrs::Default(ident, default_value) => {
+                    default_span = Some(ident.span());
                     default = Some(match default_value {
                         Lit::Str(str) => FieldType::String(str.value()),
                         Lit::Int(i) => {
@@ -224,6 +227,14 @@ impl FieldGen {
 
                 field_type = Some(ident.clone());
             }
+        }
+
+        // A password is hashed where it is set, never declared.
+        if let Some(field_type) = &field_type
+            && field_type == "Password"
+            && let Some(default_span) = default_span
+        {
+            return Err(gen_password_has_no_default(default_span));
         }
 
         // "inverse" should only work on MultipleIds

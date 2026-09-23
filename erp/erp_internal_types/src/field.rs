@@ -72,8 +72,10 @@ impl FinalInternalField {
         }
         self.required = field_descriptor.required;
         // Never taken back: a struct extending a model can hide a field, and no struct can
-        // reveal one that another decided to hide.
-        self.private |= field_descriptor.private;
+        // reveal one that another decided to hide. A password is hidden whatever it declares,
+        // because a field whose whole purpose is to be unreadable should not depend on the
+        // author of every struct touching it remembering to say so.
+        self.private |= field_descriptor.private || field_descriptor.kind == FieldKind::Password;
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

@@ -1,6 +1,6 @@
 use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds};
+use erp::types::field::{IdMode, MultipleIds, Password};
 use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -25,6 +25,7 @@ pub struct Machine<Mode: IdMode> {
     /// Never leaves the process, whatever a caller asks for.
     #[erp(default = "", private)]
     unlock_code: String,
+    service_key: Password,
 }
 
 #[erp_methods]

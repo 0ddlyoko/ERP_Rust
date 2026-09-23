@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use erp_search::RightTuple;
 use erp_types::field as field_type;
+use erp_types::field::{Password, StoredHash};
 use rust_decimal::Decimal;
 use std::fmt::{Display, Formatter};
 
@@ -28,6 +29,8 @@ pub enum FieldType {
     Boolean(bool),
     Date(NaiveDate),
     DateTime(DateTime<Utc>),
+    /// A password, as the hash that is what actually reaches a column.
+    Password(String),
 }
 
 impl Display for FieldType {
@@ -40,6 +43,7 @@ impl Display for FieldType {
             FieldType::Boolean(e) => write!(f, "{}", e),
             FieldType::Date(d) => write!(f, "{}", d),
             FieldType::DateTime(dt) => write!(f, "{}", dt),
+            FieldType::Password(_) => write!(f, "****"),
         }
     }
 }
@@ -55,7 +59,8 @@ impl PartialEq for FieldType {
             FieldType::Decimal,
             FieldType::Boolean,
             FieldType::Date,
-            FieldType::DateTime
+            FieldType::DateTime,
+            FieldType::Password
         )
     }
 }
@@ -70,6 +75,9 @@ impl From<FieldType> for RightTuple {
             FieldType::Boolean(value) => RightTuple::Boolean(value),
             FieldType::Date(value) => RightTuple::Date(value),
             FieldType::DateTime(value) => RightTuple::DateTime(value),
+            // Nothing a domain could have written, which is the point: a password has no
+            // comparable form.
+            FieldType::Password(_) => RightTuple::None,
         }
     }
 }
@@ -90,6 +98,10 @@ impl PartialEq<RightTuple> for FieldType {
             (FieldType::Boolean(value), RightTuple::Boolean(other_value)) => value == other_value,
             (FieldType::Date(value), RightTuple::Date(other_value)) => value == other_value,
             (FieldType::DateTime(value), RightTuple::DateTime(other_value)) => value == other_value,
+            // Before the arms that compare: a password matches no value at all, not even one
+            // that happens to be its hash. Answering would turn a domain into an oracle that
+            // reconstructs the hash without ever reading it.
+            (FieldType::Password(_), _) => false,
             (value, RightTuple::Array(other_value)) => other_value.contains(&value.clone().into()),
             _ => false,
         }
@@ -113,6 +125,8 @@ impl From<field_type::FieldType> for FieldType {
             field_type::FieldType::Date(v) => FieldType::Date(v),
             field_type::FieldType::DateTime(v) => FieldType::DateTime(v),
             field_type::FieldType::Ref(v) => FieldType::UInteger(v),
+            // Taken by value, which is what lets the hash out at all — see `Password::into_hash`.
+            field_type::FieldType::Password(v) => FieldType::Password(v.into_hash()),
             // This should not occur
             field_type::FieldType::Refs(_v) => {
                 panic!("Cannot convert Refs fields to database objet")
@@ -131,6 +145,7 @@ impl From<FieldType> for field_type::FieldType {
             FieldType::Boolean(v) => field_type::FieldType::Bool(v),
             FieldType::Date(v) => field_type::FieldType::Date(v),
             FieldType::DateTime(v) => field_type::FieldType::DateTime(v),
+            FieldType::Password(v) => field_type::FieldType::Password(Password::from_hash(v)),
         }
     }
 }

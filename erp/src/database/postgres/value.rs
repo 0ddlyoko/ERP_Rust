@@ -31,6 +31,7 @@ pub(crate) fn to_sql_param(value: &FieldType) -> Result<Box<dyn ToSql + Sync + S
         FieldType::Boolean(value) => Box::new(*value),
         FieldType::Date(value) => Box::new(*value),
         FieldType::DateTime(value) => Box::new(*value),
+        FieldType::Password(value) => Box::new(value.clone()),
     })
 }
 
@@ -62,6 +63,9 @@ pub(crate) fn from_row(row: &Row, index: usize, kind: FieldKind) -> Result<Optio
             Some(id) => Some(FieldType::UInteger(id_from_sql(id)?)),
             None => None,
         },
+        FieldKind::Password => row
+            .try_get::<_, Option<String>>(index)?
+            .map(FieldType::Password),
         // A one2many has no column of its own; it is read from the other side's foreign key.
         FieldKind::Refs => None,
     })
@@ -77,6 +81,7 @@ pub(crate) fn column_type(kind: FieldKind) -> Option<&'static str> {
         FieldKind::Date => "DATE",
         FieldKind::DateTime => "TIMESTAMPTZ",
         FieldKind::Ref => "INTEGER",
+        FieldKind::Password => "TEXT",
         FieldKind::Refs => return None,
     })
 }

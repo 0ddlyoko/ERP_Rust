@@ -117,7 +117,6 @@ dependencies = [
 name = "base"
 version = "0.1.0"
 dependencies = [
- "argon2",
  "code_gen",
  "erp",
  "erp_search",
@@ -491,6 +490,7 @@ dependencies = [
 name = "erp_types"
 version = "0.1.0"
 dependencies = [
+ "argon2",
  "chrono",
  "erp_search",
  "rust_decimal",

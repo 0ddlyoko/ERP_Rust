@@ -55,6 +55,15 @@ pub fn gen_wrong_default_value(span: Span, default_value: &str, name: &str) -> E
     )
 }
 
+pub fn gen_password_has_no_default(span: Span) -> Error {
+    Error::new(
+        span,
+        "A password field takes no default: a hash is salted per record, so one written here \
+         would be the same for every record, and one written in clear would sit in the source. \
+         Set it with `Password::new(...)` where the record is created.",
+    )
+}
+
 pub fn gen_inverse_not_multiple_ids(span: Span) -> Error {
     Error::new(
         span,

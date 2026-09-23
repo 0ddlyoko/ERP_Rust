@@ -437,6 +437,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                         }
                     }
                 }
+                // Out of reach: a password field is refused a default while its attributes are
+                // read, which is where the message belongs. Here to keep the match honest.
+                FieldType::Password(_) => quote! {
+                    compile_error!("A password field takes no default")
+                },
             }
         } else if *is_reference {
             // A relation starts empty; there is no "no reference" sentinel any more.
