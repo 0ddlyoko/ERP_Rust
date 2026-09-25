@@ -45,19 +45,23 @@ impl Plugin for BasePlugin {
     /// The other two are told to the core rather than looked up by it: `erp` knows that somebody
     /// is the caller before authentication and somebody bypasses every rule, and nothing about
     /// which records those are.
+    ///
+    /// None of the three is looked up defensively. They come from the file loaded a moment ago,
+    /// so one missing is a broken plugin, and failing here says so — where carrying on would
+    /// leave the administrator without a password and the framework without a default user.
     fn post_init(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
-        if let Some(admin) = erp::data::resolve(env, "base.user_admin")? {
-            let admin: models::Users<SingleId> = env.get_record(admin.into());
-            if !admin.has_password(env)? {
-                admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
-            }
+        let admin: models::Users<SingleId> = env.named("base.user_admin")?;
+        if !admin.has_password(env)? {
+            admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
         }
-        if let Some(portal) = erp::data::resolve(env, "base.user_portal")? {
-            env.model_manager.identities.set_default_user(portal)?;
-        }
-        if let Some(root) = erp::data::resolve(env, "base.user_root")? {
-            env.model_manager.identities.set_root_user(root)?;
-        }
+
+        let portal: models::Users<SingleId> = env.named("base.user_portal")?;
+        env.model_manager
+            .identities
+            .set_default_user(portal.get_id())?;
+
+        let root: models::Users<SingleId> = env.named("base.user_root")?;
+        env.model_manager.identities.set_root_user(root.get_id())?;
         Ok(())
     }
 }

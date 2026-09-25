@@ -1,7 +1,6 @@
-use base::models::Users;
+use base::models::{Group, Users};
 use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD};
 use erp::app::Application;
-use erp::data;
 use erp_search_code_gen::make_domain;
 use erp_types::field::{IdMode, MultipleIds, Password, SingleId};
 use erp_types::model::MapOfFields;
@@ -136,10 +135,10 @@ fn test_admin_is_seeded_and_usable() -> Result<()> {
     let app = new_app()?;
     let mut env = app.new_env()?;
 
-    let admin = data::resolve(&mut env, "base.user_admin")?.expect("admin must exist");
+    let admin: Users<SingleId> = env.named("base.user_admin")?;
     assert_eq!(
         login(&mut env, "admin", DEFAULT_ADMIN_PASSWORD)?,
-        Some(admin)
+        Some(admin.get_id())
     );
     assert_eq!(login(&mut env, "admin", "nope")?, None);
     Ok(())
@@ -151,11 +150,11 @@ fn test_user_belongs_to_groups() -> Result<()> {
     let app = new_app()?;
     let mut env = app.new_env()?;
 
-    let admin = data::resolve(&mut env, "base.user_admin")?.unwrap();
-    let group_admin = data::resolve(&mut env, "base.group_admin")?.unwrap();
-    let group_user = data::resolve(&mut env, "base.group_user")?.unwrap();
+    let admin_record: Users<SingleId> = env.named("base.user_admin")?;
+    let admin = admin_record.get_id();
+    let group_admin = env.named::<Group<SingleId>>("base.group_admin")?.get_id();
+    let group_user = env.named::<Group<SingleId>>("base.group_user")?.get_id();
 
-    let admin_record: Users<SingleId> = env.get_record(admin.into());
     admin_record.set_groups(vec![group_user, group_admin].into(), &mut env)?;
 
     let rows = env.read("group", &SingleId::from(group_admin), &["users"])?;
@@ -175,11 +174,11 @@ fn test_user_belongs_to_groups() -> Result<()> {
 fn test_environment_carries_the_user() -> Result<()> {
     let app = new_app()?;
     let mut env = app.new_env()?;
-    let portal = data::resolve(&mut env, "base.user_portal")?.expect("a seeded portal user");
+    let portal: Users<SingleId> = env.named("base.user_portal")?;
 
     assert_eq!(
         env.uid(),
-        Some(portal),
+        Some(portal.get_id()),
         "a caller who authenticated as nobody is the portal user"
     );
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
@@ -198,10 +197,20 @@ fn test_the_seeded_accounts() -> Result<()> {
 
     for name in ["base.user_root", "base.user_admin", "base.user_portal"] {
         assert!(
-            data::resolve(&mut env, name)?.is_some(),
+            env.named::<Users<SingleId>>(name).is_ok(),
             "{name} is missing"
         );
     }
+
+    assert!(
+        env.named::<Group<SingleId>>("base.user_admin").is_err(),
+        "an identifier naming a user must not be read as a group"
+    );
+    assert!(
+        env.named::<Users<SingleId>>("base.nothing_declared")
+            .is_err(),
+        "an identifier nobody declared names nothing"
+    );
 
     assert!(login(&mut env, "admin", DEFAULT_ADMIN_PASSWORD)?.is_some());
     Ok(())
@@ -217,8 +226,7 @@ fn test_the_framework_accounts_have_no_password() -> Result<()> {
     let mut env = app.new_env()?;
 
     for login_name in ["root", "portal"] {
-        let id = data::resolve(&mut env, &format!("base.user_{login_name}"))?.expect("seeded");
-        let account: Users<SingleId> = env.get_record(id.into());
+        let account: Users<SingleId> = env.named(&format!("base.user_{login_name}"))?;
         assert!(!account.has_password(&mut env)?, "{login_name} has one");
 
         for attempt in ["", "root", "portal", "admin", DEFAULT_ADMIN_PASSWORD] {
@@ -237,7 +245,8 @@ fn test_the_framework_accounts_have_no_password() -> Result<()> {
 fn test_acting_as_root() -> Result<()> {
     let app = new_app()?;
     let mut env = app.new_env()?;
-    let root = data::resolve(&mut env, "base.user_root")?.expect("a seeded root user");
+    let root: Users<SingleId> = env.named("base.user_root")?;
+    let root = root.get_id();
 
     assert!(!env.is_root(), "the portal user is not root");
     {

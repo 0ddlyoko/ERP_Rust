@@ -162,7 +162,7 @@ fn test_no_token_is_the_portal_user() -> Result<()> {
     let app = new_app()?;
     let portal = {
         let mut env = app.new_env()?;
-        erp::data::resolve(&mut env, "base.user_portal")?.expect("a seeded portal user")
+        env.named::<Users<SingleId>>("base.user_portal")?.get_id()
     };
 
     assert_eq!(call(&app, None, "users.me", json!({})), json!(portal));

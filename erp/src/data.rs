@@ -4,9 +4,11 @@
 //! technical id the database hands out. That is what lets one plugin reference another's data,
 //! and what lets a file be loaded again without duplicating anything.
 use crate::environment::Environment;
-use erp_search::{LeftTuple, SearchOperator, SearchTuple, SearchType};
+use crate::model::Model;
+use erp_search::SearchType;
+use erp_search_code_gen::make_domain;
 use erp_types::field::{FieldType, IdMode, MultipleIds, SingleId};
-use erp_types::model::MapOfFields;
+use erp_types::model::{CommonModel, MapOfFields};
 use std::error::Error;
 use thiserror::Error;
 
@@ -26,6 +28,14 @@ pub enum DataError {
     MissingAttribute { module: String, attribute: String },
     #[error("Record {reference}, referenced by {record}, does not exist")]
     UnknownReference { reference: String, record: String },
+    #[error("No record is named {external_id}")]
+    UnknownExternalId { external_id: String },
+    #[error("{external_id} names a record of {actual}, not one of {expected}")]
+    WrongModel {
+        external_id: String,
+        expected: String,
+        actual: String,
+    },
 }
 
 /// Load one XML document on behalf of `module`.
@@ -150,29 +160,57 @@ fn split(external_id: &str) -> (&str, &str) {
 
 fn domain_for(external_id: &str) -> SearchType {
     let (module, name) = split(external_id);
-    SearchType::And(
-        Box::new(SearchType::Tuple(SearchTuple {
-            left: LeftTuple::from("module"),
-            operator: SearchOperator::Equal,
-            right: module.into(),
-        })),
-        Box::new(SearchType::Tuple(SearchTuple {
-            left: LeftTuple::from("name"),
-            operator: SearchOperator::Equal,
-            right: name.into(),
-        })),
-    )
+    make_domain!([("module", "=", module), ("name", "=", name)])
 }
 
 /// Technical id behind an external identifier, if it has one yet.
 pub fn resolve(env: &mut Environment, external_id: &str) -> Result<Option<u32>> {
+    Ok(designated(env, external_id)?.map(|(_, res_id)| res_id))
+}
+
+/// The model and technical id behind an external identifier.
+fn designated(env: &mut Environment, external_id: &str) -> Result<Option<(String, u32)>> {
     let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
     let Some(id) = ids.first() else {
         return Ok(None);
     };
-    let rows = env.read(MODEL_DATA, &SingleId::from(*id), &["res_id"])?;
+    let rows = env.read(MODEL_DATA, &SingleId::from(*id), &["model", "res_id"])?;
+    let model: String = rows[0].get::<&String>("model").clone();
     let res_id: i32 = *rows[0].get::<&i32>("res_id");
-    Ok(Some(res_id as u32))
+    Ok(Some((model, res_id as u32)))
+}
+
+impl Environment<'_> {
+    /// The record a data file declared under this name.
+    ///
+    /// Typed, so what comes back is the record rather than a number, and so the model it belongs
+    /// to can be checked against the one asked for. That check is the reason to prefer this over
+    /// [`resolve`]: the registry knows what `base.group_user` designates, and nothing else would
+    /// notice a caller reading it as a user.
+    ///
+    /// Not named `ref` — that is a Rust keyword, and every call would have to be written
+    /// `env.r#ref::<…>(…)`.
+    pub fn named<M>(&mut self, external_id: &str) -> Result<M>
+    where
+        M: Model<SingleId>,
+    {
+        let Some((model, res_id)) = designated(self, external_id)? else {
+            return Err(DataError::UnknownExternalId {
+                external_id: external_id.to_string(),
+            }
+            .into());
+        };
+        let expected = <M as CommonModel<SingleId>>::_get_model_name();
+        if model != expected {
+            return Err(DataError::WrongModel {
+                external_id: external_id.to_string(),
+                expected: expected.to_string(),
+                actual: model,
+            }
+            .into());
+        }
+        Ok(M::create_instance(SingleId::from(res_id)))
+    }
 }
 
 /// Whether later loads must leave the record alone.
