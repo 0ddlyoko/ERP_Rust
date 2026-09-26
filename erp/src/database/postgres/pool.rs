@@ -68,7 +68,13 @@ impl ConnectionPool {
         settings.user(&config.user).dbname(&config.name);
         if config.url.starts_with('/') {
             // A path means a unix socket, which is how most local installs authenticate.
+            #[cfg(unix)]
             settings.host_path(&config.url);
+            // Elsewhere there are no unix sockets and `host_path` does not exist. The path is
+            // handed over as a host name so the complaint comes from the connection attempt,
+            // with the address in it, rather than from a pool that silently talks to localhost.
+            #[cfg(not(unix))]
+            settings.host(&config.url);
         } else {
             settings.host(&config.url).port(config.port);
         }
