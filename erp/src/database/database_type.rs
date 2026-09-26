@@ -29,7 +29,10 @@ impl Database for DatabaseType {
         }
     }
 
-    fn sync_model(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+    fn sync_model(
+        &mut self,
+        model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<Vec<String>> {
         match self {
             DatabaseType::Cache(cache) => cache.sync_model(model),
             DatabaseType::Postgres(postgres) => postgres.sync_model(model),

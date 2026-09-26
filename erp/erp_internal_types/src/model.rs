@@ -81,6 +81,7 @@ impl FinalInternalModel {
                 description: field.description,
                 required: field.required,
                 private: field.private,
+                asks_for_storage: field.asks_for_storage,
                 compute: field.compute,
                 field_ref: field.field_ref,
             };
@@ -145,6 +146,20 @@ impl FinalInternalModel {
 
     /// Get a vector of difference between all registered fields for this model, and given vector.
     ///
+    /// Decide which of this model's fields are kept in a column.
+    ///
+    /// Once, when every struct contributing to the model has been registered — never per struct.
+    /// A struct may mention a field another one computes without repeating the computation, and
+    /// on its own it looks like a plain field, which would be kept.
+    pub fn settle_storage(&mut self) -> Result<(), String> {
+        for field in self.fields.values_mut() {
+            field
+                .settle_storage()
+                .map_err(|wrong| format!("Model {}: {wrong}", self.name))?;
+        }
+        Ok(())
+    }
+
     /// Do not add non-stored fields
     pub fn get_missing_fields(&self, current_fields: Vec<&str>) -> Vec<&str> {
         self.fields

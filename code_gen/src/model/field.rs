@@ -28,6 +28,12 @@ pub struct FieldGen {
     pub inverse: Option<String>,
     pub relation: Option<String>,
     pub is_private: bool,
+    /// Whether this struct asked for the field to be kept in a column.
+    ///
+    /// Only what this struct said. Whether the field *is* kept is settled once every struct
+    /// contributing to the model has been seen: being computed belongs to the model's field, not
+    /// to whichever struct happens to mention it.
+    pub asks_for_storage: bool,
 }
 
 impl FieldGen {
@@ -53,6 +59,7 @@ impl FieldGen {
         let mut inverse = None;
         let mut relation = None;
         let mut is_private = false;
+        let mut stored = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -151,6 +158,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Private(_) => {
                     is_private = true;
+                }
+                AllowedFieldAttrs::Stored(ident) => {
+                    stored = Some(ident);
                 }
                 AllowedFieldAttrs::Inverse(ident, inverse_value) => {
                     inverse = Some((ident, inverse_value.value()));
@@ -261,6 +271,7 @@ impl FieldGen {
             inverse: inverse.map(|inv| inv.1),
             relation: relation.map(|rel| rel.1),
             is_private,
+            asks_for_storage: stored.is_some(),
         })
     }
 }

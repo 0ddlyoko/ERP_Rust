@@ -46,7 +46,7 @@ pub struct SaleOrder<Mode: IdMode> {
     #[erp(default = "0ddlyoko")]
     name: String,
     state: SaleOrderState,
-    #[erp(compute="compute_total_price", depends=["lines.total_price"])]
+    #[erp(compute = "compute_total_price", depends = ["lines.total_price"], stored)]
     total_price: i32,
     #[erp(inverse = "order")]
     lines: Reference<BaseSaleOrderLine, MultipleIds>,

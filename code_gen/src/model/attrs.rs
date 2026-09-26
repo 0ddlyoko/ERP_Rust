@@ -91,6 +91,8 @@ pub enum AllowedFieldAttrs {
     Relation(Ident, LitStr),
     /// Says the field never leaves the process.
     Private(Ident),
+    /// Says a computed field is kept in a column rather than worked out on every read.
+    Stored(Ident),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -101,6 +103,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "inverse",
     "relation",
     "private",
+    "stored",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -143,6 +146,7 @@ impl Parse for AllowedFieldAttrs {
                 parse_eq(input, "inverse = \"inverse\"")?,
             )),
             "private" => Ok(AllowedFieldAttrs::Private(name)),
+            "stored" => Ok(AllowedFieldAttrs::Stored(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -162,6 +166,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Inverse(ident, _) => ident.span(),
             AllowedFieldAttrs::Relation(ident, _) => ident.span(),
             AllowedFieldAttrs::Private(ident) => ident.span(),
+            AllowedFieldAttrs::Stored(ident) => ident.span(),
         }
     }
 }

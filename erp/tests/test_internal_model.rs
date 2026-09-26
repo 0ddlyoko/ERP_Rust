@@ -12,6 +12,7 @@ fn test_get_fields_name() {
         description: Some("This is the name".to_string()),
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -23,9 +24,12 @@ fn test_get_fields_name() {
         description: Some("This is the age of the person".to_string()),
         required: false,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
+
+    internal_model.settle_storage().expect("plain fields");
 
     assert_eq!(
         {

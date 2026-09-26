@@ -73,8 +73,23 @@ impl ModelManager {
     /// Execute some final modification when models are registered, like:
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {
+        self._post_register_storage();
         self._post_register_m2o_links();
         self._post_register_compute_links();
+    }
+
+    /// Decide which fields are kept in a column.
+    ///
+    /// Here rather than in the derive macro, because a struct alone cannot know: one may mention
+    /// a field another computes without repeating the computation, and on its own it looks like a
+    /// plain field. Only once every struct contributing to a model has been seen does "is this
+    /// field computed" have an answer.
+    fn _post_register_storage(&mut self) {
+        for model in self.models.values_mut() {
+            if let Err(wrong) = model.settle_storage() {
+                panic!("{wrong}");
+            }
+        }
     }
 
     fn _post_register_m2o_links(&mut self) {

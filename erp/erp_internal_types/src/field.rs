@@ -9,6 +9,7 @@ pub struct InternalField {
     pub description: Option<String>,
     pub required: bool,
     pub private: bool,
+    pub asks_for_storage: bool,
     pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
 }
@@ -23,6 +24,15 @@ pub struct FinalInternalField {
     /// Whether the field never leaves the process. Any struct declaring it so makes it so: a
     /// plugin may hide a field another declared, never reveal one.
     pub private: bool,
+    /// Whether the value is meant to live in a column.
+    ///
+    /// Settled by [`FinalInternalField::settle_storage`] once every struct has been seen, never
+    /// by one of them alone. False only for a computed field that nobody asked to keep — its
+    /// value is worked out on each read. Distinct from [`FinalInternalField::is_stored`], which
+    /// also asks whether a value of this kind could have a column at all.
+    pub stored: bool,
+    /// Whether any struct asked for a column.
+    asked_for_storage: bool,
     pub kind: FieldKind,
     /// Value given to the field when a record is created without one. `None` means the field
     /// simply starts empty.
@@ -41,6 +51,8 @@ impl FinalInternalField {
             description: field_name.to_string(),
             required: false,
             private: false,
+            stored: false,
+            asked_for_storage: false,
             kind: FieldKind::String,
             default_value: None,
             compute: None,
@@ -50,9 +62,32 @@ impl FinalInternalField {
         }
     }
 
+    /// Decide whether this field is kept, now that every struct has had its say.
+    ///
+    /// It cannot be decided earlier. A struct may mention a field another one computes, without
+    /// repeating the computation — and on its own that struct looks like it is declaring a plain
+    /// field, which would be kept. Only the merged view knows the field is computed at all.
+    ///
+    /// Returns what is wrong when a struct asked to keep a field that nothing computes: every
+    /// other field is kept anyway, so saying so means the author expected something else.
+    pub fn settle_storage(&mut self) -> Result<(), String> {
+        if self.asked_for_storage && self.compute.is_none() {
+            return Err(format!(
+                "Field {} is asked to be stored, but nothing computes it. Every other field is \
+                 kept anyway: there is nowhere else its value could live.",
+                self.name
+            ));
+        }
+        self.stored = self.asked_for_storage || self.compute.is_none();
+        Ok(())
+    }
+
     /// Whether the field lives in a column of its own.
+    ///
+    /// Both halves have to agree: the field must be meant to be kept, and its kind must be one a
+    /// column can hold — the "many" side of a relation is neither.
     pub fn is_stored(&self) -> bool {
-        self.kind.is_stored()
+        self.stored && self.kind.is_stored()
     }
 
     pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {
@@ -76,6 +111,9 @@ impl FinalInternalField {
         // because a field whose whole purpose is to be unreadable should not depend on the
         // author of every struct touching it remembering to say so.
         self.private |= field_descriptor.private || field_descriptor.kind == FieldKind::Password;
+        // Asking for storage wins, the same way hiding does: a struct extending a model may keep
+        // a computed field another worked out on every read, and none can take that back.
+        self.asked_for_storage |= field_descriptor.asks_for_storage;
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

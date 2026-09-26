@@ -30,9 +30,20 @@ pub trait Database {
 
     /// Bring the physical schema in line with a model's declared fields.
     ///
-    /// A schemaless backend has nothing to do here.
-    fn sync_model(&mut self, _model: &erp_internal_types::FinalInternalModel) -> Result<()> {
-        Ok(())
+    /// Returns the fields it had to make room for. A column that was not there is a column with
+    /// nothing in it, and a computed field that has just become stored has to be worked out for
+    /// the records that already exist — nothing else would ever fill it.
+    ///
+    /// Only ever adds. A field that stops being stored, or stops being declared at all, keeps its
+    /// column: the data in it is the user's, and a schema this decides on its own is not allowed
+    /// to throw it away.
+    ///
+    /// A schemaless backend has nothing to do here, and nothing to report.
+    fn sync_model(
+        &mut self,
+        _model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<Vec<String>> {
+        Ok(Vec::new())
     }
 
     /// Make a search request to a specific model, and only return ids that match this search request

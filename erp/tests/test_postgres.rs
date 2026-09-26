@@ -233,6 +233,240 @@ fn test_ordering_by_the_primary_key() -> Result<()> {
     Ok(())
 }
 
+/// A computed field gets a column only when it asks to be kept.
+#[test]
+fn test_only_kept_fields_get_a_column() -> Result<()> {
+    let app = app_or_skip!("t_stored");
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+
+    let columns: Vec<String> = connection
+        .client
+        .query(
+            "SELECT column_name FROM information_schema.columns \
+             WHERE table_schema = 't_stored' AND table_name = 'sale_order_line'",
+            &[],
+        )?
+        .iter()
+        .map(|row| row.get(0))
+        .collect();
+
+    assert!(
+        columns.contains(&"total_price".to_string()),
+        "computed and kept: {columns:?}"
+    );
+    assert!(
+        !columns.contains(&"siblings_total".to_string()),
+        "computed and worked out on each read: {columns:?}"
+    );
+    assert!(
+        !columns.contains(&"order_tags".to_string()),
+        "a computed relation has no table of pairs either: {columns:?}"
+    );
+    Ok(())
+}
+
+/// A column that appears is filled for the records that were already there.
+///
+/// What becoming stored looks like: the column was not there, so it holds nothing, and a read
+/// would take the nothing rather than compute. Dropping the column is how a test gets a database
+/// into the state an upgrade leaves it in.
+#[test]
+fn test_a_column_that_appears_is_filled() -> Result<()> {
+    let app = app_or_skip!("t_fill");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("price", 10);
+    map.insert("amount", 2);
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    let id = line.get_id();
+    assert_eq!(*line.get_total_price(&mut env)?, 20);
+    env.close()?;
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection
+        .client
+        .batch_execute("ALTER TABLE sale_order_line DROP COLUMN total_price")?;
+
+    let model = app.model_manager.get_model("sale_order_line");
+    let added = database.sync_model(model)?;
+    assert!(
+        added.contains(&"total_price".to_string()),
+        "the sync says what it made room for: {added:?}"
+    );
+    drop(database);
+
+    let mut env = app.new_env()?;
+    env.fill_stored_field("sale_order_line", "total_price")?;
+
+    // Read straight out of the column, on the environment's own connection and before anything
+    // flushed: what is there was put there by the call above and by nothing else.
+    let DatabaseType::Postgres(connection) = &mut env.database else {
+        unreachable!()
+    };
+    let written: Option<i32> = connection
+        .client
+        .query_one(
+            "SELECT total_price FROM sale_order_line WHERE id = $1",
+            &[&i32::try_from(id)?],
+        )?
+        .get(0);
+    assert_eq!(written, Some(20), "worked out again, and written down");
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let line = SaleOrderLine::<SingleId>::from_id(id, &env);
+    assert_eq!(*line.get_total_price(&mut env)?, 20, "and it survived");
+    Ok(())
+}
+
+/// Loading a plugin fills the columns its schema pass had to make room for.
+///
+/// The wiring, not the pieces: two applications over one schema, with the column taken away in
+/// between. The second one installs the plugin as a fresh process would, finds the column
+/// missing, adds it, and has to fill it for the record the first one left behind.
+#[test]
+fn test_loading_a_plugin_fills_what_it_added() -> Result<()> {
+    let schema = "t_load_fill";
+    let Some(app) = postgres_app(schema) else {
+        eprintln!("skipping: no PostgreSQL server reachable");
+        return Ok(());
+    };
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("price", 7);
+    map.insert("amount", 3);
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    let id = line.get_id();
+    env.close()?;
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection
+        .client
+        .batch_execute("ALTER TABLE sale_order_line DROP COLUMN total_price")?;
+    drop(database);
+    drop(app);
+
+    // A second application, as a restart would be. It installs the plugin, which is what runs
+    // the schema pass and whatever has to follow it.
+    let mut app = Application::new(config_for(schema));
+    app.register_plugin(Box::new(test_utilities::TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+
+    let mut env = app.new_env()?;
+    let line = SaleOrderLine::<SingleId>::from_id(id, &env);
+    assert_eq!(
+        *line.get_total_price(&mut env)?,
+        21,
+        "the record that was already there got its value back"
+    );
+    Ok(())
+}
+
+/// A column left behind by a field that stopped being stored is never read, and never written.
+///
+/// That is the state keeping the column leaves the database in: `siblings_total` is computed and
+/// not kept, so adding a column of that name by hand is exactly what an upgrade would leave. What
+/// is in it is stale from the moment the field stopped being stored, and must not come back.
+#[test]
+fn test_a_column_left_behind_is_ignored() -> Result<()> {
+    let app = app_or_skip!("t_left_behind");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("price", 5);
+    map.insert("amount", 1);
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    let id = line.get_id();
+    env.close()?;
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection.client.batch_execute(
+        "ALTER TABLE sale_order_line ADD COLUMN siblings_total INTEGER; \
+         UPDATE sale_order_line SET siblings_total = 999",
+    )?;
+    // The schema pass leaves it alone, as it leaves any column it does not recognise.
+    let model = app.model_manager.get_model("sale_order_line");
+    database.sync_model(model)?;
+    drop(database);
+
+    let mut env = app.new_env()?;
+    let line = SaleOrderLine::<SingleId>::from_id(id, &env);
+    assert_eq!(
+        *line.get_siblings_total(&mut env)?,
+        0,
+        "worked out, not taken from the column"
+    );
+
+    // And writing the record does not write it back either.
+    line.set_price(6, &mut env)?;
+    env.close()?;
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let untouched: Option<i32> = connection
+        .client
+        .query_one(
+            "SELECT siblings_total FROM sale_order_line WHERE id = $1",
+            &[&i32::try_from(id)?],
+        )?
+        .get(0);
+    assert_eq!(
+        untouched,
+        Some(999),
+        "the column keeps whatever it had: nothing writes it"
+    );
+    Ok(())
+}
+
+/// A column nothing declares is left alone.
+///
+/// Both the field that stopped being stored and the field that stopped being declared look like
+/// this from here. What is in them is the user's, and a schema this decides on its own does not
+/// get to throw it away.
+#[test]
+fn test_a_column_nothing_declares_survives() -> Result<()> {
+    let app = app_or_skip!("t_keep");
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection.client.batch_execute(
+        "ALTER TABLE invoice ADD COLUMN retired_field TEXT; \
+         INSERT INTO invoice (name, retired_field) VALUES ('kept', 'precious')",
+    )?;
+
+    let model = app.model_manager.get_model("invoice");
+    database.sync_model(model)?;
+    database.sync_constraints(model)?;
+
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let surviving: String = connection
+        .client
+        .query_one("SELECT retired_field FROM invoice WHERE name = 'kept'", &[])?
+        .get(0);
+    assert_eq!(surviving, "precious", "the column and what was in it");
+    Ok(())
+}
+
 /// A rolled back transaction must leave nothing behind.
 #[test]
 fn test_rollback_leaves_nothing() -> Result<()> {

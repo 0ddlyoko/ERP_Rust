@@ -382,6 +382,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             inverse,
             relation,
             is_private,
+            asks_for_storage,
             ..
         } = f;
 
@@ -538,6 +539,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     description: #description,
                     required: #is_required,
                     private: #is_private,
+                    asks_for_storage: #asks_for_storage,
                     compute: #compute,
                     field_ref: #field_reference,
                 }

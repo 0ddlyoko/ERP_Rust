@@ -2,6 +2,45 @@
 use super::*;
 
 impl<'mm> Environment<'mm> {
+    /// Work out a computed field for every record that already exists, and write it down.
+    ///
+    /// For the moment a field becomes stored. Until then its value was produced on each read and
+    /// never kept; the column that has just appeared beside it is empty, and nothing else would
+    /// ever fill it — a read finds the column, takes what is in it, and does not compute.
+    ///
+    /// Computes and writes here rather than marking the records and leaving it to the next
+    /// flush: whoever calls this must not have to close the environment for it to have happened.
+    ///
+    /// A no-op on a model with no records, which is what a plugin being installed looks like.
+    pub fn fill_stored_field(&mut self, model_name: &str, field_name: &str) -> Result<()> {
+        let ids = self.search_ids(model_name, &SearchType::Nothing)?;
+        if ids.is_empty() {
+            // A model with nothing in it is what installing a plugin looks like, and every
+            // stored computed field goes through here then. Saying so would be noise.
+            return Ok(());
+        }
+        // Said before the work rather than after: on a table of any size this is the part of a
+        // startup that takes time, and a line that only appears once it is over explains a wait
+        // that has already happened.
+        tracing::info!(
+            model = %model_name,
+            field = %field_name,
+            records = ids.len(),
+            "Filling a column that has just appeared, for records that predate it"
+        );
+        let started = std::time::Instant::now();
+        let ids: MultipleIds = ids.into();
+        self.call_compute_method(model_name, &ids, &[field_name])?;
+        self.save_fields_to_db(model_name, &[field_name])?;
+        tracing::info!(
+            model = %model_name,
+            field = %field_name,
+            took = ?started.elapsed(),
+            "Filled"
+        );
+        Ok(())
+    }
+
     /// Method called when a field has changed, and will set as to recompute all fields that needs to be recomputed
     ///
     /// We shouldn't call this method from a O2M, as a O2M field shouldn't have any dependencies

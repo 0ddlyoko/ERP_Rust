@@ -431,6 +431,7 @@ dependencies = [
  "test_utilities",
  "thiserror",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 

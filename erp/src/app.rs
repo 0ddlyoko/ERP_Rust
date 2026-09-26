@@ -212,9 +212,16 @@ impl Application {
             .iter()
             .map(|model| model.name.clone())
             .collect();
+        // A computed field whose column has just appeared has to be worked out for the records
+        // that were already there: nothing else would ever fill it.
+        let mut to_fill: Vec<(String, String)> = Vec::new();
         for model_name in &model_names {
             let model = self.model_manager.try_get_model(model_name)?;
-            database.sync_model(model)?;
+            for column in database.sync_model(model)? {
+                if model.get_internal_field(&column).compute.is_some() {
+                    to_fill.push((model_name.clone(), column));
+                }
+            }
         }
         // A second pass, because a relation table references two model tables and the model
         // declaring it is not necessarily synchronised last.
@@ -228,6 +235,9 @@ impl Application {
         let data = plugin.data();
         let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
         env.savepoint(|env| {
+            for (model_name, field_name) in &to_fill {
+                env.fill_stored_field(model_name, field_name)?;
+            }
             for document in &data {
                 crate::data::load(env, plugin_name, document)?;
             }

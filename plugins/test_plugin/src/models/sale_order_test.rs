@@ -12,7 +12,9 @@ pub struct SaleOrderTest<Mode: IdMode> {
     age: i32,
     #[erp(compute = "compute_label", depends = ["name"])]
     label: String,
-    #[erp(compute = "compute_replaced", depends = ["name"])]
+    /// Asked for here, and the struct registered after this one says nothing about storage. One
+    /// struct wanting a column is enough, whichever it is.
+    #[erp(compute = "compute_replaced", depends = ["name"], stored)]
     replaced: String,
     #[erp(compute = "compute_narrowed", depends = ["name"])]
     narrowed: String,
@@ -58,11 +60,14 @@ pub struct SaleOrderTest2<Mode: IdMode> {
     id: Mode,
     #[erp(description = "New name of the SO")]
     name: String,
-    #[erp(compute = "compute_label", depends = ["name"])]
+    /// Mentioned without repeating what computes it. That must not turn it into a column: being
+    /// computed belongs to the model's field, not to one struct's view of it.
     label: String,
     #[erp(compute = "compute_replaced", depends = ["name"])]
     replaced: String,
-    #[erp(compute = "compute_narrowed", depends = ["name"])]
+    /// Asked to be kept, without repeating what computes it either — the struct that introduced
+    /// it says that, and saying it twice would only duplicate its `depends`.
+    #[erp(stored)]
     narrowed: String,
 }
 

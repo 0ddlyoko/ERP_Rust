@@ -123,7 +123,10 @@ impl Database for PostgresDatabase {
     ///
     /// Driven by introspection rather than by migration files: nothing records a schema version
     /// yet, so the current shape of the database is the only reference available.
-    fn sync_model(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+    fn sync_model(
+        &mut self,
+        model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<Vec<String>> {
         self.tables
             .insert(model.name.clone(), model.table_name.clone());
         let qualified = format!(
@@ -138,8 +141,14 @@ impl Database for PostgresDatabase {
         ))?;
 
         let existing = self.existing_columns(&model.table_name)?;
+        let mut added = Vec::new();
         for (field_name, field) in &model.fields {
             if existing.contains(field_name) {
+                continue;
+            }
+            // A computed field that is worked out on each read has nowhere to be: no column, and
+            // no table of pairs if it is a relation.
+            if !field.stored {
                 continue;
             }
             let Some(column_type) = column_type(field.kind) else {
@@ -172,8 +181,9 @@ impl Database for PostgresDatabase {
                 "ALTER TABLE {qualified} ADD COLUMN {} {column_type}",
                 quote_ident(field_name)
             ))?;
+            added.push(field_name.clone());
         }
-        Ok(())
+        Ok(added)
     }
 
     /// Tie each relation table to the two tables it pairs, so a deleted record cannot leave a
@@ -276,7 +286,7 @@ impl Database for PostgresDatabase {
             .filter(|field| {
                 model
                     .try_get_internal_field(field)
-                    .is_ok_and(|f| f.kind.is_stored())
+                    .is_ok_and(erp_internal_types::FinalInternalField::is_stored)
             })
             .copied()
             .collect();

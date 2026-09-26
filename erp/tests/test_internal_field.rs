@@ -20,6 +20,7 @@ fn test_register_field() {
         description: Some("This is the name".to_string()),
         required: false,
         private: false,
+        asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string(), "test".to_string()],
@@ -34,6 +35,7 @@ fn test_register_field() {
         description: Some("This is the age of the person".to_string()),
         required: false,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -69,6 +71,7 @@ fn test_register_field() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -95,6 +98,7 @@ fn test_register_field() {
         description: Some("This is another description".to_string()),
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string(), "test2".to_string()],
@@ -127,6 +131,7 @@ fn test_register_field() {
         description: Some("This is another description".to_string()),
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
             depends: vec!["age".to_string()],
@@ -164,13 +169,38 @@ fn test_register_field_without_default_value_is_allowed() {
         description: Some("This is the name".to_string()),
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
 
     assert_eq!(field_name.kind, FieldKind::String);
     assert_eq!(field_name.default_value, None);
+
+    // Storage is settled once every struct has been seen, which the registry does for a real
+    // model. A plain field nobody computes is kept.
+    field_name.settle_storage().expect("nothing computes it");
     assert!(field_name.is_stored());
+}
+
+/// Asking to keep a field that nothing computes is refused, and only the merged view can tell.
+#[test]
+fn test_storage_asked_for_a_field_nothing_computes() {
+    let mut field = FinalInternalField::new("field_name");
+    field.register_internal_field(&InternalField {
+        name: "name".to_string(),
+        kind: FieldKind::String,
+        default_value: None,
+        description: None,
+        required: true,
+        private: false,
+        asks_for_storage: true,
+        compute: None,
+        field_ref: None,
+    });
+
+    let wrong = field.settle_storage().expect_err("nothing computes it");
+    assert!(wrong.contains("nothing computes it"), "got {wrong}");
 }
 
 #[test]
@@ -185,6 +215,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         description: Some("This is the name".to_string()),
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -196,6 +227,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });

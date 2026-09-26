@@ -15,7 +15,7 @@ pub struct SaleOrderLine<Mode: IdMode> {
     price: i32,
     #[erp(default = 10)]
     amount: i32,
-    #[erp(compute="compute_total_price", depends=["price", "amount"])]
+    #[erp(compute = "compute_total_price", depends = ["price", "amount"], stored)]
     total_price: i32,
     /// Three segments, crossing a many2one then a one2many.
     #[erp(compute = "compute_siblings_total", depends = ["order.lines.price"])]

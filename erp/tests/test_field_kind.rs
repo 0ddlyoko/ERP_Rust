@@ -119,6 +119,7 @@ fn test_conflicting_kinds_are_rejected() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -129,6 +130,7 @@ fn test_conflicting_kinds_are_rejected() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -146,6 +148,7 @@ fn test_an_extension_can_supply_a_default() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });
@@ -158,6 +161,7 @@ fn test_an_extension_can_supply_a_default() {
         description: None,
         required: true,
         private: false,
+        asks_for_storage: false,
         compute: None,
         field_ref: None,
     });

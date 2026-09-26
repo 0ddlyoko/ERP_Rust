@@ -73,8 +73,9 @@ impl QueryBuilder {
             if *field == "id" {
                 continue;
             }
-            // A one2many has no column; it is read from the other side.
-            if model.try_get_internal_field(field)?.kind.is_stored() {
+            // A one2many has no column; it is read from the other side. Neither has a computed
+            // field that is worked out on each read.
+            if model.try_get_internal_field(field)?.is_stored() {
                 columns.push(quote_ident(field));
             }
         }

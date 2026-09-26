@@ -46,6 +46,7 @@ impl<'mm> Environment<'mm> {
         domain: &SearchType,
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
+        self.refuse_unstored_in_domain(model_name, domain)?;
         self.save_domain_fields_to_db(model_name, domain)?;
         // Sort keys are checked against the registry before any backend sees them. Identifiers
         // are quoted on the way into SQL, so an unchecked name could not inject anything — but
@@ -61,6 +62,7 @@ impl<'mm> Environment<'mm> {
                 continue;
             }
             model.try_get_internal_field(&order.field)?;
+            self.refuse_unstored(model_name, std::slice::from_ref(&order.field), "sort by")?;
         }
         // Ordering reads stored values, so anything still dirty has to reach the database first.
         for order in &options.order {
@@ -102,6 +104,7 @@ impl<'mm> Environment<'mm> {
     ///
     /// Counting happens before any limit would apply, which is why it is not a search option.
     pub fn count(&mut self, model_name: &str, domain: &SearchType) -> Result<u32> {
+        self.refuse_unstored_in_domain(model_name, domain)?;
         self.save_domain_fields_to_db(model_name, domain)?;
         self.database.count(model_name, domain, self.model_manager)
     }
@@ -142,6 +145,55 @@ impl<'mm> Environment<'mm> {
             }
         }
         Ok(result)
+    }
+
+    /// Refuse a domain naming a field with nothing to compare.
+    fn refuse_unstored_in_domain(&self, model_name: &str, domain: &SearchType) -> Result<()> {
+        for field in domain.get_fields() {
+            self.refuse_unstored(model_name, &field.path, "filter on")?;
+        }
+        Ok(())
+    }
+
+    /// Refuse a path whose every segment is not kept in a column.
+    ///
+    /// A computed field worked out on each read has none. PostgreSQL answers such a domain with an
+    /// unknown column, while the in-memory backend quietly matches nothing and sorts on nothing —
+    /// which is worse, because it looks like an answer. Refusing makes both say the same thing,
+    /// and say it to whoever asked.
+    ///
+    /// Logged as well as refused. The caller gets the error, but whoever runs the server is the
+    /// one who can fix it — by declaring the field `stored`, or by finding out who keeps asking.
+    fn refuse_unstored(&self, model_name: &str, path: &[String], asked: &str) -> Result<()> {
+        let mut model = self.model_manager.try_get_model(model_name)?;
+        for segment in path {
+            // A real column that no model declares, and never computed.
+            if segment == "id" {
+                break;
+            }
+            let field = model.try_get_internal_field(segment)?;
+            if !field.stored {
+                tracing::warn!(
+                    model = %model.name,
+                    field = %segment,
+                    uid = ?self.uid(),
+                    "Refused a request to {asked} a field that is worked out on each read"
+                );
+                return Err(format!(
+                    "Field {}.{segment} is worked out on each read, so nothing can search or sort \
+                     on it. Declare it `stored` if it has to be.",
+                    model.name
+                )
+                .into());
+            }
+            match &field.inverse {
+                Some(reference) => {
+                    model = self.model_manager.try_get_model(&reference.target_model)?;
+                }
+                None => break,
+            }
+        }
+        Ok(())
     }
 
     /// Get the value of given field for given id.
