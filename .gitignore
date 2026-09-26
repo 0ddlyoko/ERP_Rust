@@ -187,3 +187,5 @@ target/
 # End of https://www.toptal.com/developers/gitignore/api/rust,intellij,clion+all
 
 /generated/
+
+.mcp.json
