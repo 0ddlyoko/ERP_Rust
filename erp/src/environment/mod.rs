@@ -21,6 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use uuid::Uuid;
 
+mod access;
 mod compute;
 mod create;
 mod delete;
@@ -73,6 +74,9 @@ pub struct Environment<'mm> {
     /// Kept as names rather than a depth counter: a real cycle is almost never a method calling
     /// itself, it is two of them calling each other, and only the path shows that.
     call_stack: Vec<(String, String)>,
+    computing: Vec<(String, String)>,
+    sudo: bool,
+    access_memo: access::AccessMemo,
     closed: bool,
 }
 
@@ -113,6 +117,9 @@ impl<'mm> Environment<'mm> {
             server_config,
             uid,
             call_stack: Vec::new(),
+            computing: Vec::new(),
+            sudo: false,
+            access_memo: access::AccessMemo::default(),
             closed: false,
         };
         env.database.start_transaction()?;
@@ -130,9 +137,6 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Whether this runs as the user every rule lets through.
-    ///
-    /// Nothing consults it yet. It is where access rights will ask, so that the question has one
-    /// answer rather than one per rule.
     pub fn is_root(&self) -> bool {
         self.uid.is_some() && self.uid == self.model_manager.identities.root_user()
     }
@@ -145,14 +149,39 @@ impl<'mm> Environment<'mm> {
     /// reading back what you just wrote would stop working.
     ///
     /// Who it was for comes back when the returned environment is dropped, so a switch cannot
-    /// outlive the lines that asked for it.
+    /// outlive the lines that asked for it. Acting as somebody means acting with their rights, so
+    /// a surrounding [`Environment::sudo`] does not carry over.
     pub fn as_user(&mut self, uid: u32) -> AsUser<'_, 'mm> {
         let previous = self.uid;
+        let previous_sudo = self.sudo;
         self.uid = Some(uid);
+        self.sudo = false;
         AsUser {
             env: self,
             previous,
+            previous_sudo,
         }
+    }
+
+    /// The same user, with access rights no longer checked.
+    ///
+    /// Unlike [`Environment::as_root`], who the work is for does not change: a method authorising
+    /// its own writes still reads `uid()` as the caller. Needs no root
+    /// either, so it works before the plugin naming one has loaded.
+    pub fn sudo(&mut self) -> AsUser<'_, 'mm> {
+        let previous = self.uid;
+        let previous_sudo = self.sudo;
+        self.sudo = true;
+        AsUser {
+            env: self,
+            previous,
+            previous_sudo,
+        }
+    }
+
+    /// Whether access rights are skipped for this environment.
+    pub fn is_sudo(&self) -> bool {
+        self.sudo
     }
 
     /// The same, as the user every rule lets through.
@@ -178,6 +207,7 @@ impl<'mm> Environment<'mm> {
 pub struct AsUser<'e, 'mm> {
     env: &'e mut Environment<'mm>,
     previous: Option<u32>,
+    previous_sudo: bool,
 }
 
 impl<'mm> std::ops::Deref for AsUser<'_, 'mm> {
@@ -197,6 +227,7 @@ impl std::ops::DerefMut for AsUser<'_, '_> {
 impl Drop for AsUser<'_, '_> {
     fn drop(&mut self) {
         self.env.uid = self.previous;
+        self.env.sudo = self.previous_sudo;
     }
 }
 

@@ -35,6 +35,8 @@ impl Users<SingleId> {
         login: &str,
         password: &str,
     ) -> Result<Option<Users<SingleId>>, Box<dyn Error + Send + Sync>> {
+        // Checking credentials decides who the caller is, so it cannot wait on their rights.
+        let env = &mut *env.sudo();
         let found: Users<MultipleIds> = env.search(&make_domain!([
             ("login", "=", login),
             ("active", "=", true)
@@ -113,6 +115,7 @@ impl Users<MultipleIds> {
             return Err("These credentials identify nobody".into());
         };
         let uid = user.get_id();
+        let env = &mut *env.sudo();
         let opened = Session::open(env, uid)?;
         Ok(Authenticated {
             token: opened.token,
@@ -124,9 +127,8 @@ impl Users<MultipleIds> {
     /// Change the caller's own password.
     ///
     /// The only way a password is set from outside the process: writing the field is refused, and
-    /// this asks for the current one. Nobody can change anybody else's — not because rights say
-    /// so, there are none yet, but because the record it touches is the caller's own and no
-    /// argument names another.
+    /// this asks for the current one. Runs as sudo, so nobody can change anybody else's only
+    /// because the record it touches is the caller's own and no argument names another.
     ///
     /// Knowing the current password is also what keeps the accounts the framework acts as out of
     /// reach. Neither has one, and an account with no password holds an empty hash, which nothing
@@ -143,6 +145,8 @@ impl Users<MultipleIds> {
         let Some(uid) = env.uid() else {
             return Err("Only somebody can change their password".into());
         };
+        // The current password is the authorisation here, not the caller's rights on `users`.
+        let env = &mut *env.sudo();
         let user = Users::<SingleId>::from_id(uid, env);
         if !user.check_password(env, &current)? {
             return Err("That is not the current password".into());

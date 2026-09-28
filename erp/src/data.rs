@@ -7,7 +7,7 @@ use crate::environment::Environment;
 use crate::model::Model;
 use erp_search::SearchType;
 use erp_search_code_gen::make_domain;
-use erp_types::field::{FieldType, IdMode, MultipleIds, SingleId};
+use erp_types::field::{FieldKind, FieldType, IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::error::Error;
 use thiserror::Error;
@@ -28,6 +28,8 @@ pub enum DataError {
     MissingAttribute { module: String, attribute: String },
     #[error("Record {reference}, referenced by {record}, does not exist")]
     UnknownReference { reference: String, record: String },
+    #[error("Field {field} of {record} holds one record, but is given several references")]
+    SeveralReferences { field: String, record: String },
     #[error("No record is named {external_id}")]
     UnknownExternalId { external_id: String },
     #[error("{external_id} names a record of {actual}, not one of {expected}")]
@@ -73,6 +75,10 @@ fn read_noupdate(node: roxmltree::Node) -> bool {
     matches!(node.attribute("noupdate"), Some("1") | Some("true"))
 }
 
+/// Create a record, or update it unless it is protected.
+///
+/// A `ref` names another record by its external identifier. A many2many takes several, separated
+/// by commas — `<groups ref="group_user,group_admin"/>` — and replaces what the field held.
 fn load_record(
     env: &mut Environment,
     module: &str,
@@ -103,26 +109,37 @@ fn load_record(
             _ => field.tag_name().name(),
         };
 
+        // The declared kind is what says whether "4" is a number or a reference.
+        let kind = env
+            .model_manager
+            .try_get_model(model_name)?
+            .try_get_internal_field(field_name)?
+            .kind;
         let value = match field.attribute("ref") {
-            Some(reference) => {
-                let reference = qualify(module, reference);
-                let target =
-                    resolve(env, &reference)?.ok_or_else(|| DataError::UnknownReference {
-                        reference: reference.clone(),
-                        record: external_id.clone(),
-                    })?;
-                Some(FieldType::Ref(target))
+            Some(references) => {
+                let mut targets = Vec::new();
+                for reference in references.split(',').map(str::trim) {
+                    let reference = qualify(module, reference);
+                    targets.push(resolve(env, &reference)?.ok_or_else(|| {
+                        DataError::UnknownReference {
+                            reference: reference.clone(),
+                            record: external_id.clone(),
+                        }
+                    })?);
+                }
+                Some(match (kind, targets.as_slice()) {
+                    (FieldKind::Refs, _) => FieldType::Refs(targets),
+                    (_, [target]) => FieldType::Ref(*target),
+                    _ => {
+                        return Err(DataError::SeveralReferences {
+                            field: field_name.to_string(),
+                            record: external_id.clone(),
+                        }
+                        .into());
+                    }
+                })
             }
-            None => {
-                let raw = field.text().unwrap_or_default();
-                // The declared kind is what says whether "4" is a number or a reference.
-                let kind = env
-                    .model_manager
-                    .try_get_model(model_name)?
-                    .try_get_internal_field(field_name)?
-                    .kind;
-                Some(kind.parse(raw)?)
-            }
+            None => Some(kind.parse(field.text().unwrap_or_default())?),
         };
         values.insert_option(field_name, value);
     }
@@ -169,7 +186,10 @@ pub fn resolve(env: &mut Environment, external_id: &str) -> Result<Option<u32>> 
 }
 
 /// The model and technical id behind an external identifier.
+///
+/// As sudo: the registry is how code names records, and naming one is not reading it.
 fn designated(env: &mut Environment, external_id: &str) -> Result<Option<(String, u32)>> {
+    let env = &mut *env.sudo();
     let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
     let Some(id) = ids.first() else {
         return Ok(None);

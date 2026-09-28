@@ -1,3 +1,4 @@
+mod access_rule;
 mod company;
 mod contact;
 mod country;
@@ -8,6 +9,7 @@ mod plugin;
 mod session;
 mod users;
 
+pub use access_rule::AccessRule;
 pub use company::Company;
 pub use contact::Contact;
 pub use country::Country;

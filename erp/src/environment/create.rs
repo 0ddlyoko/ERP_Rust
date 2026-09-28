@@ -1,5 +1,6 @@
 //! Creating records and applying default values.
 use super::*;
+use crate::access::{Access, AccessDenied, Operation};
 
 impl<'mm> Environment<'mm> {
     /// Create a new record for a specific model and a given list of fields
@@ -35,7 +36,37 @@ impl<'mm> Environment<'mm> {
         self._create_new_records(model_name, data)
     }
 
+    /// Create records, refused unless the caller may create every one of them.
+    ///
+    /// Whether a record falls within the rights depends on its values, so the check runs once it
+    /// exists — inside a savepoint, so that a refused record does not outlive the refusal. The
+    /// savepoint copies the cache, and is only paid for when a domain actually restricts.
     pub(super) fn _create_new_records(
+        &mut self,
+        model_name: &str,
+        data: Vec<MapOfFields>,
+    ) -> Result<MultipleIds> {
+        let fields: Vec<String> = data
+            .iter()
+            .flat_map(|map| map.fields.keys().cloned())
+            .collect();
+        let fields: Vec<&str> = fields.iter().map(String::as_str).collect();
+        match self.access(model_name, Operation::Create)? {
+            Access::Unrestricted | Access::Restricted(SearchType::Nothing) => {
+                self.insert_new_records(model_name, data)
+            }
+            Access::Denied => {
+                Err(AccessDenied::new(model_name, Operation::Create, &fields, Vec::new()).into())
+            }
+            Access::Restricted(_) => self.savepoint(|env| {
+                let ids = env.insert_new_records(model_name, data)?;
+                env.check_access(model_name, Operation::Create, ids.get_ids_ref(), &fields)?;
+                Ok(ids)
+            }),
+        }
+    }
+
+    fn insert_new_records(
         &mut self,
         model_name: &str,
         mut data: Vec<MapOfFields>,
@@ -79,7 +110,7 @@ impl<'mm> Environment<'mm> {
                     // If it's stored, it's already in the database. Load it in cache
                     self.ensure_fields_in_cache::<SingleId>(model_name, &field_name, &id.into())?;
                 } else {
-                    self.save_option_to_cache::<SingleId, _>(
+                    self.save_option_to_cache_unchecked::<SingleId, _>(
                         model_name,
                         &field_name,
                         &id.into(),
@@ -99,6 +130,7 @@ impl<'mm> Environment<'mm> {
             }
         }
 
+        self.forget_access_of(model_name, &ids)?;
         Ok(ids.into())
     }
 

@@ -1,5 +1,6 @@
 //! Reading records: browsing, searching and filling the cache on demand.
 use super::*;
+use crate::access::Operation;
 
 impl<'mm> Environment<'mm> {
     /// Returns an instance of given model for a specific id
@@ -40,7 +41,20 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Same as [`Environment::search_ids`], ordered and paginated.
+    ///
+    /// Only finds what the caller may read: their read rights are added to the domain.
     pub fn search_ids_with(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        options: &SearchOptions,
+    ) -> Result<Vec<u32>> {
+        let domain = self.readable_domain(model_name, domain)?;
+        self.search_ids_unchecked(model_name, &domain, options)
+    }
+
+    /// Same, whatever the caller's rights.
+    pub(crate) fn search_ids_unchecked(
         &mut self,
         model_name: &str,
         domain: &SearchType,
@@ -97,16 +111,17 @@ impl<'mm> Environment<'mm> {
         options: &SearchOptions,
     ) -> Result<Vec<MapOfFields>> {
         let ids = self.search_ids_with(model_name, domain, options)?;
-        self.read(model_name, &MultipleIds::from(ids), fields)
+        self.read_unchecked(model_name, &MultipleIds::from(ids), fields)
     }
 
     /// Count the records matching a domain.
     ///
     /// Counting happens before any limit would apply, which is why it is not a search option.
     pub fn count(&mut self, model_name: &str, domain: &SearchType) -> Result<u32> {
-        self.refuse_unstored_in_domain(model_name, domain)?;
-        self.save_domain_fields_to_db(model_name, domain)?;
-        self.database.count(model_name, domain, self.model_manager)
+        let domain = self.readable_domain(model_name, domain)?;
+        self.refuse_unstored_in_domain(model_name, &domain)?;
+        self.save_domain_fields_to_db(model_name, &domain)?;
+        self.database.count(model_name, &domain, self.model_manager)
     }
 
     /// Read fields of records, addressing the model and its fields by name.
@@ -115,6 +130,17 @@ impl<'mm> Environment<'mm> {
     /// computed and absent values are loaded. Unlike `dyn Model::get`, a field that is merely
     /// empty comes back as `None` instead of raising `RequiredFieldEmpty`.
     pub fn read<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        ids: &Mode,
+        fields: &[&str],
+    ) -> Result<Vec<MapOfFields>> {
+        self.check_access(model_name, Operation::Read, ids.get_ids_ref(), fields)?;
+        self.read_unchecked(model_name, ids, fields)
+    }
+
+    /// Same, whatever the caller's rights.
+    pub(crate) fn read_unchecked<Mode: IdMode>(
         &mut self,
         model_name: &str,
         ids: &Mode,
@@ -136,7 +162,7 @@ impl<'mm> Environment<'mm> {
             }
             // Cloned so the borrow of `self` ends before the next field is read.
             let values: Vec<Option<FieldType>> = self
-                .get_fields_value(model_name, field_name, ids)?
+                .get_fields_value_unchecked(model_name, field_name, ids)?
                 .into_iter()
                 .map(|value| value.cloned())
                 .collect();
@@ -201,12 +227,15 @@ impl<'mm> Environment<'mm> {
     /// If field is not in cache, load it
     ///
     /// If field needs to be computed, compute it
+    ///
+    /// Refused unless the caller may read the record.
     pub fn get_field_value<'a>(
         &'a mut self,
         model_name: &str,
         field_name: &str,
         id: &SingleId,
     ) -> Result<Option<&'a FieldType>> {
+        self.check_access(model_name, Operation::Read, &[id.get_id()], &[field_name])?;
         self.ensure_fields_in_cache(model_name, field_name, id)?;
 
         // TODO In case of O2M / M2M, cache could be invalid.
@@ -217,7 +246,24 @@ impl<'mm> Environment<'mm> {
             .get_field_from_cache(model_name, field_name, &id.get_id()))
     }
 
+    /// Same as [`Environment::get_field_value`], for several records.
     pub fn get_fields_value<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        field_name: &str,
+        ids: &Mode,
+    ) -> Result<Vec<Option<&FieldType>>> {
+        self.check_access(
+            model_name,
+            Operation::Read,
+            ids.get_ids_ref(),
+            &[field_name],
+        )?;
+        self.get_fields_value_unchecked(model_name, field_name, ids)
+    }
+
+    /// Same, whatever the caller's rights.
+    pub(crate) fn get_fields_value_unchecked<Mode: IdMode>(
         &mut self,
         model_name: &str,
         field_name: &str,

@@ -26,7 +26,7 @@ fn new_app() -> Result<Application> {
 #[test]
 fn test_records_are_created_from_the_file() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let orders: SaleOrder<MultipleIds> =
         env.search(&make_domain!([("name", "=", "Seeded order")]))?;
@@ -38,7 +38,7 @@ fn test_records_are_created_from_the_file() -> Result<()> {
 #[test]
 fn test_values_are_parsed_by_kind() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let invoices: SaleOrder<MultipleIds> =
         env.search(&make_domain!([("name", "=", "Seeded order")]))?;
@@ -67,7 +67,7 @@ fn test_values_are_parsed_by_kind() -> Result<()> {
 #[test]
 fn test_references_are_resolved() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let order_id =
         data::resolve(&mut env, "seed_plugin.main_order")?.expect("the order must be registered");
@@ -87,7 +87,7 @@ fn test_references_are_resolved() -> Result<()> {
 #[test]
 fn test_external_ids_are_registered() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     assert!(data::resolve(&mut env, "seed_plugin.main_order")?.is_some());
     assert!(data::resolve(&mut env, "seed_plugin.first_line")?.is_some());
@@ -102,7 +102,7 @@ fn test_external_ids_are_registered() -> Result<()> {
 #[test]
 fn test_loading_twice_is_idempotent() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let before = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
     assert_eq!(
@@ -133,7 +133,7 @@ fn test_loading_twice_is_idempotent() -> Result<()> {
 #[test]
 fn test_reload_updates_unless_protected() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     // Stand in for a user edit.
     let order_id = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
@@ -172,7 +172,7 @@ fn test_reload_updates_unless_protected() -> Result<()> {
 #[test]
 fn test_unknown_reference_is_reported() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let err = data::load(
         &mut env,
@@ -195,7 +195,7 @@ fn test_unknown_reference_is_reported() -> Result<()> {
 #[test]
 fn test_malformed_xml_is_reported() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let err = data::load(&mut env, "seed_plugin", "<erp><record>").unwrap_err();
     assert!(err.to_string().contains("seed_plugin"), "got: {err}");
@@ -206,7 +206,7 @@ fn test_malformed_xml_is_reported() -> Result<()> {
 #[test]
 fn test_computed_fields_run_on_loaded_records() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let order_id = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
     let order: SaleOrder<SingleId> = env.get_record(order_id.into());
@@ -222,7 +222,7 @@ fn test_computed_fields_run_on_loaded_records() -> Result<()> {
 #[test]
 fn test_only_declared_records_are_created() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     assert_eq!(env.count("invoice", &make_domain!([]))?, 1);
     assert_eq!(env.count("sale_order", &make_domain!([]))?, 1);
@@ -234,7 +234,7 @@ fn test_only_declared_records_are_created() -> Result<()> {
 #[test]
 fn test_short_form_names_the_field() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -261,7 +261,7 @@ fn test_short_form_names_the_field() -> Result<()> {
 #[test]
 fn test_both_forms_coexist() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -288,7 +288,7 @@ fn test_both_forms_coexist() -> Result<()> {
 #[test]
 fn test_short_form_carries_a_reference() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let order = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
     data::load(
@@ -312,7 +312,7 @@ fn test_short_form_carries_a_reference() -> Result<()> {
 #[test]
 fn test_unknown_tag_is_refused() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let err = data::load(
         &mut env,
@@ -335,7 +335,7 @@ fn test_unknown_tag_is_refused() -> Result<()> {
 #[test]
 fn test_comments_are_not_fields() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -361,7 +361,7 @@ fn test_comments_are_not_fields() -> Result<()> {
 #[test]
 fn test_field_tag_without_name_is_a_field_called_field() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -390,7 +390,7 @@ fn test_field_tag_without_name_is_a_field_called_field() -> Result<()> {
 #[test]
 fn test_field_tag_alone_reaches_the_field() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -415,7 +415,7 @@ fn test_field_tag_alone_reaches_the_field() -> Result<()> {
 #[test]
 fn test_long_form_still_names_any_field() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -440,7 +440,7 @@ fn test_long_form_still_names_any_field() -> Result<()> {
 #[test]
 fn test_record_is_named_by_its_tag() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -468,7 +468,7 @@ fn test_record_is_named_by_its_tag() -> Result<()> {
 #[test]
 fn test_record_tag_without_model_is_a_model_called_record() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -493,7 +493,7 @@ fn test_record_tag_without_model_is_a_model_called_record() -> Result<()> {
 #[test]
 fn test_long_form_still_names_any_model() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -518,7 +518,7 @@ fn test_long_form_still_names_any_model() -> Result<()> {
 #[test]
 fn test_both_spellings_reach_the_same_record() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     data::load(
         &mut env,
@@ -549,7 +549,7 @@ fn test_both_spellings_reach_the_same_record() -> Result<()> {
 #[test]
 fn test_unknown_model_tag_is_an_error() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let err = data::load(
         &mut env,

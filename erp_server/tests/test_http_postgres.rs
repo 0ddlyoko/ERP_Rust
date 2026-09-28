@@ -90,6 +90,17 @@ macro_rules! app_or_skip {
                     let mut app = app;
                     app.load_plugin("test_lib_plugin")
                         .expect("installing the plugin");
+                    // Every request here comes in anonymous, and nothing shipped grants the
+                    // portal user anything on a test model.
+                    let portal = app
+                        .model_manager
+                        .identities
+                        .default_user()
+                        .expect("base names the anonymous caller");
+                    let mut env = app.new_env_as_option(None).expect("an environment");
+                    test_utilities::grant_everything(&mut env, portal, &["machine"])
+                        .expect("granting the anonymous caller");
+                    env.close().expect("committing the grant");
                     app
                 })
                 .await?

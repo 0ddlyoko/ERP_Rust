@@ -37,7 +37,7 @@ fn call(app: &Application, token: Option<&str>, method: &str, params: Value) -> 
 }
 
 fn make_user(app: &Application, login: &str, password: &str, active: bool) -> Result<u32> {
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     let mut values = MapOfFields::default();
     values.insert("login", login);
     values.insert("password", Password::new(password)?);
@@ -46,6 +46,13 @@ fn make_user(app: &Application, login: &str, password: &str, active: bool) -> Re
     let uid = ids.get_ids_ref()[0];
     env.close()?;
     Ok(uid)
+}
+
+/// Let a user touch sessions through the generic verbs, which no shipped rule grants.
+fn grant_sessions(app: &Application, uid: u32) -> Result<()> {
+    let mut env = app.new_env_as_option(None)?;
+    test_utilities::grant_everything(&mut env, uid, &["session"])?;
+    env.close()
 }
 
 /// Credentials in, token out.
@@ -112,13 +119,15 @@ fn test_nothing_else_opens_one() -> Result<()> {
 #[test]
 fn test_the_token_is_handed_out_once() -> Result<()> {
     let app = new_app()?;
-    make_user(&app, "alice", "s3cret", true)?;
+    let uid = make_user(&app, "alice", "s3cret", true)?;
+    grant_sessions(&app, uid)?;
     let opened = open(&app, "alice", "s3cret");
-    let id = session_of(opened["token"].as_str().expect("a token"));
+    let token = opened["token"].as_str().expect("a token");
+    let id = session_of(token);
 
     let rows = call(
         &app,
-        None,
+        Some(token),
         "session.read",
         json!({"ids": [id], "fields": ["secret", "active"]}),
     );
@@ -161,7 +170,7 @@ fn test_a_token_says_who_is_calling() -> Result<()> {
 fn test_no_token_is_the_portal_user() -> Result<()> {
     let app = new_app()?;
     let portal = {
-        let mut env = app.new_env()?;
+        let mut env = app.new_env_as_option(None)?;
         env.named::<Users<SingleId>>("base.user_portal")?.get_id()
     };
 
@@ -224,6 +233,7 @@ fn test_a_secret_is_bound_to_its_own_session() -> Result<()> {
 fn test_revoking_a_session_stops_its_token() -> Result<()> {
     let app = new_app()?;
     let uid = make_user(&app, "alice", "s3cret", true)?;
+    grant_sessions(&app, uid)?;
     let opened = open(&app, "alice", "s3cret");
     let token = opened["token"].as_str().expect("a token").to_string();
     assert_eq!(call(&app, Some(&token), "users.me", json!({})), json!(uid));
@@ -244,7 +254,8 @@ fn test_revoking_a_session_stops_its_token() -> Result<()> {
 #[test]
 fn test_deleting_a_session_stops_its_token() -> Result<()> {
     let app = new_app()?;
-    make_user(&app, "alice", "s3cret", true)?;
+    let uid = make_user(&app, "alice", "s3cret", true)?;
+    grant_sessions(&app, uid)?;
     let opened = open(&app, "alice", "s3cret");
     let token = opened["token"].as_str().expect("a token").to_string();
 
@@ -269,7 +280,7 @@ fn test_an_expired_session_stops_its_token() -> Result<()> {
     let token = opened["token"].as_str().expect("a token").to_string();
 
     {
-        let mut env = app.new_env()?;
+        let mut env = app.new_env_as_option(None)?;
         let session = Session::<SingleId>::from_id(session_of(&token), &env);
         let past = Utc::now() - TimeDelta::try_seconds(1).expect("a second");
         session.set_expires_at(past, &mut env)?;
@@ -384,7 +395,7 @@ fn test_the_administrator_can_log_in() -> Result<()> {
     let uid = call(&app, Some(token), "users.me", json!({}));
     assert_eq!(uid, opened["uid"]);
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     let admin = Users::<SingleId>::from_id(opened["uid"].as_u64().unwrap() as u32, &env);
     assert_eq!(admin.get_login(&mut env)?, "admin");
     Ok(())
@@ -403,7 +414,7 @@ fn test_deactivating_an_account_ends_its_sessions() -> Result<()> {
     assert_eq!(call(&app, Some(&token), "users.me", json!({})), json!(uid));
 
     {
-        let mut env = app.new_env()?;
+        let mut env = app.new_env_as_option(None)?;
         let alice = Users::<SingleId>::from_id(uid, &env);
         alice.set_active(false, &mut env)?;
         env.close()?;

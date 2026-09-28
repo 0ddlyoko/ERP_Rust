@@ -1,0 +1,133 @@
+<erp>
+    <!-- Administrators may do anything to every model base declares. -->
+    <access_rule id="access_company_admin">
+        <name>company: administrators</name>
+        <model>company</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_group_admin">
+        <name>group: administrators</name>
+        <model>group</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_users_admin">
+        <name>users: administrators</name>
+        <model>users</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_contact_admin">
+        <name>contact: administrators</name>
+        <model>contact</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_country_admin">
+        <name>country: administrators</name>
+        <model>country</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_lang_admin">
+        <name>lang: administrators</name>
+        <model>lang</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_model_data_admin">
+        <name>model_data: administrators</name>
+        <model>model_data</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_plugin_admin">
+        <name>plugin: administrators</name>
+        <model>plugin</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_session_admin">
+        <name>session: administrators</name>
+        <model>session</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_access_rule_admin">
+        <name>access_rule: administrators</name>
+        <model>access_rule</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+
+    <!-- Users read the shared records; sessions and rules stay out of reach. -->
+    <access_rule id="access_company_user">
+        <name>company: users</name>
+        <model>company</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_group_user">
+        <name>group: users</name>
+        <model>group</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_users_user">
+        <name>users: users</name>
+        <model>users</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_contact_user">
+        <name>contact: users</name>
+        <model>contact</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_country_user">
+        <name>country: users</name>
+        <model>country</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_lang_user">
+        <name>lang: users</name>
+        <model>lang</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+</erp>

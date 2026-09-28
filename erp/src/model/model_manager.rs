@@ -1,3 +1,4 @@
+use crate::access::AccessRules;
 use crate::identity::Identities;
 use crate::model::HasMethods;
 use crate::model::Model;
@@ -19,6 +20,7 @@ pub struct ModelManager {
     /// How a token identifies its caller. Beside the registry for the same reason as `rpc`: it is
     /// what a plugin contributes about reaching models, not what a model is.
     pub identities: Identities,
+    pub access: AccessRules,
     pub(crate) current_plugin_loading: Option<String>,
 }
 

@@ -28,5 +28,6 @@
         <login>admin</login>
         <name>Administrator</name>
         <active>true</active>
+        <groups ref="group_user,group_admin"/>
     </users>
 </erp>

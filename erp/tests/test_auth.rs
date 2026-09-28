@@ -62,7 +62,7 @@ fn test_malformed_hash_never_verifies() {
 #[test]
 fn test_authenticate_accepts_the_right_password() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
     assert_eq!(login(&mut env, "alice", "s3cret")?, Some(uid));
@@ -72,7 +72,7 @@ fn test_authenticate_accepts_the_right_password() -> Result<()> {
 #[test]
 fn test_authenticate_rejects_a_wrong_password() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
     assert_eq!(login(&mut env, "alice", "wrong")?, None);
@@ -83,7 +83,7 @@ fn test_authenticate_rejects_a_wrong_password() -> Result<()> {
 #[test]
 fn test_authenticate_rejects_an_unknown_login() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
     assert_eq!(login(&mut env, "mallory", "s3cret")?, None);
@@ -93,7 +93,7 @@ fn test_authenticate_rejects_an_unknown_login() -> Result<()> {
 #[test]
 fn test_inactive_account_cannot_log_in() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "retired", "s3cret", false)?;
     assert_eq!(login(&mut env, "retired", "s3cret")?, None);
@@ -104,7 +104,7 @@ fn test_inactive_account_cannot_log_in() -> Result<()> {
 #[test]
 fn test_changing_a_password() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let uid = create_user(&mut env, "alice", "old", true)?;
     let user: Users<SingleId> = env.get_record(uid.into());
@@ -120,11 +120,11 @@ fn test_changing_a_password() -> Result<()> {
 fn test_credentials_persist() -> Result<()> {
     let app = new_app()?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
     env.close()?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     assert_eq!(login(&mut env, "alice", "s3cret")?, Some(uid));
     Ok(())
 }
@@ -133,7 +133,7 @@ fn test_credentials_persist() -> Result<()> {
 #[test]
 fn test_admin_is_seeded_and_usable() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let admin: Users<SingleId> = env.named("base.user_admin")?;
     assert_eq!(
@@ -148,7 +148,7 @@ fn test_admin_is_seeded_and_usable() -> Result<()> {
 #[test]
 fn test_user_belongs_to_groups() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let admin_record: Users<SingleId> = env.named("base.user_admin")?;
     let admin = admin_record.get_id();
@@ -181,7 +181,7 @@ fn test_environment_carries_the_user() -> Result<()> {
         Some(portal.get_id()),
         "a caller who authenticated as nobody is the portal user"
     );
-    let uid = create_user(&mut env, "alice", "s3cret", true)?;
+    let uid = create_user(&mut env.sudo(), "alice", "s3cret", true)?;
     env.close()?;
 
     let env = app.new_env_as(uid)?;
@@ -193,7 +193,7 @@ fn test_environment_carries_the_user() -> Result<()> {
 #[test]
 fn test_the_seeded_accounts() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     for name in ["base.user_root", "base.user_admin", "base.user_portal"] {
         assert!(
@@ -223,7 +223,7 @@ fn test_the_seeded_accounts() -> Result<()> {
 #[test]
 fn test_the_framework_accounts_have_no_password() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     for login_name in ["root", "portal"] {
         let account: Users<SingleId> = env.named(&format!("base.user_{login_name}"))?;
@@ -262,7 +262,7 @@ fn test_acting_as_root() -> Result<()> {
 #[test]
 fn test_listing_users_does_not_expose_hashes() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
     let ids = env.search_ids("users", &make_domain!([("login", "=", "alice")]))?;
@@ -279,7 +279,7 @@ fn test_listing_users_does_not_expose_hashes() -> Result<()> {
 #[test]
 fn test_check_password_on_the_record() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
     let user: Users<SingleId> = env.get_record(uid.into());
@@ -294,7 +294,7 @@ fn test_check_password_on_the_record() -> Result<()> {
 #[test]
 fn test_authenticate_returns_the_record() -> Result<()> {
     let app = new_app()?;
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
     let user = Users::identified_by(&mut env, "alice", "s3cret")?.expect("should log in");
@@ -312,17 +312,17 @@ fn test_authenticate_returns_the_record() -> Result<()> {
 fn test_a_record_change_persists_on_its_own() -> Result<()> {
     let app = new_app()?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     let uid = create_user(&mut env, "alice", "old", true)?;
     env.close()?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     let user: Users<SingleId> = env.get_record(uid.into());
     user.change_password(&mut env, "new")?;
     user.set_name("Alice".to_string(), &mut env)?;
     env.close()?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     assert_eq!(login(&mut env, "alice", "new")?, Some(uid));
     assert_eq!(login(&mut env, "alice", "old")?, None);
     let user: Users<SingleId> = env.get_record(uid.into());

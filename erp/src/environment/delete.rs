@@ -1,5 +1,6 @@
 //! Removing records, and untangling them from their relations on the way out.
 use super::*;
+use crate::access::Operation;
 
 impl<'mm> Environment<'mm> {
     /// Delete the given records.
@@ -13,10 +14,14 @@ impl<'mm> Environment<'mm> {
     ///
     /// The deletion is written straight to the database, like creation is; rolling the
     /// environment back therefore undoes it.
+    ///
+    /// Refused as a whole unless the caller may delete every one of the records.
     pub fn delete<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
         if ids.is_empty() {
             return Ok(0);
         }
+        self.check_access(model_name, Operation::Delete, ids.get_ids_ref(), &[])?;
+        self.forget_access_of(model_name, ids.get_ids_ref())?;
         let model = self.model_manager.try_get_model(model_name)?;
 
         // Pending changes must reach the database before the relational fields below start

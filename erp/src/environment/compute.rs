@@ -13,7 +13,8 @@ impl<'mm> Environment<'mm> {
     ///
     /// A no-op on a model with no records, which is what a plugin being installed looks like.
     pub fn fill_stored_field(&mut self, model_name: &str, field_name: &str) -> Result<()> {
-        let ids = self.search_ids(model_name, &SearchType::Nothing)?;
+        let ids =
+            self.search_ids_unchecked(model_name, &SearchType::Nothing, &SearchOptions::default())?;
         if ids.is_empty() {
             // A model with nothing in it is what installing a plugin looks like, and every
             // stored computed field goes through here then. Saying so would be noise.
@@ -87,7 +88,7 @@ impl<'mm> Environment<'mm> {
                         field_name,
                     } => {
                         // M2O field, we can get the value of this field and continue
-                        let all_ids = self.get_fields_value::<MultipleIds>(
+                        let all_ids = self.get_fields_value_unchecked::<MultipleIds>(
                             &current_model.name,
                             field_name,
                             &current_ids.clone().into(),
@@ -266,6 +267,10 @@ impl<'mm> Environment<'mm> {
     /// A compute is an overridable method taking no arguments and returning nothing, so this goes
     /// through the same dispatch as any other: the most derived implementation runs first, and
     /// reaches the ones it overrides through `super`.
+    ///
+    /// It runs as the caller, whose rights every read and write inside it is held to, except the
+    /// value of the stored fields it computes: a stored value is the same for every reader, so
+    /// saving it cannot depend on who triggered it.
     pub(super) fn call_compute_method<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -286,13 +291,25 @@ impl<'mm> Environment<'mm> {
             return Ok(());
         }
         let ids: MultipleIds = ids.get_ids_ref().into();
+        let depth = self.computing.len();
+        for (field_name, field) in &final_internal_model.fields {
+            if field.is_stored()
+                && let Some(method) = final_internal_model.compute_method(field_name)
+                && methods.contains(&method)
+            {
+                self.computing
+                    .push((model_name.to_string(), field_name.clone()));
+            }
+        }
         // One savepoint for the whole chain: a compute is a single logical operation, so a link
         // that fails must take the ones before it with it.
-        self.savepoint(move |env| {
+        let result = self.savepoint(move |env| {
             for method in methods {
                 env.call_method::<(), ()>(model_name, method, &ids, &())?;
             }
             Ok(())
-        })
+        });
+        self.computing.truncate(depth);
+        result
     }
 }

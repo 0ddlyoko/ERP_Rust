@@ -75,7 +75,7 @@ fn test_ref() -> Result<()> {
     app.load_plugin("base")?;
     app.load_plugin("test_lib_plugin")?;
 
-    let mut env = app.new_env()?;
+    let mut env = app.new_env_as_option(None)?;
     // Create a new lang
     let mut record = MapOfFields::default();
     record.insert("name", "French");

@@ -241,7 +241,11 @@ impl Application {
             for document in &data {
                 crate::data::load(env, plugin_name, document)?;
             }
-            plugin.post_init(env)
+            plugin.post_init(env)?;
+            match env.model_manager.access.source().map(|source| source.check) {
+                Some(check) => check(env),
+                None => Ok(()),
+            }
         })?;
         env.close()?;
 

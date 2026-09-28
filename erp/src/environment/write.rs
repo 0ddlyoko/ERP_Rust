@@ -1,5 +1,6 @@
 //! Writing field values into the cache, keeping relational mirrors coherent.
 use super::*;
+use crate::access::Operation;
 
 impl<'mm> Environment<'mm> {
     /// Write field values onto records, addressing the model and its fields by name.
@@ -7,12 +8,16 @@ impl<'mm> Environment<'mm> {
     /// The counterpart of [`Environment::read`] for callers that only hold names at runtime.
     /// Values go through the same path as the generated setters, so relational mirrors stay
     /// coherent and dependent computes are flagged.
+    ///
+    /// Refused as a whole unless the caller may write every one of the records.
     pub fn write<Mode: IdMode>(
         &mut self,
         model_name: &str,
         ids: &Mode,
         values: MapOfFields,
     ) -> Result<()> {
+        let fields: Vec<&str> = values.fields.keys().map(String::as_str).collect();
+        self.check_access(model_name, Operation::Write, ids.get_ids_ref(), &fields)?;
         for (field_name, value) in values.fields {
             self.save_field_to_cache(
                 model_name,
@@ -39,7 +44,33 @@ impl<'mm> Environment<'mm> {
         self.save_option_to_cache(model_name, field_name, ids, Some(value))
     }
 
+    /// Write one field, as a generated setter does.
+    ///
+    /// Refused unless the caller may write every one of the records, or the field is a stored one
+    /// its compute is filling in right now.
     pub(crate) fn save_option_to_cache<Mode: IdMode, E>(
+        &mut self,
+        model_name: &str,
+        field_name: &str,
+        ids: &Mode,
+        value: Option<E>,
+    ) -> Result<()>
+    where
+        E: Into<FieldType>,
+    {
+        if !self.is_computing(model_name, field_name) {
+            self.check_access(
+                model_name,
+                Operation::Write,
+                ids.get_ids_ref(),
+                &[field_name],
+            )?;
+        }
+        self.save_option_to_cache_unchecked(model_name, field_name, ids, value)
+    }
+
+    /// Same, whatever the caller's rights.
+    pub(super) fn save_option_to_cache_unchecked<Mode: IdMode, E>(
         &mut self,
         model_name: &str,
         field_name: &str,
@@ -223,6 +254,15 @@ impl<'mm> Environment<'mm> {
     ) -> Result<()> {
         if field_name == "id" {
             return Ok(());
+        }
+        // Loading a value from the database also lands here, and changes no rule.
+        if matches!(update_dirty, Dirty::UpdateDirty) {
+            self.forget_access_of(model_name, ids.get_ids_ref())?;
+            if self.is_rule_target(model_name, field_name)
+                && let Some(FieldType::String(target)) = &value
+            {
+                self.forget_rules_for(target);
+            }
         }
         let is_update_if_exists = matches!(update_field, Update::UpdateIfExists);
         let internal_model = self.model_manager.try_get_model(model_name)?;

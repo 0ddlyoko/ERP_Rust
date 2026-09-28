@@ -52,6 +52,8 @@ impl<'mm> Environment<'mm> {
             // Rollback
             self.database.savepoint_rollback(uuid.as_str())?;
             self.cache.import_cache(cache_copy);
+            // What was remembered may have been read from rows the rollback just undid.
+            self.forget_access();
         }
         result
     }
