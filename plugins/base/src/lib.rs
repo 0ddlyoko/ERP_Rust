@@ -28,8 +28,12 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Session<_>>();
         model_manager.register_model::<models::AccessRule<_>>();
         // What the core knows about identity is that something answers it. This is the something.
-        model_manager.identities.register(models::Session::<SingleId>::resolve);
-        model_manager.access.register(models::AccessRule::<SingleId>::source());
+        model_manager
+            .identities
+            .register(models::Session::<SingleId>::resolve);
+        model_manager
+            .access
+            .register(models::AccessRule::<SingleId>::source());
     }
 
     fn data(&self) -> Vec<&'static str> {
