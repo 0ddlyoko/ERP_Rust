@@ -15,7 +15,6 @@ pub struct Contact<Mode: IdMode> {
     lang: Reference<BaseLang, SingleId>,
     country: Reference<BaseCountry, SingleId>,
     parent: Reference<BaseContact, SingleId>,
-    // TODO MultipleIds should not exist without SingleId ref
     #[erp(inverse = "parent")]
     childrens: Reference<BaseContact, MultipleIds>,
 }

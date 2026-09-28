@@ -522,3 +522,317 @@ fn test_deleting_a_line_recomputes_its_order() -> Result<()> {
     assert_eq!(*order.get_total_price(&mut env)?, 0);
     Ok(())
 }
+
+mod unkept_inverse {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "crew")]
+    #[allow(dead_code)]
+    pub struct Crew<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(inverse = "crew")]
+        sailors: Reference<BaseSailor, MultipleIds>,
+    }
+
+    #[derive(Model)]
+    #[erp(id = "sailor", methods)]
+    #[allow(dead_code)]
+    pub struct Sailor<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(compute = "compute_crew", depends = [])]
+        crew: Reference<BaseCrew, SingleId>,
+    }
+
+    #[erp_methods]
+    impl Sailor<MultipleIds> {
+        pub fn compute_crew(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = env;
+            Ok(())
+        }
+    }
+}
+
+/// A one2many is found by searching its many2one's column, so that many2one has to have one.
+#[test]
+#[should_panic(expected = "Declare it `stored`")]
+fn test_a_one2many_needs_its_many2one_kept() {
+    let mut app = Application::new_test();
+    app.model_manager
+        .register_model::<unkept_inverse::Crew<_>>();
+    app.model_manager
+        .register_model::<unkept_inverse::Sailor<_>>();
+    app.model_manager.post_register();
+}
+
+mod computed_list {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "harbour", methods)]
+    #[allow(dead_code)]
+    pub struct Harbour<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(inverse = "harbour")]
+        boats: Reference<BaseBoat, MultipleIds>,
+        #[erp(compute = "compute_big_boats", depends = ["boats.size"])]
+        big_boats: Reference<BaseBoat, MultipleIds>,
+        #[erp(compute = "compute_big_count", depends = ["big_boats"])]
+        big_count: i32,
+    }
+
+    #[erp_methods]
+    impl Harbour<MultipleIds> {
+        pub fn compute_big_boats(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            for harbour in self {
+                let boats: Boat<MultipleIds> = harbour.get_boats(env)?;
+                let mut big = Vec::new();
+                for boat in &boats {
+                    if *boat.get_size(env)? > 4 {
+                        big.push(boat.get_id());
+                    }
+                }
+                harbour.set_big_boats(big.into(), env)?;
+            }
+            Ok(())
+        }
+
+        pub fn compute_big_count(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            for harbour in self {
+                let big: Boat<MultipleIds> = harbour.get_big_boats(env)?;
+                harbour.set_big_count(big.get_ids_ref().len() as i32, env)?;
+            }
+            Ok(())
+        }
+    }
+
+    #[derive(Model)]
+    #[erp(id = "boat")]
+    #[allow(dead_code)]
+    pub struct Boat<Mode: IdMode> {
+        pub id: Mode,
+        harbour: Reference<BaseHarbour, SingleId>,
+        #[erp(default = 0)]
+        size: i32,
+    }
+}
+
+fn harbour_app() -> Application {
+    use computed_list::{Boat, Harbour};
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<Harbour<_>>();
+    app.model_manager.register_model::<Boat<_>>();
+    app.model_manager.post_register();
+    app
+}
+
+fn a_boat(env: &mut erp::environment::Environment, harbour: u32, size: i32) -> Result<u32> {
+    let mut map = MapOfFields::default();
+    map.insert("harbour", erp_types::field::FieldType::Ref(harbour));
+    map.insert("size", size);
+    Ok(env.create_records("boat", vec![map])?.get_ids_ref()[0])
+}
+
+/// The big boats of a harbour, and how many there are.
+fn big_boats(env: &mut erp::environment::Environment, harbour: u32) -> Result<(Vec<u32>, i32)> {
+    use computed_list::{Boat, Harbour};
+    let harbour: Harbour<SingleId> = env.get_record(harbour.into());
+    let mut big = harbour.get_big_boats::<Boat<MultipleIds>>(env)?.get_ids();
+    big.sort_unstable();
+    Ok((big, *harbour.get_big_count(env)?))
+}
+
+/// A list of references can be computed, and follows what it depends on like any computed field.
+#[test]
+fn test_a_computed_list_of_references() -> Result<()> {
+    use computed_list::{Boat, Harbour};
+    let app = harbour_app();
+
+    let mut env = app.new_env()?;
+    let harbour: Harbour<SingleId> = env.create_new_record_from_map(MapOfFields::default())?;
+    let boats: Vec<u32> = [1, 5, 9]
+        .into_iter()
+        .map(|size| {
+            let mut map = MapOfFields::default();
+            map.insert(
+                "harbour",
+                erp_types::field::FieldType::Ref(harbour.get_id()),
+            );
+            map.insert("size", size);
+            Ok(env.create_records("boat", vec![map])?.get_ids_ref()[0])
+        })
+        .collect::<Result<_>>()?;
+
+    let big: Boat<MultipleIds> = harbour.get_big_boats(&mut env)?;
+    assert_eq!(big.get_ids(), vec![boats[1], boats[2]]);
+
+    let small: Boat<SingleId> = env.get_record(boats[0].into());
+    small.set_size(10, &mut env)?;
+    let big: Boat<MultipleIds> = harbour.get_big_boats(&mut env)?;
+    assert_eq!(big.get_ids(), boats, "changing a size recomputes the list");
+    Ok(())
+}
+
+/// The list follows its records wherever they go, and a field computed from the list follows it.
+#[test]
+fn test_a_computed_list_follows_moves_and_deletes() -> Result<()> {
+    use computed_list::Boat;
+    let app = harbour_app();
+    let mut env = app.new_env()?;
+    let first = env
+        .create_records("harbour", vec![MapOfFields::default()])?
+        .get_ids_ref()[0];
+    let second = env
+        .create_records("harbour", vec![MapOfFields::default()])?
+        .get_ids_ref()[0];
+    assert_eq!(
+        big_boats(&mut env, first)?,
+        (vec![], 0),
+        "an empty list is a list"
+    );
+    let small = a_boat(&mut env, first, 1)?;
+    let large = a_boat(&mut env, first, 9)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    assert_eq!(big_boats(&mut env, first)?, (vec![large], 1));
+
+    let boat: Boat<SingleId> = env.get_record(large.into());
+    boat.set_harbour(Some(second.into()), &mut env)?;
+    assert_eq!(big_boats(&mut env, first)?, (vec![], 0));
+    assert_eq!(big_boats(&mut env, second)?, (vec![large], 1));
+
+    let boat: Boat<SingleId> = env.get_record(small.into());
+    boat.set_size(7, &mut env)?;
+    assert_eq!(big_boats(&mut env, first)?, (vec![small], 1));
+
+    env.delete("boat", &SingleId::from(small))?;
+    assert_eq!(big_boats(&mut env, first)?, (vec![], 0));
+    Ok(())
+}
+
+/// A list has no column, so it cannot be searched — and asking for `stored` would not help.
+#[test]
+fn test_a_computed_list_cannot_be_searched() -> Result<()> {
+    let app = harbour_app();
+    let mut env = app.new_env()?;
+    let error = env
+        .search_ids("harbour", &make_domain!([("big_boats", "=", 1)]))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("worked out on each read"), "got {error}");
+    assert!(
+        !error.contains("stored"),
+        "no advice that cannot be followed: {error}"
+    );
+    Ok(())
+}
+
+mod stored_list {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds, Reference};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "fleet", methods)]
+    #[allow(dead_code)]
+    pub struct Fleet<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(compute = "compute_ships", depends = [], stored)]
+        ships: Reference<BaseFleet, MultipleIds>,
+        #[erp(compute = "compute_size", depends = ["ships.ships"])]
+        size: i32,
+    }
+
+    #[erp_methods]
+    impl Fleet<MultipleIds> {
+        pub fn compute_ships(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = env;
+            Ok(())
+        }
+
+        pub fn compute_size(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = env;
+            Ok(())
+        }
+    }
+}
+
+/// A list of references has no column, so asking to keep it is refused rather than ignored.
+#[test]
+#[should_panic(expected = "no column to keep it in")]
+fn test_a_computed_list_cannot_be_stored() {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<stored_list::Fleet<_>>();
+    app.model_manager.post_register();
+}
+
+mod through_a_list {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds, Reference};
+    use std::error::Error;
+
+    #[derive(Model)]
+    #[erp(id = "convoy", methods)]
+    #[allow(dead_code)]
+    pub struct Convoy<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(compute = "compute_escorts", depends = [])]
+        escorts: Reference<BaseConvoy, MultipleIds>,
+        #[erp(compute = "compute_escort_count", depends = ["escorts.escorts"])]
+        escort_count: i32,
+    }
+
+    #[erp_methods]
+    impl Convoy<MultipleIds> {
+        pub fn compute_escorts(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = env;
+            Ok(())
+        }
+
+        pub fn compute_escort_count(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            let _ = env;
+            Ok(())
+        }
+    }
+}
+
+/// A computed list has nothing to follow back, so a dependency cannot cross it — and the refusal
+/// names the field whose dependency is wrong, not the list.
+#[test]
+#[should_panic(expected = "convoy.escort_count depends on \"escorts.escorts\"")]
+fn test_a_dependency_cannot_cross_a_computed_list() {
+    let mut app = Application::new_test();
+    app.model_manager
+        .register_model::<through_a_list::Convoy<_>>();
+    app.model_manager.post_register();
+}

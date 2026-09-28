@@ -68,13 +68,21 @@ impl FinalInternalField {
     /// repeating the computation — and on its own that struct looks like it is declaring a plain
     /// field, which would be kept. Only the merged view knows the field is computed at all.
     ///
-    /// Returns what is wrong when a struct asked to keep a field that nothing computes: every
-    /// other field is kept anyway, so saying so means the author expected something else.
+    /// Returns what is wrong when a struct asked to keep a field that nothing computes — every
+    /// other field is kept anyway, so saying so means the author expected something else — or a
+    /// list of references, which no column can hold.
     pub fn settle_storage(&mut self) -> Result<(), String> {
         if self.asked_for_storage && self.compute.is_none() {
             return Err(format!(
                 "Field {} is asked to be stored, but nothing computes it. Every other field is \
                  kept anyway: there is nowhere else its value could live.",
+                self.name
+            ));
+        }
+        if self.asked_for_storage && !self.kind.is_stored() {
+            return Err(format!(
+                "Field {} is asked to be stored, but a list of references has no column to keep \
+                 it in: it is worked out on each read.",
                 self.name
             ));
         }

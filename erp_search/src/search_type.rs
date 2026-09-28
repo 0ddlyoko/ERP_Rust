@@ -89,13 +89,12 @@ impl TryFrom<Vec<SearchKey>> for SearchType {
                 SearchKey::And | SearchKey::Or => {
                     let left_value = parse_value(value);
                     if let Some(left_search_type) = left_value {
-                        // TODO Check if it's possible that "Nothing" is returned here
+                        // Nothing means the keys ran out: an operator is missing an operand.
                         if left_search_type == SearchType::Nothing {
                             return None;
                         }
                         let right_value = parse_value(value);
                         if let Some(right_search_type) = right_value {
-                            // TODO Check if it's possible that "Nothing" is returned here
                             if right_search_type == SearchType::Nothing {
                                 return None;
                             }

@@ -27,7 +27,6 @@ impl<'mm> Environment<'mm> {
     where
         M: Model<MultipleIds>,
     {
-        // TODO Add limit
         let ids = self.search_ids(M::_get_model_name(), domain)?;
         Ok(M::create_instance(ids.into()))
     }
@@ -212,9 +211,14 @@ impl<'mm> Environment<'mm> {
                     uid = ?self.uid(),
                     "Refused a request to {asked} a field that is worked out on each read"
                 );
+                let advice = if field.kind.is_stored() {
+                    " Declare it `stored` if it has to be."
+                } else {
+                    ""
+                };
                 return Err(format!(
                     "Field {}.{segment} is worked out on each read, so nothing can search or sort \
-                     on it. Declare it `stored` if it has to be.",
+                     on it.{advice}",
                     model.name
                 )
                 .into());
@@ -244,10 +248,6 @@ impl<'mm> Environment<'mm> {
     ) -> Result<Option<&'a FieldType>> {
         self.check_access(model_name, Operation::Read, &[id.get_id()], &[field_name])?;
         self.ensure_fields_in_cache(model_name, field_name, id)?;
-
-        // TODO In case of O2M / M2M, cache could be invalid.
-
-        // Now, everything should be good
         Ok(self
             .cache
             .get_field_from_cache(model_name, field_name, &id.get_id()))
@@ -277,10 +277,6 @@ impl<'mm> Environment<'mm> {
         ids: &Mode,
     ) -> Result<Vec<Option<&FieldType>>> {
         self.ensure_fields_in_cache(model_name, field_name, ids)?;
-
-        // TODO In case of O2M / M2M, cache could be invalid.
-
-        // Now, everything should be good
         Ok(ids
             .get_ids_ref()
             .iter()
@@ -360,10 +356,8 @@ impl<'mm> Environment<'mm> {
                 // This is a stored field, load it along with all the other stored fields to avoid
                 //  multiple database calls
                 let fields_to_load = model_info.get_stored_fields();
-                // TODO Shouldn't we save those fields (if they are dirty in cache) to the database ?
                 self.load_records_fields_from_db(model_name, &ids_not_in_cache, &fields_to_load)?;
             } else if is_computed_method {
-                // TODO Check if a O2M computed field is correctly handled here
                 // This could be a computed one. Call it
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {
@@ -460,8 +454,11 @@ impl<'mm> Environment<'mm> {
                     );
                 }
             } else {
-                // State where field is not computed nor stored. This behavior is unexpected
-                // TODO Find what to do in this case
+                return Err(format!(
+                    "Field {model_name}.{field_name} is neither kept, computed nor a relation, so \
+                     nothing can load it"
+                )
+                .into());
             }
         }
 

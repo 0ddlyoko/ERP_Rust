@@ -198,11 +198,6 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
-    /// Save given fields to database.
-    ///
-    /// Compute them if needed.
-    ///
-    /// Remove from the original list non-stored fields
     /// Write dirty many2many fields to their relation tables.
     ///
     /// They have no column, so they never reach the row operations that save the rest.
@@ -252,20 +247,25 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
+    /// Save given fields to the database, computing them first if needed.
+    ///
+    /// A one2many has no column of its own: saving it saves the many2one it is found through.
     pub fn save_fields_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
         self.save_relations_to_db(model_name, fields)?;
         let model = self.model_manager.get_model(model_name);
+        for field in fields {
+            if let Some(FieldReference {
+                target_model,
+                inverse_field: FieldReferenceType::O2M { inverse_field },
+            }) = &model.get_internal_field(field).inverse
+            {
+                self.save_fields_to_db(target_model, &[inverse_field])?;
+            }
+        }
         let fields = fields
             .iter()
-            .filter_map(|&f| {
-                if model.is_stored(f) {
-                    Some(f)
-                } else {
-                    // We don't save non-stored fields
-                    // TODO Handle related fields (O2M => M2O)
-                    None
-                }
-            })
+            .copied()
+            .filter(|field| model.is_stored(field))
             .collect::<Vec<&str>>();
 
         self.call_computed_method_on_fields(model_name, &fields)?;

@@ -1,8 +1,8 @@
 use crate::model::attrs::{AllowedFieldAttrs, parse_attributes};
 use crate::model::util::{
     gen_field_no_field_error, gen_inverse_not_multiple_ids, gen_missing_key_error,
-    gen_option_not_one_generic, gen_password_has_no_default, gen_reference_not_two_generic,
-    gen_wrong_default_value,
+    gen_multiple_ids_without_source, gen_option_not_one_generic, gen_password_has_no_default,
+    gen_reference_not_two_generic, gen_wrong_default_value,
 };
 use erp::types::field::FieldType;
 use proc_macro2::{Ident, Span};
@@ -103,18 +103,17 @@ impl FieldGen {
                                 FieldType::Bool(false)
                             }
                         }
-                        // TODO Remove the 2 unwrap
                         Lit::ByteStr(bs) => {
                             return Err(gen_wrong_default_value(
                                 bs.span(),
-                                &String::from_utf8(bs.value()).unwrap(),
+                                &String::from_utf8_lossy(&bs.value()),
                                 field_name.as_str(),
                             ));
                         }
                         Lit::CStr(cs) => {
                             return Err(gen_wrong_default_value(
                                 cs.span(),
-                                &cs.value().into_string().unwrap(),
+                                &cs.value().to_string_lossy(),
                                 field_name.as_str(),
                             ));
                         }
@@ -254,6 +253,10 @@ impl FieldGen {
         // So should "relation": a many2many is a list on both sides.
         if !is_reference_multi && let Some((relation_ident, _)) = relation {
             return Err(gen_inverse_not_multiple_ids(relation_ident.span()));
+        }
+        // A list of references is filled by one of three things; with none it holds nothing.
+        if is_reference_multi && inverse.is_none() && relation.is_none() && compute.is_none() {
+            return Err(gen_multiple_ids_without_source(ident.span()));
         }
 
         Ok(FieldGen {

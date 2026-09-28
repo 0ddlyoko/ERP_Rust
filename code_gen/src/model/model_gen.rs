@@ -497,7 +497,9 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
-        let field_reference = if *is_reference {
+        // A computed list with neither relation nor inverse mirrors nothing: it is only a value.
+        let is_plain_list = *is_reference_multi && relation.is_none() && inverse.is_none();
+        let field_reference = if *is_reference && !is_plain_list {
             let inverse_field = if let Some(relation) = relation {
                 // Column names come from the two model ids, so declaring the relation table is
                 // enough; the other side names the same table and sees the columns swapped.

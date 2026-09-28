@@ -125,7 +125,7 @@ impl<'mm> Environment<'mm> {
         let model = self.model_manager.get_model(model_name);
         for i in 0..=MAX_RECOMPUTE_ROUNDS {
             let cache_models = self.cache.get_cache_models(model_name);
-            // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
+            // Only kept values are settled here; one worked out on each read waits for its next read.
             if let Some((key, value)) = cache_models
                 .to_recompute
                 .iter()
@@ -137,7 +137,7 @@ impl<'mm> Environment<'mm> {
                 self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
             }
             let cache_models = self.cache.get_cache_models(model_name);
-            // TODO The filter should not be useful here, as we should add a way to not set as to_recompute non-computed fields
+            // Only kept values are settled here; one worked out on each read waits for its next read.
             if !cache_models
                 .to_recompute
                 .iter()

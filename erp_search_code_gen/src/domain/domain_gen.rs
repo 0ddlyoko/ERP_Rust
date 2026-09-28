@@ -80,12 +80,11 @@ pub fn derive(items: &Punctuated<Expr, Comma>) -> Result<TokenStream> {
         match search_key.1 {
             SearchKey::And | SearchKey::Or => {
                 let left_value = parse_value(value)?;
-                // TODO Check if it's possible that "Nothing" is returned here
+                // Nothing means the keys ran out: an operator is missing an operand.
                 if matches!(left_value, SearchType::Nothing) {
                     return Err(gen_and_or_or_without_enough_tuple(search_key.0.span()));
                 }
                 let right_value = parse_value(value)?;
-                // TODO Check if it's possible that "Nothing" is returned here
                 if matches!(right_value, SearchType::Nothing) {
                     return Err(gen_and_or_or_without_enough_tuple(search_key.0.span()));
                 }

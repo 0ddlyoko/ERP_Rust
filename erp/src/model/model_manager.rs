@@ -94,6 +94,10 @@ impl ModelManager {
         }
     }
 
+    /// Tell each many2one which one2many fields mirror it.
+    ///
+    /// Refuses a one2many whose many2one is not kept in a column: the one2many is found by
+    /// searching that column, and a search on a value worked out on each read has nothing to find.
     fn _post_register_m2o_links(&mut self) {
         // Clear M2O depends
         for model in self.models.values_mut() {
@@ -129,6 +133,13 @@ impl ModelManager {
             let model = self.get_model_mut(&model_name);
             for (field_name, mut fields_to_add) in model_to_add {
                 let field = model.get_internal_field_mut(&field_name);
+                if field.inverse.is_some() && !field.is_stored() {
+                    panic!(
+                        "{model_name}.{field_name} is the inverse of a one2many, but is worked out \
+                         on each read: a one2many is found by searching its column. Declare it \
+                         `stored`."
+                    );
+                }
                 if let Some(FieldReference {
                     inverse_field: FieldReferenceType::M2O { inverse_fields },
                     ..
@@ -161,6 +172,7 @@ impl ModelManager {
         for model in self.models.values() {
             for field in model.fields.values() {
                 if let Some(FieldCompute { depends, .. }) = &field.compute {
+                    let computed = &field.name;
                     for depend in depends {
                         let mut final_depends: Vec<FieldDepend> = vec![FieldDepend::SameModel {
                             field_name: field.name.clone(),
@@ -251,8 +263,10 @@ impl ModelManager {
                                 current_model = self.get_model(target_model);
                             } else {
                                 panic!(
-                                    "Field {}.{} has invalid depends! (Field \"{}\" of depends \"{:?}\" is not a M2O / O2M)",
-                                    model.name, field.name, d, depend
+                                    "Field {}.{computed} depends on \"{depend}\", but {}.{d} is \
+                                     not a relation that can be followed back: only a many2one, a \
+                                     one2many or a many2many can be crossed",
+                                    model.name, current_model.name
                                 )
                             }
                         }

@@ -180,7 +180,6 @@ impl<'mm> Environment<'mm> {
                 inverse_field: FieldReferenceType::O2M { inverse_field },
             }) = &field_info.inverse
             {
-                // TODO Check if target field is stored or not
                 // O2M, save data to the database, and then make a request
                 self.save_fields_to_db(target_model, &[inverse_field])?;
                 // Load from database
@@ -437,7 +436,6 @@ impl<'mm> Environment<'mm> {
                     }
 
                     // Now, remove the old id from the lists
-                    // TODO Pass by another method, so that it also automatically triggers computes
                     // Only update if needed
                     let cache_models = self.cache.get_cache_models_mut(target_model);
                     for (i, old_value) in old_values.iter().enumerate() {
@@ -486,7 +484,6 @@ impl<'mm> Environment<'mm> {
                     );
 
                     // Finally, add the id to the new list
-                    // TODO Pass by another method, so that it also automatically triggers computes
                     // Only update if needed
                     if let Some(new_id) = new_id {
                         let cache_models = self.cache.get_cache_models_mut(target_model);

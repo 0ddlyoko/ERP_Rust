@@ -117,3 +117,54 @@ fn test_save_model_to_db_computes_across_relations() -> Result<()> {
     assert_eq!(*order.get_total_price(&mut env)?, 26);
     Ok(())
 }
+
+mod plain_relation {
+    use code_gen::Model;
+    use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+
+    #[derive(Model)]
+    #[erp(id = "dock")]
+    #[allow(dead_code)]
+    pub struct Dock<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(inverse = "dock")]
+        skiffs: Reference<BaseSkiff, MultipleIds>,
+    }
+
+    #[derive(Model)]
+    #[erp(id = "skiff")]
+    #[allow(dead_code)]
+    pub struct Skiff<Mode: IdMode> {
+        pub id: Mode,
+        dock: Reference<BaseDock, SingleId>,
+    }
+}
+
+/// Saving a one2many saves the many2one it is found through, which holds its only column.
+///
+/// Nothing computed depends on the relation here: a dependency would save the many2one on its
+/// own while being followed.
+#[test]
+fn test_saving_a_one2many_saves_its_many2one() -> Result<()> {
+    use plain_relation::{Dock, Skiff};
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<Dock<_>>();
+    app.model_manager.register_model::<Skiff<_>>();
+    app.model_manager.post_register();
+
+    let mut env = app.new_env()?;
+    let dock: Dock<SingleId> = env.create_new_record_from_map(MapOfFields::default())?;
+    let skiff: Skiff<SingleId> = env.create_new_record_from_map(MapOfFields::default())?;
+    skiff.set_dock(Some(dock.get_id().into()), &mut env)?;
+    let dirty = |env: &erp::environment::Environment| {
+        env.cache
+            .get_cache_models("skiff")
+            .get_dirty(&skiff.get_id())
+            .is_some_and(|dirty| dirty.contains("dock"))
+    };
+    assert!(dirty(&env), "written in the cache only");
+
+    env.save_fields_to_db("dock", &["skiffs"])?;
+    assert!(!dirty(&env), "the many2one reached the database");
+    Ok(())
+}

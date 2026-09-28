@@ -64,6 +64,14 @@ pub fn gen_password_has_no_default(span: Span) -> Error {
     )
 }
 
+pub fn gen_multiple_ids_without_source(span: Span) -> Error {
+    Error::new(
+        span,
+        "A Reference<..., MultipleIds> needs `inverse` (a one2many), `relation` (a many2many) or \
+         `compute`: without one, nothing ever fills it",
+    )
+}
+
 pub fn gen_inverse_not_multiple_ids(span: Span) -> Error {
     Error::new(
         span,
