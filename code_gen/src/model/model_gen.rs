@@ -594,10 +594,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             type IntoIter = erp::model::ModelIntoIterator<Self::Item>;
 
             fn into_iter(self) -> Self::IntoIter {
-                erp::model::ModelIntoIterator {
-                    ids: self.id.get_ids_ref().clone().into_iter(),
-                    _phantom_data: Default::default(),
-                }
+                erp::model::ModelIntoIterator::new(self.id.get_ids_ref().clone())
             }
         }
 
@@ -606,10 +603,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             type IntoIter = erp::model::ModelIterator<'a, Self::Item>;
 
             fn into_iter(self) -> Self::IntoIter {
-                erp::model::ModelIterator {
-                    ids: self.id.get_ids_ref().iter(),
-                    _phantom_data: Default::default(),
-                }
+                erp::model::ModelIterator::new(self.id.get_ids_ref())
             }
         }
     };

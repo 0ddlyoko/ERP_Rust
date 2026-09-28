@@ -288,6 +288,35 @@ impl<'mm> Environment<'mm> {
             .collect())
     }
 
+    /// Add to the ids about to be loaded the others of their recordset that miss this field too.
+    ///
+    /// Reading a field of one record of a loop then loads it for the whole recordset in one query,
+    /// instead of one per record. Capped at [`PREFETCH_MAX`], so a huge recordset is loaded in
+    /// batches rather than all at once. Computes are left out: they run as the caller, and working
+    /// out records nobody asked for could refuse what the caller never did.
+    fn with_prefetch<Mode: IdMode>(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        ids: &Mode,
+        mut to_load: MultipleIds,
+    ) -> MultipleIds {
+        let room = PREFETCH_MAX.saturating_sub(to_load.ids.len());
+        if room == 0 || ids.prefetch_ids().len() <= to_load.ids.len() {
+            return to_load;
+        }
+        let asked: HashSet<u32> = to_load.ids.iter().copied().collect();
+        let others: Vec<u32> = self
+            .cache
+            .get_ids_not_in_cache(model_name, field_name, ids.prefetch_ids())
+            .into_iter()
+            .filter(|id| !asked.contains(id))
+            .take(room)
+            .collect();
+        to_load.ids.extend(others);
+        to_load
+    }
+
     /// Ensure given field is in cache for given ids
     ///
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
@@ -322,6 +351,10 @@ impl<'mm> Environment<'mm> {
             }
             if ids_not_in_cache.is_empty() {
                 return Ok(());
+            }
+            if !is_computed_method || model_info.is_stored(field_name) {
+                ids_not_in_cache =
+                    self.with_prefetch(model_name, field_name, ids, ids_not_in_cache);
             }
             if model_info.is_stored(field_name) {
                 // This is a stored field, load it along with all the other stored fields to avoid

@@ -417,6 +417,32 @@ fn test_reading_a_record_outside_the_rule_is_refused() -> Result<()> {
     Ok(())
 }
 
+/// Loading a whole recordset at the first read puts in the cache records the caller may not
+/// read; reading one of them is still refused.
+#[test]
+fn test_a_prefetched_record_is_still_refused() -> Result<()> {
+    let app = new_app()?;
+    let fixture = fixture(
+        &app,
+        Domains {
+            read: Some(r#"[["name", "=", "public"]]"#),
+            ..Domains::default()
+        },
+    )?;
+    let mut env = app.new_env_as(fixture.uid)?;
+    let both: Tag<MultipleIds> = env.sudo().search(&SearchType::Nothing)?;
+
+    let mut refused = Vec::new();
+    for tag in &both {
+        if tag.get_name(&mut env).is_err() {
+            refused.push(tag.get_id());
+        }
+    }
+    assert!(env.cache.is_field_in_cache("tag", "name", &fixture.secret));
+    assert_eq!(refused, vec![fixture.secret]);
+    Ok(())
+}
+
 /// A record that does not exist is not reported as one the caller may not read.
 #[test]
 fn test_a_missing_record_is_not_a_refused_one() -> Result<()> {

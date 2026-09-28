@@ -45,6 +45,12 @@ const MAX_RECOMPUTE_ROUNDS: i32 = 1024;
 /// is a cycle, not a deep call.
 const MAX_CALL_DEPTH: usize = 200;
 
+/// Records loaded along with the one asked for, at most, when reading a field of a recordset.
+///
+/// Enough to turn a loop over a page of records into one query, small enough that a loop over a
+/// whole table does not pull it all into memory at the first read.
+const PREFETCH_MAX: usize = 1000;
+
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub fn make_cache(model_manager: &ModelManager) -> Cache {

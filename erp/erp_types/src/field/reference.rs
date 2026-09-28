@@ -1,9 +1,8 @@
+use crate::field::id::{IdsRefIntoIterator, MultipleIdsIntoIterator};
 use crate::field::{FieldType, IdMode, MultipleIds, SingleId};
 use crate::model::{BaseModel, CommonModel};
 use std::marker::PhantomData;
 use std::ops;
-use std::slice::Iter;
-use std::vec::IntoIter;
 
 #[derive(Default, Debug)]
 pub struct Reference<BM: BaseModel, Mode: IdMode> {
@@ -140,22 +139,22 @@ impl<BM: BaseModel, Mode1: IdMode, Mode2: IdMode> ops::Sub<Reference<BM, Mode1>>
 }
 
 // Iterators
-// TODO Add the original list of ids somewhere to also load data of the other ids if we try to
-//  access to a field from a specific element
 impl<E: BaseModel> IntoIterator for Reference<E, MultipleIds> {
     type Item = Reference<E, SingleId>;
     type IntoIter = ReferenceIntoIterator<E>;
 
     fn into_iter(self) -> Self::IntoIter {
         ReferenceIntoIterator {
-            ids: self.id_mode.ids.into_iter(),
+            ids: self.id_mode.into_iter(),
             _phantom_data: PhantomData,
         }
     }
 }
 
+/// Hands out each record of a reference, every one remembering the others so that reading a
+/// field of one loads it for all.
 pub struct ReferenceIntoIterator<E: BaseModel> {
-    ids: IntoIter<u32>,
+    ids: MultipleIdsIntoIterator,
     _phantom_data: PhantomData<E>,
 }
 
@@ -163,7 +162,10 @@ impl<E: BaseModel> Iterator for ReferenceIntoIterator<E> {
     type Item = Reference<E, SingleId>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.ids.next().map(|id| id.into())
+        self.ids.next().map(|id_mode| Reference {
+            id_mode,
+            _phantom_data: PhantomData,
+        })
     }
 }
 
@@ -173,14 +175,15 @@ impl<'a, E: BaseModel> IntoIterator for &'a Reference<E, MultipleIds> {
 
     fn into_iter(self) -> Self::IntoIter {
         ReferenceIterator {
-            ids: self.id_mode.ids.iter(),
+            ids: IdsRefIntoIterator::new(&self.id_mode.ids),
             _phantom_data: PhantomData,
         }
     }
 }
 
+/// Same as [`ReferenceIntoIterator`], borrowing the reference.
 pub struct ReferenceIterator<'a, E: BaseModel> {
-    ids: Iter<'a, u32>,
+    ids: IdsRefIntoIterator<'a>,
     _phantom_data: PhantomData<E>,
 }
 
@@ -188,6 +191,9 @@ impl<'a, E: BaseModel> Iterator for ReferenceIterator<'a, E> {
     type Item = Reference<E, SingleId>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.ids.next().map(|id| id.into())
+        self.ids.next().map(|id_mode| Reference {
+            id_mode,
+            _phantom_data: PhantomData,
+        })
     }
 }
