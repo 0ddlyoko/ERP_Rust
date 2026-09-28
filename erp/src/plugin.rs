@@ -10,6 +10,7 @@ pub use plugin_manager::PluginManager;
 pub(crate) use record::{installed_version, record_plugin};
 
 use crate::environment::Environment;
+use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
 use std::any::Any;
 use std::error::Error;
@@ -43,6 +44,10 @@ pub trait Plugin: Any + Send + Sync {
 
     /// Register models created in this plugin
     fn init_models(&self, model_manager: &mut ModelManager);
+
+    /// Register the controllers this plugin declares or extends. Called right after
+    /// [`Plugin::init_models`], so a controller extending another finds it already registered.
+    fn init_controllers(&self, _controllers: &mut ControllerRegistry) {}
 
     /// XML documents this plugin ships.
     ///

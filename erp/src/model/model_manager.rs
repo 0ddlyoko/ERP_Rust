@@ -1,4 +1,5 @@
 use crate::access::AccessRules;
+use crate::http::ControllerRegistry;
 use crate::identity::Identities;
 use crate::model::HasMethods;
 use crate::model::Model;
@@ -21,6 +22,7 @@ pub struct ModelManager {
     /// what a plugin contributes about reaching models, not what a model is.
     pub identities: Identities,
     pub access: AccessRules,
+    pub controllers: ControllerRegistry,
     pub(crate) current_plugin_loading: Option<String>,
 }
 

@@ -64,6 +64,36 @@ impl<'mm> Environment<'mm> {
         })
     }
 
+    /// Call a controller method from the top of its chain.
+    ///
+    /// Like [`Environment::call_method`], without records: a controller has none, so the chain
+    /// gets an empty set of ids.
+    pub fn call_controller<A, R>(
+        &mut self,
+        controller: &str,
+        method_name: &str,
+        args: &A,
+    ) -> Result<R>
+    where
+        A: 'static,
+        R: 'static,
+    {
+        let missing = || MethodNotRegistered {
+            model_name: controller.to_string(),
+            method_name: method_name.to_string(),
+        };
+        let chain = self
+            .model_manager
+            .controllers
+            .chain::<A, R>(controller, method_name)
+            .ok_or_else(missing)?;
+        self.enter_call(controller, method_name)?;
+        let ids = MultipleIds::default();
+        let result = Super::head(chain, &ids, args).try_call(self);
+        self.call_stack.pop();
+        result?.ok_or_else(|| missing().into())
+    }
+
     /// Record that a method is running, and refuse to go deeper than the stack can take.
     ///
     /// Checked before pushing, so the reported path is the one that led here rather than one

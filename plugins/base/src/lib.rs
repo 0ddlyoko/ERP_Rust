@@ -1,9 +1,11 @@
 use erp::environment::Environment;
+use erp::http::ControllerRegistry;
 use erp::model::ModelManager;
 use erp::plugin::{Plugin, PluginInfo};
 use erp::types::field::SingleId;
 use std::error::Error;
 
+pub mod controllers;
 pub mod models;
 
 /// Password given to the seeded administrator on a fresh database.
@@ -46,6 +48,10 @@ impl Plugin for BasePlugin {
         model_manager
             .access
             .register(models::AccessRule::<SingleId>::source());
+    }
+
+    fn init_controllers(&self, controllers: &mut ControllerRegistry) {
+        controllers.register::<controllers::Home>();
     }
 
     fn data(&self) -> Vec<&'static str> {

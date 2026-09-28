@@ -1,19 +1,20 @@
-//! The HTTP side of the JSON-RPC interface.
+//! The HTTP side of the JSON-RPC interface and of the controllers.
 //!
-//! Only the transport: turning a request into a response belongs to `erp::jsonrpc`, which knows
-//! nothing about HTTP and is tested without a socket. This carries bytes, decides how many
-//! requests run at once, and nothing else.
+//! Only the transport: turning a request into a response belongs to `erp::jsonrpc` and
+//! `erp::http`, which know nothing about sockets and are tested without one. This carries bytes,
+//! decides how many requests run at once, and nothing else.
 //!
 //! Kept out of `erp` so the core stays free of an async runtime: an embedder, a test or a batch
 //! job uses the ORM without ever pulling in a server.
 
 use axum::Router;
+use axum::body::Bytes;
 use axum::extract::{ConnectInfo, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, Method, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use erp::app::Application;
-use erp::jsonrpc;
+use erp::{http, jsonrpc};
 use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -54,11 +55,13 @@ impl Server {
 
 /// The routes.
 ///
-/// One for now. Work that never reaches the database — a file to move, an answer from memory —
-/// belongs on a route of its own, which is also how it escapes the queue this one waits in.
+/// `/jsonrpc` for the protocol, and everything else for the controllers plugins declare. Work
+/// that never reaches the database — a file to move, an answer from memory — belongs on a route
+/// of its own, which is also how it escapes the queue these wait in.
 pub fn router(server: Arc<Server>) -> Router {
     Router::new()
         .route("/jsonrpc", post(call))
+        .fallback(controller)
         .with_state(server)
 }
 
@@ -185,6 +188,66 @@ async fn call(
     // inside says what happened.
     tracing::info!(
         "{caller} POST /jsonrpc {} {asked} {:.1?}",
+        response.status().as_u16(),
+        started.elapsed(),
+    );
+    response
+}
+
+/// A URL a controller answers, or a 404 saying none does.
+///
+/// Waits in the same queue as the protocol, since answering costs a database connection just the
+/// same, and runs on a thread allowed to block for the same reason.
+async fn controller(
+    State(server): State<Arc<Server>>,
+    ConnectInfo(caller): ConnectInfo<SocketAddr>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let started = Instant::now();
+    let target = uri.path_and_query().map_or_else(
+        || uri.path().to_string(),
+        |target| target.as_str().to_string(),
+    );
+    let mut request = http::Request::new(method.as_str(), &target).with_body(body.to_vec());
+    for (name, value) in &headers {
+        if let Ok(value) = value.to_str() {
+            request = request.with_header(name.as_str(), value);
+        }
+    }
+
+    let Ok(_permit) = Arc::clone(&server.permits).acquire_owned().await else {
+        return (StatusCode::SERVICE_UNAVAILABLE, "shutting down").into_response();
+    };
+    let app = Arc::clone(&server.app);
+    let answer = tokio::task::spawn_blocking(move || http::handle(&app, request)).await;
+
+    let response = match answer {
+        Ok(answer) => {
+            let status =
+                StatusCode::from_u16(answer.status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            let mut response = (status, answer.body().to_vec()).into_response();
+            for (name, value) in answer.headers() {
+                if let (Ok(name), Ok(value)) = (
+                    header::HeaderName::try_from(name.as_str()),
+                    header::HeaderValue::try_from(value.as_str()),
+                ) {
+                    response.headers_mut().insert(name, value);
+                }
+            }
+            response
+        }
+        Err(error) => {
+            tracing::error!(%error, "A controller panicked");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
+        }
+    };
+
+    tracing::info!(
+        "{caller} {method} {} {} {:.1?}",
+        uri.path(),
         response.status().as_u16(),
         started.elapsed(),
     );

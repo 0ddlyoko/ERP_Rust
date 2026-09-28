@@ -646,6 +646,31 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         }
     };
 
+    // A record is its ids: the other fields only ever hold defaults, the values live in the
+    // cache. So cloning one is making another instance on the same ids.
+    let clone_impl = quote! {
+        impl<Mode: erp::types::field::IdMode> Clone for #ident<Mode>
+        where
+            #ident<Mode>: erp::types::model::CommonModel<Mode>,
+        {
+            fn clone(&self) -> Self {
+                <Self as erp::types::model::CommonModel<Mode>>::create_instance(self.id.clone())
+            }
+        }
+    };
+
+    // So a controller argument typed as a record is read from its id.
+    let from_param = quote! {
+        impl erp::http::FromParam for #ident<erp::types::field::SingleId> {
+            fn from_param(
+                env: &mut erp::environment::Environment,
+                raw: Option<String>,
+            ) -> ::core::result::Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+                erp::http::find_record::<Self>(env, raw)
+            }
+        }
+    };
+
     let result = quote! {
         #base_model
 
@@ -656,6 +681,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         #has_methods_impl
 
         #iterator
+
+        #clone_impl
+
+        #from_param
     };
 
     Ok(result)

@@ -103,7 +103,7 @@ pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
     })
 }
 
-fn is_super(arg: &FnArg) -> bool {
+pub(crate) fn is_super(arg: &FnArg) -> bool {
     let FnArg::Typed(PatType { ty, .. }) = arg else {
         return false;
     };
@@ -117,7 +117,7 @@ fn is_super(arg: &FnArg) -> bool {
 }
 
 /// Pull `T` out of a `Result<T>` or `Result<T, E>` return type.
-fn unwrap_result(output: &ReturnType) -> Result<Type> {
+pub(crate) fn unwrap_result(output: &ReturnType) -> Result<Type> {
     let ReturnType::Type(_, ty) = output else {
         return Err(Error::new(
             output.span(),
