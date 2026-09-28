@@ -83,3 +83,23 @@ fn test_load_plugin_with_depend_not_register_should_fail() {
     app.load_plugin("test_plugin3")
         .expect("Plugin should not be loaded");
 }
+
+/// A file in the plugin directory that is not a plugin names itself in the error.
+#[test]
+fn test_a_broken_plugin_file_is_named() -> Result<()> {
+    let directory = std::env::temp_dir().join(format!("erp_broken_plugin_{}", std::process::id()));
+    std::fs::create_dir_all(&directory)?;
+    let path = directory.join(format!("broken.{}", std::env::consts::DLL_EXTENSION));
+    std::fs::write(&path, b"not a library")?;
+
+    let mut manager = erp::plugin::PluginManager::default();
+    let error = manager
+        .register_plugin_from_file(&path)
+        .expect_err("refused");
+    std::fs::remove_dir_all(&directory)?;
+    assert!(
+        error.to_string().contains(&path.display().to_string()),
+        "got {error}"
+    );
+    Ok(())
+}

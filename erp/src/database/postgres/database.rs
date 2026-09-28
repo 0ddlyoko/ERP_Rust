@@ -210,8 +210,8 @@ impl Database for PostgresDatabase {
             let existing = self.existing_constraints(relation)?;
             let target_table = self
                 .tables
-                .get(target_model)
-                .map_or(target_model.as_str(), String::as_str);
+                .get(*target_model)
+                .map_or(*target_model, String::as_str);
             let sides = [
                 (column, model.table_name.as_str()),
                 (target_column, target_table),

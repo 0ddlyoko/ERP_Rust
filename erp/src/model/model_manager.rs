@@ -121,7 +121,9 @@ impl ModelManager {
                     inverse_field: FieldReferenceType::O2M { inverse_field },
                 }) = &field.inverse
                 {
-                    let model_to_modify = fields_to_modify.entry(target_model.clone()).or_default();
+                    let model_to_modify = fields_to_modify
+                        .entry(target_model.to_string())
+                        .or_default();
                     let field_to_modify = model_to_modify.entry(inverse_field.clone()).or_default();
                     field_to_modify.push(field.name.clone());
                 }
@@ -220,7 +222,7 @@ impl ModelManager {
                                         let mut new_final_depends = final_depends.clone();
                                         new_final_depends.reverse();
                                         let vec = fields_to_update
-                                            .entry(target_model.clone())
+                                            .entry(target_model.to_string())
                                             .or_default()
                                             .entry(mirror)
                                             .or_default();
@@ -236,7 +238,7 @@ impl ModelManager {
                                         let mut new_final_depends = final_depends.clone();
                                         new_final_depends.reverse();
                                         let vec = fields_to_update
-                                            .entry(target_model.clone())
+                                            .entry(target_model.to_string())
                                             .or_default()
                                             .entry(inverse_field.clone())
                                             .or_default();

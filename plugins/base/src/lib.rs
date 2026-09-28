@@ -1,6 +1,6 @@
 use erp::environment::Environment;
 use erp::model::ModelManager;
-use erp::plugin::Plugin;
+use erp::plugin::{Plugin, PluginInfo};
 use erp::types::field::SingleId;
 use std::error::Error;
 
@@ -14,6 +14,18 @@ pub struct BasePlugin;
 impl Plugin for BasePlugin {
     fn name(&self) -> String {
         "base".to_string()
+    }
+
+    fn info(&self) -> PluginInfo {
+        PluginInfo {
+            description: Some(
+                "What every application starts from: users, groups, access rights, contacts."
+                    .to_string(),
+            ),
+            category: Some("Technical".to_string()),
+            version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            ..PluginInfo::default()
+        }
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {

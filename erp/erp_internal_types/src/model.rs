@@ -29,6 +29,7 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
     pub methods: MethodRegistry,
+    stored_fields: Vec<String>,
 }
 
 impl FinalInternalModel {
@@ -40,6 +41,7 @@ impl FinalInternalModel {
             models: HashMap::new(),
             fields: HashMap::new(),
             methods: MethodRegistry::default(),
+            stored_fields: Vec::new(),
         }
     }
 
@@ -144,9 +146,7 @@ impl FinalInternalModel {
         self.fields.keys().map(|s| s.as_str()).collect()
     }
 
-    /// Get a vector of difference between all registered fields for this model, and given vector.
-    ///
-    /// Decide which of this model's fields are kept in a column.
+    /// Decide which of this model's fields are kept in a column, and remember the list.
     ///
     /// Once, when every struct contributing to the model has been registered — never per struct.
     /// A struct may mention a field another one computes without repeating the computation, and
@@ -157,6 +157,13 @@ impl FinalInternalModel {
                 .settle_storage()
                 .map_err(|wrong| format!("Model {}: {wrong}", self.name))?;
         }
+        self.stored_fields = self
+            .fields
+            .values()
+            .filter(|field| field.is_stored())
+            .map(|field| field.name.clone())
+            .collect();
+        self.stored_fields.sort_unstable();
         Ok(())
     }
 
@@ -174,21 +181,9 @@ impl FinalInternalModel {
             .collect()
     }
 
-    /// Get a vector of stored fields
-    ///
-    /// TODO Find a way to save this return somewhere, as it should not change when the application
-    ///  is running
+    /// Fields kept in a column, worked out once when storage is settled rather than on each load.
     pub fn get_stored_fields(&self) -> Vec<&str> {
-        self.fields
-            .iter()
-            .filter_map(|(field_name, internal_field)| {
-                if internal_field.is_stored() {
-                    Some(field_name.as_str())
-                } else {
-                    None
-                }
-            })
-            .collect()
+        self.stored_fields.iter().map(String::as_str).collect()
     }
 
     /// Return true if given field is stored.

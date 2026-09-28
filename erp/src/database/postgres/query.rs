@@ -302,7 +302,7 @@ impl QueryBuilder {
         let linked = match &reference.inverse_field {
             FieldReferenceType::M2O { .. } => unreachable!("declined above"),
             FieldReferenceType::O2M { inverse_field } => {
-                let target = model_manager.try_get_model(&reference.target_model)?;
+                let target = model_manager.try_get_model(reference.target_model)?;
                 let inverse = quote_ident(inverse_field);
                 let condition = match right {
                     RightTuple::None => "TRUE".to_string(),

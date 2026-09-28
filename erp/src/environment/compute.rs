@@ -278,34 +278,45 @@ impl<'mm> Environment<'mm> {
         fields: &[&str],
     ) -> Result<()> {
         let final_internal_model = self.model_manager.get_model(model_name);
+        let ids: MultipleIds = ids.get_ids_ref().into();
         // One method may fill several fields, and asking for both would otherwise run it twice.
-        let mut methods: Vec<&str> = Vec::new();
+        let mut plan: Vec<(&'mm str, MultipleIds)> = Vec::new();
         for field in fields {
             if let Some(method) = final_internal_model.compute_method(field)
-                && !methods.contains(&method)
+                && !plan.iter().any(|(planned, _)| *planned == method)
             {
-                methods.push(method);
+                plan.push((method, ids.clone()));
             }
         }
-        if methods.is_empty() {
+        self.call_compute_plan(model_name, plan)
+    }
+
+    /// Run compute methods, each on its own records, as one logical operation.
+    ///
+    /// One savepoint for the whole plan: a link that fails must take the ones before it with it,
+    /// and a savepoint copies the cache, which is worth paying once rather than once per method.
+    pub(super) fn call_compute_plan(
+        &mut self,
+        model_name: &str,
+        plan: Vec<(&'mm str, MultipleIds)>,
+    ) -> Result<()> {
+        if plan.is_empty() {
             return Ok(());
         }
-        let ids: MultipleIds = ids.get_ids_ref().into();
+        let final_internal_model = self.model_manager.get_model(model_name);
         let depth = self.computing.len();
         for (field_name, field) in &final_internal_model.fields {
             if field.is_stored()
                 && let Some(method) = final_internal_model.compute_method(field_name)
-                && methods.contains(&method)
+                && plan.iter().any(|(planned, _)| *planned == method)
             {
                 self.computing
                     .push((model_name.to_string(), field_name.clone()));
             }
         }
-        // One savepoint for the whole chain: a compute is a single logical operation, so a link
-        // that fails must take the ones before it with it.
         let result = self.savepoint(move |env| {
-            for method in methods {
-                env.call_method::<(), ()>(model_name, method, &ids, &())?;
+            for (method, ids) in &plan {
+                env.call_method::<(), ()>(model_name, method, ids, &())?;
             }
             Ok(())
         });

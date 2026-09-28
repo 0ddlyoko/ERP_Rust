@@ -198,26 +198,6 @@ impl From<Vec<&u32>> for MultipleIds {
     }
 }
 
-// TODO Find a way to make it work
-// impl<E> From<E> for MultipleIds
-// where
-//     E: Into<Vec<u32>>,
-// {
-//     fn from(value: E) -> Self {
-//         todo!()
-//     }
-// }
-
-// TODO Find a way to transform an IdMode into a MultipleIds
-// impl<M> From<M> for MultipleIds
-// where
-//     M: Model<MultipleIds>
-// {
-//     fn from(value: M) -> Self {
-//         value.get_id_mode().clone()
-//     }
-// }
-
 impl From<SingleId> for MultipleIds {
     fn from(id: SingleId) -> Self {
         id.get_id().into()

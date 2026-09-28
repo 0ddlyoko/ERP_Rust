@@ -138,9 +138,7 @@ impl FinalInternalField {
                     .append(&mut new_compute.depends.clone());
                 // Remove duplicates
                 let mut seen = HashSet::new();
-                existing_compute
-                    .depends
-                    .retain(|dep| seen.insert(dep.clone()));
+                existing_compute.depends.retain(|dep| seen.insert(*dep));
             } else {
                 self.compute = Some(FieldCompute {
                     method: new_compute.method.clone(),

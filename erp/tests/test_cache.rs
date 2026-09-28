@@ -32,7 +32,7 @@ fn test_get_and_insert_field() {
         .insert_fields(MapOfFields::new(cached_fields), &Update::UpdateIfExists);
 
     // Check if retrieving the field is correct
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(
         cache_field.unwrap(),
@@ -48,7 +48,7 @@ fn test_get_and_insert_field() {
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
     );
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(
         cache_field.unwrap(),
@@ -64,7 +64,7 @@ fn test_get_and_insert_field() {
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
     );
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_1.get_id());
     assert!(cache_field.is_none());
     // Put field back
     cache.insert_field_in_cache(
@@ -81,7 +81,7 @@ fn test_get_and_insert_field() {
         .get_cache_models_mut("sale_order")
         .get_model_or_create(id_2.get_id());
     // Inserting another model shouldn't have modified the other field
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(
         cache_field.unwrap(),
@@ -97,13 +97,13 @@ fn test_get_and_insert_field() {
         &Dirty::UpdateDirty,
         &Update::UpdateIfExists,
     );
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_1.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_1.get_id());
     assert!(cache_field.is_some());
     assert_eq!(
         cache_field.unwrap(),
         &FieldType::String("my_value_2".to_string())
     );
-    let cache_field = cache.get_field_from_cache("sale_order", "my_field", &id_2.get_id());
+    let cache_field = cache.get_field_from_cache("sale_order", "my_field", id_2.get_id());
     assert!(cache_field.is_some());
     assert_eq!(
         cache_field.unwrap(),

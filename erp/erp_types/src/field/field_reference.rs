@@ -1,7 +1,10 @@
+/// Where a relational field points.
+///
+/// `target_model` is a name the model's code declares, so it lives as long as that code — which
+/// the registry never outlives: it is cleared before any plugin library is unloaded.
 #[derive(Clone)]
 pub struct FieldReference {
-    // TODO Use &'static instead of String
-    pub target_model: String,
+    pub target_model: &'static str,
     pub inverse_field: FieldReferenceType,
 }
 

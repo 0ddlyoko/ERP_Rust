@@ -11,7 +11,7 @@ pub struct Cache {
 
 impl Cache {
     /// Check if a given record is present in cache. If CacheModels not found, panic
-    pub fn is_record_present(&self, model_name: &str, id: &u32) -> bool {
+    pub fn is_record_present(&self, model_name: &str, id: u32) -> bool {
         self.get_cache_models(model_name).is_record_present(id)
     }
 
@@ -30,12 +30,11 @@ impl Cache {
     }
 
     /// Get value of given field for given record
-    /// TODO Do not pass a ref to u32
     pub fn get_field_from_cache(
         &self,
         model_name: &str,
         field_name: &str,
-        id: &u32,
+        id: u32,
     ) -> Option<&FieldType> {
         self.cache
             .get(model_name)?
@@ -59,7 +58,7 @@ impl Cache {
 
         let mut result = vec![];
         for id in ids {
-            let cache_model = cache_models.get_model(id);
+            let cache_model = cache_models.get_model(*id);
             if let Some(cache_model) = cache_model {
                 if cache_model.get_field(field_name).is_none() {
                     result.push(*id);
@@ -73,7 +72,7 @@ impl Cache {
     }
 
     /// Check if given record field is present in cache
-    pub fn is_field_in_cache(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
+    pub fn is_field_in_cache(&self, model_name: &str, field_name: &str, id: u32) -> bool {
         self.cache
             .get(model_name)
             .and_then(|cache_models| cache_models.get_model(id))
@@ -115,24 +114,6 @@ impl Cache {
             cache_models.remove_to_recompute(&[field_name], &updated_ids);
         }
         updated_ids
-    }
-
-    /// Insert given fields to the cache.
-    ///
-    /// Update dirty if UpdateDirty is given, and a modification has been done
-    ///
-    /// TODO To remove ?
-    pub fn insert_fields_in_cache(
-        &mut self,
-        model_name: &str,
-        id: u32,
-        field_values: MapOfFields,
-        update_dirty: &Dirty,
-        update_if_exists: &Update,
-    ) {
-        // TODO Allow IdMode as input
-        let cache_models = self.get_cache_models_mut(model_name);
-        cache_models.insert_fields(id, field_values, update_dirty, update_if_exists);
     }
 
     // Dirty
@@ -207,7 +188,7 @@ impl Cache {
 
     // Compute
 
-    pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: &u32) -> bool {
+    pub fn is_field_to_recompute(&self, model_name: &str, field_name: &str, id: u32) -> bool {
         self.cache
             .get(model_name)
             .is_some_and(|cache_models| cache_models.is_to_recompute(field_name, id))

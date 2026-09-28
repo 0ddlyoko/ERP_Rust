@@ -1,20 +1,40 @@
 pub mod errors;
 mod internal_plugin;
 mod plugin_manager;
+mod record;
 
 pub(crate) use internal_plugin::InternalPlugin;
 pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::PluginManager;
+pub(crate) use record::{installed_version, record_plugin};
 
 use crate::environment::Environment;
 use crate::model::ModelManager;
 use std::any::Any;
 use std::error::Error;
 
+/// What a plugin says about itself, recorded in the database for whoever lists plugins.
+///
+/// `version` is the version of the code being loaded; the one last installed is kept beside it,
+/// so a change between the two is what an update looks like.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PluginInfo {
+    pub description: Option<String>,
+    pub author: Option<String>,
+    pub category: Option<String>,
+    pub website: Option<String>,
+    pub version: Option<String>,
+}
+
 pub trait Plugin: Any + Send + Sync {
     /// Get the name of this plugin
     fn name(&self) -> String;
+
+    /// What this plugin says about itself. Nothing, unless it says otherwise.
+    fn info(&self) -> PluginInfo {
+        PluginInfo::default()
+    }
 
     /// Pre-Initialize this plugin
     ///

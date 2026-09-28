@@ -112,7 +112,7 @@ impl<'mm> Environment<'mm> {
         let cache_model = self.cache.get_cache_models(model_name);
         let mut ids_not_in_cache: Vec<u32> = Vec::with_capacity(size);
         for id in ids.get_ids_ref() {
-            if let Some(model) = cache_model.get_model(id) {
+            if let Some(model) = cache_model.get_model(*id) {
                 if let Some(field_value) = model.get_field(field_name) {
                     map_result.insert(*id, (true, field_value.get().cloned()));
                 } else {
@@ -442,7 +442,7 @@ impl<'mm> Environment<'mm> {
                         if let (_, Some(FieldType::Ref(ref_id))) = old_value {
                             // Go to this ref, and remove from the list the current id
                             let current_id = ids[i];
-                            let cache_model = cache_models.get_model_mut(ref_id);
+                            let cache_model = cache_models.get_model_mut(*ref_id);
                             let mut fields_to_remove_from_recompute =
                                 Vec::with_capacity(inverse_fields.len());
                             // If this target is not in cache, we do nothing
@@ -491,7 +491,7 @@ impl<'mm> Environment<'mm> {
                             Vec::with_capacity(inverse_fields.len());
 
                         // We only modify if the target model is present in cache
-                        if let Some(cache_model) = cache_models.get_model_mut(&new_id) {
+                        if let Some(cache_model) = cache_models.get_model_mut(new_id) {
                             for inverse_field in inverse_fields {
                                 let cache_field = cache_model.get_field_mut(inverse_field);
                                 // If this field is not in cache, we do nothing

@@ -38,7 +38,6 @@ impl<'mm> Environment<'mm> {
         model_name: &str,
         fields: &Vec<&LeftTuple>,
     ) -> Result<HashMap<&'mm str, Vec<&'mm str>>> {
-        // TODO Save this result somewhere to avoid recomputing it again
         let mut fields_to_save: HashMap<&str, HashSet<&str>> = HashMap::new();
         let model = self.model_manager.try_get_model(model_name)?;
         for field in fields {

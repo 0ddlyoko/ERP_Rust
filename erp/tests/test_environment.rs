@@ -308,10 +308,10 @@ fn test_get_record() -> Result<()> {
     );
     let price_cache_record = env
         .cache
-        .get_field_from_cache("sale_order_line", "price", &id);
+        .get_field_from_cache("sale_order_line", "price", id);
     let amount_cache_record = env
         .cache
-        .get_field_from_cache("sale_order_line", "amount", &id);
+        .get_field_from_cache("sale_order_line", "amount", id);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -319,7 +319,7 @@ fn test_get_record() -> Result<()> {
     assert_eq!(*price_cache_record, FieldType::Integer(42));
     assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&id);
+    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(id);
     assert!(dirty_fields.is_some());
     // We should have "total_price" as a dirty field, as this field hasn't been saved in the database
     assert_eq!(dirty_fields.unwrap().len(), 1);
@@ -332,10 +332,10 @@ fn test_get_record() -> Result<()> {
 
     let price_cache_record = env
         .cache
-        .get_field_from_cache("sale_order_line", "price", &id);
+        .get_field_from_cache("sale_order_line", "price", id);
     let amount_cache_record = env
         .cache
-        .get_field_from_cache("sale_order_line", "amount", &id);
+        .get_field_from_cache("sale_order_line", "amount", id);
     assert!(price_cache_record.is_some());
     assert!(amount_cache_record.is_some());
     let price_cache_record = price_cache_record.unwrap();
@@ -343,14 +343,14 @@ fn test_get_record() -> Result<()> {
     assert_eq!(*price_cache_record, FieldType::Integer(50));
     assert_eq!(*amount_cache_record, FieldType::Integer(10));
     // Price has been modified, it should be dirty
-    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(&id);
+    let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(id);
     assert!(dirty_fields.is_some());
     let dirty_fields = dirty_fields.unwrap();
     assert_eq!(dirty_fields.len(), 1);
     assert!(dirty_fields.contains(&"price".to_string()));
     let cache_models = env.cache.get_cache_models_mut("sale_order_line");
-    assert!(cache_models.get_model(&id).is_some());
-    let dirty_fields = cache_models.get_dirty(&id);
+    assert!(cache_models.get_model(id).is_some());
+    let dirty_fields = cache_models.get_dirty(id);
     assert!(dirty_fields.is_some());
     assert!(
         dirty_fields
@@ -361,7 +361,7 @@ fn test_get_record() -> Result<()> {
 
     // Clear dirty
     cache_models.clear_dirty(&[id]);
-    assert!(cache_models.get_dirty(&id).is_none());
+    assert!(cache_models.get_dirty(id).is_none());
 
     Ok(())
 }
@@ -379,13 +379,16 @@ fn test_get_record_from_xxx() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_fields_in_cache(
-        "sale_order",
-        1,
-        map,
-        &Dirty::NotUpdateDirty,
-        &Update::UpdateIfExists,
-    );
+    for (field, value) in map.fields {
+        env.cache.insert_field_in_cache(
+            "sale_order",
+            &field,
+            &[1],
+            value,
+            &Dirty::NotUpdateDirty,
+            &Update::UpdateIfExists,
+        );
+    }
 
     // Get the record
     let sale_order = env.get_record::<SaleOrder<_>, _>(1.into());
@@ -418,7 +421,7 @@ fn test_compute_method() -> Result<()> {
     sale_order_line.set_price(50, &mut env)?;
     let cache_value = env
         .cache
-        .get_field_from_cache("sale_order_line", "total_price", &id);
+        .get_field_from_cache("sale_order_line", "total_price", id);
     assert!(cache_value.is_some());
     assert_eq!(
         cache_value.unwrap(),
@@ -479,7 +482,7 @@ fn test_save_fields_to_db() -> Result<()> {
     assert!(
         !env.cache
             .get_cache_models("sale_order")
-            .is_field_dirty("name", &id)
+            .is_field_dirty("name", id)
     );
 
     // Changing the name should set this field as dirty
@@ -489,36 +492,36 @@ fn test_save_fields_to_db() -> Result<()> {
     assert!(
         env.cache
             .get_cache_models("sale_order")
-            .is_field_dirty("name", &id)
+            .is_field_dirty("name", id)
     );
     assert!(
         env.cache
             .get_cache_models("sale_order")
-            .is_field_dirty("state", &id)
+            .is_field_dirty("state", id)
     );
     assert!(
         env.cache
             .get_cache_models("sale_order")
-            .is_field_dirty("total_price", &id)
+            .is_field_dirty("total_price", id)
     );
     // To Recompute shouldn't be set for those fields
-    assert!(!env.cache.is_field_to_recompute("sale_order", "name", &id));
-    assert!(!env.cache.is_field_to_recompute("sale_order", "state", &id));
+    assert!(!env.cache.is_field_to_recompute("sale_order", "name", id));
+    assert!(!env.cache.is_field_to_recompute("sale_order", "state", id));
     // Neither for total_price, as we fixed a value before
     assert!(
         !env.cache
-            .is_field_to_recompute("sale_order", "total_price", &id)
+            .is_field_to_recompute("sale_order", "total_price", id)
     );
 
     // Calling save_records_to_db should save given records to db, and so only those records should not be dirty anymore
     env.save_fields_to_db("sale_order", &["name", "state"])?;
     let cache_models = env.cache.get_cache_models("sale_order");
-    assert!(!cache_models.is_field_dirty("name", &id));
-    assert!(!cache_models.is_field_dirty("state", &id));
-    assert!(cache_models.is_field_dirty("total_price", &id));
+    assert!(!cache_models.is_field_dirty("name", id));
+    assert!(!cache_models.is_field_dirty("state", id));
+    assert!(cache_models.is_field_dirty("total_price", id));
 
     // Those fields should be kept in cache
-    let cache_model = cache_models.get_model(&id);
+    let cache_model = cache_models.get_model(id);
     assert!(cache_model.is_some());
     let cache_model = cache_model.unwrap();
     assert!(cache_model.get_field("name").is_some());

@@ -159,7 +159,7 @@ fn test_saving_a_one2many_saves_its_many2one() -> Result<()> {
     let dirty = |env: &erp::environment::Environment| {
         env.cache
             .get_cache_models("skiff")
-            .get_dirty(&skiff.get_id())
+            .get_dirty(skiff.get_id())
             .is_some_and(|dirty| dirty.contains("dock"))
     };
     assert!(dirty(&env), "written in the cache only");

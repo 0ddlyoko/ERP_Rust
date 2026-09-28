@@ -180,7 +180,7 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
                 }
                 let model = env.model_manager.try_get_model(&current)?;
                 match &model.try_get_internal_field(segment)?.inverse {
-                    Some(reference) => current = reference.target_model.clone(),
+                    Some(reference) => current = reference.target_model.to_string(),
                     None => break,
                 }
             }

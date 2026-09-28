@@ -152,6 +152,7 @@ impl<'mm> Environment<'mm> {
         ids: &Mode,
         fields: &[&str],
     ) -> Result<Vec<MapOfFields>> {
+        self.ensure_all_in_cache(model_name, fields, ids)?;
         let mut result: Vec<MapOfFields> = ids
             .get_ids_ref()
             .iter()
@@ -225,7 +226,7 @@ impl<'mm> Environment<'mm> {
             }
             match &field.inverse {
                 Some(reference) => {
-                    model = self.model_manager.try_get_model(&reference.target_model)?;
+                    model = self.model_manager.try_get_model(reference.target_model)?;
                 }
                 None => break,
             }
@@ -250,7 +251,7 @@ impl<'mm> Environment<'mm> {
         self.ensure_fields_in_cache(model_name, field_name, id)?;
         Ok(self
             .cache
-            .get_field_from_cache(model_name, field_name, &id.get_id()))
+            .get_field_from_cache(model_name, field_name, id.get_id()))
     }
 
     /// Same as [`Environment::get_field_value`], for several records.
@@ -280,7 +281,7 @@ impl<'mm> Environment<'mm> {
         Ok(ids
             .get_ids_ref()
             .iter()
-            .map(|id| self.cache.get_field_from_cache(model_name, field_name, id))
+            .map(|id| self.cache.get_field_from_cache(model_name, field_name, *id))
             .collect())
     }
 
@@ -313,6 +314,58 @@ impl<'mm> Environment<'mm> {
         to_load
     }
 
+    /// Bring several fields of the same records into the cache.
+    ///
+    /// The computes they need are gathered first — each method on the records that need it — and
+    /// run as one plan, so reading several computed fields pays for one savepoint rather than one
+    /// per field. What is left is loaded field by field.
+    pub(super) fn ensure_all_in_cache<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        fields: &[&str],
+        ids: &Mode,
+    ) -> Result<()> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        let ids_ref = ids.get_ids_ref();
+        let mut plan: Vec<(&'mm str, HashSet<u32>)> = Vec::new();
+        for field in fields {
+            if *field == "id" {
+                continue;
+            }
+            model.try_get_internal_field(field)?;
+            let Some(method) = model.compute_method(field) else {
+                continue;
+            };
+            let mut needed = self.cache.get_ids_to_recompute(model_name, field, ids_ref);
+            if !model.is_stored(field) {
+                needed.extend(self.cache.get_ids_not_in_cache(model_name, field, ids_ref));
+            }
+            if needed.is_empty() {
+                continue;
+            }
+            match plan.iter_mut().find(|(planned, _)| *planned == method) {
+                Some((_, planned_ids)) => planned_ids.extend(needed),
+                None => plan.push((method, needed.into_iter().collect())),
+            }
+        }
+        let plan = plan
+            .into_iter()
+            .map(|(method, ids)| {
+                let mut ids: Vec<u32> = ids.into_iter().collect();
+                ids.sort_unstable();
+                (method, MultipleIds::from(ids))
+            })
+            .collect();
+        self.call_compute_plan(model_name, plan)?;
+
+        for field in fields {
+            if *field != "id" {
+                self.ensure_fields_in_cache(model_name, field, ids)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Ensure given field is in cache for given ids
     ///
     /// If some ids are invalid or need to be loaded, load them (or compute them if needed)
@@ -324,7 +377,6 @@ impl<'mm> Environment<'mm> {
         field_name: &str,
         ids: &Mode,
     ) -> Result<()> {
-        // TODO Allow to pass a list of fields
         let ids_ref = ids.get_ids_ref();
         let mut ids_not_in_cache: MultipleIds = self
             .cache
@@ -367,11 +419,11 @@ impl<'mm> Environment<'mm> {
             {
                 // Both sides may hold unwritten pairs, so they reach the relation table before it
                 // is read back.
-                let target_model = target_model.clone();
+                let target_model = *target_model;
                 let relation = relation.clone();
                 self.save_relations_to_db(model_name, &[field_name])?;
-                if let Some(mirror) = self.mirror_of_relation(&target_model, &relation) {
-                    self.save_relations_to_db(&target_model, &[&mirror])?;
+                if let Some(mirror) = self.mirror_of_relation(target_model, &relation) {
+                    self.save_relations_to_db(target_model, &[&mirror])?;
                 }
 
                 let model_info = self.model_manager.try_get_model(model_name)?;

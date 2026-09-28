@@ -32,13 +32,16 @@ fn test_savepoint_rollback() -> Result<()> {
     let mut map: MapOfFields = MapOfFields::default();
     env.fill_default_values_on_map("sale_order", &mut map);
 
-    env.cache.insert_fields_in_cache(
-        "sale_order",
-        1,
-        map,
-        &Dirty::NotUpdateDirty,
-        &Update::UpdateIfExists,
-    );
+    for (field, value) in map.fields {
+        env.cache.insert_field_in_cache(
+            "sale_order",
+            &field,
+            &[1],
+            value,
+            &Dirty::NotUpdateDirty,
+            &Update::UpdateIfExists,
+        );
+    }
 
     let sale_order_line: SaleOrder<SingleId> = env.get_record(1.into());
     let _result: Result<()> = env.savepoint(|env| {
@@ -75,5 +78,46 @@ fn test_savepoint_rollback() -> Result<()> {
     assert_eq!(sale_order_line.get_name(&mut env)?, "1ddlyoko");
     assert_eq!(*sale_order_line.get_total_price(&mut env)?, 420);
 
+    Ok(())
+}
+
+/// The in-memory database says which refusal it is, not only in words.
+#[test]
+fn test_the_in_memory_database_types_its_refusals() -> Result<()> {
+    use erp::database::Database;
+    use erp::database::cache::CacheDatabaseError;
+
+    let app = Application::new_test();
+    let mut database = app.create_new_database()?;
+    let refusal = |error: Box<dyn Error + Send + Sync>| {
+        error
+            .downcast_ref::<CacheDatabaseError>()
+            .cloned()
+            .expect("a typed refusal")
+    };
+
+    assert_eq!(
+        refusal(database.savepoint_commit("svp_a").unwrap_err()),
+        CacheDatabaseError::MissingSavepoint {
+            name: "svp_a".to_string(),
+            operation: "commit",
+        }
+    );
+    database.start_transaction()?;
+    database.savepoint("svp_a")?;
+    database.savepoint("svp_b")?;
+    assert_eq!(
+        refusal(database.savepoint_rollback("svp_a").unwrap_err()),
+        CacheDatabaseError::NotTheLastSavepoint {
+            name: "svp_a".to_string(),
+        }
+    );
+    database.commit_transaction()?;
+    assert_eq!(
+        refusal(database.commit_transaction().unwrap_err()),
+        CacheDatabaseError::NoTransaction {
+            operation: "commit"
+        }
+    );
     Ok(())
 }

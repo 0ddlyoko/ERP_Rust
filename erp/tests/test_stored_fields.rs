@@ -836,3 +836,96 @@ fn test_a_dependency_cannot_cross_a_computed_list() {
         .register_model::<through_a_list::Convoy<_>>();
     app.model_manager.post_register();
 }
+
+mod counted_computes {
+    use code_gen::{Model, erp_methods};
+    use erp::environment::Environment;
+    use erp::types::field::{IdMode, MultipleIds};
+    use std::error::Error;
+    use std::sync::Mutex;
+
+    pub static RUNS: Mutex<Vec<(&'static str, Vec<u32>)>> = Mutex::new(Vec::new());
+
+    #[derive(Model)]
+    #[erp(id = "gauge", methods)]
+    #[allow(dead_code)]
+    pub struct Gauge<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(default = 0)]
+        level: i32,
+        #[erp(compute = "compute_double", depends = ["level"], stored)]
+        double: i32,
+        #[erp(compute = "compute_label", depends = ["level"])]
+        label: String,
+    }
+
+    #[erp_methods]
+    impl Gauge<MultipleIds> {
+        pub fn compute_double(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            RUNS.lock().unwrap().push(("double", self.get_ids()));
+            for gauge in self {
+                let level = *gauge.get_level(env)?;
+                gauge.set_double(level * 2, env)?;
+            }
+            Ok(())
+        }
+
+        pub fn compute_label(
+            &self,
+            env: &mut Environment,
+        ) -> Result<(), Box<dyn Error + Send + Sync>> {
+            RUNS.lock().unwrap().push(("label", self.get_ids()));
+            for gauge in self {
+                let level = *gauge.get_level(env)?;
+                gauge.set_label(format!("level {level}"), env)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Reading several computed fields runs each compute once, on the records that need it: every
+/// record for a value worked out on each read, only the changed ones for a kept value.
+#[test]
+fn test_reading_several_computed_fields_plans_their_computes() -> Result<()> {
+    use counted_computes::{Gauge, RUNS};
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<Gauge<_>>();
+    app.model_manager.post_register();
+
+    let mut env = app.new_env()?;
+    let ids: Vec<u32> = (1..=3)
+        .map(|level| {
+            let mut map = MapOfFields::default();
+            map.insert("level", level);
+            Ok(env.create_records("gauge", vec![map])?.get_ids_ref()[0])
+        })
+        .collect::<Result<_>>()?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let changed: Gauge<SingleId> = env.get_record(ids[1].into());
+    changed.set_level(10, &mut env)?;
+    RUNS.lock().unwrap().clear();
+
+    let rows = env.read(
+        "gauge",
+        &MultipleIds::from(ids.clone()),
+        &["double", "label"],
+    )?;
+    let doubles: Vec<i32> = rows.iter().map(|row| *row.get::<&i32>("double")).collect();
+    let labels: Vec<String> = rows
+        .iter()
+        .map(|row| row.get::<&String>("label").clone())
+        .collect();
+    assert_eq!(doubles, vec![2, 20, 6]);
+    assert_eq!(labels, vec!["level 1", "level 10", "level 3"]);
+
+    let mut runs = RUNS.lock().unwrap().clone();
+    runs.sort();
+    assert_eq!(runs, vec![("double", vec![ids[1]]), ("label", ids.clone())]);
+    Ok(())
+}

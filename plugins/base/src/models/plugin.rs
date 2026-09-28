@@ -39,7 +39,8 @@ pub struct Plugin<Mode: IdMode> {
     website: Option<String>,
     url: Option<String>,
     state: PluginState,
-    // TODO Add plugin category
-    // TODO Add author
-    // TODO Add version (installed, latest, ...) + auto update if new version
+    category: Option<String>,
+    author: Option<String>,
+    installed_version: Option<String>,
+    latest_version: Option<String>,
 }

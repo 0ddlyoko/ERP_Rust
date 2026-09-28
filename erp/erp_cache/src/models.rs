@@ -38,16 +38,16 @@ impl CacheModels {
 
     // Cache methods
 
-    pub fn is_record_present(&self, id: &u32) -> bool {
-        self.models.contains_key(id)
+    pub fn is_record_present(&self, id: u32) -> bool {
+        self.models.contains_key(&id)
     }
 
-    pub fn get_model(&self, id: &u32) -> Option<&CacheModel> {
-        self.models.get(id)
+    pub fn get_model(&self, id: u32) -> Option<&CacheModel> {
+        self.models.get(&id)
     }
 
-    pub fn get_model_mut(&mut self, id: &u32) -> Option<&mut CacheModel> {
-        self.models.get_mut(id)
+    pub fn get_model_mut(&mut self, id: u32) -> Option<&mut CacheModel> {
+        self.models.get_mut(&id)
     }
 
     pub fn get_model_or_create(&mut self, id: u32) -> &mut CacheModel {
@@ -72,20 +72,6 @@ impl CacheModels {
             self.add_dirty(id, vec![field_name.to_string()]);
         }
         is_some
-    }
-
-    pub fn insert_fields(
-        &mut self,
-        id: u32,
-        field_values: MapOfFields,
-        update_dirty: &Dirty,
-        update_if_exists: &Update,
-    ) {
-        let cache_model = self.get_model_or_create(id);
-        let dirty_fields = cache_model.insert_fields(field_values, update_if_exists);
-        if matches!(update_dirty, Dirty::UpdateDirty) && !dirty_fields.is_empty() {
-            self.add_dirty(id, dirty_fields);
-        }
     }
 
     // Dirty methods
@@ -114,7 +100,7 @@ impl CacheModels {
     {
         let mut result: HashMap<u32, MapOfFields> = HashMap::new();
         for id in ids {
-            if let Some(cache_model) = self.get_model(id)
+            if let Some(cache_model) = self.get_model(*id)
                 && let Some(dirty_fields) = self.dirty.get(id)
             {
                 let map: HashMap<String, Option<FieldType>> = dirty_fields
@@ -145,7 +131,7 @@ impl CacheModels {
     {
         let mut result: HashMap<u32, MapOfFields> = HashMap::new();
         for (id, dirty_fields) in &self.dirty {
-            if let Some(cache_model) = self.get_model(id) {
+            if let Some(cache_model) = self.get_model(*id) {
                 let map: HashMap<String, Option<FieldType>> = dirty_fields
                     .iter()
                     .filter_map(|dirty_field| {
@@ -171,18 +157,18 @@ impl CacheModels {
         self.dirty.entry(id).or_default().extend(fields);
     }
 
-    pub fn is_dirty(&self, id: &u32) -> bool {
-        self.dirty.contains_key(id)
+    pub fn is_dirty(&self, id: u32) -> bool {
+        self.dirty.contains_key(&id)
     }
 
-    pub fn is_field_dirty(&self, field_name: &str, id: &u32) -> bool {
+    pub fn is_field_dirty(&self, field_name: &str, id: u32) -> bool {
         self.dirty
-            .get(id)
+            .get(&id)
             .is_some_and(|d| d.iter().any(|f| f == field_name))
     }
 
-    pub fn get_dirty(&self, id: &u32) -> Option<&HashSet<String>> {
-        self.dirty.get(id)
+    pub fn get_dirty(&self, id: u32) -> Option<&HashSet<String>> {
+        self.dirty.get(&id)
     }
 
     pub fn clear_all_dirty(&mut self) {
@@ -258,9 +244,9 @@ impl CacheModels {
         }
     }
 
-    pub fn is_to_recompute(&self, field_name: &str, id: &u32) -> bool {
+    pub fn is_to_recompute(&self, field_name: &str, id: u32) -> bool {
         self.get_to_recompute(field_name)
-            .is_some_and(|set| set.contains(id))
+            .is_some_and(|set| set.contains(&id))
     }
 
     pub fn get_to_recompute(&self, field_name: &str) -> Option<&HashSet<u32>> {

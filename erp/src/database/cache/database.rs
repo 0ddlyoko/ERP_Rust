@@ -1,4 +1,4 @@
-use crate::database::cache::{Row, Table};
+use crate::database::cache::{CacheDatabaseError, Row, Table};
 use crate::database::{Database, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
@@ -307,10 +307,9 @@ impl CacheConnection {
             SearchOperator::Equal | SearchOperator::In => false,
             SearchOperator::NotEqual | SearchOperator::NotIn => true,
             _ => {
-                return Err(format!(
-                    "Operator {operator:?} does not apply to a relation as a whole; compare a \
-                     field through it instead"
-                )
+                return Err(CacheDatabaseError::OperatorOnRelation {
+                    operator: format!("{operator:?}"),
+                }
                 .into());
             }
         };
@@ -326,7 +325,7 @@ impl CacheConnection {
         match &reference.inverse_field {
             FieldReferenceType::M2O { .. } => return Ok(None),
             FieldReferenceType::O2M { inverse_field } => {
-                let Some(table) = self.tables.get(&reference.target_model) else {
+                let Some(table) = self.tables.get(reference.target_model) else {
                     return Ok(Some(if negated {
                         self._all_rows(model_name)
                     } else {
@@ -656,7 +655,6 @@ impl Database for CacheConnection {
     }
 
     fn savepoint_commit(&mut self, name: &str) -> Result<()> {
-        // TODO Create real errors
         match self.savepoints.last() {
             Some(Savepoint {
                 name: Some(last), ..
@@ -664,8 +662,15 @@ impl Database for CacheConnection {
                 self.savepoints.pop();
                 Ok(())
             }
-            Some(_) => Err(format!("Last savepoint is not {name}").into()),
-            None => Err("Cannot commit a missing savepoint".into()),
+            Some(_) => Err(CacheDatabaseError::NotTheLastSavepoint {
+                name: name.to_string(),
+            }
+            .into()),
+            None => Err(CacheDatabaseError::MissingSavepoint {
+                name: name.to_string(),
+                operation: "commit",
+            }
+            .into()),
         }
     }
 
@@ -679,8 +684,15 @@ impl Database for CacheConnection {
                 self.written_rows = savepoint.written_rows;
                 Ok(())
             }
-            Some(_) => Err(format!("Last savepoint is not {name}").into()),
-            None => Err("Cannot roll back a missing savepoint".into()),
+            Some(_) => Err(CacheDatabaseError::NotTheLastSavepoint {
+                name: name.to_string(),
+            }
+            .into()),
+            None => Err(CacheDatabaseError::MissingSavepoint {
+                name: name.to_string(),
+                operation: "roll back",
+            }
+            .into()),
         }
     }
 
@@ -705,7 +717,10 @@ impl Database for CacheConnection {
                 return Ok(());
             }
         }
-        Err("No transaction to commit".into())
+        Err(CacheDatabaseError::NoTransaction {
+            operation: "commit",
+        }
+        .into())
     }
 
     fn rollback_transaction(&mut self) -> Result<()> {
@@ -716,7 +731,10 @@ impl Database for CacheConnection {
                 return Ok(());
             }
         }
-        Err("No transaction to roll back".into())
+        Err(CacheDatabaseError::NoTransaction {
+            operation: "roll back",
+        }
+        .into())
     }
 }
 

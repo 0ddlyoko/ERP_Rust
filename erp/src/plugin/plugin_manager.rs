@@ -1,6 +1,6 @@
 use crate::plugin::InternalPluginState::{Installed, NotInstalled};
 use crate::plugin::Plugin;
-use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginNotFoundError};
+use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginLoadError, PluginNotFoundError};
 use crate::plugin::{InternalPlugin, InternalPluginType};
 use crate::util::dependency;
 use libloading::{Error, Library, Symbol};
@@ -81,8 +81,11 @@ impl PluginManager {
         &mut self,
         plugin_path: &PathBuf,
     ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
-        // TODO Add a custom exception here with the path, if error
-        let internal_plugin = unsafe { read_plugin_from_file(plugin_path)? };
+        let internal_plugin =
+            unsafe { read_plugin_from_file(plugin_path) }.map_err(|source| PluginLoadError {
+                path: plugin_path.clone(),
+                source,
+            })?;
 
         let plugin_name = internal_plugin.plugin.name();
         tracing::info!(plugin = %plugin_name, "Registering plugin");

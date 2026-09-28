@@ -40,7 +40,7 @@ fn tags(app: &Application, count: usize) -> Result<Vec<u32>> {
 
 fn cached(env: &Environment, model_name: &str, field_name: &str, ids: &[u32]) -> usize {
     ids.iter()
-        .filter(|id| env.cache.is_field_in_cache(model_name, field_name, id))
+        .filter(|id| env.cache.is_field_in_cache(model_name, field_name, **id))
         .count()
 }
 

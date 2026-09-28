@@ -7,6 +7,5 @@ pub struct FieldCompute {
     /// field has to name the same one, or the field would have two chains and only one of them
     /// would ever run.
     pub method: String,
-    // TODO Use &'static instead of String
-    pub depends: Vec<String>,
+    pub depends: Vec<&'static str>,
 }

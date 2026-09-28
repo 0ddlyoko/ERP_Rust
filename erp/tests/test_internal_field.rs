@@ -23,7 +23,7 @@ fn test_register_field() {
         asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
-            depends: vec!["age".to_string(), "test".to_string()],
+            depends: vec!["age", "test"],
         }),
         field_ref: None,
     });
@@ -101,7 +101,7 @@ fn test_register_field() {
         asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
-            depends: vec!["age".to_string(), "test2".to_string()],
+            depends: vec!["age", "test2"],
         }),
         field_ref: None,
     });
@@ -134,7 +134,7 @@ fn test_register_field() {
         asks_for_storage: false,
         compute: Some(FieldCompute {
             method: "compute_it".to_string(),
-            depends: vec!["age".to_string()],
+            depends: vec!["age"],
         }),
         field_ref: None,
     });

@@ -1,4 +1,4 @@
-use erp::app::Application;
+use erp::app::{Application, DataUpdate};
 use erp::config::Config;
 use std::error::Error;
 use tracing_subscriber::EnvFilter;
@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let config = Config::try_default()?;
     let mut app = Application::new(config);
+    app.set_data_update(DataUpdate::from_args(std::env::args().skip(1))?);
     app.load()?;
 
     tracing::info!(

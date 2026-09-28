@@ -12,6 +12,64 @@ use std::sync::OnceLock;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+/// Which installed plugins have their data loaded again although their version did not change.
+///
+/// A plugin's data is loaded when it is installed and when its version changes; asking for an
+/// update is how a change made without bumping the version reaches the database.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum DataUpdate {
+    #[default]
+    Nothing,
+    All,
+    Only(Vec<String>),
+}
+
+impl DataUpdate {
+    /// Read `-u`/`--update` from the command line: `all`, or plugin names separated by commas.
+    ///
+    /// Anything else is refused rather than ignored, so a mistyped flag is not an update that
+    /// silently did not happen.
+    pub fn from_args(args: impl IntoIterator<Item = String>) -> Result<Self> {
+        let usage = "Usage: [-u|--update all|<plugin>[,<plugin>...]]";
+        let mut update = DataUpdate::Nothing;
+        let mut args = args.into_iter();
+        while let Some(arg) = args.next() {
+            let value = match arg.as_str() {
+                "-u" | "--update" => args
+                    .next()
+                    .ok_or_else(|| format!("{arg} needs a value. {usage}"))?,
+                _ => match arg.strip_prefix("--update=") {
+                    Some(value) => value.to_string(),
+                    None => return Err(format!("Unknown argument {arg}. {usage}").into()),
+                },
+            };
+            let names: Vec<String> = value
+                .split(',')
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(str::to_string)
+                .collect();
+            update = match (update, names.iter().any(|name| name == "all")) {
+                (DataUpdate::All, _) | (_, true) => DataUpdate::All,
+                (DataUpdate::Only(mut before), false) => {
+                    before.extend(names);
+                    DataUpdate::Only(before)
+                }
+                (DataUpdate::Nothing, false) => DataUpdate::Only(names),
+            };
+        }
+        Ok(update)
+    }
+
+    fn includes(&self, plugin_name: &str) -> bool {
+        match self {
+            DataUpdate::Nothing => false,
+            DataUpdate::All => true,
+            DataUpdate::Only(names) => names.iter().any(|name| name == plugin_name),
+        }
+    }
+}
+
 pub struct Application {
     config: Config,
     pub model_manager: ModelManager,
@@ -21,6 +79,7 @@ pub struct Application {
     /// Opened on first use rather than at construction, so an application that never reaches the
     /// database — a test, a `--help` — never tries to.
     pool: OnceLock<ConnectionPool>,
+    data_update: DataUpdate,
 }
 
 impl Application {
@@ -33,6 +92,7 @@ impl Application {
             is_test: false,
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
+            data_update: DataUpdate::default(),
         }
     }
 
@@ -48,6 +108,7 @@ impl Application {
             is_test: true,
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
+            data_update: DataUpdate::default(),
         }
     }
 
@@ -117,8 +178,40 @@ impl Application {
         self.register_plugins()?;
         self.initialize_db()?;
         self.load_base_plugin()?;
+        self.record_registered_plugins()?;
         self.load_plugins()?;
+        if let DataUpdate::Only(names) = &self.data_update {
+            for name in names {
+                if !self.plugin_manager.is_installed(name) {
+                    return Err(format!("Cannot update {name}: it is not installed").into());
+                }
+            }
+        }
         Ok(())
+    }
+
+    /// Say which plugins get their data loaded again at the next load, whatever their version.
+    pub fn set_data_update(&mut self, update: DataUpdate) {
+        self.data_update = update;
+    }
+
+    /// Record every registered plugin that is not loaded, so the database lists what could be
+    /// installed as well as what is.
+    ///
+    /// A row already saying installed keeps saying so: the plugin is loaded right after, and
+    /// knowing it again is not uninstalling it.
+    pub fn record_registered_plugins(&mut self) -> Result<()> {
+        let mut env = Environment::new(
+            &self.model_manager,
+            &self.config.server,
+            self.create_new_database()?,
+        )?;
+        for (name, plugin) in &self.plugin_manager.plugins {
+            if plugin.state != Installed {
+                crate::plugin::record_plugin(&mut env, name, &plugin.plugin.info(), false)?;
+            }
+        }
+        env.close()
     }
 
     fn register_plugins(&mut self) -> Result<()> {
@@ -186,6 +279,7 @@ impl Application {
         if plugin.state == Installed {
             return Ok(());
         }
+        let update_asked = self.data_update.includes(plugin_name);
         let depends: Vec<_> = plugin.depends.to_vec();
         for depend in depends {
             self._load_plugin(depend.as_str())?;
@@ -233,19 +327,22 @@ impl Application {
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the
         // time its code runs.
         let data = plugin.data();
+        let info = plugin.info();
         let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
         env.savepoint(|env| {
             for (model_name, field_name) in &to_fill {
                 env.fill_stored_field(model_name, field_name)?;
             }
-            for document in &data {
-                crate::data::load(env, plugin_name, document)?;
+            if should_load_data(env, plugin_name, &info, update_asked)? {
+                for document in &data {
+                    crate::data::load(env, plugin_name, document)?;
+                }
             }
             plugin.post_init(env)?;
-            match env.model_manager.access.source().map(|source| source.check) {
-                Some(check) => check(env),
-                None => Ok(()),
+            if let Some(check) = env.model_manager.access.source().map(|source| source.check) {
+                check(env)?;
             }
+            crate::plugin::record_plugin(env, plugin_name, &info, true)
         })?;
         env.close()?;
 
@@ -291,4 +388,29 @@ impl Application {
             Some(uid),
         )
     }
+}
+
+/// Whether a plugin's data files are loaded this time.
+///
+/// On install, when the version changed since it was installed, and when an update was asked
+/// for; otherwise the database already holds what the files say, and loading them again would
+/// only overwrite what users changed since. The schema and `post_init` run either way: they
+/// follow the code, not the data.
+fn should_load_data(
+    env: &mut Environment,
+    plugin_name: &str,
+    info: &crate::plugin::PluginInfo,
+    update_asked: bool,
+) -> Result<bool> {
+    let reason = match crate::plugin::installed_version(env, plugin_name)? {
+        _ if update_asked => "an update was asked for",
+        None => "it is being installed",
+        Some(installed) if installed != info.version => "its version changed",
+        Some(_) => {
+            tracing::debug!(plugin = %plugin_name, "Data left as it is: same version");
+            return Ok(false);
+        }
+    };
+    tracing::info!(plugin = %plugin_name, "Loading data: {reason}");
+    Ok(true)
 }

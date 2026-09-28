@@ -438,7 +438,7 @@ fn test_a_prefetched_record_is_still_refused() -> Result<()> {
             refused.push(tag.get_id());
         }
     }
-    assert!(env.cache.is_field_in_cache("tag", "name", &fixture.secret));
+    assert!(env.cache.is_field_in_cache("tag", "name", fixture.secret));
     assert_eq!(refused, vec![fixture.secret]);
     Ok(())
 }
