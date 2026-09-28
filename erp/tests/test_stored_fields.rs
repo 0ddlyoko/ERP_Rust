@@ -386,3 +386,58 @@ fn test_nothing_is_said_when_there_is_nothing_to_fill() -> Result<()> {
     assert!(log.is_empty(), "got {log}");
     Ok(())
 }
+
+// ---- keeping a kept value up to date ----
+
+/// An order with one line, committed, so that the next environment starts from the database.
+fn an_order_with_a_line(app: &Application) -> Result<(u32, u32)> {
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "Order");
+    let order: SaleOrder<SingleId> = env.create_new_record_from_map(map)?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("order", erp_types::field::FieldType::Ref(order.get_id()));
+    map.insert("price", 10);
+    map.insert("amount", 2);
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    env.close()?;
+    Ok((order.get_id(), line.get_id()))
+}
+
+/// Loading a row brings the value stored before the change, which must not stand in for the
+/// recompute the change asked for.
+#[test]
+fn test_loading_a_row_does_not_cancel_a_pending_recompute() -> Result<()> {
+    let app = new_app();
+    let (_, line) = an_order_with_a_line(&app)?;
+
+    let mut env = app.new_env()?;
+    let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+    line.set_amount(5, &mut env)?;
+    env.read("sale_order_line", &line.id, &["price"])?;
+    assert_eq!(*line.get_total_price(&mut env)?, 50);
+    Ok(())
+}
+
+/// A recompute that asks for another model's to be recomputed reaches the database, whichever of
+/// the two is flushed first.
+///
+/// The order models are flushed in is not fixed, so this runs on twenty fresh applications: an
+/// unlucky order is then all but certain to come up.
+#[test]
+fn test_a_recompute_reaching_another_model_is_saved() -> Result<()> {
+    for _ in 0..20 {
+        let app = new_app();
+        let (order, line) = an_order_with_a_line(&app)?;
+
+        let mut env = app.new_env()?;
+        let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+        line.set_amount(5, &mut env)?;
+        env.close()?;
+
+        let mut env = app.new_env()?;
+        let order: SaleOrder<SingleId> = env.get_record(order.into());
+        assert_eq!(*order.get_total_price(&mut env)?, 50);
+    }
+    Ok(())
+}

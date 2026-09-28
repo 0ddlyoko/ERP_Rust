@@ -85,6 +85,9 @@ impl Cache {
     ///
     /// Update dirty if UpdateDirty is given, and a modification has been done
     ///
+    /// Only a write settles a pending recompute. A value loaded from the database is the one stored
+    /// before the change that asked for the recompute, so it leaves the recompute pending.
+    ///
     /// Returns ids that have been modified
     pub fn insert_field_in_cache(
         &mut self,
@@ -108,7 +111,9 @@ impl Cache {
                 updated_ids.push(*id);
             }
         }
-        cache_models.remove_to_recompute(&[field_name], &updated_ids);
+        if matches!(update_dirty, Dirty::UpdateDirty) {
+            cache_models.remove_to_recompute(&[field_name], &updated_ids);
+        }
         updated_ids
     }
 

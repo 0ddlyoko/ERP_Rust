@@ -105,14 +105,45 @@ impl<'mm> Environment<'mm> {
 
     /// Flush every registered model that holds dirty records to the database.
     ///
+    /// Goes round again while a stored field is left to recompute: recomputing one model can ask
+    /// for another to be recomputed, and that one may already have been flushed this round.
+    ///
     /// The `&ModelManager` is copied out first so the registry borrow stays independent of the
     /// `&mut self` that `save_model_to_db` requires.
     pub fn save_all_to_db(&mut self) -> Result<()> {
         let model_manager = self.model_manager;
-        for model_name in model_manager.get_models().keys() {
-            self.save_model_to_db(model_name)?;
+        for _ in 0..=MAX_RECOMPUTE_ROUNDS {
+            for model_name in model_manager.get_models().keys() {
+                self.save_model_to_db(model_name)?;
+            }
+            let Some(model_name) = self.model_with_stored_to_recompute() else {
+                return Ok(());
+            };
+            tracing::trace!(model = %model_name, "A recompute asked for another pass");
         }
-        Ok(())
+        let model_name = self.model_with_stored_to_recompute().unwrap_or_default();
+        let to_recompute = &self.cache.get_cache_models(&model_name).to_recompute;
+        Err(MaximumRecursionDepthCompute {
+            fields_name: to_recompute.keys().cloned().collect(),
+            ids: to_recompute.values().flatten().copied().collect(),
+            model_name,
+        }
+        .into())
+    }
+
+    /// A model with a stored field still waiting to be recomputed.
+    fn model_with_stored_to_recompute(&self) -> Option<String> {
+        self.model_manager
+            .get_models()
+            .iter()
+            .find(|(model_name, model)| {
+                self.cache
+                    .get_cache_models(model_name)
+                    .to_recompute
+                    .iter()
+                    .any(|(field, ids)| !ids.is_empty() && model.is_stored(field))
+            })
+            .map(|(model_name, _)| model_name.clone())
     }
 
     /// Save all data related to given model to database.
