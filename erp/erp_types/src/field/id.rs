@@ -20,7 +20,7 @@ pub struct SingleId {
 }
 
 impl SingleId {
-     /// An id taken from a recordset, remembering the recordset.
+    /// An id taken from a recordset, remembering the recordset.
     pub fn within(id: u32, prefetch: Arc<[u32]>) -> Self {
         SingleId {
             id,
