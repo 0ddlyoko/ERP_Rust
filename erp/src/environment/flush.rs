@@ -90,6 +90,9 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Save fields linked to a specific domain into the database
+    ///
+    /// A computed field among them may be waiting on a recompute elsewhere, which only settling
+    /// every pending one brings in.
     pub fn save_domain_fields_to_db(
         &mut self,
         model_name: &str,
@@ -97,6 +100,12 @@ impl<'mm> Environment<'mm> {
     ) -> Result<()> {
         let fields = domain.get_fields();
         let fields_to_save = self.get_fields_to_save(model_name, &fields)?;
+        if fields_to_save.iter().any(|(model_name, fields)| {
+            let model = self.model_manager.get_model(model_name);
+            fields.iter().any(|field| model.is_computed_field(field))
+        }) {
+            self.recompute_all_stored()?;
+        }
         for (model_name, fields) in fields_to_save {
             self.save_fields_to_db(model_name, &fields)?;
         }
@@ -105,21 +114,31 @@ impl<'mm> Environment<'mm> {
 
     /// Flush every registered model that holds dirty records to the database.
     ///
-    /// Goes round again while a stored field is left to recompute: recomputing one model can ask
-    /// for another to be recomputed, and that one may already have been flushed this round.
+    /// Every pending recompute is settled first: recomputing one model can ask for another to be
+    /// recomputed, and that one may otherwise already have been flushed.
     ///
     /// The `&ModelManager` is copied out first so the registry borrow stays independent of the
     /// `&mut self` that `save_model_to_db` requires.
     pub fn save_all_to_db(&mut self) -> Result<()> {
+        self.recompute_all_stored()?;
         let model_manager = self.model_manager;
+        for model_name in model_manager.get_models().keys() {
+            self.save_model_to_db(model_name)?;
+        }
+        Ok(())
+    }
+
+    /// Recompute every stored field waiting for it, until none is left.
+    ///
+    /// A stored value may wait on a recompute of another model's that has not asked for it yet:
+    /// an order's total is only flagged once its lines' totals are worked out. Settling everything
+    /// is what makes the stored value current, whichever model is looked at first.
+    pub(super) fn recompute_all_stored(&mut self) -> Result<()> {
         for _ in 0..=MAX_RECOMPUTE_ROUNDS {
-            for model_name in model_manager.get_models().keys() {
-                self.save_model_to_db(model_name)?;
-            }
             let Some(model_name) = self.model_with_stored_to_recompute() else {
                 return Ok(());
             };
-            tracing::trace!(model = %model_name, "A recompute asked for another pass");
+            self.call_computed_method_on_all_fields(&model_name)?;
         }
         let model_name = self.model_with_stored_to_recompute().unwrap_or_default();
         let to_recompute = &self.cache.get_cache_models(&model_name).to_recompute;

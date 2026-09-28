@@ -5,14 +5,15 @@
 //! produces, and it decides what can be searched, sorted and flushed.
 
 use erp::app::Application;
-use erp_search::{OrderBy, SearchOptions};
+use erp_search::{OrderBy, SearchOptions, SearchType};
 use erp_search_code_gen::make_domain;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io;
-use std::sync::{Arc, Mutex};
+use std::sync::Once;
 use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -191,32 +192,52 @@ fn test_an_unkept_field_is_never_flushed() -> Result<()> {
     Ok(())
 }
 
-/// What the ORM logged while `work` ran.
-fn logged<T>(work: impl FnOnce() -> T) -> (T, String) {
-    #[derive(Clone)]
-    struct Buffer(Arc<Mutex<Vec<u8>>>);
+thread_local! {
+    static CAPTURED: RefCell<Option<Vec<u8>>> = const { RefCell::new(None) };
+}
 
-    impl io::Write for Buffer {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            self.0.lock().expect("not poisoned").extend_from_slice(buf);
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
+/// Writes into the log being captured on the current thread, if any.
+struct CapturedLog;
+
+impl io::Write for CapturedLog {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        CAPTURED.with(|captured| {
+            if let Some(log) = captured.borrow_mut().as_mut() {
+                log.extend_from_slice(buf);
+            }
+        });
+        Ok(buf.len())
     }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
-    let buffer = Buffer(Arc::new(Mutex::new(Vec::new())));
-    let writer = buffer.clone();
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(move || writer.clone())
-        .with_max_level(tracing::Level::TRACE)
-        .with_ansi(false)
-        .finish();
-    let outcome = tracing::subscriber::with_default(subscriber, work);
-    let written =
-        String::from_utf8(buffer.0.lock().expect("not poisoned").clone()).expect("the log is text");
-    (outcome, written)
+/// What the ORM logged while `work` ran.
+///
+/// One global subscriber, installed once, that always listens and writes to the calling thread's
+/// capture. A subscriber scoped to the test would not do: `tracing` caches per callsite whether
+/// anybody listens, and a test running in parallel can leave "nobody" in that cache.
+fn logged<T>(work: impl FnOnce() -> T) -> (T, String) {
+    static INSTALLED: Once = Once::new();
+    INSTALLED.call_once(|| {
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(|| CapturedLog)
+            .with_max_level(tracing::Level::TRACE)
+            .with_ansi(false)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber).expect("the only subscriber");
+    });
+
+    CAPTURED.with(|captured| *captured.borrow_mut() = Some(Vec::new()));
+    let outcome = work();
+    let written = CAPTURED
+        .with(|captured| captured.borrow_mut().take())
+        .unwrap_or_default();
+    (
+        outcome,
+        String::from_utf8(written).expect("the log is text"),
+    )
 }
 
 /// The refusal reaches the caller, and the reason reaches whoever runs the server.
@@ -439,5 +460,65 @@ fn test_a_recompute_reaching_another_model_is_saved() -> Result<()> {
         let order: SaleOrder<SingleId> = env.get_record(order.into());
         assert_eq!(*order.get_total_price(&mut env)?, 50);
     }
+    Ok(())
+}
+
+/// Searching on a kept value that waits on another model's recompute finds the new value: the
+/// order's total is only flagged once its line's is worked out.
+#[test]
+fn test_a_search_sees_a_value_waiting_on_another_model() -> Result<()> {
+    let app = new_app();
+    let (order, line) = an_order_with_a_line(&app)?;
+    let (other, _) = an_order_with_a_line(&app)?;
+
+    let mut env = app.new_env()?;
+    let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+    line.set_amount(5, &mut env)?;
+
+    let domain = make_domain!([("total_price", "=", 50)]);
+    assert_eq!(env.search_ids("sale_order", &domain)?, vec![order]);
+    assert_eq!(env.count("sale_order", &domain)?, 1);
+    let sorted = env.search_ids_with(
+        "sale_order",
+        &SearchType::Nothing,
+        &SearchOptions::new().order_by(OrderBy::desc("total_price")),
+    )?;
+    assert_eq!(sorted, vec![order, other]);
+    Ok(())
+}
+
+/// Moving a line from one order to another recomputes both totals.
+#[test]
+fn test_moving_a_line_recomputes_both_orders() -> Result<()> {
+    let app = new_app();
+    let (from, line) = an_order_with_a_line(&app)?;
+    let (to, _) = an_order_with_a_line(&app)?;
+
+    let mut env = app.new_env()?;
+    let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+    line.set_order(Some(to.into()), &mut env)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let from: SaleOrder<SingleId> = env.get_record(from.into());
+    let to: SaleOrder<SingleId> = env.get_record(to.into());
+    assert_eq!(*from.get_total_price(&mut env)?, 0);
+    assert_eq!(*to.get_total_price(&mut env)?, 40);
+    Ok(())
+}
+
+/// Deleting a line recomputes the total of the order it belonged to.
+#[test]
+fn test_deleting_a_line_recomputes_its_order() -> Result<()> {
+    let app = new_app();
+    let (order, line) = an_order_with_a_line(&app)?;
+
+    let mut env = app.new_env()?;
+    env.delete("sale_order_line", &SingleId::from(line))?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let order: SaleOrder<SingleId> = env.get_record(order.into());
+    assert_eq!(*order.get_total_price(&mut env)?, 0);
     Ok(())
 }

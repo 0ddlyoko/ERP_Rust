@@ -79,6 +79,13 @@ impl<'mm> Environment<'mm> {
             self.refuse_unstored(model_name, std::slice::from_ref(&order.field), "sort by")?;
         }
         // Ordering reads stored values, so anything still dirty has to reach the database first.
+        if options
+            .order
+            .iter()
+            .any(|order| model.is_computed_field(&order.field))
+        {
+            self.recompute_all_stored()?;
+        }
         for order in &options.order {
             if order.field == "id" {
                 continue;
