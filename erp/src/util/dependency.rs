@@ -8,10 +8,12 @@ pub struct MissingDependencyError {
     pub(crate) dependency_name: String,
 }
 
+/// Plugins that depend on each other, `cycle` going from one back to itself: `a -> b -> a`.
 #[derive(Debug, Clone, Error)]
-#[error("Circular dependency detected for plugin '{plugin_name}'")]
+#[error("Circular dependency detected for plugin '{plugin_name}': {}", .cycle.join(" -> "))]
 pub struct CircularDependencyError {
     pub(crate) plugin_name: String,
+    pub(crate) cycle: Vec<String>,
 }
 
 pub fn sort_dependencies<'a>(
@@ -19,7 +21,7 @@ pub fn sort_dependencies<'a>(
 ) -> Result<Vec<&'a str>, Box<dyn std::error::Error + Send + Sync>> {
     let mut sorted = Vec::new();
     let mut visited = HashSet::new();
-    let mut visiting = HashSet::new();
+    let mut visiting = Vec::new();
 
     for &plugin in dependencies.keys() {
         if !visited.contains(plugin) {
@@ -41,16 +43,22 @@ fn visit<'a>(
     dependencies: &HashMap<&'a str, Vec<&str>>,
     sorted: &mut Vec<&'a str>,
     visited: &mut HashSet<&'a str>,
-    visiting: &mut HashSet<&'a str>,
+    visiting: &mut Vec<&'a str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if visiting.contains(plugin) {
+    if let Some(start) = visiting.iter().position(|&name| name == plugin) {
+        let mut cycle: Vec<String> = visiting[start..]
+            .iter()
+            .map(|name| name.to_string())
+            .collect();
+        cycle.push(plugin.to_string());
         return Err(Box::new(CircularDependencyError {
             plugin_name: plugin.to_string(),
+            cycle,
         }));
     }
 
     if !visited.contains(plugin) {
-        visiting.insert(plugin);
+        visiting.push(plugin);
 
         if let Some(deps) = dependencies.get(plugin) {
             for &dep in deps {
@@ -65,7 +73,7 @@ fn visit<'a>(
             }
         }
 
-        visiting.remove(plugin);
+        visiting.pop();
         visited.insert(plugin);
         sorted.push(plugin);
     }
@@ -125,9 +133,17 @@ mod tests {
             ("plugin3", vec!["plugin1"]), // Circular dependency
         ]);
 
-        let result = sort_dependencies(&dependencies);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().is::<CircularDependencyError>());
+        let error = sort_dependencies(&dependencies).unwrap_err();
+        let circular = error
+            .downcast_ref::<CircularDependencyError>()
+            .expect("a circular dependency");
+        assert_eq!(
+            circular.cycle.len(),
+            4,
+            "three plugins and back: {:?}",
+            circular.cycle
+        );
+        assert_eq!(circular.cycle.first(), circular.cycle.last());
     }
 
     #[test]

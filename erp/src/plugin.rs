@@ -72,4 +72,12 @@ pub trait Plugin: Any + Send + Sync {
     fn get_depends(&self) -> Vec<String> {
         Vec::new()
     }
+
+    /// Whether this plugin installs itself once every plugin it depends on is installed.
+    ///
+    /// For the glue between plugins, which only makes sense when they are all there: nobody has
+    /// to remember to install it, and it never lands without what it glues.
+    fn auto_install(&self) -> bool {
+        false
+    }
 }

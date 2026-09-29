@@ -7,6 +7,7 @@ use crate::model::ModelManager;
 use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
+use crate::util::dependency::CircularDependencyError;
 use std::error::Error;
 use std::sync::OnceLock;
 
@@ -180,6 +181,7 @@ impl Application {
         self.load_base_plugin()?;
         self.record_registered_plugins()?;
         self.load_plugins()?;
+        self.auto_install_plugins()?;
         if let DataUpdate::Only(names) = &self.data_update {
             for name in names {
                 if !self.plugin_manager.is_installed(name) {
@@ -238,7 +240,7 @@ impl Application {
         self.plugin_manager
             ._get_ordered_dependencies_of_all_plugins()?;
 
-        self.load_plugin("base")
+        self._load_plugin("base")
     }
 
     /// Load all plugins, except "base"
@@ -259,19 +261,66 @@ impl Application {
         let ordered_depends: Vec<&str> = self.plugin_manager._get_ordered_dependencies(plugins)?;
 
         for plugin_name in ordered_depends.iter() {
-            self.load_plugin(plugin_name)?;
+            self._load_plugin(plugin_name)?;
         }
 
         Ok(())
     }
 
+    /// Install a plugin, its dependencies, and whatever installs itself once they are there.
     pub fn load_plugin(&mut self, plugin_name: &str) -> Result<()> {
-        self._load_plugin(plugin_name)
+        self._load_plugin(plugin_name)?;
+        self.auto_install_plugins()?;
+        Ok(())
+    }
+
+    /// Install every plugin marked auto-install whose dependencies are all installed.
+    ///
+    /// Goes round until nothing more installs, so one auto-installed plugin can complete the
+    /// dependencies of another. Candidates of one round go in name order, so the same plugins
+    /// always install in the same order. Returns the plugins installed, in that order.
+    pub fn auto_install_plugins(&mut self) -> Result<Vec<String>> {
+        let mut installed = Vec::new();
+        loop {
+            let mut ready: Vec<String> = self
+                .plugin_manager
+                .plugins
+                .iter()
+                .filter(|(_, plugin)| plugin.state != Installed && plugin.plugin.auto_install())
+                .filter(|(_, plugin)| {
+                    plugin
+                        .depends
+                        .iter()
+                        .all(|depend| self.plugin_manager.is_installed(depend))
+                })
+                .map(|(name, _)| name.clone())
+                .collect();
+            if ready.is_empty() {
+                return Ok(installed);
+            }
+            ready.sort();
+            for name in ready {
+                tracing::info!(
+                    plugin = %name,
+                    "Installing on its own: its dependencies are installed"
+                );
+                self._load_plugin(&name)?;
+                installed.push(name);
+            }
+        }
     }
 
     /// Load given plugin and all plugins that the given one depends.
-    /// Do not check if there is a recursion between plugins.
     fn _load_plugin(&mut self, plugin_name: &str) -> Result<()> {
+        self.load_plugin_within(plugin_name, &mut Vec::new())
+    }
+
+    /// Load a plugin after its dependencies, `loading` holding the chain that led here.
+    ///
+    /// A plugin is only marked installed once its dependencies are, so a cycle would recurse
+    /// until the stack overflows and takes the process with it. Finding a plugin already in the
+    /// chain refuses the load instead, naming the cycle.
+    fn load_plugin_within(&mut self, plugin_name: &str, loading: &mut Vec<String>) -> Result<()> {
         let plugin = self
             .plugin_manager
             .get_plugin(plugin_name)
@@ -279,11 +328,22 @@ impl Application {
         if plugin.state == Installed {
             return Ok(());
         }
+        if let Some(start) = loading.iter().position(|name| name == plugin_name) {
+            let mut cycle = loading[start..].to_vec();
+            cycle.push(plugin_name.to_string());
+            return Err(CircularDependencyError {
+                plugin_name: plugin_name.to_string(),
+                cycle,
+            }
+            .into());
+        }
         let update_asked = self.data_update.includes(plugin_name);
         let depends: Vec<_> = plugin.depends.to_vec();
+        loading.push(plugin_name.to_string());
         for depend in depends {
-            self._load_plugin(depend.as_str())?;
+            self.load_plugin_within(depend.as_str(), loading)?;
         }
+        loading.pop();
 
         // Opened before borrowing the plugin mutably: the connection is owned, so it does not
         // keep `self` borrowed afterwards.
