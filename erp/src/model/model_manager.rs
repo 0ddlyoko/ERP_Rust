@@ -1,4 +1,5 @@
 use crate::access::AccessRules;
+use crate::assets::AssetRegistry;
 use crate::http::ControllerRegistry;
 use crate::identity::Identities;
 use crate::model::HasMethods;
@@ -23,6 +24,7 @@ pub struct ModelManager {
     pub identities: Identities,
     pub access: AccessRules,
     pub controllers: ControllerRegistry,
+    pub assets: AssetRegistry,
     pub(crate) current_plugin_loading: Option<String>,
 }
 

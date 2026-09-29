@@ -1,0 +1,3 @@
+<templates>
+    <t t-name="test_plugin.Counter"><span>{{ count }}</span></t>
+</templates>

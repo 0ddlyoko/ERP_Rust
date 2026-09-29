@@ -11,5 +11,8 @@ code_gen = { path = "../../code_gen" }
 # declared it has to be a real dependency. That is what makes a mismatched signature a compile error.
 test_utilities = { path = "../../erp/test_utilities" }
 
+[build-dependencies]
+erp_assets_build = { path = "../../erp/erp_assets_build" }
+
 [lib]
 crate-type = ["cdylib", "lib"]

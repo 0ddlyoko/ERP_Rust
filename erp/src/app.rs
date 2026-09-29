@@ -358,6 +358,9 @@ impl Application {
         self.model_manager.controllers.current_plugin_loading = Some(plugin_name.to_string());
         plugin.init_controllers(&mut self.model_manager.controllers);
         self.model_manager.controllers.current_plugin_loading = None;
+        self.model_manager
+            .assets
+            .register(plugin_name, plugin.static_files(), plugin.assets());
 
         // Bring the schema in line with what this plugin declared. It runs after
         // `post_register`, so relational links are complete, and in dependency order, so a plugin

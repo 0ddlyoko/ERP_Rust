@@ -9,6 +9,7 @@ pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::PluginManager;
 pub(crate) use record::{installed_version, record_plugin};
 
+use crate::assets::{BundleContribution, StaticFiles};
 use crate::environment::Environment;
 use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
@@ -44,6 +45,19 @@ pub trait Plugin: Any + Send + Sync {
 
     /// Register models created in this plugin
     fn init_models(&self, model_manager: &mut ModelManager);
+
+    /// The files this plugin serves, embedded when it was compiled:
+    /// `include!(concat!(env!("OUT_DIR"), "/static_files.rs"))` then `STATIC_FILES`, from a build
+    /// script calling `erp_assets_build::compile`. Reachable as `<plugin>/static/<path>`.
+    fn static_files(&self) -> StaticFiles {
+        &[]
+    }
+
+    /// What this plugin adds to which bundle: globs over public paths, its own files or other
+    /// plugins'. Counted only while the plugin is installed.
+    fn assets(&self) -> Vec<BundleContribution> {
+        Vec::new()
+    }
 
     /// Register the controllers this plugin declares or extends. Called right after
     /// [`Plugin::init_models`], so a controller extending another finds it already registered.

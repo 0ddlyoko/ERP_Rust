@@ -1,5 +1,6 @@
 pub mod access;
 pub mod app;
+pub mod assets;
 pub mod concurrency;
 pub mod config;
 pub mod data;

@@ -12,6 +12,7 @@ tracing-subscriber.workspace = true
 members = [
     "code_gen",
     "erp",
+    "erp/erp_assets_build",
     "erp/erp_cache",
     "erp/erp_internal_types",
     "erp/erp_types",
@@ -41,6 +42,8 @@ quote = "1.0"
 roxmltree = "0.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# TypeScript for plugins' browser files, compiled at build time only.
+swc_core = { version = "81", default-features = false }
 serde_derive = "1.0"
 serial_test = "3.2.0"
 syn = "2.0"
