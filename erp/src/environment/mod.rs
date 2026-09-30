@@ -28,6 +28,7 @@ mod delete;
 mod flush;
 mod method;
 mod read;
+mod shared;
 mod transaction;
 mod write;
 
@@ -83,6 +84,7 @@ pub struct Environment<'mm> {
     computing: Vec<(String, String)>,
     sudo: bool,
     access_memo: access::AccessMemo,
+    changed_cached_models: HashSet<String>,
     closed: bool,
 }
 
@@ -126,6 +128,7 @@ impl<'mm> Environment<'mm> {
             computing: Vec::new(),
             sudo: false,
             access_memo: access::AccessMemo::default(),
+            changed_cached_models: HashSet::new(),
             closed: false,
         };
         env.database.start_transaction()?;

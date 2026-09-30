@@ -77,8 +77,15 @@ fn read_noupdate(node: roxmltree::Node) -> bool {
 
 /// Create a record, or update it unless it is protected.
 ///
-/// A `ref` names another record by its external identifier. A many2many takes several, separated
-/// by commas — `<groups ref="group_user,group_admin"/>` — and replaces what the field held.
+/// A field is given as a child element, or as an attribute of the record element —
+/// `<template id="x" key="web.Client">`. A `ref` names another record by its external identifier,
+/// and so does an attribute naming a relational field. A many2many takes several, separated by
+/// commas — `<groups ref="group_user,group_admin"/>` — and replaces what the field held.
+///
+/// For a model with a body field ([`ModelManager::set_data_body`]), the content of the record
+/// element is that field's value, rather than more fields.
+///
+/// [`ModelManager::set_data_body`]: crate::model::ModelManager::set_data_body
 fn load_record(
     env: &mut Environment,
     module: &str,
@@ -94,61 +101,129 @@ fn load_record(
     let model_name = model_of(node);
     let noupdate = inherited_noupdate || read_noupdate(node);
     let external_id = qualify(module, name);
+    let record = Declared {
+        module,
+        model_name,
+        external_id: &external_id,
+    };
 
     let mut values = MapOfFields::default();
-    for field in node.children().filter(roxmltree::Node::is_element) {
-        // A field is named by its own tag — `<price>7</price>`. `<field name="price">` is the
-        // long form, kept because it reads better when generating files and because it makes the
-        // intent explicit.
-        //
-        // The two only meet on `<field>`: with a `name`, it is the long form; without one, it is
-        // the short form for a field actually called `field`. That is what lets every name be
-        // written, including the ones that collide with the structural elements.
-        let field_name = match field.attribute("name") {
-            Some(name) if field.has_tag_name("field") => name,
-            _ => field.tag_name().name(),
+    for attribute in node.attributes() {
+        let field_name = attribute.name();
+        let is_directive = matches!(field_name, "id" | "noupdate")
+            || (field_name == "model" && node.has_tag_name("record"));
+        if is_directive {
+            continue;
+        }
+        let value = if record.is_relational(env, field_name)? {
+            record.references(env, field_name, attribute.value())?
+        } else {
+            record.parse(env, field_name, attribute.value())?
         };
+        values.insert_option(field_name, Some(value));
+    }
+    if let Some(body_field) = env.model_manager.data_body(model_name) {
+        let value = record.parse(env, body_field, content_of(node).trim())?;
+        values.insert_option(body_field, Some(value));
+    } else {
+        for field in node.children().filter(roxmltree::Node::is_element) {
+            // A field is named by its own tag — `<price>7</price>`. `<field name="price">` is the
+            // long form, kept because it reads better when generating files and because it makes
+            // the intent explicit.
+            //
+            // The two only meet on `<field>`: with a `name`, it is the long form; without one, it
+            // is the short form for a field actually called `field`. That is what lets every name
+            // be written, including the ones that collide with the structural elements.
+            let field_name = match field.attribute("name") {
+                Some(name) if field.has_tag_name("field") => name,
+                _ => field.tag_name().name(),
+            };
+            let value = match field.attribute("ref") {
+                Some(references) => record.references(env, field_name, references)?,
+                None => record.parse(env, field_name, content_of(field))?,
+            };
+            values.insert_option(field_name, Some(value));
+        }
+    }
+    save_record(env, module, name, model_name, values, noupdate)?;
+    Ok(())
+}
 
-        // The declared kind is what says whether "4" is a number or a reference.
-        let kind = env
+/// The record a data file declares, for reading its values.
+struct Declared<'a> {
+    module: &'a str,
+    model_name: &'a str,
+    external_id: &'a str,
+}
+
+impl Declared<'_> {
+    /// The declared kind is what says whether "4" is a number or a reference.
+    fn kind(&self, env: &Environment, field_name: &str) -> Result<FieldKind> {
+        Ok(env
             .model_manager
-            .try_get_model(model_name)?
+            .try_get_model(self.model_name)?
             .try_get_internal_field(field_name)?
-            .kind;
-        let value = match field.attribute("ref") {
-            Some(references) => {
-                let mut targets = Vec::new();
-                for reference in references.split(',').map(str::trim) {
-                    let reference = qualify(module, reference);
-                    targets.push(resolve(env, &reference)?.ok_or_else(|| {
-                        DataError::UnknownReference {
-                            reference: reference.clone(),
-                            record: external_id.clone(),
-                        }
-                    })?);
-                }
-                Some(match (kind, targets.as_slice()) {
-                    (FieldKind::Refs, _) => FieldType::Refs(targets),
-                    (_, [target]) => FieldType::Ref(*target),
-                    _ => {
-                        return Err(DataError::SeveralReferences {
-                            field: field_name.to_string(),
-                            record: external_id.clone(),
-                        }
-                        .into());
-                    }
-                })
-            }
-            None => Some(kind.parse(field.text().unwrap_or_default())?),
-        };
-        values.insert_option(field_name, value);
+            .kind)
     }
 
+    fn is_relational(&self, env: &Environment, field_name: &str) -> Result<bool> {
+        Ok(matches!(
+            self.kind(env, field_name)?,
+            FieldKind::Ref | FieldKind::Refs
+        ))
+    }
+
+    fn parse(&self, env: &Environment, field_name: &str, text: &str) -> Result<FieldType> {
+        Ok(self.kind(env, field_name)?.parse(text)?)
+    }
+
+    fn references(
+        &self,
+        env: &mut Environment,
+        field_name: &str,
+        references: &str,
+    ) -> Result<FieldType> {
+        let mut targets = Vec::new();
+        for reference in references.split(',').map(str::trim) {
+            let reference = qualify(self.module, reference);
+            targets.push(
+                resolve(env, &reference)?.ok_or_else(|| DataError::UnknownReference {
+                    reference: reference.clone(),
+                    record: self.external_id.to_string(),
+                })?,
+            );
+        }
+        match (self.kind(env, field_name)?, targets.as_slice()) {
+            (FieldKind::Refs, _) => Ok(FieldType::Refs(targets)),
+            (_, [target]) => Ok(FieldType::Ref(*target)),
+            _ => Err(DataError::SeveralReferences {
+                field: field_name.to_string(),
+                record: self.external_id.to_string(),
+            }
+            .into()),
+        }
+    }
+}
+
+/// Create the record `module.name`, or update it unless it is protected, and return its id.
+///
+/// What loading a data file does for each record, for a plugin declaring records from anything
+/// else than a data file.
+pub fn save_record(
+    env: &mut Environment,
+    module: &str,
+    name: &str,
+    model_name: &str,
+    values: MapOfFields,
+    noupdate: bool,
+) -> Result<u32> {
+    let external_id = qualify(module, name);
     match resolve(env, &external_id)? {
         Some(existing) => {
             if !is_protected(env, &external_id)? {
                 env.write(model_name, &SingleId::from(existing), values)?;
             }
+            Ok(existing)
         }
         None => {
             let created: MultipleIds = env.create_records(model_name, vec![values])?;
@@ -157,9 +232,51 @@ fn load_record(
                 .first()
                 .ok_or("Creating a record returned no id")?;
             remember(env, module, name, model_name, id, noupdate)?;
+            Ok(id)
         }
     }
-    Ok(())
+}
+
+/// The names a module gave to records of a model, `name` in `module.name`.
+pub fn names_of(env: &mut Environment, module: &str, model_name: &str) -> Result<Vec<String>> {
+    let env = &mut *env.sudo();
+    let ids = env.search_ids(
+        MODEL_DATA,
+        &make_domain!([("module", "=", module), ("model", "=", model_name)]),
+    )?;
+    let rows = env.read(MODEL_DATA, &MultipleIds::from(ids), &["name"])?;
+    Ok(rows
+        .iter()
+        .map(|row| row.get::<&String>("name").clone())
+        .collect())
+}
+
+/// Delete the record an external identifier names, and the identifier with it.
+///
+/// Returns whether there was one.
+pub fn delete_record(env: &mut Environment, external_id: &str) -> Result<bool> {
+    let Some((model, res_id)) = designated(env, external_id)? else {
+        return Ok(false);
+    };
+    env.delete(&model, &SingleId::from(res_id))?;
+    let env = &mut *env.sudo();
+    let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
+    env.delete(MODEL_DATA, &MultipleIds::from(ids))?;
+    Ok(true)
+}
+
+/// What an element holds: its text, or — when it holds elements, as a template's markup does —
+/// its content exactly as written.
+fn content_of<'a>(field: roxmltree::Node<'a, 'a>) -> &'a str {
+    if !field.children().any(|child| child.is_element()) {
+        return field.text().unwrap_or_default();
+    }
+    match (field.first_child(), field.last_child()) {
+        (Some(first), Some(last)) => {
+            &field.document().input_text()[first.range().start..last.range().end]
+        }
+        _ => "",
+    }
 }
 
 /// Qualify a bare name with the module declaring it.

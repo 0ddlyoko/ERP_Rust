@@ -81,6 +81,45 @@ pub fn compile(static_dir: &str) {
     fs::write(out.join("static_files.rs"), table).expect("the file table can be written");
 }
 
+/// Embed the server's templates under `templates_dir`, relative to the plugin's manifest.
+///
+/// Writes `template_files.rs` to `OUT_DIR`, defining `TEMPLATE_FILES`: each `.xml` file's path
+/// relative to that directory, and its content. Kept apart from the static files, so a browser
+/// never downloads what only the server renders.
+pub fn templates(templates_dir: &str) {
+    let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("run by Cargo"));
+    let out = PathBuf::from(std::env::var("OUT_DIR").expect("run by Cargo"));
+    let root = manifest.join(templates_dir);
+    println!("cargo:rerun-if-changed={}", root.display());
+
+    let mut files = Vec::new();
+    if root.is_dir() {
+        collect(&root, &mut files);
+    }
+    files.sort();
+    let mut entries = Vec::new();
+    for source in files {
+        let relative = source
+            .strip_prefix(&root)
+            .expect("collected under the root")
+            .to_string_lossy()
+            .replace('\\', "/");
+        if relative.ends_with(".xml") {
+            entries.push(format!(
+                "    ({:?}, include_bytes!({:?})),\n",
+                relative,
+                source.to_string_lossy()
+            ));
+        }
+    }
+    let table = format!(
+        "/// Every template this plugin renders on the server, relative to its templates directory.\n\
+         pub static TEMPLATE_FILES: &[(&str, &[u8])] = &[\n{}];\n",
+        entries.concat()
+    );
+    fs::write(out.join("template_files.rs"), table).expect("the file table can be written");
+}
+
 /// Every file under `dir`, hidden ones left out.
 fn collect(dir: &Path, files: &mut Vec<PathBuf>) {
     let entries = fs::read_dir(dir).unwrap_or_else(|error| {

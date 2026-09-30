@@ -1,0 +1,5 @@
+<templates>
+    <t t-name="web.WebClient">
+        <div class="o_web_client"><main class="o_action_manager"/></div>
+    </t>
+</templates>

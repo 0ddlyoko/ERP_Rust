@@ -22,6 +22,7 @@ impl<'mm> Environment<'mm> {
         }
         self.check_access(model_name, Operation::Delete, ids.get_ids_ref(), &[])?;
         self.forget_access_of(model_name, ids.get_ids_ref())?;
+        self.forget_shared_of(model_name);
         let model = self.model_manager.try_get_model(model_name)?;
 
         // Pending changes must reach the database before the relational fields below start

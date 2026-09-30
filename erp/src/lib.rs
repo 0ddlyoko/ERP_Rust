@@ -13,7 +13,9 @@ pub mod jsonrpc;
 pub mod model;
 pub mod plugin;
 pub mod server_config;
+pub mod shared_cache;
 pub mod util;
+pub mod xml;
 
 pub use erp_types as types;
 // Re-exported so plugins can name the types that `ModelManager` and `Environment` hand back

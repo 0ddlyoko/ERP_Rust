@@ -3,11 +3,18 @@
 
 use base::BasePlugin;
 use erp::app::Application;
+use erp::assets::{StaticFiles, TemplateFiles};
+use erp::data;
 use erp::http::{self, Request, Response};
+use erp::model::ModelManager;
+use erp::plugin::Plugin;
+use erp::types::field::SingleId;
+use erp::types::model::MapOfFields;
 use std::error::Error;
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
 use web::WebPlugin;
+use web::models::Template;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -181,10 +188,507 @@ fn test_an_unknown_bundle_is_a_404() -> Result<()> {
         "no extension"
     );
     assert_eq!(
-        get(&app, "/web/assets/test.backend.css").status(),
-        404,
-        "not yet"
+        get(&app, "/web/assets/nobody.contributes.css").status(),
+        404
     );
+    assert_eq!(
+        get(&app, "/web/assets/nobody.contributes.xml").status(),
+        404
+    );
+    assert_eq!(get(&app, "/web/assets/test.backend.txt").status(), 404);
+    Ok(())
+}
+
+/// The styles of a bundle are one file, each part preceded by where it comes from.
+#[test]
+fn test_a_bundle_serves_its_styles_as_one_file() -> Result<()> {
+    let app = new_app()?;
+    let response = get(&app, "/web/assets/test.frontend.css");
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        response.header("content-type"),
+        Some("text/css; charset=utf-8")
+    );
+    let sheet = response.text_body();
+    assert!(
+        sheet.starts_with("/* test_plugin/static/css/style.css */\n"),
+        "{sheet}"
+    );
+    let file = get(&app, "/static/test_plugin/css/style.css").text_body();
+    assert!(sheet.contains(file.trim_end()));
+    Ok(())
+}
+
+#[test]
+fn test_trame_is_served() -> Result<()> {
+    let app = new_app()?;
+    for target in ["/static/web/lib/trame.js", "/static/web/lib/trame.min.js"] {
+        let response = get(&app, target);
+        assert_eq!(response.status(), 200, "{target}");
+        assert_eq!(
+            response.header("content-type"),
+            Some("text/javascript; charset=utf-8")
+        );
+        assert!(
+            response.text_body().contains("registerTemplates"),
+            "{target}"
+        );
+    }
+    Ok(())
+}
+
+// ---- templates ----
+
+/// A plugin shipping template files and nothing else, after `test_plugin` whose component it
+/// extends.
+struct TemplatePlugin {
+    name: &'static str,
+    files: StaticFiles,
+    templates: TemplateFiles,
+}
+
+impl Plugin for TemplatePlugin {
+    fn name(&self) -> String {
+        self.name.to_string()
+    }
+
+    fn init_models(&self, _model_manager: &mut ModelManager) {}
+
+    fn get_depends(&self) -> Vec<String> {
+        vec!["web".to_string(), "test_plugin".to_string()]
+    }
+
+    fn static_files(&self) -> StaticFiles {
+        self.files
+    }
+
+    fn template_files(&self) -> TemplateFiles {
+        self.templates
+    }
+}
+
+fn with_templates(name: &'static str, files: StaticFiles) -> Result<Application> {
+    install(TemplatePlugin {
+        name,
+        files,
+        templates: &[],
+    })
+}
+
+fn with_server_templates(name: &'static str, templates: TemplateFiles) -> Result<Application> {
+    install(TemplatePlugin {
+        name,
+        files: &[],
+        templates,
+    })
+}
+
+fn install(plugin: TemplatePlugin) -> Result<Application> {
+    let name = plugin.name;
+    let mut app = new_app()?;
+    app.register_plugin(Box::new(plugin))?;
+    app.load_plugin(name)?;
+    Ok(app)
+}
+
+fn refused(name: &'static str, files: StaticFiles) -> String {
+    refused_install(TemplatePlugin {
+        name,
+        files,
+        templates: &[],
+    })
+}
+
+fn refused_install(plugin: TemplatePlugin) -> String {
+    let name = plugin.name;
+    match install(plugin) {
+        Ok(_) => panic!("{name} installed"),
+        Err(error) => error.to_string(),
+    }
+}
+
+fn templates(app: &Application, bundle: &str) -> String {
+    let response = get(app, &format!("/web/assets/{bundle}.xml"));
+    assert_eq!(response.status(), 200, "{}", response.text_body());
+    assert_eq!(
+        response.header("content-type"),
+        Some("application/xml; charset=utf-8")
+    );
+    response.text_body()
+}
+
+const COUNTER: &str = "<templates>\n\
+    <t t-name=\"test_plugin.Counter\"><span>{{ count }}</span></t>\n\
+    </templates>\n";
+
+/// The `.xml` next to a component is a template, served in the bundles holding that file.
+#[test]
+fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
+    let app = new_app()?;
+    assert_eq!(templates(&app, "test.backend"), COUNTER);
+    assert_eq!(
+        get(&app, "/web/assets/test.frontend.xml").status(),
+        404,
+        "no template file in that bundle"
+    );
+    assert_eq!(
+        templates(&app, "web.assets_backend"),
+        "<templates>\n<t t-name=\"web.WebClient\"><div class=\"o_web_client\">\
+         <main class=\"o_action_manager\"/></div></t>\n</templates>\n"
+    );
+    Ok(())
+}
+
+/// The web client's component is in its bundle, beside its template.
+#[test]
+fn test_the_web_client_component_is_in_the_backend_bundle() -> Result<()> {
+    let app = new_app()?;
+    let module = get(&app, "/web/assets/web.assets_backend.js").text_body();
+    assert!(
+        module.contains("import \"/static/web/src/web_client/web_client.js\";"),
+        "{module}"
+    );
+    let component = get(&app, "/static/web/src/web_client/web_client.js");
+    assert_eq!(component.status(), 200);
+    assert!(component.text_body().contains("web.WebClient"));
+    assert!(
+        component.text_body().contains("from \"trame\""),
+        "imported by name, as written"
+    );
+    Ok(())
+}
+
+/// The page names what scripts import by name, before loading any of them.
+#[test]
+fn test_the_web_client_page_declares_the_import_map() -> Result<()> {
+    let app = new_app()?;
+    let page = get(&app, "/web").text_body();
+    let map = page
+        .split("<script type=\"importmap\">")
+        .nth(1)
+        .and_then(|rest| rest.split("</script>").next())
+        .expect("an import map");
+    let map: erp::serde_json::Value = erp::serde_json::from_str(map)?;
+    assert_eq!(map["imports"]["trame"], "/static/web/lib/trame.js");
+    let map_at = page.find("importmap").expect("declared");
+    let bundle_at = page
+        .find("/web/assets/web.assets_backend.js")
+        .expect("loaded");
+    assert!(map_at < bundle_at, "declared before any module loads");
+    assert_eq!(get(&app, "/static/web/lib/trame.js").status(), 200);
+    Ok(())
+}
+
+/// A template shipped in a file is a record named after its key.
+#[test]
+fn test_templates_are_records_named_after_their_key() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env_as_option(None)?;
+    for (external_id, file) in [
+        ("test_plugin.Counter", "test_plugin/static/src/counter.xml"),
+        ("web.WebClient", "web/static/src/web_client/web_client.xml"),
+    ] {
+        let id = data::resolve(&mut env, external_id)?.expect("synchronised");
+        let rows = env.read("template", &SingleId::from(id), &["key", "file"])?;
+        assert_eq!(rows[0].get::<&String>("key"), external_id);
+        assert_eq!(
+            rows[0].get_option::<&String>("file").map(String::as_str),
+            Some(file)
+        );
+    }
+    Ok(())
+}
+
+const EXTENSIONS: StaticFiles = &[
+    (
+        "src/a.xml",
+        br#"<templates>
+            <t t-inherit="test_plugin.Counter">
+                <xpath expr="//span" position="inside"><b>a1</b></xpath>
+            </t>
+            <t t-inherit="test_plugin.Counter">
+                <xpath expr="//b" position="after"><i>a2</i></xpath>
+            </t>
+        </templates>"#,
+    ),
+    (
+        "src/b.xml",
+        br#"<templates>
+            <t t-name="web_extension.Counter" t-inherit="test_plugin.Counter">
+                <xpath expr="//span" position="replace"><em/></xpath>
+            </t>
+            <t t-inherit="test_plugin.Counter">
+                <xpath expr="//span" position="attributes">
+                    <attribute name="class">last</attribute>
+                </xpath>
+            </t>
+        </templates>"#,
+    ),
+];
+
+/// Extensions apply in the order a bundle loads them; a derived template starts from the final
+/// markup of its parent, is served where its parent is, and leaves the parent as it is.
+#[test]
+fn test_other_plugins_extend_templates_with_paths() -> Result<()> {
+    let app = with_templates("web_extension", EXTENSIONS)?;
+    assert_eq!(
+        templates(&app, "test.backend"),
+        "<templates>\n\
+         <t t-name=\"test_plugin.Counter\"><span class=\"last\">{{ count }}<b>a1</b><i>a2</i></span></t>\n\
+         <t t-name=\"web_extension.Counter\"><em/></t>\n\
+         </templates>\n"
+    );
+    Ok(())
+}
+
+/// An extension whose path matches nothing stops its plugin from installing, instead of the web
+/// client failing to render later.
+#[test]
+fn test_an_extension_matching_nothing_fails_its_plugin() -> Result<()> {
+    let error = refused(
+        "web_broken",
+        &[(
+            "src/broken.xml",
+            br#"<templates><t t-inherit="test_plugin.Counter">
+                <xpath expr="//nowhere" position="inside"><p/></xpath>
+            </t></templates>"#,
+        )],
+    );
+    assert!(error.contains("//nowhere"), "{error}");
+    assert!(
+        error.contains("web_broken/static/src/broken.xml"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn test_what_a_template_file_may_not_hold() -> Result<()> {
+    let error = refused(
+        "web_orphan",
+        &[(
+            "src/orphan.xml",
+            br#"<templates><t t-inherit="nobody.Thing"><xpath expr="//a"/></t></templates>"#,
+        )],
+    );
+    assert!(error.contains("nobody.Thing"), "{error}");
+
+    let error = refused(
+        "web_misnamed",
+        &[(
+            "src/misnamed.xml",
+            br#"<templates><t t-name="other.Thing"><div/></t></templates>"#,
+        )],
+    );
+    assert!(error.contains("web_misnamed.<Name>"), "{error}");
+
+    let error = refused(
+        "web_twice",
+        &[
+            (
+                "src/one.xml",
+                br#"<templates><t t-name="web_twice.Thing"><div/></t></templates>"#,
+            ),
+            (
+                "src/two.xml",
+                br#"<templates><t t-name="web_twice.Thing"><p/></t></templates>"#,
+            ),
+        ],
+    );
+    assert!(error.contains("web_twice.Thing"), "{error}");
+
+    let error = refused(
+        "web_stray",
+        &[("src/stray.xml", br#"<templates><div/></templates>"#)],
+    );
+    assert!(error.contains("<div>"), "{error}");
+    Ok(())
+}
+
+/// The resolved templates are kept, and forgotten once a template changes; what a transaction has
+/// not committed is seen by it alone.
+#[test]
+fn test_resolved_templates_follow_committed_changes() -> Result<()> {
+    let app = new_app()?;
+    assert_eq!(templates(&app, "test.backend"), COUNTER);
+
+    let mut env = app.new_env_as_option(None)?;
+    let counter = data::resolve(&mut env, "test_plugin.Counter")?.expect("synchronised");
+    let mut values = MapOfFields::default();
+    values.insert("arch", "<span>changed</span>");
+    env.write("template", &SingleId::from(counter), values)?;
+    let seen = Template::<SingleId>::bundle_markup(&mut env, "test.backend")?;
+    assert!(
+        seen.as_deref()
+            .is_some_and(|markup| markup.contains("changed"))
+    );
+    assert_eq!(templates(&app, "test.backend"), COUNTER, "not committed");
+    env.close()?;
+
+    assert!(templates(&app, "test.backend").contains("<span>changed</span>"));
+    Ok(())
+}
+
+/// A new build of a plugin ships other templates: the next start brings the database in line,
+/// what is no longer shipped included.
+#[test]
+fn test_a_restart_follows_the_files_of_a_new_build() -> Result<()> {
+    let database = erp::database::cache::CacheDatabase::default();
+    let first = boot(&database, Some(EXTENSIONS))?;
+    assert!(templates(&first, "test.backend").contains("web_extension.Counter"));
+    drop(first);
+
+    let second = boot(&database, Some(&EXTENSIONS[..1]))?;
+    assert_eq!(
+        templates(&second, "test.backend"),
+        "<templates>\n\
+         <t t-name=\"test_plugin.Counter\"><span>{{ count }}<b>a1</b><i>a2</i></span></t>\n\
+         </templates>\n"
+    );
+    let mut env = second.new_env_as_option(None)?;
+    assert_eq!(data::resolve(&mut env, "web_extension.Counter")?, None);
+    Ok(())
+}
+
+// ---- pages ----
+
+/// `/web` is the page template calling the base layout, loading the back office's bundle.
+#[test]
+fn test_the_web_client_page_is_rendered_from_its_template() -> Result<()> {
+    let app = new_app()?;
+    let response = get(&app, "/web");
+    assert_eq!(response.status(), 200, "{}", response.text_body());
+    let page = response.text_body();
+    assert!(
+        page.starts_with("<!doctype html>\n<html lang=\"en\">"),
+        "{page}"
+    );
+    for expected in [
+        "<meta charset=\"utf-8\">",
+        "<title>ERP</title>",
+        "<link rel=\"stylesheet\" href=\"/web/assets/web.assets_backend.css\">",
+        "<script type=\"module\" src=\"/web/assets/web.assets_backend.js\"></script>",
+        "<p>Welcome to the back office.</p>",
+        "<div class=\"o_web_client_root\"></div>",
+    ] {
+        assert!(page.contains(expected), "{expected} in {page}");
+    }
+    assert!(!page.contains(" t-"), "no directive left: {page}");
+
+    let styles = get(&app, "/web/assets/web.assets_backend.css").text_body();
+    assert!(styles.contains(".o_web_client_banner"));
+    let scripts = get(&app, "/web/assets/web.assets_backend.js").text_body();
+    assert!(scripts.contains("import \"/static/web/src/main.js\";"));
+    assert!(
+        !templates(&app, "web.assets_backend").contains("web.Layout"),
+        "page templates stay on the server"
+    );
+    Ok(())
+}
+
+const PAGES: TemplateFiles = &[(
+    "pages/pages.xml",
+    br#"<templates>
+        <t t-name="web_pages.Frame">
+            <section><h2><t t-out="heading"/></h2><t t-out="0"/><p t-out="note"/></section>
+        </t>
+        <t t-name="web_pages.Page">
+            <t t-call="web_pages.Frame">
+                <t t-set="heading" t-value="'A &lt; B'"/>
+                <t t-set="note">kept <b>as markup</b></t>
+                <br/><em>body</em>
+            </t>
+            <i t-out="heading"/>
+        </t>
+        <t t-name="web_pages.Unsupported"><p t-if="x">no</p></t>
+        <t t-name="web_pages.Missing"><t t-call="web_pages.Nowhere"/></t>
+        <t t-name="web_pages.Loop"><t t-call="web_pages.Loop"/></t>
+    </templates>"#,
+)];
+
+fn render(app: &Application, key: &str) -> Result<String> {
+    let mut env = app.new_env_as_option(None)?;
+    Template::<SingleId>::render_page(&mut env, key, web::qweb::Values::new())
+}
+
+/// A called template gets its caller's body as `0` and the values set in it, and those values
+/// end with the call; text is escaped, a rendered body is not; void elements are not closed.
+#[test]
+fn test_a_template_calls_another_with_values_and_a_body() -> Result<()> {
+    let app = with_server_templates("web_pages", PAGES)?;
+    let page = render(&app, "web_pages.Page")?;
+    assert_eq!(
+        page.split_whitespace().collect::<String>(),
+        "<!doctypehtml><section><h2>A&lt;B</h2><br><em>body</em><p>kept<b>asmarkup</b></p></section><i></i>"
+    );
+    Ok(())
+}
+
+#[test]
+fn test_what_the_server_does_not_render_is_refused() -> Result<()> {
+    let app = with_server_templates("web_pages", PAGES)?;
+    for (key, expected) in [
+        ("web_pages.Unsupported", "t-if"),
+        ("web_pages.Missing", "web_pages.Nowhere"),
+        ("web_pages.Loop", "deep"),
+        ("web_pages.Unknown", "web_pages.Unknown"),
+    ] {
+        let error = render(&app, key).expect_err(key).to_string();
+        assert!(error.contains(expected), "{key}: {error}");
+    }
+    Ok(())
+}
+
+/// What the server renders is never downloaded; what the browser renders is never rendered here.
+#[test]
+fn test_server_and_browser_templates_stay_apart() -> Result<()> {
+    let app = new_app()?;
+    for target in [
+        "/static/web/templates/layout.xml",
+        "/static/web/pages/layout.xml",
+        "/static/web/layout.xml",
+    ] {
+        assert_eq!(get(&app, target).status(), 404, "{target}");
+    }
+    assert_eq!(
+        get(&app, "/static/web/src/web_client/web_client.xml").status(),
+        200,
+        "a component's template is the browser's"
+    );
+
+    let error = render(&app, "web.WebClient").expect_err("the browser's");
+    assert!(error.to_string().contains("browser"), "{error}");
+
+    let error = refused_install(TemplatePlugin {
+        name: "web_crossing",
+        files: &[(
+            "src/crossing.xml",
+            br#"<templates><t t-inherit="web.Layout">
+                <xpath expr="//body" position="inside"><p/></xpath>
+            </t></templates>"#,
+        )],
+        templates: &[],
+    });
+    assert!(error.contains("inherits from the server's"), "{error}");
+    Ok(())
+}
+
+/// A page template is extended like any other, and the page follows.
+#[test]
+fn test_another_plugin_extends_the_layout() -> Result<()> {
+    let app = with_server_templates(
+        "web_layout",
+        &[(
+            "pages/layout.xml",
+            br#"<templates><t t-inherit="web.Layout">
+                <xpath expr="//body" position="attributes">
+                    <attribute name="class">o_extended</attribute>
+                </xpath>
+            </t></templates>"#,
+        )],
+    )?;
+    let page = get(&app, "/web").text_body();
+    assert!(page.contains("<body class=\"o_extended\">"), "{page}");
     Ok(())
 }
 
@@ -223,7 +727,12 @@ fn test_the_library_exports_the_plugin_under_its_name() -> Result<()> {
 
 /// Start the application the way the server does, on this database: from the plugin directory,
 /// then whatever the database says is installed, then what installs itself.
-fn boot(database: &erp::database::cache::CacheDatabase) -> Result<Application> {
+///
+/// With template files, `web_extension` ships them, and is installed if it is not yet.
+fn boot(
+    database: &erp::database::cache::CacheDatabase,
+    templates: Option<StaticFiles>,
+) -> Result<Application> {
     let directory = std::env::temp_dir().join(format!("erp_web_boot_{}", std::process::id()));
     std::fs::create_dir_all(&directory)?;
     let mut app = Application::new_test();
@@ -234,7 +743,19 @@ fn boot(database: &erp::database::cache::CacheDatabase) -> Result<Application> {
     app.cache_db = database.clone();
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.register_plugin(Box::new(WebPlugin {}))?;
+    if let Some(files) = templates {
+        app.register_plugin(Box::new(TestLibPlugin {}))?;
+        app.register_plugin(Box::new(TestPlugin {}))?;
+        app.register_plugin(Box::new(TemplatePlugin {
+            name: "web_extension",
+            files,
+            templates: &[],
+        }))?;
+    }
     app.load()?;
+    if templates.is_some() && !app.plugin_manager.is_installed("web_extension") {
+        app.load_plugin("web_extension")?;
+    }
     Ok(app)
 }
 
@@ -242,11 +763,11 @@ fn boot(database: &erp::database::cache::CacheDatabase) -> Result<Application> {
 #[test]
 fn test_a_restart_loads_again_what_installed_itself() -> Result<()> {
     let database = erp::database::cache::CacheDatabase::default();
-    let first = boot(&database)?;
+    let first = boot(&database, None)?;
     assert!(first.plugin_manager.is_installed("web"));
     drop(first);
 
-    let second = boot(&database)?;
+    let second = boot(&database, None)?;
     assert!(second.plugin_manager.is_installed("web"));
     assert_eq!(get(&second, "/").header("location"), Some("/web"));
     Ok(())

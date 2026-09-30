@@ -6,10 +6,14 @@
 //! back office, another for the site, another for the point of sale. Only installed plugins count,
 //! in the order they were installed, so a bundle holds exactly what the installed plugins bring.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// The files a plugin serves, relative to its static directory: what `erp_assets_build` embeds.
 pub type StaticFiles = &'static [(&'static str, &'static [u8])];
+
+/// The templates a plugin renders on the server, relative to its templates directory. Never
+/// served: `erp_assets_build::templates` embeds them apart from the static files.
+pub type TemplateFiles = &'static [(&'static str, &'static [u8])];
 
 /// What a plugin adds to one bundle: globs over public paths, such as `web/static/src/**/*.js`.
 ///
@@ -42,7 +46,9 @@ struct Contribution {
 #[derive(Default)]
 pub struct AssetRegistry {
     files: HashMap<String, &'static [u8]>,
+    templates: HashMap<String, &'static [u8]>,
     contributions: Vec<Contribution>,
+    imports: BTreeMap<&'static str, &'static str>,
 }
 
 impl AssetRegistry {
@@ -66,9 +72,65 @@ impl AssetRegistry {
         }
     }
 
+    /// Record names scripts import instead of a path. A later plugin naming the same one wins, so
+    /// a plugin can serve its own build of a library another one brings.
+    pub fn register_imports(&mut self, imports: Vec<(&'static str, &'static str)>) {
+        self.imports.extend(imports);
+    }
+
+    /// The import map a page declares before loading any module, so a browser resolves
+    /// `import … from "trame"` as the compiled TypeScript still writes it.
+    pub fn import_map(&self) -> String {
+        let imports: BTreeMap<&str, String> = self
+            .imports
+            .iter()
+            .map(|(name, path)| {
+                (
+                    *name,
+                    format!("/static/{}", path.replacen("/static/", "/", 1)),
+                )
+            })
+            .collect();
+        serde_json::json!({ "imports": imports }).to_string()
+    }
+
     /// A file by its public path, `<plugin>/static/<path>`.
     pub fn file(&self, path: &str) -> Option<&'static [u8]> {
         self.files.get(path.trim_start_matches('/')).copied()
+    }
+
+    /// Record the templates a plugin being installed renders on the server.
+    pub fn register_templates(&mut self, plugin: &str, templates: TemplateFiles) {
+        for (path, content) in templates {
+            self.templates
+                .insert(format!("{plugin}/templates/{path}"), content);
+        }
+    }
+
+    /// The server templates of a plugin, as `<plugin>/templates/<path>`, in path order.
+    pub fn templates_of(&self, plugin: &str) -> Vec<(&str, &'static [u8])> {
+        let prefix = format!("{plugin}/templates/");
+        let mut templates: Vec<(&str, &'static [u8])> = self
+            .templates
+            .iter()
+            .filter(|(path, _)| path.starts_with(&prefix))
+            .map(|(path, content)| (path.as_str(), *content))
+            .collect();
+        templates.sort_unstable_by_key(|(path, _)| *path);
+        templates
+    }
+
+    /// The files a plugin serves, by public path, in path order.
+    pub fn files_of(&self, plugin: &str) -> Vec<(&str, &'static [u8])> {
+        let prefix = format!("{plugin}/static/");
+        let mut files: Vec<(&str, &'static [u8])> = self
+            .files
+            .iter()
+            .filter(|(path, _)| path.starts_with(&prefix))
+            .map(|(path, content)| (path.as_str(), *content))
+            .collect();
+        files.sort_unstable_by_key(|(path, _)| *path);
+        files
     }
 
     /// The files of a bundle, in the order a browser must load them.

@@ -9,6 +9,7 @@ erp = { path = "../../erp" }
 erp_search = { path = "../../erp_search" }
 erp_search_code_gen = { path = "../../erp_search_code_gen" }
 code_gen = { path = "../../code_gen" }
+tracing.workspace = true
 
 [lib]
 crate-type = ["dylib"]

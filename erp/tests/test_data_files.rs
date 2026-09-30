@@ -567,3 +567,80 @@ fn test_unknown_model_tag_is_an_error() -> Result<()> {
     );
     Ok(())
 }
+
+/// A field holding elements, as a template's markup does, gets that content as it was written.
+#[test]
+fn test_a_field_can_hold_markup() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env_as_option(None)?;
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <tag id="markup"><name><b class="x">bold</b> &amp; <i>more</i></name></tag>
+            <tag id="plain"><name>just text</name></tag>
+        </erp>"#,
+    )?;
+    let markup = data::resolve(&mut env, "seed_plugin.markup")?.expect("loaded");
+    let rows = env.read("tag", &SingleId::from(markup), &["name"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        r#"<b class="x">bold</b> &amp; <i>more</i>"#
+    );
+    let plain = data::resolve(&mut env, "seed_plugin.plain")?.expect("loaded");
+    let rows = env.read("tag", &SingleId::from(plain), &["name"])?;
+    assert_eq!(rows[0].get::<&String>("name"), "just text");
+    Ok(())
+}
+
+/// A field may be given as an attribute of the record, a relational one as a reference.
+#[test]
+fn test_attributes_are_fields() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env_as_option(None)?;
+    let order = data::resolve(&mut env, "seed_plugin.main_order")?.unwrap();
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <sale_order_line id="attribute_line" price="4" order="main_order">
+                <amount>2</amount>
+            </sale_order_line>
+        </erp>"#,
+    )?;
+    let id = data::resolve(&mut env, "seed_plugin.attribute_line")?.unwrap();
+    let rows = env.read(
+        "sale_order_line",
+        &SingleId::from(id),
+        &["price", "amount", "order"],
+    )?;
+    assert_eq!(rows[0].get::<&i32>("price"), &4);
+    assert_eq!(rows[0].get::<&i32>("amount"), &2);
+    assert_eq!(rows[0].get::<&u32>("order"), &order);
+    Ok(())
+}
+
+/// For a model with a body field, what the record element holds is that field, not more fields.
+#[test]
+fn test_a_body_field_takes_the_content_of_the_record() -> Result<()> {
+    let mut app = new_app()?;
+    app.model_manager.set_data_body("tag", "name");
+    let mut env = app.new_env_as_option(None)?;
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <tag id="bodied" field="beside">
+                <b>bold</b> and <i>more</i>
+            </tag>
+        </erp>"#,
+    )?;
+    let id = data::resolve(&mut env, "seed_plugin.bodied")?.unwrap();
+    let rows = env.read("tag", &SingleId::from(id), &["name", "field"])?;
+    assert_eq!(
+        rows[0].get::<&String>("name"),
+        "<b>bold</b> and <i>more</i>"
+    );
+    assert_eq!(rows[0].get::<&String>("field"), "beside");
+    Ok(())
+}

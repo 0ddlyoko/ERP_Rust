@@ -1095,15 +1095,15 @@ impl Plugin for MistypedRulePlugin {
     }
 }
 
-/// A rule naming a model that does not exist would grant nothing and say nothing; loading fails
-/// instead, whichever plugin shipped it.
+/// A rule naming a model that does not exist is only warned of: at start-up, a plugin's rules may
+/// name models its plugin has not registered yet. Nothing reads it.
 #[test]
-fn test_a_rule_on_an_unknown_model_fails_the_load() -> Result<()> {
+fn test_a_rule_on_an_unknown_model_is_ignored() -> Result<()> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.register_plugin(Box::new(MistypedRulePlugin {}))?;
-    let error = app.load_plugin("mistyped_rule").unwrap_err();
-    assert!(error.to_string().contains("contcat"), "got {error}");
+    app.load_plugin("mistyped_rule")?;
+    assert!(app.plugin_manager.is_installed("mistyped_rule"));
     Ok(())
 }
 

@@ -1,17 +1,26 @@
 use crate::access::AccessRules;
 use crate::assets::AssetRegistry;
+use crate::environment::Environment;
 use crate::http::ControllerRegistry;
 use crate::identity::Identities;
 use crate::model::HasMethods;
 use crate::model::Model;
 use crate::model::ModelNotFound;
 use crate::model::rpc::{RpcFn, RpcRegistry};
+use crate::shared_cache::SharedCaches;
 use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use erp_types::method::MethodFn;
 use std::collections::{HashMap, HashSet};
+
+/// Work a plugin asks to do once any plugin has loaded its data, given that plugin's name.
+///
+/// For what a plugin declares and others extend or supply: records to bring in line with what
+/// the loaded plugin ships, or a check that must also cover what later plugins bring.
+pub type LoadHook =
+    fn(&mut Environment, &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Default)]
 pub struct ModelManager {
@@ -25,6 +34,10 @@ pub struct ModelManager {
     pub access: AccessRules,
     pub controllers: ControllerRegistry,
     pub assets: AssetRegistry,
+    pub load_hooks: Vec<LoadHook>,
+    pub shared_caches: SharedCaches,
+    data_bodies: HashMap<String, String>,
+    pub(crate) loaded_plugins: Vec<String>,
     pub(crate) current_plugin_loading: Option<String>,
 }
 
@@ -345,6 +358,25 @@ impl ModelManager {
     pub fn get_model_mut(&mut self, model_name: &str) -> &mut FinalInternalModel {
         self.try_get_model_mut(model_name)
             .unwrap_or_else(|err| panic!("{err}"))
+    }
+
+    /// The plugins loaded in this process, in the order they loaded.
+    pub fn loaded_plugins(&self) -> &[String] {
+        &self.loaded_plugins
+    }
+
+    /// Say that in data files, what a record of this model holds is the value of this field.
+    ///
+    /// For a model whose records are mostly one piece of markup, such as a template: written as
+    /// the content of `<template id="…">`, rather than wrapped in one more element.
+    pub fn set_data_body(&mut self, model_name: &str, field_name: &str) {
+        self.data_bodies
+            .insert(model_name.to_string(), field_name.to_string());
+    }
+
+    /// The field a record element's content goes to in data files, if its model has one.
+    pub fn data_body(&self, model_name: &str) -> Option<&str> {
+        self.data_bodies.get(model_name).map(String::as_str)
     }
 
     pub fn is_valid_model(&self, model_name: &str) -> bool {

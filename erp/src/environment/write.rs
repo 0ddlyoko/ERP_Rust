@@ -257,6 +257,7 @@ impl<'mm> Environment<'mm> {
         // Loading a value from the database also lands here, and changes no rule.
         if matches!(update_dirty, Dirty::UpdateDirty) {
             self.forget_access_of(model_name, ids.get_ids_ref())?;
+            self.forget_shared_of(model_name);
             if self.is_rule_target(model_name, field_name)
                 && let Some(FieldType::String(target)) = &value
             {

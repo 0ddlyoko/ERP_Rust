@@ -352,6 +352,10 @@ impl Application {
         let plugin = &mut self.plugin_manager.load_plugin(plugin_name)?.plugin;
 
         plugin.pre_init();
+        self.model_manager
+            .loaded_plugins
+            .push(plugin_name.to_string());
+        self.model_manager.shared_caches.forget_all();
         self.model_manager.current_plugin_loading = Some(plugin_name.to_string());
         plugin.init_models(&mut self.model_manager);
         self.model_manager.post_register();
@@ -362,6 +366,10 @@ impl Application {
         self.model_manager
             .assets
             .register(plugin_name, plugin.static_files(), plugin.assets());
+        self.model_manager.assets.register_imports(plugin.imports());
+        self.model_manager
+            .assets
+            .register_templates(plugin_name, plugin.template_files());
 
         // Bring the schema in line with what this plugin declared. It runs after
         // `post_register`, so relational links are complete, and in dependency order, so a plugin
@@ -408,6 +416,9 @@ impl Application {
             plugin.post_init(env)?;
             if let Some(check) = env.model_manager.access.source().map(|source| source.check) {
                 check(env)?;
+            }
+            for hook in env.model_manager.load_hooks.clone() {
+                hook(env, plugin_name)?;
             }
             crate::plugin::record_plugin(env, plugin_name, &info, true)
         })?;

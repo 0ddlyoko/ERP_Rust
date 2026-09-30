@@ -9,6 +9,7 @@ impl<'mm> Environment<'mm> {
         //  database and replace it with a cache one
         self.database.commit_transaction()?;
         self.closed = true;
+        self.forget_shared_after_commit();
         Ok(())
     }
     /// If an error is returned, rollback the commit and put back the cache as it was

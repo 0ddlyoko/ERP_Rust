@@ -9,7 +9,7 @@ pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::{PluginManager, plugin_build_symbol, plugin_symbol};
 pub(crate) use record::{installed_version, record_plugin};
 
-use crate::assets::{BundleContribution, StaticFiles};
+use crate::assets::{BundleContribution, StaticFiles, TemplateFiles};
 use crate::environment::Environment;
 use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
@@ -67,9 +67,22 @@ pub trait Plugin: Any + Send + Sync {
         &[]
     }
 
+    /// The templates this plugin renders on the server, embedded when it was compiled:
+    /// `include!(concat!(env!("OUT_DIR"), "/template_files.rs"))` then `TEMPLATE_FILES`, from a
+    /// build script calling `erp_assets_build::templates`. Never served to a browser.
+    fn template_files(&self) -> TemplateFiles {
+        &[]
+    }
+
     /// What this plugin adds to which bundle: globs over public paths, its own files or other
     /// plugins'. Counted only while the plugin is installed.
     fn assets(&self) -> Vec<BundleContribution> {
+        Vec::new()
+    }
+
+    /// Names scripts import instead of a path, and the public path each stands for:
+    /// `("trame", "web/static/lib/trame.js")` lets any plugin write `import … from "trame"`.
+    fn imports(&self) -> Vec<(&'static str, &'static str)> {
         Vec::new()
     }
 

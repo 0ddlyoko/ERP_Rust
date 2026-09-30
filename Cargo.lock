@@ -170,6 +170,7 @@ dependencies = [
  "erp",
  "erp_search",
  "erp_search_code_gen",
+ "tracing",
 ]
 
 [[package]]
@@ -3801,6 +3802,8 @@ dependencies = [
  "code_gen",
  "erp",
  "erp_assets_build",
+ "erp_search",
+ "erp_search_code_gen",
  "test_plugin",
  "test_utilities",
 ]

@@ -131,6 +131,7 @@ impl<'mm> Environment<'mm> {
         }
 
         self.forget_access_of(model_name, &ids)?;
+        self.forget_shared_of(model_name);
         Ok(ids.into())
     }
 

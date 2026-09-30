@@ -99,21 +99,25 @@ impl AccessRule<SingleId> {
         })
     }
 
-    /// Refuse a rule naming a model that does not exist, or holding a domain that does not parse.
+    /// Refuse a rule holding a domain that does not parse, and warn of one naming a model that
+    /// does not exist.
     ///
-    /// A mistyped model name would otherwise be a rule nobody ever reads, and the right it was
-    /// meant to grant silently missing.
+    /// Only a warning: at start-up, the rules of a plugin not loaded yet name models registered
+    /// once it is. A mistyped model name shows up in the log rather than in rights silently
+    /// missing — or, for a global rule, a restriction silently not applied.
     fn check_all(env: &mut Environment) -> Result<()> {
         let all: AccessRule<MultipleIds> = env.search(&SearchType::Nothing)?;
         for rule in all {
             let model = rule.get_model(env)?.clone();
             if env.model_manager.try_get_model(&model).is_err() {
                 let name = rule.get_name(env)?.clone();
-                return Err(format!(
-                    "Access rule {} ({name}) names unknown model {model:?}",
-                    rule.get_id()
-                )
-                .into());
+                tracing::warn!(
+                    rule = rule.get_id(),
+                    name = %name,
+                    model = %model,
+                    "An access rule names an unknown model: nothing reads it"
+                );
+                continue;
             }
             rule.to_rule(env)?;
         }
