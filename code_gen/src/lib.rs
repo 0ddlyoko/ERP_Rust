@@ -44,3 +44,37 @@ pub fn erp_routes(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
+
+/// Exports a plugin from its library, for the application to find when it loads the file.
+///
+/// `export_plugin!(WebPlugin)` defines `erp_create_plugin_<crate>`: named after the crate, so that
+/// several plugins linked into one binary — a test's, typically — never define the same symbol.
+/// The application derives that name from the library's file name, which Cargo also takes from the
+/// crate. `erp_plugin_build_<crate>` beside it says which build of `erp` the library carries, which
+/// the application checks before running anything else of it.
+#[proc_macro]
+pub fn export_plugin(input: TokenStream) -> TokenStream {
+    let plugin = parse_macro_input!(input as syn::Expr);
+    let crate_name = std::env::var("CARGO_CRATE_NAME").unwrap_or_default();
+    let symbol = proc_macro2::Ident::new(
+        &format!("erp_create_plugin_{crate_name}"),
+        proc_macro2::Span::call_site(),
+    );
+    let build = proc_macro2::Ident::new(
+        &format!("erp_plugin_build_{crate_name}"),
+        proc_macro2::Span::call_site(),
+    );
+    quote::quote! {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn #symbol() -> *mut Box<dyn erp::plugin::Plugin> {
+            let plugin: Box<dyn erp::plugin::Plugin> = Box::new(#plugin);
+            Box::into_raw(Box::new(plugin))
+        }
+
+        #[unsafe(no_mangle)]
+        pub extern "C" fn #build() -> u64 {
+            erp::plugin::build_id()
+        }
+    }
+    .into()
+}

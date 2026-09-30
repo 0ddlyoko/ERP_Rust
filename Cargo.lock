@@ -694,6 +694,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "web",
 ]
 
 [[package]]
@@ -3790,6 +3791,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81941cd78d0c92026c33e5e01312845a4cb1e9af3407f9134b100dd03144103e"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "web"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_assets_build",
+ "test_plugin",
+ "test_utilities",
 ]
 
 [[package]]

@@ -251,9 +251,10 @@ impl Application {
         self.plugin_manager
             ._get_ordered_dependencies_of_all_plugins()?;
 
+        // `base` stays in the list although it is already loaded: the plugins depending on it
+        // need it there to be ordered, and loading it again does nothing.
         let mut database = self.create_new_database()?;
-        let mut plugins = database.get_installed_plugins()?;
-        plugins.retain(|plugin_name| plugin_name != "base");
+        let plugins = database.get_installed_plugins()?;
 
         // Vec<String> => Vec<&String>
         let plugins = plugins.iter().collect::<Vec<_>>();

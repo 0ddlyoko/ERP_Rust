@@ -21,6 +21,7 @@ members = [
     "erp_search_code_gen",
     "plugins/base",
     "plugins/test_plugin",
+    "plugins/web",
 ]
 
 [workspace.dependencies]

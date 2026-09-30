@@ -1,0 +1,19 @@
+[package]
+name = "web"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+erp = { path = "../../erp" }
+code_gen = { path = "../../code_gen" }
+
+[build-dependencies]
+erp_assets_build = { path = "../../erp/erp_assets_build" }
+
+[dev-dependencies]
+base = { path = "../base" }
+test_plugin = { path = "../test_plugin" }
+test_utilities = { path = "../../erp/test_utilities" }
+
+[lib]
+crate-type = ["cdylib", "lib"]

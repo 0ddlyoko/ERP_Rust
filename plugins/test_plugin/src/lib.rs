@@ -80,9 +80,4 @@ impl Plugin for TestPlugin3 {
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _create_plugin() -> *mut Box<dyn Plugin> {
-    let object = TestPlugin {};
-    let b = Box::new(object);
-    Box::into_raw(Box::new(b))
-}
+code_gen::export_plugin!(TestPlugin {});

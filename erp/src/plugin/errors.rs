@@ -22,3 +22,17 @@ pub struct PluginLoadError {
     pub path: std::path::PathBuf,
     pub source: libloading::Error,
 }
+
+/// A plugin library compiled against another build of `erp` than the application loading it.
+///
+/// Types would not be the same types across the two, however alike they are named. Building the
+/// server and its plugins with one Cargo command gives them one build of `erp`.
+#[derive(Debug, Error)]
+#[error(
+    "Plugin {} was compiled against another build of erp than this application. Build the \
+     application and its plugins with the same cargo command.",
+    .path.display()
+)]
+pub struct PluginBuildMismatchError {
+    pub path: std::path::PathBuf,
+}

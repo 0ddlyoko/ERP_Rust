@@ -26,10 +26,12 @@ pub trait HasRoutes {
     fn register_routes(registry: &mut ControllerRegistry);
 }
 
+/// One segment of a route: fixed, a parameter, or — last — the rest of the path, `<*name>`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Segment {
     Literal(String),
     Param(String),
+    Rest(String),
 }
 
 struct Route {
@@ -51,17 +53,30 @@ impl Route {
     }
 
     /// The parameters, when this route matches the path.
+    ///
+    /// A rest segment takes one segment or more, joined back with `/`.
     fn matches(&self, path: &[&str]) -> Option<Vec<(String, String)>> {
-        if path.len() != self.segments.len() {
+        let rest = matches!(self.segments.last(), Some(Segment::Rest(_)));
+        let fits = if rest {
+            path.len() >= self.segments.len()
+        } else {
+            path.len() == self.segments.len()
+        };
+        if !fits {
             return None;
         }
+        let decode = crate::http::request::percent_decode;
         let mut params = Vec::new();
-        for (segment, part) in self.segments.iter().zip(path) {
+        for (index, segment) in self.segments.iter().enumerate() {
+            let part = path[index];
             match segment {
                 Segment::Literal(literal) if literal == part => {}
                 Segment::Literal(_) => return None,
-                Segment::Param(name) => {
-                    params.push((name.clone(), crate::http::request::percent_decode(part)))
+                Segment::Param(name) => params.push((name.clone(), decode(part))),
+                Segment::Rest(name) => {
+                    let joined: Vec<String> =
+                        path[index..].iter().map(|part| decode(part)).collect();
+                    params.push((name.clone(), joined.join("/")));
                 }
             }
         }
@@ -78,6 +93,7 @@ impl Route {
                 .all(|pair| match pair {
                     (Segment::Literal(a), Segment::Literal(b)) => a == b,
                     (Segment::Param(_), Segment::Param(_)) => true,
+                    (Segment::Rest(_), Segment::Rest(_)) => true,
                     _ => false,
                 })
     }
@@ -92,7 +108,10 @@ fn parse_pattern(pattern: &str) -> Vec<Segment> {
         .into_iter()
         .map(
             |part| match part.strip_prefix('<').and_then(|p| p.strip_suffix('>')) {
-                Some(name) => Segment::Param(name.to_string()),
+                Some(name) => match name.strip_prefix('*') {
+                    Some(rest) => Segment::Rest(rest.to_string()),
+                    None => Segment::Param(name.to_string()),
+                },
                 None => Segment::Literal(part.to_string()),
             },
         )

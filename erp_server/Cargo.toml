@@ -19,6 +19,8 @@ tracing-subscriber.workspace = true
 
 erp = { path = "../erp" }
 base = { path = "../plugins/base" }
+# Built with the server, so the plugin libraries it loads share its build of erp.
+web = { path = "../plugins/web" }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }

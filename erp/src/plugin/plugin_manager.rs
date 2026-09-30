@@ -1,19 +1,60 @@
 use crate::plugin::InternalPluginState::{Installed, NotInstalled};
 use crate::plugin::Plugin;
-use crate::plugin::errors::{PluginAlreadyRegisteredError, PluginLoadError, PluginNotFoundError};
+use crate::plugin::errors::{
+    PluginAlreadyRegisteredError, PluginBuildMismatchError, PluginLoadError, PluginNotFoundError,
+};
 use crate::plugin::{InternalPlugin, InternalPluginType};
 use crate::util::dependency;
-use libloading::{Error, Library, Symbol};
+use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, error, fs};
 
-unsafe fn read_plugin_from_file(path: &PathBuf) -> Result<InternalPlugin, Error> {
+/// The symbol a plugin library exports its plugin under, from the library's file name.
+///
+/// `libweb.so`, `libweb.dylib` and `web.dll` all come from the crate `web`, whose
+/// `export_plugin!` defines `erp_create_plugin_web`. One name per crate, so that plugins linked
+/// together never define the same symbol twice.
+pub fn plugin_symbol(path: &Path) -> String {
+    format!("erp_create_plugin_{}", crate_of(path))
+}
+
+/// The symbol a plugin library says which build of `erp` it carries under: `erp_plugin_build_web`.
+pub fn plugin_build_symbol(path: &Path) -> String {
+    format!("erp_plugin_build_{}", crate_of(path))
+}
+
+fn crate_of(path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let crate_name = match env::consts::DLL_PREFIX {
+        "" => stem.as_str(),
+        prefix => stem.strip_prefix(prefix).unwrap_or(&stem),
+    };
+    crate_name.replace('-', "_")
+}
+
+/// Open a plugin library, and create its plugin.
+///
+/// Its build of `erp` is checked before any of its code runs: a plugin from another build would
+/// fail later and far from the cause, and a panic in a library cannot even reach the application —
+/// each carries its own standard library, so the process aborts instead.
+unsafe fn read_plugin_from_file(
+    path: &PathBuf,
+) -> Result<InternalPlugin, Box<dyn error::Error + Send + Sync>> {
     type PluginCreator = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
+    type BuildId = unsafe extern "C" fn() -> u64;
 
     let library = unsafe { Library::new(path)? };
-    let constructor: Symbol<PluginCreator> = unsafe { library.get(b"_create_plugin")? };
+    let build: Symbol<BuildId> = unsafe { library.get(plugin_build_symbol(path).as_bytes())? };
+    if unsafe { build() } != crate::plugin::build_id() {
+        return Err(PluginBuildMismatchError { path: path.clone() }.into());
+    }
+    let symbol = plugin_symbol(path);
+    let constructor: Symbol<PluginCreator> = unsafe { library.get(symbol.as_bytes())? };
     let boxed_raw = unsafe { constructor() };
 
     let plugin = unsafe { *Box::from_raw(boxed_raw) };
@@ -82,9 +123,15 @@ impl PluginManager {
         plugin_path: &PathBuf,
     ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
         let internal_plugin =
-            unsafe { read_plugin_from_file(plugin_path) }.map_err(|source| PluginLoadError {
-                path: plugin_path.clone(),
-                source,
+            unsafe { read_plugin_from_file(plugin_path) }.map_err(|error| match error
+                .downcast::<libloading::Error>(
+            ) {
+                Ok(source) => PluginLoadError {
+                    path: plugin_path.clone(),
+                    source: *source,
+                }
+                .into(),
+                Err(error) => error,
             })?;
 
         let plugin_name = internal_plugin.plugin.name();

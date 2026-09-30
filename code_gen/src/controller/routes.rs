@@ -135,9 +135,21 @@ fn parse(item: ImplItemFn) -> Result<ParsedRoute> {
     }
 
     if let Some((pattern, _)) = &route {
-        for part in pattern.value().split('/') {
+        let value = pattern.value();
+        let parts: Vec<&str> = value.split('/').filter(|part| !part.is_empty()).collect();
+        for (index, part) in parts.iter().enumerate() {
             let Some(param) = part.strip_prefix('<').and_then(|p| p.strip_suffix('>')) else {
                 continue;
+            };
+            let param = match param.strip_prefix('*') {
+                Some(rest) if index + 1 == parts.len() => rest,
+                Some(_) => {
+                    return Err(Error::new(
+                        pattern.span(),
+                        "<*name> takes the rest of the path, so it is the last segment",
+                    ));
+                }
+                None => param,
             };
             if !args.iter().any(|(ident, _)| ident == param) {
                 return Err(Error::new(

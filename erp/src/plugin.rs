@@ -6,7 +6,7 @@ mod record;
 pub(crate) use internal_plugin::InternalPlugin;
 pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;
-pub use plugin_manager::PluginManager;
+pub use plugin_manager::{PluginManager, plugin_build_symbol, plugin_symbol};
 pub(crate) use record::{installed_version, record_plugin};
 
 use crate::assets::{BundleContribution, StaticFiles};
@@ -15,6 +15,20 @@ use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
 use std::any::Any;
 use std::error::Error;
+
+/// Identifies the build of `erp` the calling code was compiled against.
+///
+/// Every plugin library carries its own copy of `erp`, and a type is only the same type across
+/// libraries when those copies come from one build: Cargo builds `erp` again whenever the features
+/// around it differ, and each build gives identically named types different identities. A plugin
+/// from another build looks fine until it extends another plugin's method and the signatures, the
+/// same on paper, do not match — so the loader compares this first, and refuses the library.
+pub fn build_id() -> u64 {
+    struct Build;
+    let mut hasher = std::hash::DefaultHasher::new();
+    std::hash::Hash::hash(&std::any::TypeId::of::<Build>(), &mut hasher);
+    std::hash::Hasher::finish(&hasher)
+}
 
 /// What a plugin says about itself, recorded in the database for whoever lists plugins.
 ///

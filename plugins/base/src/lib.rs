@@ -91,9 +91,4 @@ impl Plugin for BasePlugin {
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _create_plugin() -> *mut Box<dyn Plugin> {
-    let plugin = BasePlugin {};
-    let box_plugin = Box::new(plugin);
-    Box::into_raw(Box::new(box_plugin))
-}
+code_gen::export_plugin!(BasePlugin {});
