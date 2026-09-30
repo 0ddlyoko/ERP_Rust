@@ -1,0 +1,13 @@
+<templates>
+    <t t-name="web.Layout">
+        <html lang="en">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title><t t-out="title"/></title>
+                <t t-out="head"/>
+            </head>
+            <body><t t-out="0"/></body>
+        </html>
+    </t>
+</templates>
