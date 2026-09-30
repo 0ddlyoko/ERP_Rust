@@ -4,7 +4,7 @@ use crate::model::util::{
     gen_multiple_ids_without_source, gen_option_not_one_generic, gen_password_has_no_default,
     gen_reference_not_two_generic, gen_wrong_default_value,
 };
-use erp::types::field::FieldType;
+use erp_types::field::FieldType;
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{

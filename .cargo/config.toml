@@ -1,0 +1,5 @@
+# `erp` is a shared library the server and every plugin link against, so that one copy of it —
+# its code, its statics, its type identities — exists in the process. That needs the standard
+# library shared as well, which is what this asks for.
+[build]
+rustflags = ["-C", "prefer-dynamic"]

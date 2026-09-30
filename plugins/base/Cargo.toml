@@ -11,4 +11,4 @@ erp_search_code_gen = { path = "../../erp_search_code_gen" }
 code_gen = { path = "../../code_gen" }
 
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["dylib"]

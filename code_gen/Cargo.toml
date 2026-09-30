@@ -11,4 +11,5 @@ proc-macro2.workspace = true
 quote.workspace = true
 rust_decimal.workspace = true
 syn.workspace = true
-erp = { path = "../erp" }
+# Not `erp`: that is a shared library, and a macro the compiler runs should not have to load it.
+erp_types = { path = "../erp/erp_types" }

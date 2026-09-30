@@ -1,7 +1,7 @@
 use crate::model::field::FieldGen;
 use crate::model::model::ModelGen;
-use erp::types::field::FieldType;
-use erp::util::string::StringTransform;
+use erp_types::field::FieldType;
+use erp_types::string::StringTransform;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{DeriveInput, Path, Result, parse_str};

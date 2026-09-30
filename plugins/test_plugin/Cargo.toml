@@ -15,4 +15,4 @@ test_utilities = { path = "../../erp/test_utilities" }
 erp_assets_build = { path = "../../erp/erp_assets_build" }
 
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["dylib"]

@@ -16,4 +16,4 @@ test_plugin = { path = "../test_plugin" }
 test_utilities = { path = "../../erp/test_utilities" }
 
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["dylib"]

@@ -188,17 +188,13 @@ fn test_an_unknown_bundle_is_a_404() -> Result<()> {
     Ok(())
 }
 
-/// The compiled library is found under the symbol its file name gives, `erp_create_plugin_web`,
-/// and only once its build of `erp` is the one of the application loading it.
+/// The compiled library is found under the symbol its file name gives, `erp_create_plugin_web`.
 ///
-/// Whether the library on disk comes from this test's build depends on the Cargo command that
-/// produced it, so both outcomes are accepted — but never a third: a library from another build is
-/// refused before any of its code runs, rather than failing later or aborting the process.
+/// It links against the one shared `erp`, the same as this test's, so it always matches.
 #[test]
 fn test_the_library_exports_the_plugin_under_its_name() -> Result<()> {
     let directory = std::env::current_exe()?
         .parent()
-        .and_then(|deps| deps.parent())
         .map(std::path::Path::to_path_buf)
         .expect("tests run from target/<profile>/deps");
     let library = directory.join(format!(
@@ -216,19 +212,12 @@ fn test_the_library_exports_the_plugin_under_its_name() -> Result<()> {
     );
 
     let mut manager = erp::plugin::PluginManager::default();
-    match manager.register_plugin_from_file(&library) {
-        Ok(()) => {
-            let again = manager.register_plugin(Box::new(WebPlugin {}));
-            assert!(
-                again.is_err_and(|error| error.to_string().contains("\"web\"")),
-                "the library registered the plugin named web"
-            );
-        }
-        Err(error) => assert!(
-            error.is::<erp::plugin::errors::PluginBuildMismatchError>(),
-            "anything but a build mismatch is a real failure: {error}"
-        ),
-    }
+    manager.register_plugin_from_file(&library)?;
+    let again = manager.register_plugin(Box::new(WebPlugin {}));
+    assert!(
+        again.is_err_and(|error| error.to_string().contains("\"web\"")),
+        "the library registered the plugin named web"
+    );
     Ok(())
 }
 
