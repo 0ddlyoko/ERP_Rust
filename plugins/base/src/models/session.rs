@@ -101,4 +101,25 @@ impl Session<SingleId> {
         }
         Ok(Some(user.get_id()))
     }
+
+    /// End the session a token opens, if it is a live session of `uid`.
+    ///
+    /// Returns whether it ended one. Checking the owner is what keeps a token picked up somewhere
+    /// from being used to log somebody else out.
+    pub fn revoke(env: &mut Environment, token: &str, uid: u32) -> Result<bool> {
+        let env = &mut *env.sudo();
+        if Self::resolve(env, token)? != Some(uid) {
+            return Ok(false);
+        }
+        let Some(id) = token
+            .split_once('.')
+            .and_then(|(selector, _)| selector.parse::<u32>().ok())
+        else {
+            return Ok(false);
+        };
+        let mut values = MapOfFields::default();
+        values.insert("active", false);
+        env.write("session", &SingleId::from(id), values)?;
+        Ok(true)
+    }
 }

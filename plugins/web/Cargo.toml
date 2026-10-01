@@ -8,12 +8,14 @@ erp = { path = "../../erp" }
 code_gen = { path = "../../code_gen" }
 erp_search = { path = "../../erp_search" }
 erp_search_code_gen = { path = "../../erp_search_code_gen" }
+tracing.workspace = true
+
+base = { path = "../base" }
 
 [build-dependencies]
 erp_assets_build = { path = "../../erp/erp_assets_build" }
 
 [dev-dependencies]
-base = { path = "../base" }
 test_plugin = { path = "../test_plugin" }
 test_utilities = { path = "../../erp/test_utilities" }
 

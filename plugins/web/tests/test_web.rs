@@ -34,6 +34,48 @@ fn get(app: &Application, target: &str) -> Response {
     http::handle(app, Request::new("GET", target))
 }
 
+/// Submit the login form; the answer, cookie included.
+fn post_login(app: &Application, login: &str, password: &str, redirect: &str) -> Response {
+    let form = format!("login={login}&password={password}&redirect={redirect}");
+    http::handle(
+        app,
+        Request::new("POST", "/login")
+            .with_header("Content-Type", "application/x-www-form-urlencoded")
+            .with_body(form.into_bytes()),
+    )
+}
+
+/// The `name=value` of the session cookie a response sets.
+fn session_cookie(response: &Response) -> String {
+    let set = response
+        .headers()
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("set-cookie"))
+        .map(|(_, value)| value.clone())
+        .expect("a cookie is set");
+    set.split(';').next().expect("a value").to_string()
+}
+
+/// The session cookie of the administrator, logged in with the seeded password.
+fn log_in(app: &Application) -> String {
+    let response = post_login(app, "admin", base::DEFAULT_ADMIN_PASSWORD, "/web");
+    assert_eq!(response.status(), 303, "{}", response.text_body());
+    session_cookie(&response)
+}
+
+fn get_as(app: &Application, cookie: &str, target: &str) -> Response {
+    http::handle(
+        app,
+        Request::new("GET", target).with_header("Cookie", cookie),
+    )
+}
+
+/// A page of the web client, as the logged-in administrator.
+fn get_logged_in(app: &Application, target: &str) -> Response {
+    let cookie = log_in(app);
+    get_as(app, &cookie, target)
+}
+
 #[test]
 fn test_web_installs_itself_with_base() -> Result<()> {
     let mut app = Application::new_test();
@@ -51,13 +93,129 @@ fn test_the_root_sends_the_browser_to_the_web_client() -> Result<()> {
     assert_eq!(response.status(), 303);
     assert_eq!(response.header("location"), Some("/web"));
 
-    let response = get(&app, "/web");
+    let response = get_logged_in(&app, "/web");
     assert_eq!(response.status(), 200);
     assert!(
         response
             .header("content-type")
             .is_some_and(|kind| kind.starts_with("text/html"))
     );
+    Ok(())
+}
+
+// ---- logging in ----
+
+/// Nobody logged in is sent to the login form, and back to the web client after.
+#[test]
+fn test_the_web_client_asks_to_log_in_first() -> Result<()> {
+    let app = new_app()?;
+    let response = get(&app, "/web");
+    assert_eq!(response.status(), 303);
+    assert_eq!(response.header("location"), Some("/login?redirect=/web"));
+
+    let form = get(&app, "/login?redirect=/web");
+    assert_eq!(form.status(), 200);
+    let page = form.text_body();
+    assert!(page.contains("<form class=\"o_login_form\" method=\"post\" action=\"/login\">"));
+    assert!(
+        page.contains("name=\"redirect\" type=\"hidden\" value=\"/web\""),
+        "{page}"
+    );
+    assert!(!page.contains("o_login_error"), "no error yet");
+    assert!(page.contains("/web/assets/web.assets_login.css"));
+    assert!(
+        get(&app, "/web/assets/web.assets_login.css")
+            .text_body()
+            .contains(".o_login_form")
+    );
+    Ok(())
+}
+
+/// The right credentials give the browser a session cookie, which the next requests carry.
+#[test]
+fn test_logging_in_sets_a_session_cookie() -> Result<()> {
+    let app = new_app()?;
+    let response = post_login(&app, "admin", base::DEFAULT_ADMIN_PASSWORD, "/web");
+    assert_eq!(response.status(), 303);
+    assert_eq!(response.header("location"), Some("/web"));
+    let set = response.header("set-cookie").expect("a cookie");
+    for attribute in [
+        "session_id=",
+        "Path=/",
+        "Max-Age=",
+        "HttpOnly",
+        "SameSite=Lax",
+    ] {
+        assert!(set.contains(attribute), "{attribute} in {set}");
+    }
+
+    let cookie = session_cookie(&response);
+    assert_eq!(get_as(&app, &cookie, "/web").status(), 200);
+    let again = get_as(&app, &cookie, "/login?redirect=/web/somewhere");
+    assert_eq!(again.status(), 303, "already logged in");
+    assert_eq!(again.header("location"), Some("/web/somewhere"));
+    Ok(())
+}
+
+/// Wrong credentials show the form again, with what was typed as the login, and no cookie.
+#[test]
+fn test_wrong_credentials_are_refused() -> Result<()> {
+    let app = new_app()?;
+    let response = post_login(&app, "admin", "wrong", "/web");
+    assert_eq!(response.status(), 401);
+    assert!(response.header("set-cookie").is_none());
+    let page = response.text_body();
+    assert!(page.contains("Wrong login or password."), "{page}");
+    assert!(page.contains("value=\"admin\""), "{page}");
+
+    let response = post_login(&app, "nobody", "nothing", "/web");
+    assert_eq!(response.status(), 401);
+    Ok(())
+}
+
+/// Logging in never sends the browser to another site.
+#[test]
+fn test_the_login_only_redirects_within_the_site() -> Result<()> {
+    let app = new_app()?;
+    for (asked, sent) in [
+        ("/web/somewhere", "/web/somewhere"),
+        ("//elsewhere.example", "/web"),
+        ("https://elsewhere.example", "/web"),
+        ("", "/web"),
+    ] {
+        let response = post_login(&app, "admin", base::DEFAULT_ADMIN_PASSWORD, asked);
+        assert_eq!(response.header("location"), Some(sent), "{asked}");
+    }
+    Ok(())
+}
+
+/// Logging out ends the session: its cookie is forgotten, and no longer lets anybody in.
+#[test]
+fn test_logging_out_ends_the_session() -> Result<()> {
+    let app = new_app()?;
+    let cookie = log_in(&app);
+    let response = get_as(&app, &cookie, "/logout");
+    assert_eq!(response.status(), 303);
+    assert_eq!(response.header("location"), Some("/login"));
+    let cleared = response.header("set-cookie").expect("cleared");
+    assert!(
+        cleared.starts_with("session_id=;") && cleared.contains("Max-Age=0"),
+        "{cleared}"
+    );
+
+    assert_eq!(get_as(&app, &cookie, "/web").status(), 303, "revoked");
+    assert_eq!(get(&app, "/logout").status(), 303, "nobody to log out");
+    Ok(())
+}
+
+/// A cookie naming no live session is nobody, sent to log in like anybody else.
+#[test]
+fn test_an_unknown_session_cookie_is_nobody() -> Result<()> {
+    let app = new_app()?;
+    for cookie in ["session_id=1.forged", "session_id=garbage", "other=1"] {
+        let response = get_as(&app, cookie, "/web");
+        assert_eq!(response.status(), 303, "{cookie}");
+    }
     Ok(())
 }
 
@@ -362,7 +520,7 @@ fn test_the_web_client_component_is_in_the_backend_bundle() -> Result<()> {
 #[test]
 fn test_the_web_client_page_declares_the_import_map() -> Result<()> {
     let app = new_app()?;
-    let page = get(&app, "/web").text_body();
+    let page = get_logged_in(&app, "/web").text_body();
     let map = page
         .split("<script type=\"importmap\">")
         .nth(1)
@@ -556,7 +714,7 @@ fn test_a_restart_follows_the_files_of_a_new_build() -> Result<()> {
 #[test]
 fn test_the_web_client_page_is_rendered_from_its_template() -> Result<()> {
     let app = new_app()?;
-    let response = get(&app, "/web");
+    let response = get_logged_in(&app, "/web");
     assert_eq!(response.status(), 200, "{}", response.text_body());
     let page = response.text_body();
     assert!(
@@ -600,7 +758,7 @@ const PAGES: TemplateFiles = &[(
             </t>
             <i t-out="heading"/>
         </t>
-        <t t-name="web_pages.Unsupported"><p t-if="x">no</p></t>
+        <t t-name="web_pages.Unsupported"><p t-foreach="x" t-as="y">no</p></t>
         <t t-name="web_pages.Missing"><t t-call="web_pages.Nowhere"/></t>
         <t t-name="web_pages.Loop"><t t-call="web_pages.Loop"/></t>
     </templates>"#,
@@ -628,7 +786,7 @@ fn test_a_template_calls_another_with_values_and_a_body() -> Result<()> {
 fn test_what_the_server_does_not_render_is_refused() -> Result<()> {
     let app = with_server_templates("web_pages", PAGES)?;
     for (key, expected) in [
-        ("web_pages.Unsupported", "t-if"),
+        ("web_pages.Unsupported", "t-foreach"),
         ("web_pages.Missing", "web_pages.Nowhere"),
         ("web_pages.Loop", "deep"),
         ("web_pages.Unknown", "web_pages.Unknown"),
@@ -687,7 +845,7 @@ fn test_another_plugin_extends_the_layout() -> Result<()> {
             </t></templates>"#,
         )],
     )?;
-    let page = get(&app, "/web").text_body();
+    let page = get_logged_in(&app, "/web").text_body();
     assert!(page.contains("<body class=\"o_extended\">"), "{page}");
     Ok(())
 }

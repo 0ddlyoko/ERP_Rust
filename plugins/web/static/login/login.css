@@ -1,0 +1,17 @@
+.o_login {
+    display: flex;
+    justify-content: center;
+    padding-top: 15vh;
+    font-family: system-ui, sans-serif;
+}
+
+.o_login_form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 20rem;
+}
+
+.o_login_error {
+    color: #b00020;
+}

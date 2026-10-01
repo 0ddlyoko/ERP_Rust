@@ -135,6 +135,11 @@ impl<'mm> Environment<'mm> {
         Ok(env)
     }
 
+    /// Whether nobody authenticated: no user, or the one a request starts as without a session.
+    pub fn is_anonymous(&self) -> bool {
+        self.uid.is_none() || self.uid == self.model_manager.identities.default_user()
+    }
+
     /// Who this environment runs on behalf of, if anyone.
     pub fn uid(&self) -> Option<u32> {
         self.uid

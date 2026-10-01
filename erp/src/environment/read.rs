@@ -3,6 +3,12 @@ use super::*;
 use crate::access::Operation;
 
 impl<'mm> Environment<'mm> {
+    pub fn get_empty_record<M>(&self) -> M
+    where
+        M: Model<MultipleIds> {
+        M::create_instance(MultipleIds::default())
+    }
+
     /// Returns an instance of given model for a specific id
     ///
     /// Do not check if given id is valid id, or is present in the cache

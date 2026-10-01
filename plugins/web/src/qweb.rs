@@ -2,8 +2,10 @@
 //!
 //! `t-call` renders another template, its body available there as `0`, the `t-set` of that body
 //! as values. `t-set` names a value, from `t-value` or from its rendered body. `t-out` writes a
-//! value, escaped unless it is markup. `t-call-assets` loads a bundle. Anything else starting with
-//! `t-` is refused, rather than silently written out.
+//! value, escaped unless it is markup. `t-if` keeps an element only when its value is set and not
+//! empty. `t-att-<name>` writes an attribute from a value, left out when there is none.
+//! `t-call-assets` loads a bundle. Anything else starting with `t-` is refused, rather than
+//! silently written out.
 
 use erp::xml::{Element, Node};
 use std::collections::{HashMap, HashSet};
@@ -90,12 +92,18 @@ impl<'a> Renderer<'a> {
     fn element(&mut self, element: &Element, values: &mut Values, out: &mut String) -> Result<()> {
         if let Some((name, _)) = element.attributes.iter().find(|(name, _)| {
             name.starts_with("t-")
+                && !name.starts_with("t-att-")
                 && !matches!(
                     name.as_str(),
-                    "t-set" | "t-value" | "t-call" | "t-out" | "t-call-assets"
+                    "t-if" | "t-set" | "t-value" | "t-call" | "t-out" | "t-call-assets"
                 )
         }) {
             return Err(format!("<{}> uses {name}, which is not supported", element.name).into());
+        }
+        if let Some(condition) = element.attribute("t-if")
+            && !is_truthy(evaluate(condition, values)?.as_ref())
+        {
+            return Ok(());
         }
         if let Some(name) = element.attribute("t-set") {
             let value = match element.attribute("t-value") {
@@ -133,8 +141,16 @@ impl<'a> Renderer<'a> {
             out.push('<');
             out.push_str(&element.name);
             for (name, value) in &element.attributes {
-                if !name.starts_with("t-") {
-                    out.push_str(&format!(" {name}=\"{}\"", escape_attribute(value)));
+                let value = match name.strip_prefix("t-att-") {
+                    Some(attribute) => match evaluate(value, values)? {
+                        Some(Value::Text(text) | Value::Markup(text)) => Some((attribute, text)),
+                        None => None,
+                    },
+                    None if name.starts_with("t-") => None,
+                    None => Some((name.as_str(), value.clone())),
+                };
+                if let Some((name, value)) = value {
+                    out.push_str(&format!(" {name}=\"{}\"", escape_attribute(&value)));
                 }
             }
             out.push('>');
@@ -203,6 +219,10 @@ fn evaluate(expression: &str, values: &Values) -> Result<Option<Value>> {
         return Ok(values.get(expression).cloned());
     }
     Err(format!("{expression:?} is not an expression the server renders").into())
+}
+
+fn is_truthy(value: Option<&Value>) -> bool {
+    matches!(value, Some(Value::Text(text) | Value::Markup(text)) if !text.is_empty())
 }
 
 fn escape(text: &str) -> String {

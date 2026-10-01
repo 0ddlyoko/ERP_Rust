@@ -229,12 +229,19 @@ async fn controller(
             let status =
                 StatusCode::from_u16(answer.status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
             let mut response = (status, answer.body().to_vec()).into_response();
+            // The first of a name replaces what axum set by default; later ones, such as a second
+            // `Set-Cookie`, are added beside it.
+            let mut written = std::collections::HashSet::new();
             for (name, value) in answer.headers() {
                 if let (Ok(name), Ok(value)) = (
                     header::HeaderName::try_from(name.as_str()),
                     header::HeaderValue::try_from(value.as_str()),
                 ) {
-                    response.headers_mut().insert(name, value);
+                    if written.insert(name.clone()) {
+                        response.headers_mut().insert(name, value);
+                    } else {
+                        response.headers_mut().append(name, value);
+                    }
                 }
             }
             response

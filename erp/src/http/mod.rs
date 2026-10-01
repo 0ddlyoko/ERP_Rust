@@ -19,12 +19,18 @@ pub use routes::{Controller, ControllerRegistry, HasRoutes, HttpFn, Resolution};
 
 use crate::access::AccessDenied;
 use crate::app::Application;
+use crate::environment::Environment;
+
+/// The cookie holding the token of the browser's session.
+pub const SESSION_COOKIE: &str = "session_id";
 
 /// Answer one request.
 ///
 /// One environment, so one transaction, per request: committed when the controller answers, and
 /// rolled back when it fails, so nothing a failed request wrote survives it. The caller is the
-/// user nobody authenticated as until authentication reaches controllers.
+/// user the session cookie identifies; without one, or with one naming nobody — expired,
+/// revoked — it is the user nobody authenticated as, and the controller decides what that may
+/// see.
 pub fn handle(app: &Application, request: Request) -> Response {
     let (call, params) = match app
         .model_manager
@@ -44,7 +50,18 @@ pub fn handle(app: &Application, request: Request) -> Response {
         Ok(env) => env,
         Err(error) => return failure(&*error),
     };
-    match call(&mut env, &request) {
+    let caller = match request.cookie(SESSION_COOKIE) {
+        Some(token) => match identify(app, &mut env, token) {
+            Ok(caller) => caller,
+            Err(error) => return failure(&*error),
+        },
+        None => None,
+    };
+    let answer = match caller {
+        Some(uid) => call(&mut env.as_user(uid), &request),
+        None => call(&mut env, &request),
+    };
+    match answer {
         Ok(response) => match env.close() {
             Ok(()) => response,
             Err(error) => failure(&*error),
@@ -60,6 +77,21 @@ pub fn handle(app: &Application, request: Request) -> Response {
             }
         }
     }
+}
+
+/// Who a session token identifies, `None` for nobody.
+///
+/// As root: looking a session up is the process asking on its own account, before anybody is
+/// identified.
+fn identify(
+    app: &Application,
+    env: &mut Environment,
+    token: &str,
+) -> Result<Option<u32>, Box<dyn std::error::Error + Send + Sync>> {
+    let Some(resolve) = app.model_manager.identities.resolver() else {
+        return Ok(None);
+    };
+    resolve(&mut *env.as_root()?, token)
 }
 
 fn refusal(error: &HttpError) -> Response {

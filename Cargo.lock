@@ -3806,6 +3806,7 @@ dependencies = [
  "erp_search_code_gen",
  "test_plugin",
  "test_utilities",
+ "tracing",
 ]
 
 [[package]]

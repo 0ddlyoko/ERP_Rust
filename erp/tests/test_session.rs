@@ -250,6 +250,46 @@ fn test_revoking_a_session_stops_its_token() -> Result<()> {
     Ok(())
 }
 
+/// Logging out ends the session the token opens, and only a session of the caller's own.
+#[test]
+fn test_logging_out_ends_only_your_own_session() -> Result<()> {
+    let app = new_app()?;
+    make_user(&app, "alice", "s3cret", true)?;
+    make_user(&app, "bob", "s3cret", true)?;
+    let alice = open(&app, "alice", "s3cret")["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let bob = open(&app, "bob", "s3cret")["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+
+    let answer = call(
+        &app,
+        Some(&alice),
+        "users.log_out",
+        json!({"args": {"token": bob}}),
+    );
+    assert_eq!(answer, json!(false), "not hers to end");
+    assert!(
+        raw(&app, Some(&bob), "users.me", json!({}))
+            .get("result")
+            .is_some()
+    );
+
+    let answer = call(
+        &app,
+        Some(&alice),
+        "users.log_out",
+        json!({"args": {"token": alice}}),
+    );
+    assert_eq!(answer, json!(true));
+    let answer = raw(&app, Some(&alice), "users.me", json!({}));
+    assert!(answer.get("result").is_none(), "got {answer}");
+    Ok(())
+}
+
 /// Deleting the record does too — it is still the generic verb, just not the way out.
 #[test]
 fn test_deleting_a_session_stops_its_token() -> Result<()> {

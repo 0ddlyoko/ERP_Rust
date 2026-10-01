@@ -103,7 +103,6 @@ impl Users<MultipleIds> {
     ///
     /// The one door in, and the one place the token is ever handed out. When API keys arrive they
     /// become a second shape of credential here rather than a second way to get a session.
-    #[erp(rpc)]
     pub fn authenticate(
         &self,
         env: &mut Environment,
@@ -124,6 +123,22 @@ impl Users<MultipleIds> {
         })
     }
 
+    /// End the caller's session this token opens.
+    ///
+    /// The token rather than the caller alone: logging out of one browser leaves the others
+    /// logged in. Returns whether a session ended.
+    pub fn log_out(
+        &self,
+        env: &mut Environment,
+        token: String,
+    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        let _ = self;
+        let Some(uid) = env.uid() else {
+            return Ok(false);
+        };
+        Session::revoke(env, &token, uid)
+    }
+
     /// Change the caller's own password.
     ///
     /// The only way a password is set from outside the process: writing the field is refused, and
@@ -134,7 +149,6 @@ impl Users<MultipleIds> {
     /// reach. Neither has one, and an account with no password holds an empty hash, which nothing
     /// verifies against — so a caller nobody authenticated, who is the portal user, cannot give
     /// the portal user a password and then log in as it.
-    #[erp(rpc)]
     pub fn change_own_password(
         &self,
         env: &mut Environment,

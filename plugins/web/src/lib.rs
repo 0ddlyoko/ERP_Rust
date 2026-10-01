@@ -49,6 +49,7 @@ impl Plugin for WebPlugin {
 
     fn init_controllers(&self, controllers: &mut ControllerRegistry) {
         controllers.register::<controllers::Home>();
+        controllers.register::<controllers::Session>();
         controllers.register::<controllers::Web>();
     }
 
@@ -65,14 +66,17 @@ impl Plugin for WebPlugin {
     }
 
     fn assets(&self) -> Vec<BundleContribution> {
-        vec![BundleContribution::new(
-            "web.assets_backend",
-            &[
-                "web/static/src/**/*.css",
-                "web/static/src/**/*.js",
-                "web/static/src/**/*.xml",
-            ],
-        )]
+        vec![
+            BundleContribution::new(
+                "web.assets_backend",
+                &[
+                    "web/static/src/**/*.css",
+                    "web/static/src/**/*.js",
+                    "web/static/src/**/*.xml",
+                ],
+            ),
+            BundleContribution::new("web.assets_login", &["web/static/login/*.css"]),
+        ]
     }
 
     fn imports(&self) -> Vec<(&'static str, &'static str)> {

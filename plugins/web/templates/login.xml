@@ -1,0 +1,22 @@
+<templates>
+    <t t-name="web.Login">
+        <t t-call="web.Layout">
+            <t t-set="title">Log in</t>
+            <t t-set="head"><t t-call-assets="web.assets_login"/></t>
+            <main class="o_login">
+                <form class="o_login_form" method="post" action="/login">
+                    <h1>ERP</h1>
+                    <p class="o_login_error" t-if="error" t-out="error"/>
+                    <label for="login">Login</label>
+                    <input id="login" name="login" type="text" autocomplete="username"
+                           required="required" autofocus="autofocus" t-att-value="login"/>
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password"
+                           autocomplete="current-password" required="required"/>
+                    <input name="redirect" type="hidden" t-att-value="redirect"/>
+                    <button type="submit">Log in</button>
+                </form>
+            </main>
+        </t>
+    </t>
+</templates>

@@ -18,9 +18,14 @@ pub struct Web;
 #[erp_routes]
 impl Web {
     /// The back office: the page template `web.WebClientPage`, which loads its bundle.
+    ///
+    /// Only for somebody logged in; anybody else is sent to log in, and back here after.
     #[erp(route = "/web")]
     pub fn client(&self, env: &mut Environment, request: &Request) -> Result<Response> {
-        let _ = request;
+        if env.is_anonymous() {
+            let back = request.path();
+            return Ok(Response::redirect(&format!("/login?redirect={back}")));
+        }
         let page = Template::<SingleId>::render_page(env, "web.WebClientPage", Values::new())?;
         Ok(Response::html(page))
     }

@@ -62,6 +62,15 @@ impl Request {
         &self.body
     }
 
+    /// A cookie the browser sent, by name.
+    pub fn cookie(&self, name: &str) -> Option<&str> {
+        self.header("cookie")?
+            .split(';')
+            .filter_map(|pair| pair.trim().split_once('='))
+            .find(|(cookie, _)| *cookie == name)
+            .map(|(_, value)| value)
+    }
+
     pub fn query(&self, name: &str) -> Option<&str> {
         lookup(&self.query, name)
     }
