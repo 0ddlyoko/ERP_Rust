@@ -133,7 +133,25 @@ async fn call(
 ) -> Response {
     let started = Instant::now();
     let asked = asked_for(&body);
-    let token = bearer(&headers);
+    let mut carried = http::Request::new("POST", "/jsonrpc");
+    for (name, value) in &headers {
+        if let Ok(value) = value.to_str() {
+            carried = carried.with_header(name.as_str(), value);
+        }
+    }
+    let token = match jsonrpc::credentials(&server.app, bearer(&headers).as_deref(), &carried) {
+        Ok(token) => token,
+        Err(refused) => {
+            tracing::warn!("{caller} POST /jsonrpc refused: no valid CSRF token with the session");
+            let answer = erp::serde_json::json!({"jsonrpc": "2.0", "error": refused, "id": null});
+            return (
+                StatusCode::BAD_REQUEST,
+                [(header::CONTENT_TYPE, "application/json")],
+                answer.to_string(),
+            )
+                .into_response();
+        }
+    };
 
     // Taken before any thread is occupied: a request waiting its turn is a suspended future, not
     // a parked worker.

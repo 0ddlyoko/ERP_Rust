@@ -126,4 +126,11 @@ impl RpcError {
     pub fn unauthorized() -> Self {
         Self::new(Self::UNAUTHORIZED, "This token identifies nobody")
     }
+
+    /// A call carried by the browser's session cookie without the page's CSRF token.
+    pub const CSRF_REFUSED: i32 = -32002;
+
+    pub fn csrf_refused() -> Self {
+        Self::new(Self::CSRF_REFUSED, "Session expired (invalid CSRF token)")
+    }
 }

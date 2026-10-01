@@ -129,6 +129,19 @@ pub(crate) fn check(binding: &Binding, request: &Request) -> bool {
     }
 }
 
+/// Whether a request carries a CSRF token of its browser's, whatever its method.
+///
+/// For a transport that is not a controller, such as the JSON-RPC endpoint, deciding on its own
+/// when a token is needed.
+pub fn is_from_the_site(app: &Application, request: &Request) -> bool {
+    let binding = Binding::of(app.signing_secret(), request);
+    let token = request
+        .header(CSRF_HEADER)
+        .map(str::to_string)
+        .or_else(|| request.param(CSRF_PARAM));
+    token.is_some_and(|token| binding.accepts(&token))
+}
+
 /// A token for a request, as a controller would get it, for whatever builds requests outside
 /// [`super::handle`] — a test submitting a form.
 pub fn token_for(app: &Application, request: &Request) -> String {

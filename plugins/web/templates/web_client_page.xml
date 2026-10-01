@@ -2,7 +2,10 @@
     <t t-name="web.WebClientPage">
         <t t-call="web.Layout">
             <t t-set="title">ERP</t>
-            <t t-set="head"><t t-call-assets="web.assets_backend"/></t>
+            <t t-set="head">
+                <script type="application/json" id="session_info"><t t-out="session_info"/></script>
+                <t t-call-assets="web.assets_backend"/>
+            </t>
             <header class="o_web_client_banner">
                 <h1>ERP</h1>
                 <p>Welcome to the back office.</p>

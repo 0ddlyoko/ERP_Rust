@@ -237,6 +237,23 @@ pub fn save_record(
     }
 }
 
+/// The external identifier of a record, `module.name`, if a data file or a plugin gave it one.
+pub fn external_id_of(env: &mut Environment, model_name: &str, id: u32) -> Result<Option<String>> {
+    let env = &mut *env.sudo();
+    let res_id = id as i32;
+    let ids = env.search_ids(
+        MODEL_DATA,
+        &make_domain!([("model", "=", model_name), ("res_id", "=", res_id)]),
+    )?;
+    let Some(found) = ids.first() else {
+        return Ok(None);
+    };
+    let rows = env.read(MODEL_DATA, &SingleId::from(*found), &["module", "name"])?;
+    let module = rows[0].get::<&String>("module");
+    let name = rows[0].get::<&String>("name");
+    Ok(Some(format!("{module}.{name}")))
+}
+
 /// The names a module gave to records of a model, `name` in `module.name`.
 pub fn names_of(env: &mut Environment, module: &str, model_name: &str) -> Result<Vec<String>> {
     let env = &mut *env.sudo();

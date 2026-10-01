@@ -298,6 +298,61 @@ fn test_an_unknown_session_cookie_is_nobody() -> Result<()> {
     Ok(())
 }
 
+/// The JSON the web client page holds about its session.
+fn session_info(page: &str) -> erp::serde_json::Value {
+    let json = page
+        .split("<script type=\"application/json\" id=\"session_info\">")
+        .nth(1)
+        .and_then(|rest| rest.split("</script>").next())
+        .expect("the session's information");
+    erp::serde_json::from_str(json).expect("JSON")
+}
+
+/// The page tells the client who is logged in, their groups, and a CSRF token its calls over the
+/// session cookie are accepted with.
+#[test]
+fn test_the_web_client_page_holds_the_session() -> Result<()> {
+    let app = new_app()?;
+    let cookie = log_in(&app);
+    let info = session_info(&get_as(&app, &cookie, "/web").text_body());
+    assert_eq!(info["login"], "admin");
+    assert!(info["uid"].as_u64().is_some());
+    let groups: Vec<&str> = info["groups"]
+        .as_array()
+        .expect("groups")
+        .iter()
+        .filter_map(|group| group.as_str())
+        .collect();
+    assert!(groups.contains(&"base.group_admin"), "{groups:?}");
+
+    let csrf = info["csrf_token"].as_str().expect("a token");
+    let call = Request::new("POST", "/jsonrpc")
+        .with_header("Cookie", &cookie)
+        .with_header("X-CSRF-Token", csrf);
+    let token = cookie.trim_start_matches("session_id=").to_string();
+    let credentials = erp::jsonrpc::credentials(&app, None, &call).map_err(|error| error.code);
+    assert_eq!(credentials, Ok(Some(token)));
+    Ok(())
+}
+
+/// A name holding markup cannot end the script it is written in.
+#[test]
+fn test_the_session_information_cannot_close_its_script() -> Result<()> {
+    let app = new_app()?;
+    {
+        let mut env = app.new_env_as_option(None)?;
+        let admin = data::resolve(&mut env, "base.user_admin")?.expect("seeded");
+        let mut values = MapOfFields::default();
+        values.insert("name", "</script><b>&");
+        env.write("users", &SingleId::from(admin), values)?;
+        env.close()?;
+    }
+    let page = get_logged_in(&app, "/web").text_body();
+    assert!(!page.contains("</script><b>"), "{page}");
+    assert_eq!(session_info(&page)["name"], "</script><b>&");
+    Ok(())
+}
+
 // ---- static files ----
 
 #[test]

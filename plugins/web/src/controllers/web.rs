@@ -1,10 +1,13 @@
 use crate::models::Template;
-use crate::qweb::Values;
+use crate::qweb::{Value, Values};
+use base::models::{Group, Users};
 use code_gen::{Controller, erp_routes};
 use erp::assets::content_type;
+use erp::data;
 use erp::environment::Environment;
 use erp::http::{HttpError, Request, Response};
-use erp::types::field::SingleId;
+use erp::serde_json::json;
+use erp::types::field::{MultipleIds, SingleId};
 use std::error::Error;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
@@ -26,7 +29,12 @@ impl Web {
             let back = request.path();
             return Ok(Response::redirect(&format!("/login?redirect={back}")));
         }
-        let page = Template::<SingleId>::render_page(env, "web.WebClientPage", Values::new())?;
+        let mut values = Values::new();
+        values.insert(
+            "session_info".to_string(),
+            Value::Markup(script_json(&session_info(env, request)?)),
+        );
+        let page = Template::<SingleId>::render_page(env, "web.WebClientPage", values)?;
         Ok(Response::html(page))
     }
 
@@ -135,6 +143,39 @@ fn styles(env: &Environment, bundle: &str) -> Option<String> {
         }
     }
     Some(sheet)
+}
+
+/// What the web client knows of its session from the start, so it begins without asking: who is
+/// logged in, which groups they are in by external identifier, and the CSRF token its calls carry.
+fn session_info(env: &mut Environment, request: &Request) -> Result<erp::serde_json::Value> {
+    let uid = env.uid().ok_or("Only somebody logged in has a session")?;
+    // Their own account, which they may not otherwise be allowed to read.
+    let env = &mut *env.sudo();
+    let user = Users::<SingleId>::from_id(uid, env);
+    let mut groups = Vec::new();
+    for group in user.get_groups::<Group<MultipleIds>>(env)? {
+        if let Some(external_id) = data::external_id_of(env, "group", group.get_id())? {
+            groups.push(external_id);
+        }
+    }
+    groups.sort();
+    Ok(json!({
+        "uid": uid,
+        "name": user.get_name(env)?,
+        "login": user.get_login(env)?,
+        "groups": groups,
+        "csrf_token": request.csrf_token(),
+    }))
+}
+
+/// JSON to write inside a `<script>`: `<`, `>` and `&` escaped, so no value can close the element
+/// or be read as markup.
+fn script_json(value: &erp::serde_json::Value) -> String {
+    value
+        .to_string()
+        .replace('<', "\\u003c")
+        .replace('>', "\\u003e")
+        .replace('&', "\\u0026")
 }
 
 /// A response the browser may keep, and check again with the tag it was given.

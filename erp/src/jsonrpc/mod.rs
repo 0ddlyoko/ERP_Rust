@@ -18,6 +18,33 @@ use crate::app::Application;
 use crate::environment::Environment;
 use serde_json::Value;
 
+/// What identifies a call carried over HTTP: the bearer token, or else the browser's session
+/// cookie.
+///
+/// The cookie only with the page's CSRF token in `X-CSRF-Token`: a browser sends its cookies
+/// with a request any site makes it send, and a header of this site's only with this site's
+/// script. A bearer token needs none, since another site cannot make the browser present one.
+/// Neither is nobody in particular, which needs no token either.
+pub fn credentials(
+    app: &Application,
+    bearer: Option<&str>,
+    request: &crate::http::Request,
+) -> Result<Option<String>, RpcError> {
+    if let Some(token) = bearer {
+        return Ok(Some(token.to_string()));
+    }
+    let Some(session) = request
+        .cookie(crate::http::SESSION_COOKIE)
+        .filter(|session| !session.is_empty())
+    else {
+        return Ok(None);
+    };
+    if !crate::http::csrf::is_from_the_site(app, request) {
+        return Err(RpcError::csrf_refused());
+    }
+    Ok(Some(session.to_string()))
+}
+
 /// Answer one request, or a batch of them.
 ///
 /// How many of these run at once is decided by whoever schedules them, not here: waiting for a

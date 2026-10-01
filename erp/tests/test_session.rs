@@ -490,3 +490,49 @@ fn test_deactivating_an_account_ends_its_sessions() -> Result<()> {
     assert_eq!(answer["error"]["code"], json!(-32001));
     Ok(())
 }
+
+// ---- carried by the browser ----
+
+fn browser_call(cookie: &str, csrf: Option<&str>) -> erp::http::Request {
+    let request = erp::http::Request::new("POST", "/jsonrpc").with_header("Cookie", cookie);
+    match csrf {
+        Some(token) => request.with_header("X-CSRF-Token", token),
+        None => request,
+    }
+}
+
+/// A call carried by the session cookie is the session's only with the page's CSRF token; a bearer
+/// token or no credential at all needs none.
+#[test]
+fn test_a_session_cookie_needs_the_pages_csrf_token() -> Result<()> {
+    let app = new_app()?;
+    make_user(&app, "alice", "s3cret", true)?;
+    let token = open(&app, "alice", "s3cret")["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let cookie = format!("session_id={token}");
+    let csrf = erp::http::csrf::token_for(&app, &browser_call(&cookie, None));
+
+    let code = |answer: std::result::Result<Option<String>, jsonrpc::RpcError>| {
+        answer.map_err(|error| error.code)
+    };
+    let credentials = jsonrpc::credentials(&app, None, &browser_call(&cookie, Some(&csrf)));
+    assert_eq!(code(credentials), Ok(Some(token.clone())));
+
+    let refused = jsonrpc::credentials(&app, None, &browser_call(&cookie, None));
+    assert_eq!(code(refused), Err(jsonrpc::RpcError::CSRF_REFUSED));
+    let elsewhere = erp::http::csrf::token_for(&app, &browser_call("csrf_id=other", None));
+    let refused = jsonrpc::credentials(&app, None, &browser_call(&cookie, Some(&elsewhere)));
+    assert!(refused.is_err(), "a token of another browser");
+
+    let bearer = jsonrpc::credentials(&app, Some("given"), &browser_call(&cookie, None));
+    assert_eq!(
+        code(bearer),
+        Ok(Some("given".to_string())),
+        "the bearer wins, needing no token"
+    );
+    let nobody = jsonrpc::credentials(&app, None, &browser_call("csrf_id=x", None));
+    assert_eq!(code(nobody), Ok(None));
+    Ok(())
+}
