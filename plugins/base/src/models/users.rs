@@ -149,6 +149,7 @@ impl Users<MultipleIds> {
     /// reach. Neither has one, and an account with no password holds an empty hash, which nothing
     /// verifies against — so a caller nobody authenticated, who is the portal user, cannot give
     /// the portal user a password and then log in as it.
+    #[erp(rpc)]
     pub fn change_own_password(
         &self,
         env: &mut Environment,

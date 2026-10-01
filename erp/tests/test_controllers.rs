@@ -75,6 +75,13 @@ mod shop {
             Err("failed on purpose, with details nobody outside should see".into())
         }
 
+        /// Called by another server, which holds no token of a browser's.
+        #[erp(route = "/shop/hook", methods = ["POST"], csrf = false)]
+        pub fn hook(&self, env: &mut Environment, request: &Request) -> Result<Response> {
+            let _ = (env, request);
+            Ok(Response::text("hooked"))
+        }
+
         #[erp(route = "/shop/gone")]
         pub fn gone(&self, env: &mut Environment, request: &Request) -> Result<Response> {
             let _ = (env, request);
@@ -239,6 +246,17 @@ fn get(app: &Application, target: &str) -> Response {
     http::handle(app, Request::new("GET", target))
 }
 
+/// A request as a page of this site sends it: with the browser's cookie and its CSRF token.
+fn from_the_site(app: &Application, request: Request) -> Request {
+    let request = request.with_header("Cookie", "csrf_id=browser");
+    let token = http::csrf::token_for(app, &request);
+    request.with_header("X-CSRF-Token", &token)
+}
+
+fn post(app: &Application, target: &str) -> Response {
+    http::handle(app, from_the_site(app, Request::new("POST", target)))
+}
+
 fn tags(app: &Application) -> Result<u32> {
     let mut env = app.new_env()?;
     env.count("tag", &SearchType::Nothing)
@@ -286,7 +304,7 @@ fn test_a_bad_parameter_is_a_400_naming_it() -> Result<()> {
         response.text_body()
     );
 
-    let response = http::handle(&app, Request::new("POST", "/shop/new"));
+    let response = post(&app, "/shop/new");
     assert_eq!(response.status(), 400);
     assert!(
         response.text_body().contains("name"),
@@ -301,9 +319,12 @@ fn test_a_posted_form_fills_arguments_and_commits() -> Result<()> {
     let app = shop_app()?;
     let response = http::handle(
         &app,
-        Request::new("POST", "/shop/new")
-            .with_header("Content-Type", "application/x-www-form-urlencoded")
-            .with_body("name=Blue+tag"),
+        from_the_site(
+            &app,
+            Request::new("POST", "/shop/new")
+                .with_header("Content-Type", "application/x-www-form-urlencoded")
+                .with_body("name=Blue+tag"),
+        ),
     );
     assert_eq!(response.status(), 200, "got {}", response.text_body());
     assert_eq!(tags(&app)?, 1, "what the controller wrote was committed");
@@ -321,11 +342,78 @@ fn test_unknown_urls_and_methods_are_refused() -> Result<()> {
     Ok(())
 }
 
+// ---- CSRF ----
+
+/// A request changing something needs a token of the browser's: none, a forged one, or one made
+/// for another browser is refused before the controller runs.
+#[test]
+fn test_a_change_needs_the_browsers_csrf_token() -> Result<()> {
+    let app = shop_app()?;
+    let refused = |request: Request| {
+        let response = http::handle(&app, request);
+        assert_eq!(response.status(), 400);
+        assert!(
+            response.text_body().contains("CSRF"),
+            "{}",
+            response.text_body()
+        );
+    };
+    refused(Request::new("POST", "/shop/new?name=Red"));
+    refused(
+        Request::new("POST", "/shop/new?name=Red")
+            .with_header("Cookie", "csrf_id=browser")
+            .with_header("X-CSRF-Token", "0badc0deo99999999999"),
+    );
+    let elsewhere = http::csrf::token_for(
+        &app,
+        &Request::new("GET", "/").with_header("Cookie", "csrf_id=another"),
+    );
+    refused(
+        Request::new("POST", "/shop/new?name=Red")
+            .with_header("Cookie", "csrf_id=browser")
+            .with_header("X-CSRF-Token", &elsewhere),
+    );
+    assert_eq!(tags(&app)?, 0, "no controller ran");
+
+    let token = http::csrf::token_for(
+        &app,
+        &Request::new("GET", "/").with_header("Cookie", "csrf_id=browser"),
+    );
+    let response = http::handle(
+        &app,
+        Request::new("POST", &format!("/shop/new?name=Red&csrf_token={token}"))
+            .with_header("Cookie", "csrf_id=browser"),
+    );
+    assert_eq!(response.text_body(), "created", "as a form field too");
+    Ok(())
+}
+
+/// Reading needs no token, and a route saying `csrf = false` takes changes without one.
+#[test]
+fn test_what_needs_no_csrf_token() -> Result<()> {
+    let app = shop_app()?;
+    assert_eq!(get(&app, "/shop").status(), 200);
+    let response = http::handle(&app, Request::new("POST", "/shop/hook"));
+    assert_eq!(response.text_body(), "hooked");
+    Ok(())
+}
+
+/// A page that makes no token sets no cookie to bind one to.
+#[test]
+fn test_no_csrf_cookie_without_a_token() -> Result<()> {
+    let app = shop_app()?;
+    assert!(
+        get(&app, "/shop").header("set-cookie").is_none(),
+        "no token, no cookie"
+    );
+    Ok(())
+}
+
 /// A fixed segment wins over a parameter: `/shop/new` is not item "new".
 #[test]
 fn test_a_fixed_segment_wins_over_a_parameter() -> Result<()> {
     let app = shop_app()?;
-    let response = http::handle(&app, Request::new("POST", "/shop/new?name=Red"));
+    let response = post(&app, "/shop/new?name=Red");
     assert_eq!(response.text_body(), "created");
     Ok(())
 }
@@ -334,7 +422,7 @@ fn test_a_fixed_segment_wins_over_a_parameter() -> Result<()> {
 #[test]
 fn test_a_failing_controller_rolls_back() -> Result<()> {
     let app = shop_app()?;
-    let response = http::handle(&app, Request::new("POST", "/shop/broken"));
+    let response = post(&app, "/shop/broken");
     assert_eq!(response.status(), 500);
     assert!(
         !response.text_body().contains("details"),
@@ -424,6 +512,7 @@ fn test_the_registry_lists_its_routes() -> Result<()> {
             "GET /shop/tag/<tag> shop.tag",
             "GET /shop/tags shop.tags",
             "POST /shop/broken shop.broken",
+            "POST /shop/hook shop.hook",
             "POST /shop/new shop.create",
         ]
     );

@@ -21,6 +21,8 @@ serde.workspace = true
 serde_derive.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
+hmac.workspace = true
+sha2.workspace = true
 
 erp_cache = { path = "erp_cache" }
 erp_internal_types = { path = "erp_internal_types" }

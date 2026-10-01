@@ -6,6 +6,7 @@
 //! of its own, and the mapping to 401 lives here.
 
 use base::BasePlugin;
+use base::models::Users;
 use erp::app::Application;
 use erp_server::{Server, service};
 use serde_json::{Value, json};
@@ -15,10 +16,22 @@ use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-async fn start() -> Result<(SocketAddr, tokio::task::JoinHandle<()>)> {
+/// A server, and a token of the administrator's: sessions are opened by the login controller,
+/// not over the protocol, so the token is had in-process before the server takes the application.
+async fn start() -> Result<(SocketAddr, tokio::task::JoinHandle<()>, String)> {
     let mut app = Application::new_test();
     app.register_plugin(Box::new(BasePlugin {}))?;
     app.load_plugin("base")?;
+    let token = {
+        let mut env = app.new_env()?;
+        let authenticated = env.get_empty_record::<Users<_>>().authenticate(
+            &mut env,
+            "admin".to_string(),
+            base::DEFAULT_ADMIN_PASSWORD.to_string(),
+        )?;
+        env.close()?;
+        authenticated.token
+    };
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
@@ -26,7 +39,7 @@ async fn start() -> Result<(SocketAddr, tokio::task::JoinHandle<()>)> {
     let handle = tokio::spawn(async move {
         let _ = axum::serve(listener, service(server)).await;
     });
-    Ok((address, handle))
+    Ok((address, handle, token))
 }
 
 struct Answer {
@@ -61,30 +74,10 @@ fn request(method: &str, params: Value) -> Value {
     json!({"jsonrpc": "2.0", "method": method, "params": params, "id": 1})
 }
 
-/// Log in over the wire, and carry the token back.
-async fn token(address: SocketAddr) -> Result<String> {
-    let answer = post(
-        address,
-        None,
-        request(
-            "users.authenticate",
-            json!({"args": {"login": "admin", "password": base::DEFAULT_ADMIN_PASSWORD}}),
-        ),
-    )
-    .await?;
-    assert_eq!(answer.status, 200);
-    let body = answer.body.expect("a body");
-    Ok(body["result"]["token"]
-        .as_str()
-        .unwrap_or_else(|| panic!("a token, got {body}"))
-        .to_string())
-}
-
 /// A bearer token arrives in the header and reaches the call.
 #[tokio::test]
 async fn test_a_bearer_token_identifies_the_caller() -> Result<()> {
-    let (address, _server) = start().await?;
-    let token = token(address).await?;
+    let (address, _server, token) = start().await?;
 
     let answer = post(
         address,
@@ -102,8 +95,7 @@ async fn test_a_bearer_token_identifies_the_caller() -> Result<()> {
 /// The scheme is matched without regard to case, as the specification asks.
 #[tokio::test]
 async fn test_the_scheme_is_case_insensitive() -> Result<()> {
-    let (address, _server) = start().await?;
-    let token = token(address).await?;
+    let (address, _server, token) = start().await?;
 
     let answer = post(
         address,
@@ -121,7 +113,7 @@ async fn test_the_scheme_is_case_insensitive() -> Result<()> {
 /// portal user rather than nobody at all.
 #[tokio::test]
 async fn test_no_header_is_answered_normally() -> Result<()> {
-    let (address, _server) = start().await?;
+    let (address, _server, _) = start().await?;
 
     let answer = post(address, None, request("users.me", json!({}))).await?;
 
@@ -137,7 +129,7 @@ async fn test_no_header_is_answered_normally() -> Result<()> {
 /// challenge the specification requires alongside it.
 #[tokio::test]
 async fn test_a_token_naming_nobody_is_a_401() -> Result<()> {
-    let (address, _server) = start().await?;
+    let (address, _server, _) = start().await?;
 
     let answer = post(
         address,
@@ -157,7 +149,7 @@ async fn test_a_token_naming_nobody_is_a_401() -> Result<()> {
 /// refused: there is nothing there to refuse.
 #[tokio::test]
 async fn test_another_scheme_is_not_a_token() -> Result<()> {
-    let (address, _server) = start().await?;
+    let (address, _server, _) = start().await?;
 
     let answer = post(
         address,
@@ -174,8 +166,7 @@ async fn test_another_scheme_is_not_a_token() -> Result<()> {
 /// A revoked token stops being accepted by the server, not only by the protocol layer.
 #[tokio::test]
 async fn test_a_revoked_token_is_refused_over_http() -> Result<()> {
-    let (address, _server) = start().await?;
-    let token = token(address).await?;
+    let (address, _server, token) = start().await?;
     let id: u32 = token.split_once('.').expect("two halves").0.parse()?;
     let bearer = format!("Bearer {token}");
 

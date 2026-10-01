@@ -10,7 +10,7 @@ struct ParsedRoute {
     args: Vec<(Ident, Type)>,
     ret: Type,
     has_sup: bool,
-    route: Option<(LitStr, Vec<String>)>,
+    route: Option<(LitStr, Vec<String>, bool)>,
     item: ImplItemFn,
 }
 
@@ -70,7 +70,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             );
         });
 
-        if let Some((pattern, verbs)) = &method.route {
+        if let Some((pattern, verbs, csrf)) = &method.route {
             free.push(http_fn(method, &http, &self_ty));
             registrations.push(quote! {
                 registry.register_route(
@@ -78,6 +78,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
                     #name_str,
                     #pattern,
                     &[#(#verbs),*],
+                    #csrf,
                     #http,
                 );
             });
@@ -134,7 +135,7 @@ fn parse(item: ImplItemFn) -> Result<ParsedRoute> {
         args.push((ident.ident.clone(), (**ty).clone()));
     }
 
-    if let Some((pattern, _)) = &route {
+    if let Some((pattern, _, _)) = &route {
         let value = pattern.value();
         let parts: Vec<&str> = value.split('/').filter(|part| !part.is_empty()).collect();
         for (index, part) in parts.iter().enumerate() {
@@ -170,10 +171,12 @@ fn parse(item: ImplItemFn) -> Result<ParsedRoute> {
     })
 }
 
-/// `#[erp(route = "/path/<param>", methods = ["GET", "POST"])]`, GET when no method is named.
-fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>)>> {
+/// `#[erp(route = "/path/<param>", methods = ["GET", "POST"], csrf = false)]`, GET when no
+/// method is named. A request changing something needs a CSRF token unless `csrf = false`.
+fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>, bool)>> {
     let mut route: Option<LitStr> = None;
     let mut verbs: Vec<String> = Vec::new();
+    let mut csrf: Option<syn::LitBool> = None;
     for attr in item.attrs.iter().filter(|attr| attr.path().is_ident("erp")) {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("route") {
@@ -199,8 +202,13 @@ fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>)>> {
                     verbs.push(verb.value().to_ascii_uppercase());
                 }
                 Ok(())
+            } else if meta.path.is_ident("csrf") {
+                csrf = Some(meta.value()?.parse()?);
+                Ok(())
             } else {
-                Err(meta.error("Unknown key. The keys on a controller method are: route, methods"))
+                Err(meta.error(
+                    "Unknown key. The keys on a controller method are: route, methods, csrf",
+                ))
             }
         })?;
     }
@@ -209,11 +217,11 @@ fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>)>> {
             if verbs.is_empty() {
                 verbs.push("GET".to_string());
             }
-            Ok(Some((route, verbs)))
+            Ok(Some((route, verbs, csrf.is_none_or(|csrf| csrf.value))))
         }
-        None if !verbs.is_empty() => Err(Error::new(
+        None if !verbs.is_empty() || csrf.is_some() => Err(Error::new(
             item.sig.ident.span(),
-            "`methods` says which methods a route answers, so it needs a `route`",
+            "`methods` and `csrf` are about a route, so they need a `route`",
         )),
         None => Ok(None),
     }

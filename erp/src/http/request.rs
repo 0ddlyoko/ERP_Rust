@@ -1,3 +1,4 @@
+use super::csrf::Binding;
 use std::sync::Arc;
 
 /// An HTTP request, as a controller sees it.
@@ -13,6 +14,7 @@ pub struct Request {
     headers: Vec<(String, String)>,
     body: Arc<[u8]>,
     path_params: Vec<(String, String)>,
+    csrf: Option<Arc<Binding>>,
 }
 
 impl Request {
@@ -40,6 +42,23 @@ impl Request {
     pub(crate) fn with_path_params(mut self, params: Vec<(String, String)>) -> Self {
         self.path_params = params;
         self
+    }
+
+    pub(crate) fn with_csrf(mut self, binding: Arc<Binding>) -> Self {
+        self.csrf = Some(binding);
+        self
+    }
+
+    /// A token to put in a form this request answers with, as `csrf_token`, or to send in the
+    /// `X-CSRF-Token` header.
+    ///
+    /// # Panics
+    /// Panics for a request that did not go through [`super::handle`], which binds it.
+    pub fn csrf_token(&self) -> String {
+        self.csrf
+            .as_ref()
+            .expect("a request is bound to its browser by http::handle")
+            .token()
     }
 
     pub fn method(&self) -> &str {

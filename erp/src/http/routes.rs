@@ -38,6 +38,7 @@ struct Route {
     pattern: String,
     segments: Vec<Segment>,
     methods: Vec<String>,
+    csrf: bool,
     controller: String,
     method: String,
     call: HttpFn,
@@ -123,6 +124,7 @@ pub enum Resolution {
     Found {
         call: HttpFn,
         params: Vec<(String, String)>,
+        csrf: bool,
     },
     MethodNotAllowed(Vec<String>),
     NotFound,
@@ -170,16 +172,19 @@ impl ControllerRegistry {
     /// A route belongs to the method, not to one implementation of it: an override that declares
     /// a route replaces the one its method had, and one that does not keeps it. Two different
     /// methods answering the same URL with the same verb is refused, because which one answered
-    /// would depend on load order.
+    /// would depend on load order. With `csrf`, a request changing something — any method but
+    /// GET, HEAD, OPTIONS and TRACE — must carry a token of the browser's.
     pub fn register_route(
         &mut self,
         controller: &str,
         method: &str,
         pattern: &str,
         methods: &[&str],
+        csrf: bool,
         call: HttpFn,
     ) {
         let route = Route {
+            csrf,
             pattern: pattern.to_string(),
             segments: parse_pattern(pattern),
             methods: methods
@@ -253,6 +258,7 @@ impl ControllerRegistry {
             Some((route, params)) => Resolution::Found {
                 call: route.call,
                 params,
+                csrf: route.csrf,
             },
             None => Resolution::MethodNotAllowed(allowed),
         }

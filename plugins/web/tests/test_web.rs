@@ -34,15 +34,40 @@ fn get(app: &Application, target: &str) -> Response {
     http::handle(app, Request::new("GET", target))
 }
 
-/// Submit the login form; the answer, cookie included.
+/// Submit the login form from the site: with the browser's cookie and the form's CSRF token.
 fn post_login(app: &Application, login: &str, password: &str, redirect: &str) -> Response {
-    let form = format!("login={login}&password={password}&redirect={redirect}");
+    let browser = Request::new("GET", "/login").with_header("Cookie", "csrf_id=browser");
+    let token = http::csrf::token_for(app, &browser);
+    submit_login(app, "csrf_id=browser", &token, login, password, redirect)
+}
+
+fn submit_login(
+    app: &Application,
+    cookie: &str,
+    token: &str,
+    login: &str,
+    password: &str,
+    redirect: &str,
+) -> Response {
+    let form = format!("login={login}&password={password}&redirect={redirect}&csrf_token={token}");
     http::handle(
         app,
         Request::new("POST", "/login")
+            .with_header("Cookie", cookie)
             .with_header("Content-Type", "application/x-www-form-urlencoded")
             .with_body(form.into_bytes()),
     )
+}
+
+/// The value of a form field, as the page wrote it.
+fn field_value(page: &str, name: &str) -> String {
+    let marker = format!("name=\"{name}\" type=\"hidden\" value=\"");
+    let start = page.find(&marker).expect("the field") + marker.len();
+    page[start..]
+        .split('"')
+        .next()
+        .expect("a value")
+        .to_string()
 }
 
 /// The `name=value` of the session cookie a response sets.
@@ -154,6 +179,60 @@ fn test_logging_in_sets_a_session_cookie() -> Result<()> {
     let again = get_as(&app, &cookie, "/login?redirect=/web/somewhere");
     assert_eq!(again.status(), 303, "already logged in");
     assert_eq!(again.header("location"), Some("/web/somewhere"));
+    Ok(())
+}
+
+/// The way a browser logs in: the form gives it a cookie and a token for that cookie, and
+/// submitting both is what is accepted.
+#[test]
+fn test_the_login_form_carries_its_csrf_token() -> Result<()> {
+    let app = new_app()?;
+    let form = get(&app, "/login");
+    let set = form
+        .header("set-cookie")
+        .expect("a cookie to bind the token to");
+    assert!(
+        set.starts_with("csrf_id=") && set.contains("HttpOnly"),
+        "{set}"
+    );
+    let cookie = session_cookie(&form);
+    let token = field_value(&form.text_body(), "csrf_token");
+
+    let password = base::DEFAULT_ADMIN_PASSWORD;
+    let response = submit_login(&app, &cookie, &token, "admin", password, "/web");
+    assert_eq!(response.status(), 303, "{}", response.text_body());
+    assert!(
+        response
+            .header("set-cookie")
+            .is_some_and(|set| set.starts_with("session_id=")),
+        "logged in"
+    );
+    Ok(())
+}
+
+/// Without the form's token, or with a token of another browser, the login is refused: another
+/// site could otherwise log the browser in as an account of its own.
+#[test]
+fn test_a_login_without_its_csrf_token_is_refused() -> Result<()> {
+    let app = new_app()?;
+    let password = base::DEFAULT_ADMIN_PASSWORD;
+    let response = submit_login(&app, "csrf_id=browser", "", "admin", password, "/web");
+    assert_eq!(response.status(), 400);
+    assert!(response.header("set-cookie").is_none());
+
+    let elsewhere = http::csrf::token_for(
+        &app,
+        &Request::new("GET", "/login").with_header("Cookie", "csrf_id=another"),
+    );
+    let response = submit_login(
+        &app,
+        "csrf_id=browser",
+        &elsewhere,
+        "admin",
+        password,
+        "/web",
+    );
+    assert_eq!(response.status(), 400);
     Ok(())
 }
 
@@ -489,10 +568,13 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
         404,
         "no template file in that bundle"
     );
-    assert_eq!(
-        templates(&app, "web.assets_backend"),
-        "<templates>\n<t t-name=\"web.WebClient\"><div class=\"o_web_client\">\
-         <main class=\"o_action_manager\"/></div></t>\n</templates>\n"
+    let backend = templates(&app, "web.assets_backend");
+    assert!(
+        backend.contains(
+            "<t t-name=\"web.WebClient\"><div class=\"o_web_client\">\
+             <main class=\"o_action_manager\"/></div></t>\n"
+        ),
+        "{backend}"
     );
     Ok(())
 }

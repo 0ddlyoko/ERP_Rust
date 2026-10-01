@@ -81,6 +81,7 @@ pub struct Application {
     /// database — a test, a `--help` — never tries to.
     pool: OnceLock<ConnectionPool>,
     data_update: DataUpdate,
+    signing_secret: OnceLock<String>,
 }
 
 impl Application {
@@ -94,6 +95,7 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            signing_secret: OnceLock::new(),
         }
     }
 
@@ -110,6 +112,7 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            signing_secret: OnceLock::new(),
         }
     }
 
@@ -138,6 +141,24 @@ impl Application {
     /// application.
     pub fn set_config(&mut self, config: Config) {
         self.config = config;
+        self.signing_secret = OnceLock::new();
+    }
+
+    /// What signs the tokens the server hands out: the configured secret, or one made up the
+    /// first time it is needed.
+    pub fn signing_secret(&self) -> &str {
+        self.signing_secret.get_or_init(|| match &self.config.server.secret {
+            Some(secret) => secret.clone(),
+            None => {
+                if !self.is_test {
+                    tracing::warn!(
+                        "No server secret is configured: one is made up, and the tokens it signs \
+                         stop working when the server restarts"
+                    );
+                }
+                erp_types::field::generate_secret()
+            }
+        })
     }
 
     /// How many requests may be served at once, `0` meaning no bound.

@@ -1,11 +1,11 @@
 use crate::models::Template;
 use crate::qweb::{Value, Values};
+use base::models::Users;
 use code_gen::{Controller, erp_routes};
 use erp::environment::Environment;
 use erp::http::{Request, Response, SESSION_COOKIE};
 use erp::types::field::SingleId;
 use std::error::Error;
-use base::models::Users;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -21,7 +21,7 @@ impl Session {
     pub fn login_form(&self, env: &mut Environment, request: &Request) -> Result<Response> {
         let redirect = destination(request.param("redirect"));
         if env.is_anonymous() {
-            login_page(env, &redirect, "", None)
+            login_page(env, request, &redirect, "", None)
         } else {
             Ok(Response::redirect(&redirect))
         }
@@ -30,21 +30,32 @@ impl Session {
     /// Exchange the submitted credentials for a session, held by the browser as a cookie.
     ///
     /// The cookie is `HttpOnly`, so no script reads the token, and `SameSite=Lax`, so another
-    /// site cannot submit requests carrying it.
+    /// site cannot submit requests carrying it. The form's CSRF token is checked before this
+    /// runs: without it, another site could log the browser in as an account of its own.
     #[erp(route = "/login", methods = ["POST"])]
     pub fn login(&self, env: &mut Environment, request: &Request) -> Result<Response> {
         let redirect = destination(request.param("redirect"));
         let login = request.param("login").unwrap_or_default();
         let password = request.param("password").unwrap_or_default();
-        let token = match env.get_empty_record::<Users<_>>().authenticate(env, login.clone(), password) {
-            Ok(answer) => Some(answer.token),
-            Err(error) => {
-                tracing::info!(%login, %error, "A login was refused");
-                None
-            }
-        };
+        let token =
+            match env
+                .get_empty_record::<Users<_>>()
+                .authenticate(env, login.clone(), password)
+            {
+                Ok(answer) => Some(answer.token),
+                Err(error) => {
+                    tracing::info!(%login, %error, "A login was refused");
+                    None
+                }
+            };
         let Some(token) = token else {
-            let page = login_page(env, &redirect, &login, Some("Wrong login or password."))?;
+            let page = login_page(
+                env,
+                request,
+                &redirect,
+                &login,
+                Some("Wrong login or password."),
+            )?;
             return Ok(page.with_status(401));
         };
         let max_age = env.server_config().session_duration;
@@ -55,12 +66,15 @@ impl Session {
     }
 
     /// End this browser's session, and forget its cookie.
+    ///
+    /// A GET, as Odoo's `/web/session/logout`: a link logs out.
     #[erp(route = "/logout")]
     pub fn logout(&self, env: &mut Environment, request: &Request) -> Result<Response> {
         if let Some(token) = request.cookie(SESSION_COOKIE)
             && !env.is_anonymous()
         {
-            env.get_empty_record::<Users<_>>().log_out(env, token.to_string())?;
+            env.get_empty_record::<Users<_>>()
+                .log_out(env, token.to_string())?;
         }
         Ok(Response::redirect("/login").with_header(
             "Set-Cookie",
@@ -71,11 +85,13 @@ impl Session {
 
 fn login_page(
     env: &mut Environment,
+    request: &Request,
     redirect: &str,
     login: &str,
     error: Option<&str>,
 ) -> Result<Response> {
     let mut values = Values::new();
+    values.insert("csrf_token".to_string(), Value::Text(request.csrf_token()));
     values.insert("redirect".to_string(), Value::Text(redirect.to_string()));
     values.insert("login".to_string(), Value::Text(login.to_string()));
     if let Some(error) = error {

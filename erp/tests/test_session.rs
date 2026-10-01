@@ -55,14 +55,39 @@ fn grant_sessions(app: &Application, uid: u32) -> Result<()> {
     env.close()
 }
 
+/// Credentials in, the answer out — `None` when they identify nobody.
+///
+/// In-process, as the login controller does: authenticating is not reachable over the protocol.
+fn try_open(app: &Application, login: &str, password: &str) -> Option<Value> {
+    let mut env = app.new_env().expect("an environment");
+    let authenticated = env
+        .get_empty_record::<Users<_>>()
+        .authenticate(&mut env, login.to_string(), password.to_string())
+        .ok()?;
+    env.close().expect("committed");
+    Some(serde_json::to_value(&authenticated).expect("serialisable"))
+}
+
 /// Credentials in, token out.
 fn open(app: &Application, login: &str, password: &str) -> Value {
-    call(
-        app,
-        None,
-        "users.authenticate",
-        json!({"args": {"login": login, "password": password}}),
-    )
+    try_open(app, login, password).expect("the credentials identify somebody")
+}
+
+/// Who a token speaks for, as the protocol answers it.
+fn holder(app: &Application, token: &str) -> u32 {
+    call(app, Some(token), "users.me", json!({}))
+        .as_u64()
+        .expect("somebody") as u32
+}
+
+/// End the session `token` opens, as whoever `caller` speaks for.
+fn log_out(app: &Application, caller: &str, token: &str) -> Result<bool> {
+    let mut env = app.new_env_as(holder(app, caller))?;
+    let ended = env
+        .get_empty_record::<Users<_>>()
+        .log_out(&mut env, token.to_string())?;
+    env.close()?;
+    Ok(ended)
 }
 
 /// The record id the first half of a token names.
@@ -101,15 +126,9 @@ fn test_nothing_else_opens_one() -> Result<()> {
         ("nobody", "s3cret", "an unknown login"),
         ("retired", "s3cret", "an inactive account"),
     ] {
-        let answer = raw(
-            &app,
-            None,
-            "users.authenticate",
-            json!({"args": {"login": login, "password": password}}),
-        );
         assert!(
-            answer.get("result").is_none(),
-            "{what} opened one: {answer}"
+            try_open(&app, login, password).is_none(),
+            "{what} opened one"
         );
     }
     Ok(())
@@ -265,28 +284,39 @@ fn test_logging_out_ends_only_your_own_session() -> Result<()> {
         .expect("a token")
         .to_string();
 
-    let answer = call(
-        &app,
-        Some(&alice),
-        "users.log_out",
-        json!({"args": {"token": bob}}),
-    );
-    assert_eq!(answer, json!(false), "not hers to end");
+    assert!(!log_out(&app, &alice, &bob)?, "not hers to end");
     assert!(
         raw(&app, Some(&bob), "users.me", json!({}))
             .get("result")
             .is_some()
     );
 
-    let answer = call(
-        &app,
-        Some(&alice),
-        "users.log_out",
-        json!({"args": {"token": alice}}),
-    );
-    assert_eq!(answer, json!(true));
+    assert!(log_out(&app, &alice, &alice)?);
     let answer = raw(&app, Some(&alice), "users.me", json!({}));
     assert!(answer.get("result").is_none(), "got {answer}");
+    Ok(())
+}
+
+/// Opening and ending a session goes through the web client's controllers, not the protocol:
+/// neither is reachable over it.
+#[test]
+fn test_sessions_are_not_handled_over_the_protocol() -> Result<()> {
+    let app = new_app()?;
+    make_user(&app, "alice", "s3cret", true)?;
+    let token = open(&app, "alice", "s3cret")["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    for (method, params) in [
+        (
+            "users.authenticate",
+            json!({"args": {"login": "alice", "password": "s3cret"}}),
+        ),
+        ("users.log_out", json!({"args": {"token": token}})),
+    ] {
+        let answer = raw(&app, Some(&token), method, params);
+        assert_eq!(answer["error"]["code"], json!(-32601), "{method}: {answer}");
+    }
     Ok(())
 }
 
@@ -374,22 +404,16 @@ fn test_changing_your_own_password() -> Result<()> {
     );
     assert!(refused.get("result").is_none(), "got {refused}");
 
-    call(
+    let changed = call(
         &app,
         Some(&token),
         "users.change_own_password",
         json!({"args": {"current": "s3cret", "new": "n3w"}}),
     );
+    assert_eq!(changed, json!(true));
 
     assert!(
-        raw(
-            &app,
-            None,
-            "users.authenticate",
-            json!({"args": {"login": "alice", "password": "s3cret"}})
-        )
-        .get("result")
-        .is_none(),
+        try_open(&app, "alice", "s3cret").is_none(),
         "the old password must stop working"
     );
     open(&app, "alice", "n3w");
@@ -414,14 +438,7 @@ fn test_the_portal_user_cannot_be_given_a_password() -> Result<()> {
         );
         assert!(refused.get("result").is_none(), "{attempt:?} got {refused}");
     }
-
-    let still_refused = raw(
-        &app,
-        None,
-        "users.authenticate",
-        json!({"args": {"login": "portal", "password": "n3w"}}),
-    );
-    assert!(still_refused.get("result").is_none(), "got {still_refused}");
+    assert!(try_open(&app, "portal", "n3w").is_none());
     Ok(())
 }
 
@@ -461,14 +478,7 @@ fn test_deactivating_an_account_ends_its_sessions() -> Result<()> {
     }
 
     assert!(
-        raw(
-            &app,
-            None,
-            "users.authenticate",
-            json!({"args": {"login": "alice", "password": "s3cret"}})
-        )
-        .get("result")
-        .is_none(),
+        try_open(&app, "alice", "s3cret").is_none(),
         "an inactive account cannot authenticate"
     );
 

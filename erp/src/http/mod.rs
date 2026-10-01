@@ -5,6 +5,7 @@
 //! the same controller id and a method of the same name, and reaches the one below through
 //! `sup` — so what a URL does can be changed without touching the plugin that declared it.
 
+pub mod csrf;
 mod errors;
 mod params;
 mod request;
@@ -32,20 +33,35 @@ pub const SESSION_COOKIE: &str = "session_id";
 /// revoked — it is the user nobody authenticated as, and the controller decides what that may
 /// see.
 pub fn handle(app: &Application, request: Request) -> Response {
-    let (call, params) = match app
+    let (call, params, needs_csrf) = match app
         .model_manager
         .controllers
         .resolve(request.method(), request.path())
     {
-        Resolution::Found { call, params } => (call, params),
+        Resolution::Found { call, params, csrf } => (call, params, csrf),
         Resolution::NotFound => return refusal(&HttpError::not_found("Nothing is served here")),
         Resolution::MethodNotAllowed(allowed) => {
             return refusal(&HttpError::new(405, "This URL does not answer that method"))
                 .with_header("Allow", &allowed.join(", "));
         }
     };
-    let request = request.with_path_params(params);
+    let binding = csrf::Binding::of(app.signing_secret(), &request);
+    let request = request.with_path_params(params).with_csrf(binding.clone());
+    if needs_csrf && !csrf::check(&binding, &request) {
+        tracing::warn!(path = %request.path(), "A request without a valid CSRF token was refused");
+        return refusal(&HttpError::bad_request(
+            "Session expired (invalid CSRF token)",
+        ));
+    }
+    let response = answer(app, call, &request);
+    match binding.cookie_to_set() {
+        Some(cookie) => response.with_header("Set-Cookie", &cookie),
+        None => response,
+    }
+}
 
+/// Run the controller in its own transaction, as the caller its session cookie names.
+fn answer(app: &Application, call: HttpFn, request: &Request) -> Response {
     let mut env = match app.new_env() {
         Ok(env) => env,
         Err(error) => return failure(&*error),
@@ -58,8 +74,8 @@ pub fn handle(app: &Application, request: Request) -> Response {
         None => None,
     };
     let answer = match caller {
-        Some(uid) => call(&mut env.as_user(uid), &request),
-        None => call(&mut env, &request),
+        Some(uid) => call(&mut env.as_user(uid), request),
+        None => call(&mut env, request),
     };
     match answer {
         Ok(response) => match env.close() {

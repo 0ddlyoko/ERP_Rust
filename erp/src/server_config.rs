@@ -19,7 +19,7 @@ fn default_port() -> u16 {
 ///
 /// Fields are public so an embedder — or a test — can configure it in code instead of through a
 /// file.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct ServerConfig {
     /// Address to bind. `127.0.0.1` accepts only local callers; `0.0.0.0` accepts any.
     #[serde(default = "default_host")]
@@ -39,6 +39,25 @@ pub struct ServerConfig {
     /// every time the thief used it.
     #[serde(default = "default_session_duration")]
     pub session_duration: u64,
+    /// What signs the tokens the server hands out, such as CSRF tokens.
+    ///
+    /// Left out, one is made up at start-up: the tokens of a page then stop working when the
+    /// server restarts, and differ from one server to the next behind a load balancer.
+    #[serde(default)]
+    pub secret: Option<String>,
+}
+
+impl std::fmt::Debug for ServerConfig {
+    /// The secret only as whether there is one: a configuration ends up in logs.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ServerConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("max_concurrent_requests", &self.max_concurrent_requests)
+            .field("session_duration", &self.session_duration)
+            .field("secret", &self.secret.as_ref().map(|_| "<set>"))
+            .finish()
+    }
 }
 
 impl Default for ServerConfig {
@@ -48,6 +67,7 @@ impl Default for ServerConfig {
             port: default_port(),
             max_concurrent_requests: 0,
             session_duration: default_session_duration(),
+            secret: None,
         }
     }
 }
