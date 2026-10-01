@@ -8,6 +8,7 @@ use erp::data;
 use erp::http::{self, Request, Response};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
+use erp::serde_json::json;
 use erp::types::field::SingleId;
 use erp::types::model::MapOfFields;
 use std::error::Error;
@@ -350,6 +351,80 @@ fn test_the_session_information_cannot_close_its_script() -> Result<()> {
     let page = get_logged_in(&app, "/web").text_body();
     assert!(!page.contains("</script><b>"), "{page}");
     assert_eq!(session_info(&page)["name"], "</script><b>&");
+    Ok(())
+}
+
+/// The client's services are compiled, served, and loaded by the back office's bundle.
+#[test]
+fn test_the_client_services_are_in_the_backend_bundle() -> Result<()> {
+    let app = new_app()?;
+    let module = get(&app, "/web/assets/web.assets_backend.js").text_body();
+    for service in ["session", "rpc", "orm"] {
+        let path = format!("/static/web/src/core/{service}.js");
+        assert!(
+            module.contains(&format!("import \"{path}\";")),
+            "{service} in {module}"
+        );
+        assert_eq!(get(&app, &path).status(), 200, "{path}");
+    }
+    let rpc = get(&app, "/static/web/src/core/rpc.js").text_body();
+    assert!(
+        rpc.contains("X-CSRF-Token") && rpc.contains("/jsonrpc"),
+        "{rpc}"
+    );
+    assert!(!rpc.contains("@inject"), "decorators are lowered");
+    Ok(())
+}
+
+/// Every call the `orm` service makes, in the shape it sends them, as the page's session: what the
+/// client writes and what the server reads must not drift apart.
+#[test]
+fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
+    let app = new_app()?;
+    let cookie = log_in(&app);
+    let info = session_info(&get_as(&app, &cookie, "/web").text_body());
+    let csrf = info["csrf_token"].as_str().expect("a token").to_string();
+    let mut id = 0;
+    let mut call = |method: &str, params: erp::serde_json::Value| {
+        id += 1;
+        let carried = Request::new("POST", "/jsonrpc")
+            .with_header("Cookie", &cookie)
+            .with_header("X-CSRF-Token", &csrf);
+        let token = erp::jsonrpc::credentials(&app, None, &carried).expect("accepted");
+        let body = json!({"jsonrpc": "2.0", "method": method, "params": params, "id": id});
+        let answer =
+            erp::jsonrpc::handle(&app, token.as_deref(), &body.to_string()).expect("an answer");
+        assert!(answer.get("error").is_none(), "{method}: {answer}");
+        answer["result"].clone()
+    };
+
+    let created = call("group.create", json!({"values": {"name": "Testers"}}));
+    let id_of = created[0].as_u64().expect("an id");
+    assert_eq!(
+        call(
+            "group.write",
+            json!({"ids": [id_of], "values": {"name": "Reviewers"}})
+        ),
+        json!(true)
+    );
+    let rows = call("group.read", json!({"ids": [id_of], "fields": ["name"]}));
+    assert_eq!(rows[0]["name"], "Reviewers");
+    let domain = json!([["name", "=", "Reviewers"]]);
+    assert_eq!(
+        call("group.search", json!({"domain": domain, "limit": 10})),
+        json!([id_of])
+    );
+    let rows = call(
+        "group.read_matching",
+        json!({"domain": domain, "fields": ["name"], "order": ["name asc"]}),
+    );
+    assert_eq!(rows[0]["name"], "Reviewers");
+    assert_eq!(call("group.count", json!({"domain": domain})), json!(1));
+    assert_eq!(call("group.delete", json!({"ids": [id_of]})), json!(1));
+    assert_eq!(
+        call("users.me", json!({"ids": [], "args": {}})),
+        info["uid"]
+    );
     Ok(())
 }
 
