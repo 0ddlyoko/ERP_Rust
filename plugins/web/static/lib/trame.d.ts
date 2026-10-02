@@ -1,4 +1,4 @@
-/*! Trame v0.2.0 | LGPL v3 | https://github.com/0ddlyoko/Trame */
+/*! Trame v0.2.1 | LGPL v3 | https://github.com/0ddlyoko/Trame */
 // Déclarations de "trame", "trame/testing", "trame/runtime" et "trame/compiler".
 
 declare module "trame/internal/api" {
@@ -886,7 +886,9 @@ declare module "trame/internal/reactivity/core" {
         private runCleanup;
         mark(state: number): void;
         schedule(): void;
-        /** Appelé par le flush : vérifie les sources puis exécute si nécessaire. */
+        /** Marqué (une source a peut-être changé) et pas encore réexécuté ? */
+        get needsRun(): boolean;
+        /** Appelé par le flush : vérifie les sources puis exécute si nécessaire (pas sous un scope gelé). */
         update(): void;
         dispose(): void;
     }
@@ -958,6 +960,7 @@ declare module "trame/internal/reactivity/owner" {
         live: boolean;
         /** Contenu préparé mais pas encore inséré (en attente de données). */
         detached: boolean;
+        suspended: boolean;
         disposed: boolean;
         private children;
         private effects;
@@ -979,6 +982,14 @@ declare module "trame/internal/reactivity/owner" {
         onMount(fn: () => void): void;
         /** Marque le scope (et ses enfants insérés) comme affiché, et déclenche les callbacks onMount. */
         activate(): void;
+        /**
+         * Gèle le sous-arbre : ses effets (rendu, ressources, @effect) ne s'exécutent plus, ses computed ne
+         * sont donc plus relus. Un contenu en cours de remplacement ne réagit plus à un état qui ne le
+         * concerne plus (ex. l'enregistrement de l'ancienne vue passé à null).
+         */
+        suspend(): void;
+        /** Dégèle le sous-arbre : les effets marqués pendant le gel se rattrapent au prochain flush. */
+        resume(): void;
         /**
          * Cherche un service fourni par ce scope ou un ancêtre (le plus proche l'emporte). À un même
          * niveau, un service fourni sous sa classe exacte l'emporte sur un service dont c'est une classe parente.
@@ -1445,7 +1456,7 @@ declare module "trame/internal/runtime/regions" {
     /** Construit un bloc sous un nouveau scope enfant de `parent`. */
     export function buildItem(parent: Owner, build: BlockBuilder, boundary?: Boundary): Item;
     /** Effet de rendu (exécuté immédiatement). `loc` : localisation dans le template (erreurs). */
-    export function renderEffect(fn: () => void, loc?: string): Effect;
+    export function renderEffect(fn: () => void, loc?: string, priority?: number): Effect;
     export class StaticRegion extends Region {
         private item;
         /**
@@ -1455,6 +1466,12 @@ declare module "trame/internal/runtime/regions" {
         constructor(anchor: Node, build: BlockBuilder, loc?: string, shareOwner?: boolean);
         firstNode(): Node;
     }
+    /**
+     * Pendant un remplacement, le contenu sortant reste affiché mais gelé (Owner.suspend) : il ne suit
+     * plus l'état du parent (props, ressources) et reprend vie si le remplacement est annulé. Le choix de
+     * la clé s'exécute avec la priorité des ressources, pour geler le contenu sortant avant que ses
+     * @resource ne se relancent sur le même changement.
+     */
     export class SwitchRegion extends Region {
         private readonly builderFor;
         private readonly loc?;

@@ -1,4 +1,4 @@
-/*! Trame v0.2.0 | LGPL v3 | https://github.com/0ddlyoko/Trame */
+/*! Trame v0.2.1 | LGPL v3 | https://github.com/0ddlyoko/Trame */
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
@@ -3171,9 +3171,14 @@ var Effect = class extends Computation {
       scheduleFlush();
     }
   }
-  /** Appelé par le flush : vérifie les sources puis exécute si nécessaire. */
+  /** Marqué (une source a peut-être changé) et pas encore réexécuté ? */
+  get needsRun() {
+    return this.state !== CLEAN && !this.disposed;
+  }
+  /** Appelé par le flush : vérifie les sources puis exécute si nécessaire (pas sous un scope gelé). */
   update() {
-    if (this.disposed || this.state === CLEAN) {
+    var _a;
+    if (this.disposed || this.state === CLEAN || ((_a = this.owner) == null ? void 0 : _a.suspended)) {
       return;
     }
     if (this.state === CHECK && !this.sourcesChanged()) {
@@ -3759,6 +3764,7 @@ var Owner = class {
     __publicField(this, "live", false);
     /** Contenu préparé mais pas encore inséré (en attente de données). */
     __publicField(this, "detached", false);
+    __publicField(this, "suspended", false);
     __publicField(this, "disposed", false);
     __publicField(this, "children", null);
     __publicField(this, "effects", null);
@@ -3770,6 +3776,7 @@ var Owner = class {
     this.app = parent ? parent.app : null;
     this.boundary = parent ? parent.boundary : null;
     if (parent) {
+      this.suspended = parent.suspended;
       if (parent.disposed) {
         this.disposed = true;
       } else {
@@ -3851,6 +3858,41 @@ var Owner = class {
           cb();
         } catch (e) {
           this.handleError(e);
+        }
+      }
+    }
+  }
+  /**
+   * Gèle le sous-arbre : ses effets (rendu, ressources, @effect) ne s'exécutent plus, ses computed ne
+   * sont donc plus relus. Un contenu en cours de remplacement ne réagit plus à un état qui ne le
+   * concerne plus (ex. l'enregistrement de l'ancienne vue passé à null).
+   */
+  suspend() {
+    if (this.suspended || this.disposed) {
+      return;
+    }
+    this.suspended = true;
+    if (this.children !== null) {
+      for (const child of this.children) {
+        child.suspend();
+      }
+    }
+  }
+  /** Dégèle le sous-arbre : les effets marqués pendant le gel se rattrapent au prochain flush. */
+  resume() {
+    if (!this.suspended || this.disposed) {
+      return;
+    }
+    this.suspended = false;
+    if (this.children !== null) {
+      for (const child of this.children) {
+        child.resume();
+      }
+    }
+    if (this.effects !== null) {
+      for (const effect2 of this.effects) {
+        if (effect2.needsRun) {
+          effect2.schedule();
         }
       }
     }
@@ -4375,8 +4417,8 @@ function buildItem(parent, build, boundary) {
     throw e;
   }
 }
-function renderEffect(fn, loc) {
-  const effect2 = new Effect(fn, getOwner(), PRIORITY_RENDER);
+function renderEffect(fn, loc, priority = PRIORITY_RENDER) {
+  const effect2 = new Effect(fn, getOwner(), priority);
   effect2.loc = loc;
   effect2.run();
   return effect2;
@@ -4425,12 +4467,13 @@ var SwitchRegion = class extends Region {
     renderEffect(() => {
       const key = keyFn();
       untrack(() => this.update(key));
-    }, loc);
+    }, loc, PRIORITY_RESOURCE);
   }
   firstNode() {
     return this.current ? itemFirst(this.current) : this.anchor;
   }
   update(key) {
+    var _a, _b, _c;
     if (this.pending !== null) {
       if (this.pending.key === key) {
         return;
@@ -4438,6 +4481,7 @@ var SwitchRegion = class extends Region {
       this.cancelPending();
     }
     if (key === this.currentKey) {
+      (_a = this.current) == null ? void 0 : _a.owner.resume();
       return;
     }
     const builder = this.builderFor(key);
@@ -4461,13 +4505,17 @@ var SwitchRegion = class extends Region {
     const boundary = new Boundary(
       () => this.commitPending(),
       (error2) => {
+        var _a2;
         this.cancelPending();
+        (_a2 = this.current) == null ? void 0 : _a2.owner.resume();
         owner.handleError(error2);
       }
     );
+    (_b = this.current) == null ? void 0 : _b.owner.suspend();
     try {
       item = buildItem(owner, builder, boundary);
     } catch (e) {
+      (_c = this.current) == null ? void 0 : _c.owner.resume();
       owner.handleError(annotateError(e, this.loc, owner));
       return;
     }
@@ -4552,7 +4600,7 @@ var ListRegion = class extends Region {
       const keyFn2 = this.keyFn;
       const keys = keyFn2 === null ? this.identityKeys(items) : items.map((item, i) => keyFn2(item, i));
       untrack(() => this.reconcile(items, keys));
-    }, loc);
+    }, loc, PRIORITY_RESOURCE);
   }
   firstNode() {
     return this.rows.length ? itemFirst(this.rows[0]) : this.anchor;
@@ -6702,7 +6750,7 @@ var Registry = class _Registry {
 var registry = new Registry("registry");
 
 // src/api.ts
-var VERSION = true ? "0.2.0" : "dev";
+var VERSION = true ? "0.2.1" : "dev";
 export {
   Component,
   ErrorBoundary,
