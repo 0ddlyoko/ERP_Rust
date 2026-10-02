@@ -536,3 +536,35 @@ fn test_a_session_cookie_needs_the_pages_csrf_token() -> Result<()> {
     assert_eq!(code(nobody), Ok(None));
     Ok(())
 }
+
+// ---- describing fields ----
+
+/// A private field is not described, even when asked for by name; a caller who may read no
+/// record of the model is told nothing about its fields.
+#[test]
+fn test_fields_get_hides_what_is_private_and_answers_only_readers() -> Result<()> {
+    let app = new_app()?;
+    let token = open(&app, "admin", DEFAULT_ADMIN_PASSWORD)["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let fields = call(&app, Some(&token), "users.fields_get", json!({}));
+    assert!(fields.get("login").is_some(), "{fields}");
+    assert!(fields.get("password").is_none(), "{fields}");
+    assert_eq!(fields["groups"]["relation_kind"], "many2many");
+
+    let asked = raw(
+        &app,
+        Some(&token),
+        "users.fields_get",
+        json!({"fields": ["password"]}),
+    );
+    assert!(asked.get("result").is_none(), "{asked}");
+
+    let nobody = raw(&app, None, "session.fields_get", json!({}));
+    assert!(
+        nobody.get("result").is_none(),
+        "the portal user reads no session: {nobody}"
+    );
+    Ok(())
+}

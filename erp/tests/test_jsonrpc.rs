@@ -347,3 +347,71 @@ fn test_reserved_names_are_not_model_methods() -> Result<()> {
     }
     Ok(())
 }
+
+// ---- describing fields ----
+
+/// Each field's kind, label, constraints, relation and default, as a client needs to show and
+/// edit it — `id` included, since every record has one.
+#[test]
+fn test_fields_get_describes_every_field() -> Result<()> {
+    let app = new_app()?;
+    let fields = result(&app, "sale_order_line.fields_get", json!({}));
+    let names: Vec<&String> = fields.as_object().expect("by name").keys().collect();
+    assert_eq!(
+        names,
+        vec![
+            "amount",
+            "id",
+            "order",
+            "order_tags",
+            "price",
+            "siblings_total",
+            "total_price"
+        ]
+    );
+    assert_eq!(
+        fields["price"],
+        json!({"type": "integer", "label": "price", "required": true, "readonly": false,
+               "stored": true, "default": 42})
+    );
+    assert_eq!(fields["order"]["relation"], "sale_order");
+    assert_eq!(fields["order"]["relation_kind"], "many2one");
+    assert_eq!(fields["id"]["readonly"], true);
+    assert_eq!(fields["total_price"]["readonly"], true, "computed");
+    assert_eq!(fields["total_price"]["stored"], true);
+    assert_eq!(fields["siblings_total"]["stored"], false);
+
+    let lines = result(&app, "sale_order.fields_get", json!({"fields": ["lines"]}));
+    assert_eq!(lines["lines"]["relation_kind"], "one2many");
+    assert_eq!(lines["lines"]["relation"], "sale_order_line");
+    Ok(())
+}
+
+/// Only the fields asked for; one the model does not have is refused, naming it.
+#[test]
+fn test_fields_get_describes_what_was_asked() -> Result<()> {
+    let app = new_app()?;
+    let fields = result(
+        &app,
+        "sale_order_line.fields_get",
+        json!({"fields": ["price", "id"]}),
+    );
+    assert_eq!(fields.as_object().map(|fields| fields.len()), Some(2));
+
+    let answer = call(
+        &app,
+        "sale_order_line.fields_get",
+        json!({"fields": ["nowhere"]}),
+    );
+    assert!(
+        answer["error"]["message"]
+            .as_str()
+            .is_some_and(|m| m.contains("nowhere")),
+        "{answer}"
+    );
+    assert_eq!(
+        error_code(&call(&app, "nobody.fields_get", json!({}))),
+        -32601
+    );
+    Ok(())
+}

@@ -3,10 +3,14 @@
 //! They are reserved names: a method exposed under one of them would be unreachable, so that is
 //! refused when it is registered rather than discovered when a call goes somewhere unexpected.
 
+use crate::access::Operation;
 use crate::environment::Environment;
 use crate::model::RpcFn;
+use erp_internal_types::FinalInternalField;
 use erp_search::{OrderBy, SearchOptions, SearchType};
-use erp_types::field::{FieldKinds, IdMode, MapOfFieldsSeed, MultipleIds};
+use erp_types::field::{
+    FieldKind, FieldKinds, FieldReferenceType, IdMode, MapOfFieldsSeed, MultipleIds,
+};
 use erp_types::model::MapOfFields;
 use serde::Deserialize;
 use serde::de::DeserializeSeed;
@@ -29,6 +33,7 @@ pub enum Verb {
     Create,
     Write,
     Delete,
+    FieldsGet,
 }
 
 impl Verb {
@@ -42,6 +47,7 @@ impl Verb {
         Verb::Create,
         Verb::Write,
         Verb::Delete,
+        Verb::FieldsGet,
     ];
 
     /// The name a caller writes.
@@ -54,6 +60,7 @@ impl Verb {
             Verb::Create => "create",
             Verb::Write => "write",
             Verb::Delete => "delete",
+            Verb::FieldsGet => "fields_get",
         }
     }
 
@@ -77,6 +84,7 @@ impl Verb {
             Verb::Create => |env, model, params| dispatch(env, model, Verb::Create, params),
             Verb::Write => |env, model, params| dispatch(env, model, Verb::Write, params),
             Verb::Delete => |env, model, params| dispatch(env, model, Verb::Delete, params),
+            Verb::FieldsGet => |env, model, params| dispatch(env, model, Verb::FieldsGet, params),
         }
     }
 }
@@ -274,6 +282,12 @@ struct CountParams {
 }
 
 #[derive(Debug, Deserialize)]
+struct FieldsGetParams {
+    #[serde(default)]
+    fields: Vec<String>,
+}
+
+#[derive(Deserialize)]
 struct IdsParams {
     ids: Vec<u32>,
 }
@@ -339,6 +353,93 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             let IdsParams { ids } = parse(params)?;
             Ok(json!(env.delete(model_name, &MultipleIds::from(ids))?))
         }
+        Verb::FieldsGet => {
+            let FieldsGetParams { fields } = parse(params)?;
+            fields_get(env, model_name, &fields)
+        }
+    }
+}
+
+/// What a client needs to show and edit a model's fields, by name: all of them, `id` included,
+/// or those asked for.
+///
+/// Only for a caller who may read some record of the model. A private field is left out, as if it
+/// did not exist; asking for it by name is answered the same as asking for one that does not.
+fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Result<Value> {
+    env.check_model_access(model_name, Operation::Read)?;
+    let model = env.model_manager.try_get_model(model_name)?;
+    let visible = |name: &str| model.fields.get(name).filter(|field| !field.private);
+    let names: Vec<String> = if asked.is_empty() {
+        let mut names: Vec<String> = model
+            .fields
+            .keys()
+            .filter(|name| visible(name).is_some())
+            .cloned()
+            .collect();
+        names.push("id".to_string());
+        names.sort();
+        names
+    } else {
+        asked.to_vec()
+    };
+    let mut described = serde_json::Map::new();
+    for name in names {
+        if name == "id" {
+            described.insert(name, describe_id());
+            continue;
+        }
+        let Some(field) = visible(&name) else {
+            return Err(format!("Model \"{model_name}\" has no field \"{name}\"").into());
+        };
+        described.insert(name, describe(field)?);
+    }
+    Ok(Value::Object(described))
+}
+
+/// The id every record has, which no struct declares as a field.
+fn describe_id() -> Value {
+    json!({
+        "type": "integer",
+        "label": "ID",
+        "required": false,
+        "readonly": true,
+        "stored": true,
+    })
+}
+
+fn describe(field: &FinalInternalField) -> Result<Value> {
+    let mut described = json!({
+        "type": kind_name(field.kind),
+        "label": field.description,
+        "required": field.required,
+        "readonly": field.compute.is_some(),
+        "stored": field.is_stored(),
+    });
+    if let Some(reference) = &field.inverse {
+        described["relation"] = json!(reference.target_model);
+        described["relation_kind"] = json!(match reference.inverse_field {
+            FieldReferenceType::M2O { .. } => "many2one",
+            FieldReferenceType::O2M { .. } => "one2many",
+            FieldReferenceType::M2M { .. } => "many2many",
+        });
+    }
+    if let Some(default) = &field.default_value {
+        described["default"] = serde_json::to_value(default)?;
+    }
+    Ok(described)
+}
+
+fn kind_name(kind: FieldKind) -> &'static str {
+    match kind {
+        FieldKind::String => "string",
+        FieldKind::Integer => "integer",
+        FieldKind::Decimal => "decimal",
+        FieldKind::Bool => "bool",
+        FieldKind::Date => "date",
+        FieldKind::DateTime => "datetime",
+        FieldKind::Ref => "ref",
+        FieldKind::Refs => "refs",
+        FieldKind::Password => "password",
     }
 }
 

@@ -88,6 +88,17 @@ impl<'mm> Environment<'mm> {
     }
 
     /// A caller's domain, narrowed to what they may read.
+    /// Refuse an operation the caller may do on no record of the model at all.
+    ///
+    /// For what is about the model rather than its records — describing its fields — and so has
+    /// no ids to check.
+    pub fn check_model_access(&mut self, model_name: &str, operation: Operation) -> Result<()> {
+        match self.access(model_name, operation)? {
+            Access::Denied => Err(AccessDenied::new(model_name, operation, &[], Vec::new()).into()),
+            Access::Unrestricted | Access::Restricted(_) => Ok(()),
+        }
+    }
+
     pub(super) fn readable_domain(
         &mut self,
         model_name: &str,

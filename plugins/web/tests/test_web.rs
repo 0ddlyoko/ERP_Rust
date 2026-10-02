@@ -425,6 +425,9 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
         call("users.me", json!({"ids": [], "args": {}})),
         info["uid"]
     );
+    let fields = call("group.fields_get", json!({"fields": ["name", "id"]}));
+    assert_eq!(fields["name"]["type"], "string");
+    assert_eq!(fields["id"]["readonly"], true);
     Ok(())
 }
 

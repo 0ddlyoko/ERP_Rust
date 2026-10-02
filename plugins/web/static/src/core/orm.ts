@@ -14,6 +14,18 @@ export interface Paging {
 /** A record's values, by field name. */
 export type Values = Record<string, unknown>;
 
+/** How a field is shown and edited, as the server describes it. */
+export interface FieldDescription {
+    type: "string" | "integer" | "decimal" | "bool" | "date" | "datetime" | "ref" | "refs";
+    label: string;
+    required: boolean;
+    readonly: boolean;
+    stored: boolean;
+    relation?: string;
+    relation_kind?: "many2one" | "one2many" | "many2many";
+    default?: unknown;
+}
+
 /** The records of any model, through the operations the protocol answers on every one of them. */
 export class Orm {
     @inject(Rpc) rpc!: Rpc;
@@ -47,6 +59,11 @@ export class Orm {
     /** Resolves with how many records were deleted. */
     delete(model: string, ids: number[]): Promise<number> {
         return this.rpc.call(`${model}.delete`, { ids });
+    }
+
+    /** The fields of a model the caller may see, all of them or those named. */
+    fieldsGet(model: string, fields: string[] = []): Promise<Record<string, FieldDescription>> {
+        return this.rpc.call(`${model}.fields_get`, { fields });
     }
 
     /** A method the model exposes with `#[erp(rpc)]`, on these records. */
