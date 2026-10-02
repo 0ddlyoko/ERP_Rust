@@ -644,3 +644,47 @@ fn test_a_body_field_takes_the_content_of_the_record() -> Result<()> {
     assert_eq!(rows[0].get::<&String>("field"), "beside");
     Ok(())
 }
+
+/// For a model nesting records, one written inside another is its child, at any depth; the other
+/// elements are still fields.
+#[test]
+fn test_records_nest_as_children() -> Result<()> {
+    let mut app = new_app()?;
+    app.model_manager.set_data_children("contact", "parent");
+    let mut env = app.new_env_as_option(None)?;
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp>
+            <contact id="acme" name="Acme">
+                <contact id="alice" name="Alice">
+                    <contact id="team" name="Team"/>
+                </contact>
+                <email>hello@acme.example</email>
+            </contact>
+        </erp>"#,
+    )?;
+    let id = |env: &mut erp::environment::Environment, name: &str| {
+        data::resolve(env, &format!("seed_plugin.{name}"))
+            .expect("resolved")
+            .expect("loaded")
+    };
+    let (acme, alice, team) = (
+        id(&mut env, "acme"),
+        id(&mut env, "alice"),
+        id(&mut env, "team"),
+    );
+    let rows = env.read(
+        "contact",
+        &MultipleIds::from(vec![acme, alice, team]),
+        &["parent", "email"],
+    )?;
+    assert_eq!(rows[0].get_option::<&u32>("parent"), None);
+    assert_eq!(
+        rows[0].get_option::<&String>("email").map(String::as_str),
+        Some("hello@acme.example")
+    );
+    assert_eq!(rows[1].get::<&u32>("parent"), &acme);
+    assert_eq!(rows[2].get::<&u32>("parent"), &alice);
+    Ok(())
+}

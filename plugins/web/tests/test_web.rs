@@ -448,6 +448,10 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
         call("users.names", json!({"ids": [info["uid"]]})),
         json!([[info["uid"], "Administrator"]])
     );
+    let menus = call("menu.tree", json!({"ids": [], "args": {}}));
+    let users = &menus[0]["children"][0]["action"];
+    assert_eq!(users["xml_id"], "base.action_users", "{menus}");
+    assert_eq!(users["views"], json!(["list", "form"]));
     let fields = call("group.fields_get", json!({"fields": ["name", "id"]}));
     assert_eq!(fields["name"]["type"], "string");
     assert_eq!(fields["id"]["readonly"], true);
@@ -753,10 +757,12 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
     ] {
         assert!(backend.contains(template), "{template} in {backend}");
     }
-    assert!(
-        backend.contains("<ListView resModel=\"'users'\""),
-        "{backend}"
-    );
+    for template in [
+        "<t t-name=\"web.ActionManager\">",
+        "<t t-name=\"web.MenuEntries\">",
+    ] {
+        assert!(backend.contains(template), "{template} in {backend}");
+    }
     Ok(())
 }
 
@@ -779,6 +785,8 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/views/widgets/x2many_widget.js",
         "/static/web/src/core/models.js",
         "/static/web/src/core/views.js",
+        "/static/web/src/core/menus.js",
+        "/static/web/src/web_client/action_manager.js",
     ] {
         assert!(
             module.contains(&format!("import \"{path}\";")),

@@ -1,4 +1,4 @@
-import { Component, type ComponentClass, computed, inject, load, type PropsOf, resource, t } from "trame";
+import { Component, type ComponentClass, computed, inject, load, type PropsOf, registry, resource, t } from "trame";
 import { type Fields, Models } from "../core/models";
 import { type FieldDescription, Orm } from "../core/orm";
 import { Views } from "../core/views";
@@ -12,6 +12,9 @@ export const viewProps = {
     /** Which records: a search domain, all of them when empty. */
     domain: t.array(t.any()).default([]),
 };
+
+/** Views by kind: `list`, `form`. A plugin adds a kind of its own here, or replaces one. */
+export const viewKinds = registry.category<ComponentClass>("views");
 
 /** A field a view shows, as its `<field>` element says. */
 export interface Column {

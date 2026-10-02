@@ -37,6 +37,7 @@ pub struct ModelManager {
     pub load_hooks: Vec<LoadHook>,
     pub shared_caches: SharedCaches,
     data_bodies: HashMap<String, String>,
+    data_children: HashMap<String, String>,
     pub(crate) loaded_plugins: Vec<String>,
     pub(crate) current_plugin_loading: Option<String>,
 }
@@ -387,6 +388,20 @@ impl ModelManager {
     pub fn set_data_body(&mut self, model_name: &str, field_name: &str) {
         self.data_bodies
             .insert(model_name.to_string(), field_name.to_string());
+    }
+
+    /// Say that in data files, a record of this model written inside another one of the same model
+    /// is its child: `field` of the inner record names the outer one.
+    ///
+    /// For a tree, such as menus: written nested as it is read, rather than flat with references.
+    pub fn set_data_children(&mut self, model_name: &str, field_name: &str) {
+        self.data_children
+            .insert(model_name.to_string(), field_name.to_string());
+    }
+
+    /// The field naming a nested record's parent in data files, if its model nests records.
+    pub fn data_children(&self, model_name: &str) -> Option<&str> {
+        self.data_children.get(model_name).map(String::as_str)
     }
 
     /// The field a record element's content goes to in data files, if its model has one.

@@ -1,9 +1,11 @@
 mod access_rule;
+mod action;
 mod company;
 mod contact;
 mod country;
 mod group;
 mod lang;
+mod menu;
 mod model_data;
 mod plugin;
 mod session;
@@ -11,11 +13,13 @@ mod users;
 mod view;
 
 pub use access_rule::AccessRule;
+pub use action::{Action, BaseAction};
 pub use company::Company;
 pub use contact::Contact;
 pub use country::Country;
 pub use group::{BaseGroup, Group};
 pub use lang::Lang;
+pub use menu::{BaseMenu, Menu};
 pub use model_data::ModelData;
 pub use plugin::{Plugin, PluginState};
 pub use session::{OpenedSession, Session};

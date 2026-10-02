@@ -50,7 +50,7 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     let root_noupdate = read_noupdate(root);
 
     for node in root.children().filter(roxmltree::Node::is_element) {
-        load_record(env, module, node, root_noupdate)?;
+        load_record(env, module, node, root_noupdate, None)?;
     }
     Ok(())
 }
@@ -83,15 +83,19 @@ fn read_noupdate(node: roxmltree::Node) -> bool {
 /// commas — `<groups ref="group_user,group_admin"/>` — and replaces what the field held.
 ///
 /// For a model with a body field ([`ModelManager::set_data_body`]), the content of the record
-/// element is that field's value, rather than more fields.
+/// element is that field's value, rather than more fields. For a model nesting records
+/// ([`ModelManager::set_data_children`]), an element of the model's own tag is a child record,
+/// loaded after this one with `parent` naming it.
 ///
 /// [`ModelManager::set_data_body`]: crate::model::ModelManager::set_data_body
+/// [`ModelManager::set_data_children`]: crate::model::ModelManager::set_data_children
 fn load_record(
     env: &mut Environment,
     module: &str,
     node: roxmltree::Node,
     inherited_noupdate: bool,
-) -> Result<()> {
+    parent: Option<(&str, u32)>,
+) -> Result<u32> {
     let name = node
         .attribute("id")
         .ok_or_else(|| DataError::MissingAttribute {
@@ -107,7 +111,15 @@ fn load_record(
         external_id: &external_id,
     };
 
+    let children_field = env
+        .model_manager
+        .data_children(model_name)
+        .map(str::to_string);
+    let mut children = Vec::new();
     let mut values = MapOfFields::default();
+    if let Some((field, id)) = parent {
+        values.insert_option(field, Some(FieldType::Ref(id)));
+    }
     for attribute in node.attributes() {
         let field_name = attribute.name();
         let is_directive = matches!(field_name, "id" | "noupdate")
@@ -127,6 +139,10 @@ fn load_record(
         values.insert_option(body_field, Some(value));
     } else {
         for field in node.children().filter(roxmltree::Node::is_element) {
+            if children_field.is_some() && field.has_tag_name(model_name) {
+                children.push(field);
+                continue;
+            }
             // A field is named by its own tag — `<price>7</price>`. `<field name="price">` is the
             // long form, kept because it reads better when generating files and because it makes
             // the intent explicit.
@@ -145,8 +161,13 @@ fn load_record(
             values.insert_option(field_name, Some(value));
         }
     }
-    save_record(env, module, name, model_name, values, noupdate)?;
-    Ok(())
+    let id = save_record(env, module, name, model_name, values, noupdate)?;
+    if let Some(children_field) = &children_field {
+        for child in children {
+            load_record(env, module, child, noupdate, Some((children_field, id)))?;
+        }
+    }
+    Ok(id)
 }
 
 /// The record a data file declares, for reading its values.

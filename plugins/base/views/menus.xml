@@ -1,0 +1,5 @@
+<erp>
+    <menu id="menu_settings" name="Settings" groups="group_admin">
+        <menu id="menu_users" name="Users" action="action_users"/>
+    </menu>
+</erp>

@@ -131,7 +131,7 @@
         <domain_read>[]</domain_read>
     </access_rule>
 
-    <!-- Views are what every client reads to show records: read by users, written by administrators. -->
+    <!-- Views, actions and menus are for administrators: clients read them through view.load and menu.tree. -->
     <access_rule id="access_view_admin">
         <name>view: administrators</name>
         <model>view</model>
@@ -141,10 +141,22 @@
         <domain_write>[]</domain_write>
         <domain_delete>[]</domain_delete>
     </access_rule>
-    <access_rule id="access_view_user">
-        <name>view: users</name>
-        <model>view</model>
-        <group ref="group_user"/>
+    <access_rule id="access_action_admin">
+        <name>action: administrators</name>
+        <model>action</model>
+        <group ref="group_admin"/>
         <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_menu_admin">
+        <name>menu: administrators</name>
+        <model>menu</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
     </access_rule>
 </erp>

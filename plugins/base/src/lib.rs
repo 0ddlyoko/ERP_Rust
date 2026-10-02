@@ -42,6 +42,9 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Session<_>>();
         model_manager.register_model::<models::AccessRule<_>>();
         model_manager.register_model::<models::View<_>>();
+        model_manager.register_model::<models::Action<_>>();
+        model_manager.register_model::<models::Menu<_>>();
+        model_manager.set_data_children("menu", "parent");
         model_manager.set_data_body("view", "arch");
         model_manager
             .shared_caches
@@ -67,6 +70,7 @@ impl Plugin for BasePlugin {
             include_str!("../data/users.xml"),
             include_str!("../data/access.xml"),
             include_str!("../views/users_views.xml"),
+            include_str!("../views/menus.xml"),
         ]
     }
 
