@@ -415,3 +415,103 @@ fn test_fields_get_describes_what_was_asked() -> Result<()> {
     );
     Ok(())
 }
+
+// ---- naming records ----
+
+fn create(app: &Application, model: &str, values: Value) -> u64 {
+    result(app, &format!("{model}.create"), json!({"values": values}))[0]
+        .as_u64()
+        .expect("an id")
+}
+
+/// A record is named by its `name`, or by the field its model declares; a model naming none, and
+/// a record that does not exist, have no name.
+#[test]
+fn test_names_are_read_from_the_naming_field() -> Result<()> {
+    let app = new_app()?;
+    let order = create(&app, "sale_order", json!({"name": "S00042"}));
+    assert_eq!(
+        result(&app, "sale_order.names", json!({"ids": [order, 999]})),
+        json!([[order, "S00042"], [999, null]])
+    );
+
+    let reading = create(
+        &app,
+        "meter_reading",
+        json!({"reference": "M-7", "value": "1.5", "read_on": "2026-10-02"}),
+    );
+    assert_eq!(
+        result(&app, "meter_reading.names", json!({"ids": [reading]})),
+        json!([[reading, "M-7"]]),
+        "named by the field it declares"
+    );
+
+    let line = create(&app, "sale_order_line", json!({"order": order}));
+    assert_eq!(
+        result(&app, "sale_order_line.names", json!({"ids": [line]})),
+        json!([[line, null]]),
+        "a model with no name field names nothing"
+    );
+    Ok(())
+}
+
+/// Asked for, every many2one read comes as `[id, name]`, so a list shows names in one call.
+#[test]
+fn test_a_read_names_its_references_when_asked() -> Result<()> {
+    let app = new_app()?;
+    let order = create(&app, "sale_order", json!({"name": "S00042"}));
+    let line = create(&app, "sale_order_line", json!({"order": order, "price": 3}));
+    let empty = create(&app, "sale_order_line", json!({"price": 4}));
+
+    let rows = result(
+        &app,
+        "sale_order_line.read_matching",
+        json!({"domain": [], "fields": ["order", "price"], "order": ["id asc"], "names": true}),
+    );
+    assert_eq!(rows[0]["id"], json!(line));
+    assert_eq!(rows[0]["order"], json!([order, "S00042"]));
+    assert_eq!(rows[0]["price"], json!(3), "only references change");
+    assert_eq!(rows[1]["id"], json!(empty));
+    assert_eq!(
+        rows[1]["order"],
+        Value::Null,
+        "no reference, nothing to name"
+    );
+
+    let rows = result(
+        &app,
+        "sale_order_line.read",
+        json!({"ids": [line], "fields": ["order"], "names": true}),
+    );
+    assert_eq!(rows[0]["order"], json!([order, "S00042"]));
+    let plain = result(
+        &app,
+        "sale_order_line.read",
+        json!({"ids": [line], "fields": ["order"]}),
+    );
+    assert_eq!(plain[0]["order"], json!(order), "the id alone unless asked");
+    Ok(())
+}
+
+mod misnamed {
+    use code_gen::Model;
+    use erp::types::field::IdMode;
+
+    #[derive(Model)]
+    #[erp(id = "misnamed", name_field = "title")]
+    #[allow(dead_code)]
+    pub struct Misnamed<Mode: IdMode> {
+        pub id: Mode,
+        #[erp(default = "")]
+        name: String,
+    }
+}
+
+/// A model named by a field it does not have is refused when registered, not shown as ids.
+#[test]
+#[should_panic(expected = "named by its field \"title\", which it does not have")]
+fn test_a_name_field_the_model_lacks_is_refused() {
+    let mut app = Application::new_test();
+    app.model_manager.register_model::<misnamed::Misnamed<_>>();
+    app.model_manager.post_register();
+}

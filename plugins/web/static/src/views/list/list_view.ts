@@ -19,6 +19,7 @@ export class ListView extends View {
             domain: [...this.props.domain],
             limit: this.props.limit,
         }),
-        ({ model, fields, domain, limit }) => this.orm.searchRead(model, domain, fields, { limit }),
+        ({ model, fields, domain, limit }) =>
+            this.orm.searchRead(model, domain, fields, { limit, names: true }),
     );
 }

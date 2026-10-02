@@ -6,6 +6,8 @@ pub struct ModelDescriptor {
     /// Physical table backing the model. Defaults to [`ModelDescriptor::name`].
     pub table_name: String,
     pub description: Option<String>,
+    /// The field naming a record, when it is not `name`.
+    pub name_field: Option<String>,
     pub fields: Vec<FieldDescriptor>,
 }
 
@@ -16,6 +18,7 @@ impl ModelDescriptor {
             table_name: name.clone(),
             name,
             description,
+            name_field: None,
             fields: Vec::new(),
         }
     }

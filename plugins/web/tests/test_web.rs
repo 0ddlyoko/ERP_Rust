@@ -428,7 +428,7 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
     let columns = ["name", "login", "active", "groups"];
     let rows = call(
         "users.read_matching",
-        json!({"domain": [], "fields": columns, "limit": 80}),
+        json!({"domain": [], "fields": columns, "limit": 80, "names": true}),
     );
     let admin = rows
         .as_array()
@@ -444,6 +444,10 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
     for column in columns {
         assert!(described.get(column).is_some(), "{column} is described");
     }
+    assert_eq!(
+        call("users.names", json!({"ids": [info["uid"]]})),
+        json!([[info["uid"], "Administrator"]])
+    );
     let fields = call("group.fields_get", json!({"fields": ["name", "id"]}));
     assert_eq!(fields["name"]["type"], "string");
     assert_eq!(fields["id"]["readonly"], true);

@@ -8,6 +8,7 @@ use erp::types::field::{Decimal, IdMode, NaiveDate};
 #[derive(Model)]
 #[erp(id = "meter_reading")]
 #[erp(table_name = "legacy_meter_data")]
+#[erp(name_field = "reference")]
 #[allow(dead_code)]
 pub struct MeterReading<Mode: IdMode> {
     pub id: Mode,

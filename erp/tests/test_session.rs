@@ -568,3 +568,29 @@ fn test_fields_get_hides_what_is_private_and_answers_only_readers() -> Result<()
     );
     Ok(())
 }
+
+/// A name is what a reader of the record sees: the portal user, who may read no account, gets no
+/// name for one, rather than a refusal that would fail a whole list.
+#[test]
+fn test_names_are_only_the_readers() -> Result<()> {
+    let app = new_app()?;
+    let token = open(&app, "admin", DEFAULT_ADMIN_PASSWORD);
+    let admin = token["uid"].clone();
+    let token = token["token"].as_str().expect("a token").to_string();
+
+    let named = call(&app, Some(&token), "users.names", json!({"ids": [admin]}));
+    assert_eq!(named, json!([[admin, "Administrator"]]));
+    let hidden = call(&app, None, "users.names", json!({"ids": [admin]}));
+    assert_eq!(hidden, json!([[admin, null]]));
+
+    let uid = admin.as_u64().expect("an id") as u32;
+    let mut env = app.new_env_as(uid)?;
+    assert_eq!(
+        env.names("users", &[uid])?.get(&uid).map(String::as_str),
+        Some("Administrator"),
+        "the same from Rust, without the protocol"
+    );
+    let mut nobody = app.new_env()?;
+    assert!(nobody.names("users", &[uid])?.is_empty());
+    Ok(())
+}

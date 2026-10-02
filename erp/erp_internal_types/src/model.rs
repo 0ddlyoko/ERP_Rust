@@ -25,6 +25,8 @@ pub struct FinalInternalModel {
     /// Physical table, the only name the database layer ever sees.
     pub table_name: String,
     pub description: String,
+    /// The field naming a record, when a struct said it is not `name`.
+    pub declared_name_field: Option<String>,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
@@ -38,6 +40,7 @@ impl FinalInternalModel {
             name: model_name.to_string(),
             table_name: model_name.to_string(),
             description: "".to_string(),
+            declared_name_field: None,
             models: HashMap::new(),
             fields: HashMap::new(),
             methods: MethodRegistry::default(),
@@ -57,6 +60,7 @@ impl FinalInternalModel {
             name: _name,
             table_name,
             description,
+            name_field,
             fields,
         } = model_descriptor;
 
@@ -101,7 +105,20 @@ impl FinalInternalModel {
         if let Some(description) = &internal_model.description {
             self.description = description.clone();
         }
+        if name_field.is_some() {
+            self.declared_name_field = name_field;
+        }
         self.models.insert(type_id, internal_model);
+    }
+
+    /// The field naming a record: the one declared, else `name` when the model has one.
+    ///
+    /// A record whose name is worked out is named by a computed field, declared like any other.
+    pub fn name_field(&self) -> Option<&str> {
+        match &self.declared_name_field {
+            Some(declared) => Some(declared.as_str()),
+            None => self.fields.contains_key("name").then_some("name"),
+        }
     }
 
     pub fn register_internal_field(&mut self, field_descriptor: &InternalField) {

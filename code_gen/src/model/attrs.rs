@@ -24,6 +24,8 @@ pub enum AllowedModelAttrs {
     TableName(Ident, LitStr),
     Description(Ident, LitStr),
     DerivedModel(Ident, LitStr),
+    /// The field naming a record, when it is not `name`.
+    NameField(Ident, LitStr),
     /// Says an `#[erp_methods]` block declares overridable methods for this struct.
     Methods(Ident),
 }
@@ -33,6 +35,7 @@ static VALID_MODEL_STRINGS: &[&str] = &[
     "table_name",
     "description",
     "derived_model",
+    "name_field",
     "methods",
 ];
 
@@ -58,6 +61,10 @@ impl Parse for AllowedModelAttrs {
                 name,
                 parse_eq(input, "derived_model = \"base::models::company\"")?,
             )),
+            "name_field" => Ok(AllowedModelAttrs::NameField(
+                name,
+                parse_eq(input, "name_field = \"login\"")?,
+            )),
             "methods" => Ok(AllowedModelAttrs::Methods(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
@@ -75,6 +82,7 @@ impl MySpanned for AllowedModelAttrs {
             AllowedModelAttrs::TableName(ident, _) => ident.span(),
             AllowedModelAttrs::Description(ident, _) => ident.span(),
             AllowedModelAttrs::DerivedModel(ident, _) => ident.span(),
+            AllowedModelAttrs::NameField(ident, _) => ident.span(),
             AllowedModelAttrs::Methods(ident) => ident.span(),
         }
     }

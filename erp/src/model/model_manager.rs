@@ -92,9 +92,24 @@ impl ModelManager {
     /// Execute some final modification when models are registered, like:
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {
+        self._post_register_name_fields();
         self._post_register_storage();
         self._post_register_m2o_links();
         self._post_register_compute_links();
+    }
+
+    /// Refuse a declared name field the model does not have: names would quietly be ids instead.
+    fn _post_register_name_fields(&self) {
+        for model in self.models.values() {
+            if let Some(name_field) = &model.declared_name_field
+                && !model.fields.contains_key(name_field)
+            {
+                panic!(
+                    "Model \"{}\" is named by its field \"{name_field}\", which it does not have",
+                    model.name
+                );
+            }
+        }
     }
 
     /// Decide which fields are kept in a column.

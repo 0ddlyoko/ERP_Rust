@@ -11,6 +11,12 @@ export interface Paging {
     order?: string[];
 }
 
+/** How records are read. */
+export interface ReadOptions {
+    /** Many2ones as `[id, name]` rather than the id alone; the name `null` when out of reach. */
+    names?: boolean;
+}
+
 /** A record's values, by field name. */
 export type Values = Record<string, unknown>;
 
@@ -34,13 +40,23 @@ export class Orm {
         return this.rpc.call(`${model}.search`, { domain, ...paging });
     }
 
-    read(model: string, ids: number[], fields: string[]): Promise<Values[]> {
-        return this.rpc.call(`${model}.read`, { ids, fields });
+    read(model: string, ids: number[], fields: string[], options: ReadOptions = {}): Promise<Values[]> {
+        return this.rpc.call(`${model}.read`, { ids, fields, ...options });
     }
 
     /** Search and read in one call. */
-    searchRead(model: string, domain: Domain, fields: string[], paging: Paging = {}): Promise<Values[]> {
-        return this.rpc.call(`${model}.read_matching`, { domain, fields, ...paging });
+    searchRead(
+        model: string,
+        domain: Domain,
+        fields: string[],
+        options: Paging & ReadOptions = {},
+    ): Promise<Values[]> {
+        return this.rpc.call(`${model}.read_matching`, { domain, fields, ...options });
+    }
+
+    /** The names of records, as `[id, name]` in the order asked; `null` for one out of reach. */
+    names(model: string, ids: number[]): Promise<[number, string | null][]> {
+        return this.rpc.call(`${model}.names`, { ids });
     }
 
     count(model: string, domain: Domain = []): Promise<number> {

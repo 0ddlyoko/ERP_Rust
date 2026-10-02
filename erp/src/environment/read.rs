@@ -1,6 +1,6 @@
 //! Reading records: browsing, searching and filling the cache on demand.
 use super::*;
-use crate::access::Operation;
+use crate::access::{AccessDenied, Operation};
 
 impl<'mm> Environment<'mm> {
     pub fn get_empty_record<M>(&self) -> M
@@ -8,6 +8,45 @@ impl<'mm> Environment<'mm> {
         M: Model<MultipleIds>,
     {
         M::create_instance(MultipleIds::default())
+    }
+
+    /// The names of the records the caller may read, by id: by the field naming the model's
+    /// records.
+    ///
+    /// Missing for one it may not read — a model it may read nothing of included, so that one
+    /// relation out of reach does not fail a whole read — and for every record of a model naming
+    /// none, or named by a private field: a name is what any reader of the record sees, never
+    /// more.
+    pub fn names(&mut self, model_name: &str, ids: &[u32]) -> Result<HashMap<u32, String>> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        let Some(name_field) = model
+            .name_field()
+            .filter(|field| !model.fields[*field].private)
+            .map(str::to_string)
+        else {
+            return Ok(HashMap::new());
+        };
+        let ids = ids.to_vec();
+        let readable = match self.search_ids(model_name, &make_domain!([("id", "in", ids)])) {
+            Ok(readable) => readable,
+            Err(error) if error.downcast_ref::<AccessDenied>().is_some() => {
+                return Ok(HashMap::new());
+            }
+            Err(error) => return Err(error),
+        };
+        let rows = self.read(
+            model_name,
+            &MultipleIds::from(readable),
+            &[name_field.as_str()],
+        )?;
+        let mut names = HashMap::new();
+        for row in rows {
+            let id = *row.get::<&u32>("id");
+            if let Some(name) = row.get_option::<&String>(&name_field) {
+                names.insert(id, name.clone());
+            }
+        }
+        Ok(names)
     }
 
     /// Returns an instance of given model for a specific id

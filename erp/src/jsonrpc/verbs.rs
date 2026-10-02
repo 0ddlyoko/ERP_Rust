@@ -34,6 +34,7 @@ pub enum Verb {
     Write,
     Delete,
     FieldsGet,
+    Names,
 }
 
 impl Verb {
@@ -48,6 +49,7 @@ impl Verb {
         Verb::Write,
         Verb::Delete,
         Verb::FieldsGet,
+        Verb::Names,
     ];
 
     /// The name a caller writes.
@@ -61,6 +63,7 @@ impl Verb {
             Verb::Write => "write",
             Verb::Delete => "delete",
             Verb::FieldsGet => "fields_get",
+            Verb::Names => "names",
         }
     }
 
@@ -85,6 +88,7 @@ impl Verb {
             Verb::Write => |env, model, params| dispatch(env, model, Verb::Write, params),
             Verb::Delete => |env, model, params| dispatch(env, model, Verb::Delete, params),
             Verb::FieldsGet => |env, model, params| dispatch(env, model, Verb::FieldsGet, params),
+            Verb::Names => |env, model, params| dispatch(env, model, Verb::Names, params),
         }
     }
 }
@@ -264,6 +268,9 @@ struct SearchParams {
 struct ReadParams {
     ids: Vec<u32>,
     fields: Vec<String>,
+    /// Many2ones as `[id, name]` rather than the id alone.
+    #[serde(default)]
+    names: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -271,6 +278,8 @@ struct ReadMatchingParams {
     #[serde(default = "everything")]
     domain: SearchType,
     fields: Vec<String>,
+    #[serde(default)]
+    names: bool,
     #[serde(flatten)]
     paging: Paging,
 }
@@ -312,17 +321,26 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             Ok(json!(env.count(model_name, &domain)?))
         }
         Verb::Read => {
-            let ReadParams { ids, fields } = parse(params)?;
+            let ReadParams {
+                ids,
+                fields,
+                names: with_names,
+            } = parse(params)?;
             let (readable, hidden) = split_private(env, model_name, &fields)?;
             let names: Vec<&str> = readable.iter().map(String::as_str).collect();
             let mut rows = env.read(model_name, &MultipleIds::from(ids), &names)?;
             blank_out(&mut rows, &hidden);
-            Ok(serde_json::to_value(rows)?)
+            let mut rows = serde_json::to_value(rows)?;
+            if with_names {
+                name_references(env, model_name, &readable, &mut rows)?;
+            }
+            Ok(rows)
         }
         Verb::ReadMatching => {
             let ReadMatchingParams {
                 domain,
                 fields,
+                names: with_names,
                 paging,
             } = parse(params)?;
             let (readable, hidden) = split_private(env, model_name, &fields)?;
@@ -333,7 +351,11 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             let mut rows =
                 env.read_matching(model_name, &names, &domain, &paging.into_options()?)?;
             blank_out(&mut rows, &hidden);
-            Ok(serde_json::to_value(rows)?)
+            let mut rows = serde_json::to_value(rows)?;
+            if with_names {
+                name_references(env, model_name, &readable, &mut rows)?;
+            }
+            Ok(rows)
         }
         Verb::Create => {
             let values = records_of(env, model_name, params, "values")?;
@@ -356,6 +378,15 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
         Verb::FieldsGet => {
             let FieldsGetParams { fields } = parse(params)?;
             fields_get(env, model_name, &fields)
+        }
+        Verb::Names => {
+            let IdsParams { ids } = parse(params)?;
+            let names = env.names(model_name, &ids)?;
+            Ok(json!(
+                ids.iter()
+                    .map(|id| json!([id, names.get(id)]))
+                    .collect::<Vec<_>>()
+            ))
         }
     }
 }
@@ -394,6 +425,44 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
         described.insert(name, describe(field)?);
     }
     Ok(Value::Object(described))
+}
+
+/// Write every many2one of these rows as `[id, name]`, the name `null` when the caller may not
+/// read it: one search per relation for all the rows, rather than one per row.
+fn name_references(
+    env: &mut Environment,
+    model_name: &str,
+    fields: &[String],
+    rows: &mut Value,
+) -> Result<()> {
+    let Some(rows) = rows.as_array_mut() else {
+        return Ok(());
+    };
+    let model = env.model_manager.try_get_model(model_name)?;
+    let relations: Vec<(String, &'static str)> = fields
+        .iter()
+        .filter_map(|name| {
+            let field = model.fields.get(name)?;
+            match (&field.kind, &field.inverse) {
+                (FieldKind::Ref, Some(reference)) => Some((name.clone(), reference.target_model)),
+                _ => None,
+            }
+        })
+        .collect();
+    for (field, target) in relations {
+        let ids: Vec<u32> = rows
+            .iter()
+            .filter_map(|row| row[&field].as_u64())
+            .map(|id| id as u32)
+            .collect();
+        let names = env.names(target, &ids)?;
+        for row in rows.iter_mut() {
+            if let Some(id) = row[&field].as_u64() {
+                row[&field] = json!([id, names.get(&(id as u32))]);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The id every record has, which no struct declares as a field.
