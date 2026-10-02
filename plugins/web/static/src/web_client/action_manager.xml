@@ -1,7 +1,13 @@
 <templates>
     <t t-name="web.ActionManager">
         <section class="o_action">
-            <h2 class="o_action_title">{{ props.action.name }}</h2>
+            <header class="o_action_header">
+                <nav class="o_breadcrumb" aria-label="Breadcrumb">
+                    <t t-if="props.module"><span>{{ props.module }}</span><span aria-hidden="true">/</span></t>
+                    <span class="o_breadcrumb_current">{{ props.action.name }}</span>
+                </nav>
+                <h1 class="o_action_title">{{ props.action.name }}</h1>
+            </header>
             <t t-if="view">
                 <t t-component="view" t-key="props.action.id" resModel="props.action.model"
                    domain="props.action.domain"/>

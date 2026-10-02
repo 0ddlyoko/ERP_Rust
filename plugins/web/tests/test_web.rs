@@ -449,7 +449,7 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
         json!([[info["uid"], "Administrator"]])
     );
     let menus = call("menu.tree", json!({"ids": [], "args": {}}));
-    let users = &menus[0]["children"][0]["action"];
+    let users = &menus[0]["children"][0]["children"][0]["action"];
     assert_eq!(users["xml_id"], "base.action_users", "{menus}");
     assert_eq!(users["views"], json!(["list", "form"]));
     let fields = call("group.fields_get", json!({"fields": ["name", "id"]}));
@@ -759,7 +759,7 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
     }
     for template in [
         "<t t-name=\"web.ActionManager\">",
-        "<t t-name=\"web.MenuEntries\">",
+        "<t t-name=\"web.Sidebar\">",
     ] {
         assert!(backend.contains(template), "{template} in {backend}");
     }
@@ -787,6 +787,7 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/core/views.js",
         "/static/web/src/core/menus.js",
         "/static/web/src/web_client/action_manager.js",
+        "/static/web/src/web_client/sidebar.js",
     ] {
         assert!(
             module.contains(&format!("import \"{path}\";")),
@@ -1027,7 +1028,6 @@ fn test_the_web_client_page_is_rendered_from_its_template() -> Result<()> {
         "<title>ERP</title>",
         "<link rel=\"stylesheet\" href=\"/web/assets/web.assets_backend.css\">",
         "<script type=\"module\" src=\"/web/assets/web.assets_backend.js\"></script>",
-        "<p>Welcome to the back office.</p>",
         "<div class=\"o_web_client_root\"></div>",
     ] {
         assert!(page.contains(expected), "{expected} in {page}");
@@ -1035,7 +1035,10 @@ fn test_the_web_client_page_is_rendered_from_its_template() -> Result<()> {
     assert!(!page.contains(" t-"), "no directive left: {page}");
 
     let styles = get(&app, "/web/assets/web.assets_backend.css").text_body();
-    assert!(styles.contains(".o_web_client_banner"));
+    assert!(
+        styles.contains(".o_sidebar") && styles.contains("--o-accent"),
+        "{styles}"
+    );
     let scripts = get(&app, "/web/assets/web.assets_backend.js").text_body();
     assert!(scripts.contains("import \"/static/web/src/main.js\";"));
     assert!(
