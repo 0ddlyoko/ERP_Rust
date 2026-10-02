@@ -1,0 +1,21 @@
+.o_list_table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: system-ui, sans-serif;
+}
+
+.o_list_table th,
+.o_list_table td {
+    border-bottom: 1px solid #ddd;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+}
+
+.o_list_table .o_field_integer,
+.o_list_table .o_field_decimal {
+    text-align: right;
+}
+
+.o_list_table .o_field_bool {
+    text-align: center;
+}

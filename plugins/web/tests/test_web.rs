@@ -425,6 +425,25 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
         call("users.me", json!({"ids": [], "args": {}})),
         info["uid"]
     );
+    let columns = ["name", "login", "active", "groups"];
+    let rows = call(
+        "users.read_matching",
+        json!({"domain": [], "fields": columns, "limit": 80}),
+    );
+    let admin = rows
+        .as_array()
+        .expect("rows")
+        .iter()
+        .find(|row| row["login"] == "admin")
+        .expect("the administrator is listed");
+    assert!(
+        admin["groups"].is_array() && admin["active"] == true,
+        "{admin}"
+    );
+    let described = call("users.fields_get", json!({"fields": []}));
+    for column in columns {
+        assert!(described.get(column).is_some(), "{column} is described");
+    }
     let fields = call("group.fields_get", json!({"fields": ["name", "id"]}));
     assert_eq!(fields["name"]["type"], "string");
     assert_eq!(fields["id"]["readonly"], true);
@@ -722,13 +741,37 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
         "no template file in that bundle"
     );
     let backend = templates(&app, "web.assets_backend");
+    for template in [
+        "<t t-name=\"web.WebClient\">",
+        "<t t-name=\"web.ListView\">",
+    ] {
+        assert!(backend.contains(template), "{template} in {backend}");
+    }
     assert!(
-        backend.contains(
-            "<t t-name=\"web.WebClient\"><div class=\"o_web_client\">\
-             <main class=\"o_action_manager\"/></div></t>\n"
-        ),
+        backend.contains("<ListView resModel=\"'users'\""),
         "{backend}"
     );
+    Ok(())
+}
+
+/// The list view's pieces travel with the back office: its component, template and styles.
+#[test]
+fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
+    let app = new_app()?;
+    let module = get(&app, "/web/assets/web.assets_backend.js").text_body();
+    for path in [
+        "/static/web/src/views/view.js",
+        "/static/web/src/views/list/list_view.js",
+        "/static/web/src/views/fields/formatters.js",
+        "/static/web/src/core/models.js",
+    ] {
+        assert!(
+            module.contains(&format!("import \"{path}\";")),
+            "{path} in {module}"
+        );
+    }
+    let styles = get(&app, "/web/assets/web.assets_backend.css").text_body();
+    assert!(styles.contains(".o_list_table"), "{styles}");
     Ok(())
 }
 

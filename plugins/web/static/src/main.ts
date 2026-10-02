@@ -1,4 +1,5 @@
 import { mount, registerTemplates } from "trame";
+import { Models } from "./core/models";
 import { Orm } from "./core/orm";
 import { Rpc } from "./core/rpc";
 import { Session } from "./core/session";
@@ -15,7 +16,7 @@ async function start(): Promise<void> {
     }
     const response = await fetch("/web/assets/web.assets_backend.xml");
     registerTemplates(await response.text(), "web.assets_backend.xml");
-    await mount(WebClient, target, { provide: [Session.fromPage(), Rpc, Orm] });
+    await mount(WebClient, target, { provide: [Session.fromPage(), Rpc, Orm, Models] });
 }
 
 void start();

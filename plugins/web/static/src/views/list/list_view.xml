@@ -1,0 +1,23 @@
+<templates>
+    <t t-name="web.ListView">
+        <div class="o_list_view">
+            <table class="o_list_table">
+                <thead>
+                    <tr>
+                        <th t-foreach="columns" t-as="column" t-key="column.name"
+                            t-att-class="cellClass(column)">{{ column.field.label }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="records" t-as="record" t-key="record.id">
+                        <td t-foreach="columns" t-as="column" t-key="column.name"
+                            t-att-class="cellClass(column)">{{ format(record[column.name], column.field) }}</td>
+                    </tr>
+                    <tr t-if="records?.length === 0" class="o_list_empty">
+                        <td t-att-colspan="columns.length">No records.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+</templates>

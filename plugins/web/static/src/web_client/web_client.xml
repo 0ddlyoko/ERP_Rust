@@ -1,5 +1,14 @@
 <templates>
     <t t-name="web.WebClient">
-        <div class="o_web_client"><main class="o_action_manager"/></div>
+        <div class="o_web_client">
+            <main class="o_action_manager">
+                <ErrorBoundary>
+                    <t t-set-slot="fallback" t-slot-scope="failed">
+                        <p class="o_view_error">{{ failed.error.message }}</p>
+                    </t>
+                    <ListView resModel="'users'" fieldNames="['name', 'login', 'active', 'groups']"/>
+                </ErrorBoundary>
+            </main>
+        </div>
     </t>
 </templates>
