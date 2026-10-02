@@ -1,0 +1,5 @@
+<templates>
+    <t t-name="web.Widget">
+        <span t-att-class="className">{{ text }}</span>
+    </t>
+</templates>

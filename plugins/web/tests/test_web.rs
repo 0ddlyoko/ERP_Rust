@@ -744,6 +744,8 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
     for template in [
         "<t t-name=\"web.WebClient\">",
         "<t t-name=\"web.ListView\">",
+        "<t t-name=\"web.Widget\">",
+        "<t t-name=\"web.BoolWidget\">",
     ] {
         assert!(backend.contains(template), "{template} in {backend}");
     }
@@ -762,7 +764,15 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
     for path in [
         "/static/web/src/views/view.js",
         "/static/web/src/views/list/list_view.js",
-        "/static/web/src/views/fields/formatters.js",
+        "/static/web/src/views/widgets/widget.js",
+        "/static/web/src/views/widgets/string_widget.js",
+        "/static/web/src/views/widgets/integer_widget.js",
+        "/static/web/src/views/widgets/decimal_widget.js",
+        "/static/web/src/views/widgets/bool_widget.js",
+        "/static/web/src/views/widgets/date_widget.js",
+        "/static/web/src/views/widgets/datetime_widget.js",
+        "/static/web/src/views/widgets/many2one_widget.js",
+        "/static/web/src/views/widgets/x2many_widget.js",
         "/static/web/src/core/models.js",
     ] {
         assert!(

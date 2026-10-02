@@ -1,7 +1,8 @@
-import { Component, computed, inject, load, type PropsOf, resource, t } from "trame";
+import { Component, type ComponentClass, computed, inject, load, type PropsOf, resource, t } from "trame";
 import { Models, type Fields } from "../core/models";
 import { type FieldDescription, Orm } from "../core/orm";
-import { formatValue } from "./fields/formatters";
+import { StringWidget } from "./widgets/string_widget";
+import { defaultWidget, widgets } from "./widgets/widget";
 
 /** The props every view of records takes; a view adds its own to them. */
 export const viewProps = {
@@ -13,15 +14,16 @@ export const viewProps = {
     domain: t.array(t.any()).default([]),
 };
 
-/** A field a view shows. */
+/** A field a view shows, and the widget it is shown with when not its type's. */
 export interface Column {
     name: string;
     field: FieldDescription;
+    widget?: string;
 }
 
 /**
  * What every view of records shares — list, form, and those to come: its model, the description of
- * the fields it shows, and how their values read.
+ * the fields it shows, and the widget each is shown with.
  *
  * A view declares its props as `props = props({ ...viewProps, ...its own })`, once: the schema is
  * read per class, so a base class declaring them too would hide what the view adds.
@@ -53,9 +55,9 @@ export abstract class View extends Component {
         });
     }
 
-    /** A value as text, the way its field reads. */
-    format(value: unknown, field: FieldDescription): string {
-        return formatValue(value, field);
+    /** The widget a column is shown with: the one it names, or its type's, or plain text. */
+    widgetFor(column: Column): ComponentClass {
+        return widgets.get(column.widget ?? defaultWidget(column.field), StringWidget);
     }
 
     /** The class of a field's cells: numbers align right, check marks centre. */

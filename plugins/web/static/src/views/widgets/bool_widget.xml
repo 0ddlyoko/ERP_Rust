@@ -1,0 +1,7 @@
+<templates>
+    <t t-name="web.BoolWidget">
+        <input type="checkbox" t-att-class="className" t-att-checked="!!value"
+               t-att-disabled="props.readonly"
+               t-on-change="(ev) => toggle(ev.target.checked)"/>
+    </t>
+</templates>

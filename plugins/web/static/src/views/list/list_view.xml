@@ -11,7 +11,10 @@
                 <tbody>
                     <tr t-foreach="records" t-as="record" t-key="record.id">
                         <td t-foreach="columns" t-as="column" t-key="column.name"
-                            t-att-class="cellClass(column)">{{ format(record[column.name], column.field) }}</td>
+                            t-att-class="cellClass(column)">
+                            <t t-component="widgetFor(column)" record="record" name="column.name"
+                               field="column.field"/>
+                        </td>
                     </tr>
                     <tr t-if="records?.length === 0" class="o_list_empty">
                         <td t-att-colspan="columns.length">No records.</td>
