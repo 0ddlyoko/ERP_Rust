@@ -1,6 +1,6 @@
 import { load, props, resource, t } from "trame";
 import type { Values } from "../../core/orm";
-import { View, viewProps } from "../view";
+import { View, viewKinds, viewProps } from "../view";
 
 /** Records of a model as rows, one column per field shown. */
 export class ListView extends View {
@@ -27,3 +27,5 @@ export class ListView extends View {
             this.orm.searchRead(model, domain, fields, { limit, names: true }),
     );
 }
+
+viewKinds.add("list", ListView);

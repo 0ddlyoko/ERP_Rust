@@ -1,0 +1,12 @@
+<templates>
+    <t t-name="web.ActionManager">
+        <section class="o_action">
+            <h2 class="o_action_title">{{ props.action.name }}</h2>
+            <t t-if="view">
+                <t t-component="view" t-key="props.action.id" resModel="props.action.model"
+                   domain="props.action.domain"/>
+            </t>
+            <p t-else="" class="o_view_error">No view can show {{ props.action.views.join(", ") }}.</p>
+        </section>
+    </t>
+</templates>

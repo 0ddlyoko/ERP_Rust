@@ -7,4 +7,5 @@
             <field name="groups"/>
         </list>
     </view>
+    <action id="action_users" name="Users" model="users" views="list,form"/>
 </erp>

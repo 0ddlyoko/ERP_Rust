@@ -1,14 +1,34 @@
 <templates>
     <t t-name="web.WebClient">
         <div class="o_web_client">
-            <main class="o_action_manager">
-                <ErrorBoundary>
-                    <t t-set-slot="fallback" t-slot-scope="failed">
-                        <p class="o_view_error">{{ failed.error.message }}</p>
-                    </t>
-                    <ListView resModel="'users'"/>
-                </ErrorBoundary>
-            </main>
+            <nav class="o_main_navbar">
+                <button t-foreach="tree" t-as="entry" t-key="entry.id" type="button"
+                        t-att-class="{ o_menu_top: true, active: entry.id === app?.id }"
+                        t-on-click="() => choose(entry, true)">{{ entry.name }}</button>
+            </nav>
+            <div class="o_web_client_body">
+                <aside t-if="app?.children.length" class="o_menu_side">
+                    <t t-call="web.MenuEntries" entries="app.children"/>
+                </aside>
+                <main class="o_action_manager">
+                    <ErrorBoundary>
+                        <t t-set-slot="fallback" t-slot-scope="failed">
+                            <p class="o_view_error">{{ failed.error.message }}</p>
+                        </t>
+                        <ActionManager t-if="action" action="action"/>
+                        <p t-else="" class="o_no_action">Nothing to open.</p>
+                    </ErrorBoundary>
+                </main>
+            </div>
         </div>
+    </t>
+    <t t-name="web.MenuEntries">
+        <ul class="o_menu_entries">
+            <li t-foreach="entries" t-as="entry" t-key="entry.id">
+                <a href="#" t-att-class="{ active: entry.action?.id === action?.id }"
+                   t-on-click.prevent="() => choose(entry)">{{ entry.name }}</a>
+                <t t-if="entry.children.length" t-call="web.MenuEntries" entries="entry.children"/>
+            </li>
+        </ul>
     </t>
 </templates>
