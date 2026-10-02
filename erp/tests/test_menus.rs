@@ -63,6 +63,26 @@ fn employee(app: &Application) -> Result<u32> {
     Ok(ids.get_ids_ref()[0])
 }
 
+/// Base's menus, as an administrator sees them: a module, groups, sections and their entries.
+fn settings() -> Value {
+    json!([[
+        "Settings",
+        [
+            ["Users & Companies", [["Users", []], ["Groups", []]]],
+            [
+                "Technical",
+                [
+                    [
+                        "User interface",
+                        [["Views", []], ["Menus", []], ["Actions", []]]
+                    ],
+                    ["Security", [["Access rules", []]]]
+                ]
+            ]
+        ]
+    ]])
+}
+
 fn tree(app: &Application, uid: Option<u32>) -> Result<Value> {
     let mut env = app.new_env_as_option(uid.or(app.model_manager.identities.default_user()))?;
     env.get_empty_record::<Menu<_>>().tree(&mut env)
@@ -83,12 +103,13 @@ fn names(tree: &Value) -> Value {
 fn test_the_administrator_sees_the_settings() -> Result<()> {
     let app = new_app(&[])?;
     let tree = tree(&app, Some(admin(&app)?))?;
-    assert_eq!(names(&tree), json!([["Settings", [["Users", []]]]]));
+    assert_eq!(names(&tree), settings());
     assert_eq!(tree[0]["action"], Value::Null, "a title");
+    let users = &tree[0]["children"][0]["children"][0]["action"];
     assert_eq!(
-        tree[0]["children"][0]["action"],
-        json!({
-            "id": tree[0]["children"][0]["action"]["id"],
+        users,
+        &json!({
+            "id": users["id"],
             "xml_id": "base.action_users",
             "name": "Users",
             "model": "users",
@@ -154,11 +175,7 @@ fn test_the_tree_is_reached_over_the_protocol() -> Result<()> {
     };
     let body = json!({"jsonrpc": "2.0", "method": "menu.tree", "params": {"ids": [], "args": {}}, "id": 1});
     let answer = erp::jsonrpc::handle(&app, Some(&token), &body.to_string()).expect("owed");
-    assert_eq!(
-        names(&answer["result"]),
-        json!([["Settings", [["Users", []]]]]),
-        "{answer}"
-    );
+    assert_eq!(names(&answer["result"]), settings(), "{answer}");
     Ok(())
 }
 

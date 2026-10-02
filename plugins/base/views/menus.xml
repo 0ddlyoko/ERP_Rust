@@ -1,5 +1,18 @@
 <erp>
     <menu id="menu_settings" name="Settings" groups="group_admin">
-        <menu id="menu_users" name="Users" action="action_users"/>
+        <menu id="menu_users_companies" name="Users &amp; Companies">
+            <menu id="menu_users" name="Users" action="action_users"/>
+            <menu id="menu_groups" name="Groups" action="action_groups"/>
+        </menu>
+        <menu id="menu_technical" name="Technical">
+            <menu id="menu_user_interface" name="User interface">
+                <menu id="menu_views" name="Views" action="action_views"/>
+                <menu id="menu_menus" name="Menus" action="action_menus"/>
+                <menu id="menu_actions" name="Actions" action="action_actions"/>
+            </menu>
+            <menu id="menu_security" name="Security">
+                <menu id="menu_access_rules" name="Access rules" action="action_access_rules"/>
+            </menu>
+        </menu>
     </menu>
 </erp>

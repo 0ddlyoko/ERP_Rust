@@ -1,0 +1,39 @@
+<erp>
+    <view id="view_view_list" name="view.list" model="view">
+        <list>
+            <field name="name"/>
+            <field name="model"/>
+            <field name="inherit"/>
+            <field name="priority"/>
+        </list>
+    </view>
+    <action id="action_views" name="Views" model="view" views="list,form"/>
+
+    <view id="view_menu_list" name="menu.list" model="menu">
+        <list>
+            <field name="name"/>
+            <field name="parent"/>
+            <field name="sequence"/>
+            <field name="action"/>
+        </list>
+    </view>
+    <action id="action_menus" name="Menus" model="menu" views="list,form"/>
+
+    <view id="view_action_list" name="action.list" model="action">
+        <list>
+            <field name="name"/>
+            <field name="model"/>
+            <field name="views"/>
+        </list>
+    </view>
+    <action id="action_actions" name="Actions" model="action" views="list,form"/>
+
+    <view id="view_access_rule_list" name="access_rule.list" model="access_rule">
+        <list>
+            <field name="name"/>
+            <field name="model"/>
+            <field name="group"/>
+        </list>
+    </view>
+    <action id="action_access_rules" name="Access rules" model="access_rule" views="list,form"/>
+</erp>
