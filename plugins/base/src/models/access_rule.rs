@@ -19,10 +19,13 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct AccessRule<Mode: IdMode> {
     pub id: Mode,
+    #[erp(description = "Name")]
     #[erp(default = "")]
     name: String,
+    #[erp(description = "Model")]
     #[erp(default = "")]
     model: String,
+    #[erp(description = "Group")]
     group: Reference<BaseGroup, SingleId>,
     domain_read: Option<String>,
     domain_create: Option<String>,

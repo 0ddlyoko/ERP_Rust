@@ -16,13 +16,17 @@ use std::error::Error;
 #[allow(dead_code)]
 pub struct Menu<Mode: IdMode> {
     pub id: Mode,
+    #[erp(description = "Name")]
     #[erp(default = "")]
     name: String,
+    #[erp(description = "Parent")]
     parent: Reference<BaseMenu, SingleId>,
     #[erp(inverse = "parent")]
     children: Reference<BaseMenu, MultipleIds>,
+    #[erp(description = "Sequence")]
     #[erp(default = 10)]
     sequence: i32,
+    #[erp(description = "Action")]
     action: Reference<BaseAction, SingleId>,
     #[erp(relation = "menu_group_rel")]
     groups: Reference<BaseGroup, MultipleIds>,

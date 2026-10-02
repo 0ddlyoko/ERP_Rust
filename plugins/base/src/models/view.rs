@@ -21,15 +21,19 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct View<Mode: IdMode> {
     pub id: Mode,
+    #[erp(description = "Name")]
     #[erp(default = "")]
     name: String,
+    #[erp(description = "Model")]
     #[erp(default = "")]
     model: String,
     #[erp(default = "")]
     arch: String,
+    #[erp(description = "Inherits")]
     inherit: Reference<BaseView, SingleId>,
     #[erp(default = "extension")]
     mode: String,
+    #[erp(description = "Priority")]
     #[erp(default = 16)]
     priority: i32,
 }

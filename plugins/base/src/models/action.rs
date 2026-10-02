@@ -16,10 +16,13 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct Action<Mode: IdMode> {
     pub id: Mode,
+    #[erp(description = "Name")]
     #[erp(default = "")]
     name: String,
+    #[erp(description = "Model")]
     #[erp(default = "")]
     model: String,
+    #[erp(description = "Views")]
     #[erp(default = "list,form")]
     views: String,
     domain: Option<String>,
