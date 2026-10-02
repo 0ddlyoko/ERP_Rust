@@ -9,6 +9,8 @@ export const widgetProps = {
     name: t.string(),
     /** That field, as the server describes it. */
     field: t.any<FieldDescription>(),
+    /** The attributes of the field's element in the view's XML, for the widget to read. */
+    attrs: t.object().default({}),
     /** Shown only; editing is for views that edit, such as a form. */
     readonly: t.boolean().default(true),
     /** Called with the new value when the user changes it. */

@@ -41,6 +41,14 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Plugin<_>>();
         model_manager.register_model::<models::Session<_>>();
         model_manager.register_model::<models::AccessRule<_>>();
+        model_manager.register_model::<models::View<_>>();
+        model_manager.set_data_body("view", "arch");
+        model_manager
+            .shared_caches
+            .register(models::VIEWS_CACHE, &["view"]);
+        model_manager
+            .load_hooks
+            .push(models::View::<SingleId>::on_plugin_loaded);
         // What the core knows about identity is that something answers it. This is the something.
         model_manager
             .identities
@@ -58,6 +66,7 @@ impl Plugin for BasePlugin {
         vec![
             include_str!("../data/users.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../views/users_views.xml"),
         ]
     }
 

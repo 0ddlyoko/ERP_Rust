@@ -6,6 +6,10 @@ import { View, viewProps } from "../view";
 export class ListView extends View {
     static template = "web.ListView";
 
+    override get kind(): string {
+        return "list";
+    }
+
     override props = props({
         ...viewProps,
         /** How many rows at most. */

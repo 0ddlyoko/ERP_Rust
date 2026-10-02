@@ -1,0 +1,10 @@
+<erp>
+    <view id="view_users_list" name="users.list" model="users">
+        <list>
+            <field name="name"/>
+            <field name="login"/>
+            <field name="active"/>
+            <field name="groups"/>
+        </list>
+    </view>
+</erp>

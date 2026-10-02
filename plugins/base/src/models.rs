@@ -8,6 +8,7 @@ mod model_data;
 mod plugin;
 mod session;
 mod users;
+mod view;
 
 pub use access_rule::AccessRule;
 pub use company::Company;
@@ -19,3 +20,4 @@ pub use model_data::ModelData;
 pub use plugin::{Plugin, PluginState};
 pub use session::{OpenedSession, Session};
 pub use users::{Authenticated, BaseUsers, Users};
+pub use view::{VIEWS_CACHE, View};

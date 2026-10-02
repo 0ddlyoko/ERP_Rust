@@ -6,7 +6,7 @@
                     <t t-set-slot="fallback" t-slot-scope="failed">
                         <p class="o_view_error">{{ failed.error.message }}</p>
                     </t>
-                    <ListView resModel="'users'" fieldNames="['name', 'login', 'active', 'groups']"/>
+                    <ListView resModel="'users'"/>
                 </ErrorBoundary>
             </main>
         </div>

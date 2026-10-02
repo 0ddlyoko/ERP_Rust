@@ -5,7 +5,7 @@
                 <thead>
                     <tr>
                         <th t-foreach="columns" t-as="column" t-key="column.name"
-                            t-att-class="cellClass(column)">{{ column.field.label }}</th>
+                            t-att-class="cellClass(column)">{{ column.label }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -13,7 +13,7 @@
                         <td t-foreach="columns" t-as="column" t-key="column.name"
                             t-att-class="cellClass(column)">
                             <t t-component="widgetFor(column)" record="record" name="column.name"
-                               field="column.field"/>
+                               field="column.field" attrs="column.attrs"/>
                         </td>
                     </tr>
                     <tr t-if="records?.length === 0" class="o_list_empty">

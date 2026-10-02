@@ -778,6 +778,7 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/views/widgets/many2one_widget.js",
         "/static/web/src/views/widgets/x2many_widget.js",
         "/static/web/src/core/models.js",
+        "/static/web/src/core/views.js",
     ] {
         assert!(
             module.contains(&format!("import \"{path}\";")),
@@ -1139,6 +1140,33 @@ fn test_another_plugin_extends_the_layout() -> Result<()> {
     )?;
     let page = get_logged_in(&app, "/web").text_body();
     assert!(page.contains("<body class=\"o_extended\">"), "{page}");
+    Ok(())
+}
+
+// ---- views ----
+
+/// The client asks for a view over the protocol, as the page's session.
+#[test]
+fn test_a_view_is_loaded_over_the_protocol() -> Result<()> {
+    let app = new_app()?;
+    let cookie = log_in(&app);
+    let info = session_info(&get_as(&app, &cookie, "/web").text_body());
+    let csrf = info["csrf_token"].as_str().expect("a token");
+    let carried = Request::new("POST", "/jsonrpc")
+        .with_header("Cookie", &cookie)
+        .with_header("X-CSRF-Token", csrf);
+    let token = erp::jsonrpc::credentials(&app, None, &carried).map_err(|error| error.message)?;
+    let body = json!({
+        "jsonrpc": "2.0",
+        "method": "view.load",
+        "params": {"ids": [], "args": {"model": "users", "kind": "list"}},
+        "id": 1,
+    });
+    let answer = erp::jsonrpc::handle(&app, token.as_deref(), &body.to_string()).expect("owed");
+    let arch = answer["result"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{answer}"));
+    assert!(arch.starts_with("<list>"), "{arch}");
     Ok(())
 }
 

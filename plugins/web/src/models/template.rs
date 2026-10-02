@@ -2,12 +2,11 @@ use crate::qweb::{Renderer, Values};
 use code_gen::Model;
 use erp::data;
 use erp::environment::Environment;
+use erp::inheritance::{Arch, Archs, failed};
 use erp::search::SearchType;
 use erp::types::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
 use erp::types::model::MapOfFields;
-use erp::xml::{
-    Element, Node, XmlError, apply_extension, parse_document, parse_fragment, to_markup,
-};
+use erp::xml::{Element, Node, XmlError, parse_document, to_markup};
 use erp_search_code_gen::make_domain;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -45,29 +44,26 @@ pub const BUNDLES_CACHE: &str = "web.template_bundles";
 /// The shared cache of every resolved template, by key, for rendering pages.
 pub const RESOLVED_CACHE: &str = "web.resolved_templates";
 
-/// One template as read from the database, the way resolving needs it.
-struct Row {
-    id: u32,
+/// What a template keeps beside its markup.
+struct TemplateData {
     key: String,
-    arch: String,
     file: Option<String>,
-    inherit: Option<u32>,
-    primary: bool,
-    order: (usize, String, i32),
 }
 
 /// Every template, to resolve any of them without going back to the database.
 struct Templates {
-    rows: HashMap<u32, Row>,
+    archs: Archs<TemplateData>,
 }
 
 impl Templates {
     /// Read every template, as sudo: templates are the client's code, not anybody's data.
+    ///
+    /// Extensions apply in the order a bundle loads them: by plugin, then file, then place in it.
     fn load(env: &mut Environment) -> Result<Self> {
         let env = &mut *env.sudo();
         let plugins = env.model_manager.loaded_plugins().to_vec();
         let all: Template<MultipleIds> = env.search(&SearchType::Nothing)?;
-        let mut rows = HashMap::new();
+        let mut rows = Vec::new();
         for template in all {
             let inherit = template
                 .get_inherit::<Template<SingleId>>(env)?
@@ -78,89 +74,45 @@ impl Templates {
                 .and_then(|file| file.split_once('/'))
                 .and_then(|(plugin, _)| plugins.iter().position(|loaded| loaded == plugin))
                 .unwrap_or(usize::MAX);
-            let order = (
-                plugin,
-                file.clone().unwrap_or_default(),
-                *template.get_sequence(env)?,
-            );
-            rows.insert(
-                template.get_id(),
-                Row {
-                    id: template.get_id(),
-                    key: template.get_key(env)?.clone(),
-                    arch: template.get_arch(env)?.clone(),
-                    primary: inherit.is_none() || template.get_mode(env)? == "primary",
-                    file,
-                    inherit,
-                    order,
-                },
-            );
+            let key = template.get_key(env)?.clone();
+            let label = match (&key, &file) {
+                (key, _) if !key.is_empty() => format!("Template {key}"),
+                (_, Some(file)) => format!("Template extending in {file}"),
+                _ => format!("Template #{}", template.get_id()),
+            };
+            rows.push(Arch {
+                id: template.get_id(),
+                label,
+                arch: template.get_arch(env)?.clone(),
+                primary: inherit.is_none() || template.get_mode(env)? == "primary",
+                inherit,
+                order: (
+                    plugin,
+                    file.clone().unwrap_or_default(),
+                    i64::from(*template.get_sequence(env)?),
+                ),
+                data: TemplateData { key, file },
+            });
         }
-        Ok(Templates { rows })
+        Ok(Templates {
+            archs: Archs::new(rows),
+        })
     }
 
     /// The templates served under a key: base ones and primary ones, in the order a bundle loads
     /// them.
-    fn served(&self) -> Vec<&Row> {
-        let mut served: Vec<&Row> = self.rows.values().filter(|row| row.primary).collect();
-        served.sort_by(|a, b| (&a.order, a.id).cmp(&(&b.order, b.id)));
-        served
+    fn served(&self) -> Vec<&Arch<TemplateData>> {
+        self.archs.primaries()
     }
 
     /// The file a template is served from: its own, or that of the base template it derives from.
-    fn file_of<'a>(&'a self, row: &'a Row) -> Option<&'a str> {
-        let mut row = row;
-        let mut seen = HashSet::new();
-        while let Some(parent) = row.inherit {
-            if !seen.insert(row.id) {
-                return None;
-            }
-            row = self.rows.get(&parent)?;
-        }
-        row.file.as_deref()
+    fn file_of<'a>(&'a self, row: &'a Arch<TemplateData>) -> Option<&'a str> {
+        self.archs.root_of(row)?.data.file.as_deref()
     }
 
-    /// A template's final markup: its own, or its parent's changed by it, then its extensions.
-    fn resolve(&self, id: u32, visiting: &mut HashSet<u32>) -> Result<Vec<Node>> {
-        let row = &self.rows[&id];
-        if !visiting.insert(id) {
-            return Err(format!("Template {} inherits from itself", row.key).into());
-        }
-        let mut nodes = match row.inherit {
-            None => parse_fragment(&row.arch).map_err(|error| describe(row, &error))?,
-            Some(parent) => {
-                let mut nodes = self.resolve(parent, visiting)?;
-                self.apply(row, &mut nodes)?;
-                nodes
-            }
-        };
-        let mut extensions: Vec<&Row> = self
-            .rows
-            .values()
-            .filter(|other| other.inherit == Some(id) && !other.primary)
-            .collect();
-        extensions.sort_by(|a, b| (&a.order, a.id).cmp(&(&b.order, b.id)));
-        for extension in extensions {
-            self.apply(extension, &mut nodes)?;
-        }
-        visiting.remove(&id);
-        Ok(nodes)
+    fn resolve(&self, id: u32) -> Result<Vec<Node>> {
+        self.archs.resolve(id)
     }
-
-    fn apply(&self, row: &Row, nodes: &mut Vec<Node>) -> Result<()> {
-        let spec = parse_fragment(&row.arch).map_err(|error| describe(row, &error))?;
-        apply_extension(nodes, &spec).map_err(|error| describe(row, &error))?;
-        Ok(())
-    }
-}
-
-fn describe(row: &Row, error: &XmlError) -> Box<dyn Error + Send + Sync> {
-    let name = match (&row.key, &row.file) {
-        (key, _) if !key.is_empty() => key.clone(),
-        (_, Some(file)) => format!("extending in {file}"),
-        _ => format!("#{}", row.id),
-    };
-    format!("Template {name}: {error}").into()
 }
 
 /// A template a plugin ships in one of its static `.xml` files.
@@ -336,8 +288,8 @@ impl Template<SingleId> {
                 {
                     continue;
                 }
-                let nodes = templates.resolve(row.id, &mut HashSet::new())?;
-                let name = to_markup(&[Node::Text(row.key.clone())]).replace('"', "&quot;");
+                let nodes = templates.resolve(row.id)?;
+                let name = to_markup(&[Node::Text(row.data.key.clone())]).replace('"', "&quot;");
                 markup.push_str(&format!("<t t-name=\"{name}\">{}</t>\n", to_markup(&nodes)));
             }
             if markup.is_empty() {
@@ -357,10 +309,10 @@ impl Template<SingleId> {
             let mut browser = HashSet::new();
             for row in templates.served() {
                 if templates.file_of(row).is_some_and(is_server_file) {
-                    let nodes = templates.resolve(row.id, &mut HashSet::new())?;
-                    server.insert(row.key.clone(), nodes);
+                    let nodes = templates.resolve(row.id)?;
+                    server.insert(row.data.key.clone(), nodes);
                 } else {
-                    browser.insert(row.key.clone());
+                    browser.insert(row.data.key.clone());
                 }
             }
             Ok((server, browser))
@@ -381,16 +333,18 @@ impl Template<SingleId> {
         let templates = Templates::load(env)?;
         let mut keys = HashSet::new();
         for row in templates.served() {
-            if row.key.is_empty() {
+            if row.data.key.is_empty() {
                 return Err(format!("Template #{} is served but has no key", row.id).into());
             }
-            if !keys.insert(row.key.as_str()) {
-                return Err(format!("Two templates are served under the key {}", row.key).into());
+            if !keys.insert(row.data.key.as_str()) {
+                return Err(
+                    format!("Two templates are served under the key {}", row.data.key).into(),
+                );
             }
-            templates.resolve(row.id, &mut HashSet::new())?;
+            templates.resolve(row.id)?;
         }
-        for row in templates.rows.values().filter(|row| row.inherit.is_some()) {
-            let own = row.file.as_deref().is_some_and(is_server_file);
+        for row in templates.archs.all().filter(|row| row.inherit.is_some()) {
+            let own = row.data.file.as_deref().is_some_and(is_server_file);
             let parent = templates.file_of(row).is_some_and(is_server_file);
             if own != parent {
                 let (from, to) = if own {
@@ -398,7 +352,7 @@ impl Template<SingleId> {
                 } else {
                     ("the browser's", "the server's")
                 };
-                return Err(describe(
+                return Err(failed(
                     row,
                     &XmlError(format!("{from} template inherits from {to}")),
                 ));

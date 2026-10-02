@@ -9,6 +9,7 @@ pub mod environment;
 pub mod errors;
 pub mod http;
 pub mod identity;
+pub mod inheritance;
 pub mod jsonrpc;
 pub mod model;
 pub mod plugin;

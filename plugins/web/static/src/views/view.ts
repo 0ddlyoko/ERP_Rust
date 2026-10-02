@@ -1,6 +1,7 @@
 import { Component, type ComponentClass, computed, inject, load, type PropsOf, resource, t } from "trame";
-import { Models, type Fields } from "../core/models";
+import { type Fields, Models } from "../core/models";
 import { type FieldDescription, Orm } from "../core/orm";
+import { Views } from "../core/views";
 import { StringWidget } from "./widgets/string_widget";
 import { defaultWidget, widgets } from "./widgets/widget";
 
@@ -8,50 +9,73 @@ import { defaultWidget, widgets } from "./widgets/widget";
 export const viewProps = {
     /** The model whose records are shown. */
     resModel: t.string(),
-    /** The fields shown, in order; every field the user may see when left out. */
-    fieldNames: t.array(t.string()).optional(),
     /** Which records: a search domain, all of them when empty. */
     domain: t.array(t.any()).default([]),
 };
 
-/** A field a view shows, and the widget it is shown with when not its type's. */
+/** A field a view shows, as its `<field>` element says. */
 export interface Column {
     name: string;
     field: FieldDescription;
+    /** The `string` of the element, or the field's own label. */
+    label: string;
+    /** The widget the element names, if not its type's. */
     widget?: string;
+    /** Every attribute of the element, for the widget to read. */
+    attrs: Record<string, string>;
 }
 
 /**
- * What every view of records shares — list, form, and those to come: its model, the description of
- * the fields it shows, and the widget each is shown with.
+ * What every view of records shares — list, form, and those to come: its model, the XML the
+ * server holds for it, the fields that XML shows and the widget each is shown with.
  *
- * A view declares its props as `props = props({ ...viewProps, ...its own })`, once: the schema is
- * read per class, so a base class declaring them too would hide what the view adds.
+ * A view says its `kind`, and declares its props as `props = props({ ...viewProps, ...its own })`,
+ * once: the schema is read per class, so a base class declaring them too would hide what the view
+ * adds.
  */
 export abstract class View extends Component {
     declare props: PropsOf<typeof viewProps>;
 
     @inject(Models) models!: Models;
     @inject(Orm) orm!: Orm;
+    @inject(Views) views!: Views;
 
-    @resource accessor fields = load(
+    /** Which view of the model this is: `list`, `form`. */
+    abstract get kind(): string;
+
+    @resource accessor fields: Fields = load(
         () => this.props.resModel,
         (model) => this.models.fields(model),
     );
 
-    /** The fields shown, in order: those named, or every one with `id` first. */
+    @resource accessor arch: string = load(
+        () => [this.props.resModel, this.kind] as const,
+        ([model, kind]) => this.views.arch(model, kind),
+    );
+
+    /** The root element of the view's XML: `<list>`, `<form>`. */
+    @computed get archRoot(): Element | undefined {
+        if (this.arch === undefined) {
+            return undefined;
+        }
+        return new DOMParser().parseFromString(this.arch, "text/xml").documentElement;
+    }
+
+    /** Every field the view shows, in the order its XML names them. */
     @computed get columns(): Column[] {
-        const fields: Fields | undefined = this.fields;
-        if (fields === undefined) {
+        const fields = this.fields;
+        const root = this.archRoot;
+        if (fields === undefined || root === undefined) {
             return [];
         }
-        const names = this.props.fieldNames ?? ["id", ...Object.keys(fields).filter((name) => name !== "id")];
-        return names.map((name) => {
+        return Array.from(root.getElementsByTagName("field"), (element) => {
+            const name = element.getAttribute("name") ?? "";
             const field = fields[name];
             if (field === undefined) {
                 throw new Error(`Model "${this.props.resModel}" shows no field "${name}"`);
             }
-            return { name, field };
+            const attrs = Object.fromEntries(Array.from(element.attributes, (attr) => [attr.name, attr.value]));
+            return { name, field, label: attrs.string ?? field.label, widget: attrs.widget, attrs };
         });
     }
 
