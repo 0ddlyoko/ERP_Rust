@@ -7,6 +7,9 @@ pub struct FieldDescriptor {
     /// have no default at all.
     pub kind: FieldKind,
     pub default_value: Option<FieldType>,
+    /// What the field is shown as; its name, readably, when left out.
+    pub label: Option<String>,
+    /// What the field is for, at more length than its label: help shown beside it.
     pub description: Option<String>,
     pub required: bool,
     /// Whether the field never leaves the process.

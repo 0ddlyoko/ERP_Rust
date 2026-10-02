@@ -84,6 +84,7 @@ impl FinalInternalModel {
                 name: field_name.clone(),
                 kind: field.kind,
                 default_value: field.default_value,
+                label: field.label,
                 description: field.description,
                 required: field.required,
                 private: field.private,

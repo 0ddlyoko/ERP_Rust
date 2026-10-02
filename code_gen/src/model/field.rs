@@ -22,6 +22,7 @@ pub struct FieldGen {
     pub is_reference_multi: bool,
     pub field_type_keyword: Ident,
     pub default: Option<FieldType>,
+    pub label: Option<String>,
     pub description: Option<String>,
     pub compute: Option<String>,
     pub depends: Option<Vec<String>>,
@@ -53,6 +54,7 @@ impl FieldGen {
         let mut is_reference_multi = false;
         let mut default = None;
         let mut default_span = None;
+        let mut label = None;
         let mut description = None;
         let mut compute = None;
         let mut depends = None;
@@ -142,6 +144,9 @@ impl FieldGen {
                     });
                     // TODO Add Enum default value
                     // default_value = Some(default.value().into());
+                }
+                AllowedFieldAttrs::Label(_, value) => {
+                    label = Some(value.value());
                 }
                 AllowedFieldAttrs::Description(_, description_value) => {
                     description = Some(description_value.value());
@@ -268,6 +273,7 @@ impl FieldGen {
             is_reference_multi,
             field_type_keyword: field_type.unwrap(),
             default,
+            label,
             description,
             compute,
             depends,

@@ -428,7 +428,7 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
     let columns = ["name", "login", "active", "groups"];
     let rows = call(
         "users.read_matching",
-        json!({"domain": [], "fields": columns, "limit": 80, "names": true}),
+        json!({"domain": [], "fields": columns, "limit": 100, "offset": 0, "names": true}),
     );
     let admin = rows
         .as_array()
@@ -447,6 +447,11 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
     assert_eq!(
         call("users.names", json!({"ids": [info["uid"]]})),
         json!([[info["uid"], "Administrator"]])
+    );
+    let total = call("users.count", json!({"domain": []}));
+    assert_eq!(
+        total.as_u64(),
+        rows.as_array().map(|rows| rows.len() as u64)
     );
     let menus = call("menu.tree", json!({"ids": [], "args": {}}));
     let users = &menus[0]["children"][0]["children"][0]["action"];

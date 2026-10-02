@@ -92,6 +92,9 @@ impl MySpanned for AllowedModelAttrs {
 
 pub enum AllowedFieldAttrs {
     Default(Ident, Lit),
+    /// What the field is shown as: a column's header, a form's label.
+    Label(Ident, LitStr),
+    /// What the field is for, at more length than its label: help shown beside it.
     Description(Ident, LitStr),
     Compute(Ident, LitStr),
     Depends(Ident, Vec<LitStr>),
@@ -105,6 +108,7 @@ pub enum AllowedFieldAttrs {
 
 static VALID_FIELD_STRINGS: &[&str] = &[
     "default",
+    "label",
     "description",
     "compute",
     "depends",
@@ -124,9 +128,13 @@ impl Parse for AllowedFieldAttrs {
                 name,
                 parse_eq(input, "default = \"default_value\"")?,
             )),
+            "label" => Ok(AllowedFieldAttrs::Label(
+                name,
+                parse_eq(input, "label = \"Customer\"")?,
+            )),
             "description" => Ok(AllowedFieldAttrs::Description(
                 name,
-                parse_eq(input, "description = \"Description of the field\"")?,
+                parse_eq(input, "description = \"The company the order is sent to\"")?,
             )),
             "compute" => Ok(AllowedFieldAttrs::Compute(
                 name,
@@ -168,6 +176,7 @@ impl MySpanned for AllowedFieldAttrs {
     fn span(&self) -> Span {
         match self {
             AllowedFieldAttrs::Default(ident, _) => ident.span(),
+            AllowedFieldAttrs::Label(ident, _) => ident.span(),
             AllowedFieldAttrs::Description(ident, _) => ident.span(),
             AllowedFieldAttrs::Compute(ident, _) => ident.span(),
             AllowedFieldAttrs::Depends(ident, _) => ident.span(),

@@ -371,8 +371,16 @@ fn test_fields_get_describes_every_field() -> Result<()> {
     );
     assert_eq!(
         fields["price"],
-        json!({"type": "integer", "label": "price", "required": true, "readonly": false,
+        json!({"type": "integer", "label": "Price", "required": true, "readonly": false,
                "stored": true, "default": 42})
+    );
+    assert_eq!(
+        fields["order_tags"]["label"], "Order Tags",
+        "the name, made readable"
+    );
+    assert!(
+        fields["price"].get("description").is_none(),
+        "no help unless written"
     );
     assert_eq!(fields["order"]["relation"], "sale_order");
     assert_eq!(fields["order"]["relation_kind"], "many2one");
@@ -384,6 +392,24 @@ fn test_fields_get_describes_every_field() -> Result<()> {
     let lines = result(&app, "sale_order.fields_get", json!({"fields": ["lines"]}));
     assert_eq!(lines["lines"]["relation_kind"], "one2many");
     assert_eq!(lines["lines"]["relation"], "sale_order_line");
+    Ok(())
+}
+
+/// A field's own label replaces its name, and its description is the help shown beside it.
+#[test]
+fn test_fields_get_gives_a_fields_label_and_description() -> Result<()> {
+    let app = new_app()?;
+    let fields = result(
+        &app,
+        "meter_reading.fields_get",
+        json!({"fields": ["reference", "value"]}),
+    );
+    assert_eq!(fields["reference"]["label"], "Meter number");
+    assert_eq!(
+        fields["reference"]["description"],
+        "As printed on the meter"
+    );
+    assert_eq!(fields["value"]["label"], "Value");
     Ok(())
 }
 

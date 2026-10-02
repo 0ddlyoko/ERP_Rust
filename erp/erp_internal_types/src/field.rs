@@ -6,6 +6,7 @@ pub struct InternalField {
     pub name: String,
     pub kind: FieldKind,
     pub default_value: Option<FieldType>,
+    pub label: Option<String>,
     pub description: Option<String>,
     pub required: bool,
     pub private: bool,
@@ -19,7 +20,10 @@ pub struct InternalField {
 /// Represent all combined InternalModel
 pub struct FinalInternalField {
     pub name: String,
-    pub description: String,
+    /// What the field is shown as: the label a struct gave it, else its name made readable.
+    pub label: String,
+    /// What the field is for, at more length than its label; none unless a struct wrote one.
+    pub description: Option<String>,
     pub required: bool,
     /// Whether the field never leaves the process. Any struct declaring it so makes it so: a
     /// plugin may hide a field another declared, never reveal one.
@@ -48,7 +52,8 @@ impl FinalInternalField {
     pub fn new(field_name: &str) -> Self {
         FinalInternalField {
             name: field_name.to_string(),
-            description: field_name.to_string(),
+            label: default_label(field_name),
+            description: None,
             required: false,
             private: false,
             stored: false,
@@ -110,8 +115,11 @@ impl FinalInternalField {
         if field_descriptor.default_value.is_some() {
             self.default_value = field_descriptor.default_value.clone();
         }
-        if let Some(description) = &field_descriptor.description {
-            self.description = description.clone();
+        if let Some(label) = &field_descriptor.label {
+            self.label = label.clone();
+        }
+        if field_descriptor.description.is_some() {
+            self.description = field_descriptor.description.clone();
         }
         self.required = field_descriptor.required;
         // Never taken back: a struct extending a model can hide a field, and no struct can
@@ -150,5 +158,45 @@ impl FinalInternalField {
             self.inverse = Some(inverse.clone());
         }
         self.is_init = true;
+    }
+}
+
+/// A field's name made readable, for a field nobody gave a label: `_id` and `_ids` dropped, each
+/// word capitalised — `order_tags` reads `Order Tags`, `partner_id` reads `Partner`.
+pub fn default_label(field_name: &str) -> String {
+    let stem = field_name
+        .strip_suffix("_ids")
+        .or_else(|| field_name.strip_suffix("_id"))
+        .filter(|stem| !stem.is_empty())
+        .unwrap_or(field_name);
+    stem.split('_')
+        .filter(|word| !word.is_empty())
+        .map(|word| {
+            let mut letters = word.chars();
+            match letters.next() {
+                Some(first) => first.to_uppercase().chain(letters).collect(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::default_label;
+
+    #[test]
+    fn test_a_name_reads_as_a_label() {
+        assert_eq!(default_label("name"), "Name");
+        assert_eq!(default_label("order_tags"), "Order Tags");
+        assert_eq!(default_label("partner_id"), "Partner");
+        assert_eq!(default_label("invoice_ids"), "Invoice");
+        assert_eq!(default_label("id"), "Id");
+        assert_eq!(
+            default_label("_id"),
+            "Id",
+            "nothing left to drop the suffix from"
+        );
     }
 }

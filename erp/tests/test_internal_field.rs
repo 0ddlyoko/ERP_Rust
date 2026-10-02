@@ -17,6 +17,7 @@ fn test_register_field() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
+        label: None,
         description: Some("This is the name".to_string()),
         required: false,
         private: false,
@@ -32,6 +33,7 @@ fn test_register_field() {
         name: "age".to_string(),
         kind: FieldKind::Integer,
         default_value: Some(FieldType::Integer(42)),
+        label: None,
         description: Some("This is the age of the person".to_string()),
         required: false,
         private: false,
@@ -41,7 +43,7 @@ fn test_register_field() {
     });
 
     assert_eq!(field_name.name, "name");
-    assert_eq!(field_name.description, "This is the name".to_string());
+    assert_eq!(field_name.description.as_deref(), Some("This is the name"));
     assert!(!field_name.required);
     assert_eq!(
         field_name.default_value,
@@ -56,8 +58,8 @@ fn test_register_field() {
 
     assert_eq!(field_age.name, "age");
     assert_eq!(
-        field_age.description,
-        "This is the age of the person".to_string()
+        field_age.description.as_deref(),
+        Some("This is the age of the person")
     );
     assert!(!field_age.required);
     assert_eq!(field_age.default_value, Some(FieldType::Integer(42)));
@@ -68,6 +70,7 @@ fn test_register_field() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: Some(FieldType::String("1ddlyoko".to_string())),
+        label: None,
         description: None,
         required: true,
         private: false,
@@ -77,7 +80,7 @@ fn test_register_field() {
     });
 
     assert_eq!(field_name.name, "name");
-    assert_eq!(field_name.description, "This is the name".to_string());
+    assert_eq!(field_name.description.as_deref(), Some("This is the name"));
     assert!(field_name.required);
     assert_eq!(
         field_name.default_value,
@@ -95,6 +98,7 @@ fn test_register_field() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: None,
+        label: None,
         description: Some("This is another description".to_string()),
         required: true,
         private: false,
@@ -108,8 +112,8 @@ fn test_register_field() {
 
     assert_eq!(field_name.name, "name");
     assert_eq!(
-        field_name.description,
-        "This is another description".to_string()
+        field_name.description.as_deref(),
+        Some("This is another description")
     );
     assert!(field_name.required);
     assert_eq!(
@@ -128,6 +132,7 @@ fn test_register_field() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: None,
+        label: None,
         description: Some("This is another description".to_string()),
         required: true,
         private: false,
@@ -141,8 +146,8 @@ fn test_register_field() {
 
     assert_eq!(field_name.name, "name");
     assert_eq!(
-        field_name.description,
-        "This is another description".to_string()
+        field_name.description.as_deref(),
+        Some("This is another description")
     );
     assert!(field_name.required);
     assert_eq!(
@@ -166,6 +171,7 @@ fn test_register_field_without_default_value_is_allowed() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: None,
+        label: None,
         description: Some("This is the name".to_string()),
         required: true,
         private: false,
@@ -191,6 +197,7 @@ fn test_storage_asked_for_a_field_nothing_computes() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: None,
+        label: None,
         description: None,
         required: true,
         private: false,
@@ -212,6 +219,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         name: "name".to_string(),
         kind: FieldKind::String,
         default_value: Some(FieldType::String("0ddlyoko".to_string())),
+        label: None,
         description: Some("This is the name".to_string()),
         required: true,
         private: false,
@@ -224,6 +232,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         name: "name".to_string(),
         kind: FieldKind::Integer,
         default_value: Some(FieldType::Integer(42)),
+        label: None,
         description: None,
         required: true,
         private: false,
@@ -247,7 +256,7 @@ fn test_register_fields_with_real_model() -> Result<()> {
     let field = model.get_internal_field("name");
     assert_eq!(field.name, "name");
     // Description should be overridden
-    assert_eq!(field.description, "New name of the SO");
+    assert_eq!(field.description.as_deref(), Some("New name of the SO"));
     assert!(field.compute.is_none());
     assert!(field.required);
     assert_eq!(field.default_value, Some(FieldType::String("".to_string())));

@@ -389,6 +389,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             is_reference_multi,
             field_type_keyword,
             default: default_value,
+            label,
             description,
             compute,
             depends,
@@ -481,6 +482,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             }
         };
 
+        let label = match label {
+            Some(label) => quote! { Some(#label.to_string()) },
+            None => quote! { None },
+        };
         let description = if let Some(description) = description {
             quote! { Some(#description.to_string()) }
         } else {
@@ -551,6 +556,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     name: #field_name.to_string(),
                     kind: #kind,
                     default_value: #default_value,
+                    label: #label,
                     description: #description,
                     required: #is_required,
                     private: #is_private,

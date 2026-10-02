@@ -479,7 +479,7 @@ fn describe_id() -> Value {
 fn describe(field: &FinalInternalField) -> Result<Value> {
     let mut described = json!({
         "type": kind_name(field.kind),
-        "label": field.description,
+        "label": field.label,
         "required": field.required,
         "readonly": field.compute.is_some(),
         "stored": field.is_stored(),
@@ -494,6 +494,9 @@ fn describe(field: &FinalInternalField) -> Result<Value> {
     }
     if let Some(default) = &field.default_value {
         described["default"] = serde_json::to_value(default)?;
+    }
+    if let Some(description) = &field.description {
+        described["description"] = json!(description);
     }
     Ok(described)
 }

@@ -12,6 +12,8 @@ use erp::types::field::{Decimal, IdMode, NaiveDate};
 #[allow(dead_code)]
 pub struct MeterReading<Mode: IdMode> {
     pub id: Mode,
+    #[erp(label = "Meter number")]
+    #[erp(description = "As printed on the meter")]
     #[erp(default = "")]
     reference: String,
     #[erp(default = 0.000)]
