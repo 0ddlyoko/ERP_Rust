@@ -449,13 +449,33 @@ fn test_a_plugin_file_is_served_under_static() -> Result<()> {
     Ok(())
 }
 
-/// A TypeScript import has no extension, and the browser asks for exactly what it reads.
+/// A TypeScript import has no extension; it is compiled with the extension of the file it names,
+/// and only that path is served, so a browser loads each file as one module.
 #[test]
-fn test_an_import_without_extension_finds_its_javascript() -> Result<()> {
+fn test_an_import_without_extension_is_compiled_with_it() -> Result<()> {
     let app = new_app()?;
-    let response = get(&app, "/static/test_plugin/src/util/format");
-    assert_eq!(response.status(), 200);
-    assert!(response.text_body().contains("function twice"));
+    let counter = get(&app, "/static/test_plugin/src/counter.js").text_body();
+    assert!(counter.contains("from \"./util/format.js\""), "{counter}");
+    let format = get(&app, "/static/test_plugin/src/util/format.js");
+    assert!(format.text_body().contains("function twice"));
+    assert_eq!(
+        get(&app, "/static/test_plugin/src/util/format").status(),
+        404,
+        "one path per module"
+    );
+
+    let main = get(&app, "/static/web/src/main.js").text_body();
+    for import in [
+        "./core/session.js",
+        "./core/rpc.js",
+        "./core/orm.js",
+        "./web_client/web_client.js",
+    ] {
+        assert!(
+            main.contains(&format!("\"{import}\"")),
+            "{import} in {main}"
+        );
+    }
     Ok(())
 }
 

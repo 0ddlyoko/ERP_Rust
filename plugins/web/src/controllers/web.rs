@@ -40,8 +40,8 @@ impl Web {
 
     /// A file an installed plugin serves: `/static/<plugin>/<path>`.
     ///
-    /// A path without an extension also finds the `.js` of that name, because a TypeScript import
-    /// is written without one (`./util/format`) and a browser asks for exactly what it reads.
+    /// Only at its exact path: a TypeScript import written without extension is compiled with it,
+    /// and answering both would let a browser load one file as two modules.
     #[erp(route = "/static/<module>/<*path>")]
     pub fn static_file(
         &self,
@@ -50,25 +50,11 @@ impl Web {
         module: String,
         path: String,
     ) -> Result<Response> {
-        let assets = &env.model_manager.assets;
         let asked = format!("{module}/static/{path}");
-        let has_extension = path
-            .rsplit('/')
-            .next()
-            .is_some_and(|name| name.contains('.'));
-        let found = assets.file(&asked).map(|content| (asked.clone(), content));
-        let found = match found {
-            Some(found) => Some(found),
-            None if !has_extension => {
-                let with_js = format!("{asked}.js");
-                assets.file(&with_js).map(|content| (with_js, content))
-            }
-            None => None,
-        };
-        let Some((served, content)) = found else {
+        let Some(content) = env.model_manager.assets.file(&asked) else {
             return Err(HttpError::not_found("No installed plugin serves this file").into());
         };
-        Ok(cached(request, content.to_vec(), content_type(&served)))
+        Ok(cached(request, content.to_vec(), content_type(&asked)))
     }
 
     /// A bundle, as one file per kind: `/web/assets/<bundle>.js`, `.css` or `.xml`.

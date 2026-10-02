@@ -6,4 +6,4 @@ edition = "2024"
 # Used from a plugin's build script only, so none of this reaches the server binary.
 [dependencies]
 serde_json.workspace = true
-swc_core = { workspace = true, features = ["base", "common", "ecma_ast", "ecma_helpers_inline"] }
+swc_core = { workspace = true, features = ["base", "common", "ecma_ast", "ecma_helpers_inline", "ecma_visit"] }
