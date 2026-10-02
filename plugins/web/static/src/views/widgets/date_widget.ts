@@ -12,6 +12,14 @@ export class DateWidget extends Widget {
         const [year, month, day] = String(this.value).split("-").map(Number);
         return new Date(year, month - 1, day).toLocaleDateString();
     }
+
+    override get inputType(): string {
+        return "date";
+    }
+
+    override parse(text: string): unknown {
+        return text === "" ? null : text;
+    }
 }
 
 widgets.add("date", DateWidget);

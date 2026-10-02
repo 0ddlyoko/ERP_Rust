@@ -1,5 +1,5 @@
 import { Component, type ComponentClass, type PropsOf, registry, t } from "trame";
-import type { FieldDescription } from "../../core/orm";
+import type { FieldDescription } from "@web/core/orm";
 
 /** The props every widget takes; a widget adds its own to them. */
 export const widgetProps = {
@@ -20,8 +20,10 @@ export const widgetProps = {
 /**
  * How one value of a record is shown, and edited where a view edits.
  *
- * A widget shows `text` in `web.Widget` unless it brings its own template. A widget declares its
- * props as `props = props({ ...widgetProps, ...its own })`, once: the schema is read per class.
+ * A widget shows `text` in `web.Widget` unless it brings its own template, or, where a view edits
+ * it, an input of `inputType` holding `inputValue`, whose text it `parse`s into a value. A widget
+ * declares its props as `props = props({ ...widgetProps, ...its own })`, once: the schema is read
+ * per class.
  */
 export abstract class Widget extends Component {
     static template = "web.Widget";
@@ -40,6 +42,34 @@ export abstract class Widget extends Component {
     /** The value as the widget writes it. */
     get text(): string {
         return this.isEmpty ? "" : String(this.value);
+    }
+
+    /** Whether the user edits the value here: the view edits it, and the widget can. */
+    get editable(): boolean {
+        return !this.props.readonly && this.props.onChange !== undefined && this.canEdit;
+    }
+
+    /** Whether this widget has a way to edit its value yet. */
+    get canEdit(): boolean {
+        return true;
+    }
+
+    get inputType(): string {
+        return "text";
+    }
+
+    /** The value as the input holds it. */
+    get inputValue(): string {
+        return this.isEmpty ? "" : String(this.value);
+    }
+
+    /** What the input holds, as the value the server reads. */
+    parse(text: string): unknown {
+        return text;
+    }
+
+    commit(text: string): void {
+        this.props.onChange?.(this.parse(text));
     }
 
     /** The class of the widget's element, by its field's type. */

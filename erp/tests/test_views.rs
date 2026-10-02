@@ -150,3 +150,82 @@ fn test_a_view_that_cannot_be_shown_fails_its_plugin() -> Result<()> {
     assert!(error.contains("nowhere"), "{error}");
     Ok(())
 }
+
+/// The error a plugin shipping this form for `users` is refused with.
+fn refused_form(form: &str) -> String {
+    let data: &'static str = Box::leak(
+        format!(r#"<erp><view id="bad" name="bad" model="users"><form>{form}</form></view></erp>"#)
+            .into_boxed_str(),
+    );
+    let data: &'static [&'static str] = Box::leak(vec![data].into_boxed_slice());
+    let mut app = new_app().expect("an application");
+    app.register_plugin(Box::new(DataPlugin {
+        name: "bad_form",
+        data,
+    }))
+    .expect("registered");
+    app.load_plugin("bad_form")
+        .expect_err("refused")
+        .to_string()
+}
+
+/// A form of blocks, pages, headings, buttons and a side is shown as written.
+#[test]
+fn test_a_form_lays_out_its_blocks_pages_and_buttons() -> Result<()> {
+    let app = with_data(
+        "good_form",
+        &[
+            r#"<erp><view id="good" name="good" model="users" priority="1"><form>
+            <buttons><button name="me" type="method" string="Who am I"/></buttons>
+            <block string="{{ login }} \{{ literal }}">
+                <h1>User <field name="name"/></h1>
+                <block><field name="login"/></block>
+                <pages><page name="more" string="More"><field name="active"/></page></pages>
+            </block>
+            <side><block><field name="groups"/></block><chatter/></side>
+        </form></view></erp>"#,
+        ],
+    )?;
+    assert!(view_of(&app, "users", "form")?.contains("<buttons>"));
+    assert!(
+        view_of(&new_app()?, "users", "form")?.contains("<h1>"),
+        "base ships one"
+    );
+    Ok(())
+}
+
+/// What a form may not hold is refused when its plugin installs, saying what and where.
+#[test]
+fn test_what_a_form_may_not_hold_is_refused() -> Result<()> {
+    for (form, expected) in [
+        ("<div/>", "<div> cannot stand in <form>"),
+        (
+            "<block><buttons/></block>",
+            "<buttons> cannot stand in <block>",
+        ),
+        ("<block>loose text</block>", "holds text"),
+        ("<h1><block/></h1>", "<block> cannot stand in <h1>"),
+        ("<pages><block/></pages>", "only <page>"),
+        ("<pages><page string=\"x\"/></pages>", "<page> has no name"),
+        (
+            "<buttons><button name=\"me\" type=\"url\"/></buttons>",
+            "method or action",
+        ),
+        (
+            "<buttons><button type=\"method\"/></buttons>",
+            "<button> has no name",
+        ),
+        ("<field/>", "<field> has no name"),
+        ("<block><field name=\"logn\"/></block>", "\"logn\""),
+        ("<block string=\"{{ logn }}\"/>", "\"logn\""),
+        (
+            "<block string=\"{{ login.size }}\"/>",
+            "only a field's name",
+        ),
+        ("<block string=\"{{ login\"/>", "without closing it"),
+    ] {
+        let error = refused_form(form);
+        assert!(error.contains(expected), "{form}: {error}");
+    }
+    Ok(())
+}

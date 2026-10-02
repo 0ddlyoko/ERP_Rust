@@ -1,35 +1,54 @@
-import { Component, computed, inject, state } from "trame";
-import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf } from "../core/menus";
+import { Component, computed, inject, load, resource, state } from "trame";
+import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf } from "@web/core/menus";
+import { Orm } from "@web/core/orm";
+import { type Route, Router } from "@web/core/router";
 import { ActionManager } from "./action_manager";
 import { Sidebar } from "./sidebar";
 
 /**
  * The root of the back office: the menu on the left, and the action open beside it.
  *
- * The action open is written in the address, `#action=base.action_users`, so that reloading the
- * page or following a link opens it again; with none there, the first action of the menus. The
- * module shown is the one the action is under, unless the user switched to another.
+ * The action open is the route's: one of the menus', or, for one no menu leads to — a button
+ * opening it — loaded by its identifier. With none, the first action of the menus. The module
+ * shown is the one the action is under, unless the user switched to another.
  */
 export class WebClient extends Component {
     static template = "web.WebClient";
     static components = { ActionManager, Sidebar };
 
     @inject(Menus) menus!: Menus;
+    @inject(Orm) orm!: Orm;
+    @inject(Router) router!: Router;
 
-    @state accessor chosen: ActionDescription | null = null;
     @state accessor switched: MenuEntry | null = null;
 
     get tree(): MenuEntry[] {
         return this.menus.tree;
     }
 
+    get route(): Route {
+        return this.router.route;
+    }
+
+    /** The action the route names, when no menu leads to it. */
+    @resource accessor elsewhere: ActionDescription | null = load(
+        () => {
+            const asked = this.route.action;
+            return asked !== null && this.fromMenus(asked) === undefined ? asked : null;
+        },
+        (asked) => (asked === null ? null : this.orm.call<ActionDescription>("action", "load", [], { xml_id: asked })),
+    );
+
+    private fromMenus(asked: string): ActionDescription | undefined {
+        return actionsOf(this.tree ?? []).find((action) => action.xml_id === asked || String(action.id) === asked);
+    }
+
     @computed get action(): ActionDescription | null {
-        if (this.chosen !== null) {
-            return this.chosen;
+        const asked = this.route.action;
+        if (asked !== null) {
+            return this.fromMenus(asked) ?? this.elsewhere ?? null;
         }
-        const actions = actionsOf(this.tree ?? []);
-        const asked = new URLSearchParams(window.location.hash.slice(1)).get("action");
-        return actions.find((action) => action.xml_id === asked || String(action.id) === asked) ?? actions[0] ?? null;
+        return actionsOf(this.tree ?? [])[0] ?? null;
     }
 
     @computed get module(): MenuEntry | null {
@@ -55,7 +74,6 @@ export class WebClient extends Component {
     };
 
     private show(action: ActionDescription): void {
-        this.chosen = action;
-        window.location.hash = `action=${action.xml_id ?? action.id}`;
+        this.router.go({ action: action.xml_id ?? String(action.id), view: null, id: null });
     }
 }

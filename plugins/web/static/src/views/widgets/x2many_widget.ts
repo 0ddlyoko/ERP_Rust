@@ -5,6 +5,11 @@ import { Widget, widgetProps, widgets } from "./widget";
 export class X2ManyWidget extends Widget {
     override props = props({ ...widgetProps });
 
+    /** Chosen in a list of records, which comes later. */
+    override get canEdit(): boolean {
+        return false;
+    }
+
     override get text(): string {
         const ids = Array.isArray(this.value) ? this.value : [];
         return ids.length === 1 ? "1 record" : `${ids.length} records`;

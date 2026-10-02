@@ -9,8 +9,8 @@
                 <h1 class="o_action_title">{{ props.action.name }}</h1>
             </header>
             <t t-if="view">
-                <t t-component="view" t-key="props.action.id" resModel="props.action.model"
-                   domain="props.action.domain"/>
+                <t t-component="view" t-key="viewKey" resModel="props.action.model"
+                   domain="props.action.domain" resId="props.resId ?? undefined"/>
             </t>
             <p t-else="" class="o_view_error">No view can show {{ props.action.views.join(", ") }}.</p>
         </section>

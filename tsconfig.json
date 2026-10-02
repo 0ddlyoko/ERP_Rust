@@ -3,7 +3,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -12,7 +16,17 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitOverride": true,
-    "types": []
+    "types": [],
+    "paths": {
+      "@web/*": [
+        "./plugins/web/static/src/*"
+      ],
+      "@test_plugin/*": [
+        "./plugins/test_plugin/static/src/*"
+      ]
+    }
   },
-  "include": ["plugins/*/static/**/*.ts"]
+  "include": [
+    "plugins/*/static/**/*.ts"
+  ]
 }

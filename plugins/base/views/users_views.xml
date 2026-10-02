@@ -7,6 +7,25 @@
             <field name="groups"/>
         </list>
     </view>
+    <view id="view_users_form" name="users.form" model="users">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Account">
+                    <field name="login"/>
+                    <field name="active"/>
+                </block>
+                <block string="Access">
+                    <field name="groups"/>
+                </block>
+            </block>
+            <pages>
+                <page name="groups" string="Groups of {{ name }}">
+                    <field name="groups"/>
+                </page>
+            </pages>
+        </form>
+    </view>
     <action id="action_users" name="Users" model="users" views="list,form"/>
 
     <view id="view_group_list" name="group.list" model="group">

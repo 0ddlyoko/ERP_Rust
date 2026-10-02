@@ -499,6 +499,11 @@ fn test_an_import_without_extension_is_compiled_with_it() -> Result<()> {
         "one path per module"
     );
 
+    let list = get(&app, "/static/web/src/views/list/list_view.js").text_body();
+    assert!(
+        list.contains("from \"@web/views/view.js\""),
+        "a plugin's import, completed: {list}"
+    );
     let main = get(&app, "/static/web/src/main.js").text_body();
     for import in [
         "./core/session.js",
@@ -765,6 +770,8 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
     for template in [
         "<t t-name=\"web.ActionManager\">",
         "<t t-name=\"web.Sidebar\">",
+        "<t t-name=\"web.FormView\">",
+        "<t t-name=\"web.FormNodes\">",
     ] {
         assert!(backend.contains(template), "{template} in {backend}");
     }
@@ -793,6 +800,8 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/core/menus.js",
         "/static/web/src/web_client/action_manager.js",
         "/static/web/src/web_client/sidebar.js",
+        "/static/web/src/views/form/form_view.js",
+        "/static/web/src/core/router.js",
     ] {
         assert!(
             module.contains(&format!("import \"{path}\";")),
@@ -835,6 +844,11 @@ fn test_the_web_client_page_declares_the_import_map() -> Result<()> {
         .expect("an import map");
     let map: erp::serde_json::Value = erp::serde_json::from_str(map)?;
     assert_eq!(map["imports"]["trame"], "/static/web/lib/trame.js");
+    assert_eq!(
+        map["imports"]["@web/"], "/static/web/src/",
+        "each plugin by its name"
+    );
+    assert_eq!(map["imports"]["@test_plugin/"], "/static/test_plugin/src/");
     let map_at = page.find("importmap").expect("declared");
     let bundle_at = page
         .find("/web/assets/web.assets_backend.js")

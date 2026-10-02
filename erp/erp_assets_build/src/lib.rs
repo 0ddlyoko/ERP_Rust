@@ -287,8 +287,16 @@ impl VisitMut for WithExtensions<'_> {
 }
 
 /// `specifier`, imported from `importer`, with the extension of the served file it names: `None`
-/// when it is not relative, already names a file, or names none.
+/// when it is neither relative nor a plugin's, already names a file, or names none.
+///
+/// `@web/core/orm` names `core/orm` under the `src` of plugin `web`, which another plugin's files
+/// are not here to check: it is given `.js`, as every compiled module has.
 pub fn complete(importer: &str, specifier: &str, public: &HashSet<String>) -> Option<String> {
+    if let Some(path) = specifier.strip_prefix('@') {
+        let (_, rest) = path.split_once('/')?;
+        let last = rest.rsplit('/').next().unwrap_or(rest);
+        return (!rest.is_empty() && !last.contains('.')).then(|| format!("{specifier}.js"));
+    }
     if !(specifier.starts_with("./") || specifier.starts_with("../")) {
         return None;
     }
@@ -404,6 +412,12 @@ mod tests {
             "names no file: left for the 404"
         );
         assert_eq!(from_main("trame"), None, "not relative: the import map's");
+        assert_eq!(
+            from_main("@web/core/orm"),
+            Some("@web/core/orm.js".to_string())
+        );
+        assert_eq!(from_main("@web/core/orm.js"), None, "already the file");
+        assert_eq!(from_main("@web"), None, "a plugin, not a file of it");
         assert_eq!(from_main("../../outside"), None, "out of the plugin");
         assert_eq!(
             complete("src/core/rpc.ts", "./session", &served),

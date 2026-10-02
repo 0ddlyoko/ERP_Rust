@@ -8,6 +8,11 @@ import { Widget, widgetProps, widgets } from "./widget";
 export class Many2OneWidget extends Widget {
     override props = props({ ...widgetProps });
 
+    /** Chosen in a list of records, which comes later. */
+    override get canEdit(): boolean {
+        return false;
+    }
+
     override get text(): string {
         if (this.isEmpty) {
             return "";

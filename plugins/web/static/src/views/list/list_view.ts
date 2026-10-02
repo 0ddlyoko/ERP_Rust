@@ -1,6 +1,6 @@
 import { load, props, resource, state, t } from "trame";
-import type { Values } from "../../core/orm";
-import { View, viewKinds, viewProps } from "../view";
+import type { Values } from "@web/core/orm";
+import { View, viewKinds, viewProps } from "@web/views/view";
 
 /**
  * Records of a model as rows, one column per field shown, a page at a time.

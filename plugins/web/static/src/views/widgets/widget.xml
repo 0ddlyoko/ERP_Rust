@@ -1,5 +1,7 @@
 <templates>
     <t t-name="web.Widget">
-        <span t-att-class="className">{{ text }}</span>
+        <input t-if="editable" t-att-type="inputType" t-att-class="className + ' o_input'"
+               t-att-value="inputValue" t-on-change="(ev) => commit(ev.target.value)"/>
+        <span t-else="" t-att-class="className">{{ text }}</span>
     </t>
 </templates>

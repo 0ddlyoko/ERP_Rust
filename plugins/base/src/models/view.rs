@@ -1,6 +1,7 @@
 use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
-use erp::inheritance::{Arch, Archs};
+use erp::inheritance::{Arch as Markup, Archs};
+use erp::internal_types::FinalInternalModel;
 use erp::search::SearchType;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::xml::{Element, Node, to_markup};
@@ -66,7 +67,7 @@ impl Views {
             } else {
                 format!("View {name}")
             };
-            rows.push(Arch {
+            rows.push(Markup {
                 id: view.get_id(),
                 label,
                 arch: view.get_arch(env)?.clone(),
@@ -84,7 +85,7 @@ impl Views {
     }
 
     /// The model a view is of: its own, or that of the view it derives from.
-    fn model_of<'a>(&'a self, row: &'a Arch<ViewData>) -> &'a str {
+    fn model_of<'a>(&'a self, row: &'a Markup<ViewData>) -> &'a str {
         let mut row = row;
         while row.data.model.is_empty() {
             match row.inherit.and_then(|parent| self.archs.get(parent)) {
@@ -133,17 +134,160 @@ fn root_element(nodes: &[Node]) -> Option<&Element> {
     elements.next().is_none().then_some(root)
 }
 
-/// Every field a view shows, at any depth: the `name` of each `<field>`.
-fn fields_of(element: &Element, out: &mut Vec<String>) {
-    if element.name == "field"
-        && let Some(name) = element.attribute("name")
-    {
-        out.push(name.to_string());
+/// What may stand where in a view, and what a `<field>` or a `{{ field }}` may name.
+struct Arch<'a> {
+    label: &'a str,
+    model_name: &'a str,
+    model: &'a FinalInternalModel,
+}
+
+/// Elements a block or a page holds: its contents, laid out on two columns.
+const CONTENTS: &[&str] = &[
+    "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages",
+];
+const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
+
+impl Arch<'_> {
+    fn check(&self, root: &Element) -> std::result::Result<(), String> {
+        let allowed: &[&str] = match root.name.as_str() {
+            "list" => &["field"],
+            "form" => &[
+                "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
+                "chatter",
+            ],
+            _ => return Ok(()),
+        };
+        self.children(root, allowed)
     }
-    for child in &element.children {
-        if let Node::Element(child) = child {
-            fields_of(child, out);
+
+    fn children(&self, parent: &Element, allowed: &[&str]) -> std::result::Result<(), String> {
+        for node in &parent.children {
+            match node {
+                Node::Element(child) if allowed.contains(&child.name.as_str()) => {
+                    self.element(child)?
+                }
+                Node::Element(child) => {
+                    return Err(self.error(format!(
+                        "<{}> cannot stand in <{}>: {} may",
+                        child.name,
+                        parent.name,
+                        allowed.join(", ")
+                    )));
+                }
+                Node::Text(text)
+                    if !text.trim().is_empty() && !HEADINGS.contains(&parent.name.as_str()) =>
+                {
+                    return Err(self.error(format!(
+                        "<{}> holds text, which only a heading may",
+                        parent.name
+                    )));
+                }
+                _ => {}
+            }
         }
+        Ok(())
+    }
+
+    fn element(&self, element: &Element) -> std::result::Result<(), String> {
+        if let Some(string) = element.attribute("string") {
+            self.placeholders(string)?;
+        }
+        match element.name.as_str() {
+            "field" => self.field(element),
+            "block" | "page" => self.children(element, CONTENTS),
+            "side" => self.children(element, &["block", "pages", "chatter"]),
+            "pages" => {
+                for page in element.children.iter().filter_map(as_element) {
+                    if page.name != "page" {
+                        return Err(
+                            self.error(format!("<pages> holds <{}>: only <page> may", page.name))
+                        );
+                    }
+                    self.required(page, "name")?;
+                }
+                self.children(element, &["page"])
+            }
+            "buttons" => {
+                for button in element.children.iter().filter_map(as_element) {
+                    self.required(button, "name")?;
+                    let kind = button.attribute("type").unwrap_or_default();
+                    if kind != "method" && kind != "action" {
+                        return Err(self.error(format!(
+                            "button \"{}\" has type \"{kind}\": method or action",
+                            button.attribute("name").unwrap_or_default()
+                        )));
+                    }
+                }
+                self.children(element, &["button"])
+            }
+            "chatter" => self.children(element, &[]),
+            heading if HEADINGS.contains(&heading) => self.children(element, &["field"]),
+            _ => Ok(()),
+        }
+    }
+
+    /// A field the model has; what it holds — a view of its own, later — is not checked here.
+    fn field(&self, element: &Element) -> std::result::Result<(), String> {
+        let name = self.required(element, "name")?;
+        self.known(name)
+    }
+
+    fn known(&self, name: &str) -> std::result::Result<(), String> {
+        if name == "id" || self.model.fields.contains_key(name) {
+            return Ok(());
+        }
+        Err(self.error(format!(
+            "shows field \"{name}\", which model \"{}\" does not have",
+            self.model_name
+        )))
+    }
+
+    fn required<'e>(
+        &self,
+        element: &'e Element,
+        attribute: &str,
+    ) -> std::result::Result<&'e str, String> {
+        element
+            .attribute(attribute)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| self.error(format!("<{}> has no {attribute}", element.name)))
+    }
+
+    /// Every `{{ field }}` of a label names a field of the model; `\{{` is a brace as written.
+    fn placeholders(&self, string: &str) -> std::result::Result<(), String> {
+        let mut rest = string;
+        while let Some(start) = rest.find("{{") {
+            if rest[..start].ends_with('\\') {
+                rest = &rest[start + 2..];
+                continue;
+            }
+            let after = &rest[start + 2..];
+            let end = after
+                .find("}}")
+                .ok_or_else(|| self.error(format!("\"{string}\" opens {{{{ without closing it")))?;
+            let name = after[..end].trim();
+            let is_name =
+                !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+            if !is_name {
+                return Err(self.error(format!(
+                    "\"{string}\" holds {{{{ {name} }}}}: only a field's name may stand there"
+                )));
+            }
+            self.known(name)?;
+            rest = &after[end + 2..];
+        }
+        Ok(())
+    }
+
+    fn error(&self, message: String) -> String {
+        format!("{}: {message}", self.label)
+    }
+}
+
+fn as_element(node: &Node) -> Option<&Element> {
+    match node {
+        Node::Element(element) => Some(element),
+        _ => None,
     }
 }
 
@@ -198,7 +342,8 @@ impl View<MultipleIds> {
 
 impl View<SingleId> {
     /// Refuse views that cannot be shown: markup that does not parse, an extension whose path
-    /// matches nothing, a view inheriting from itself, or one showing a field its model lacks.
+    /// matches nothing, a view inheriting from itself, an element where it may not stand, or a
+    /// field — shown, or named in a label's `{{ field }}` — its model lacks.
     ///
     /// Run once any plugin has loaded, so a view shipped by a later plugin is checked too. A view
     /// of a model not registered yet is left for when its plugin loads.
@@ -207,17 +352,12 @@ impl View<SingleId> {
             let Ok(model) = env.model_manager.try_get_model(&view.model) else {
                 continue;
             };
-            let mut fields = Vec::new();
-            fields_of(&view.root, &mut fields);
-            for field in fields {
-                if field != "id" && !model.fields.contains_key(&field) {
-                    return Err(format!(
-                        "{} shows field \"{field}\", which model \"{}\" does not have",
-                        view.label, view.model
-                    )
-                    .into());
-                }
-            }
+            let arch = Arch {
+                label: &view.label,
+                model_name: &view.model,
+                model,
+            };
+            arch.check(&view.root)?;
         }
         Ok(())
     }

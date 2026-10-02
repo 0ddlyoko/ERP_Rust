@@ -1,7 +1,7 @@
 import { Component, type ComponentClass, computed, inject, load, type PropsOf, registry, resource, t } from "trame";
-import { type Fields, Models } from "../core/models";
-import { type FieldDescription, Orm } from "../core/orm";
-import { Views } from "../core/views";
+import { type Fields, Models } from "@web/core/models";
+import { type FieldDescription, Orm } from "@web/core/orm";
+import { Views } from "@web/core/views";
 import { StringWidget } from "./widgets/string_widget";
 import { defaultWidget, widgets } from "./widgets/widget";
 
@@ -11,6 +11,8 @@ export const viewProps = {
     resModel: t.string(),
     /** Which records: a search domain, all of them when empty. */
     domain: t.array(t.any()).default([]),
+    /** The record shown, by a view showing one; a new one when left out. */
+    resId: t.number().optional(),
 };
 
 /** Views by kind: `list`, `form`. A plugin adds a kind of its own here, or replaces one. */
@@ -71,15 +73,18 @@ export abstract class View extends Component {
         if (fields === undefined || root === undefined) {
             return [];
         }
-        return Array.from(root.getElementsByTagName("field"), (element) => {
-            const name = element.getAttribute("name") ?? "";
-            const field = fields[name];
-            if (field === undefined) {
-                throw new Error(`Model "${this.props.resModel}" shows no field "${name}"`);
-            }
-            const attrs = Object.fromEntries(Array.from(element.attributes, (attr) => [attr.name, attr.value]));
-            return { name, field, label: attrs.string ?? field.label, widget: attrs.widget, attrs };
-        });
+        return Array.from(root.getElementsByTagName("field"), (element) => this.columnOf(element, fields));
+    }
+
+    /** What a `<field>` element shows, with what its attributes say. */
+    protected columnOf(element: Element, fields: Fields): Column {
+        const name = element.getAttribute("name") ?? "";
+        const field = fields[name];
+        if (field === undefined) {
+            throw new Error(`Model "${this.props.resModel}" shows no field "${name}"`);
+        }
+        const attrs = Object.fromEntries(Array.from(element.attributes, (attr) => [attr.name, attr.value]));
+        return { name, field, label: attrs.string ?? field.label, widget: attrs.widget, attrs };
     }
 
     /** The widget a column is shown with: the one it names, or its type's, or plain text. */

@@ -8,7 +8,8 @@
                     <t t-set-slot="fallback" t-slot-scope="failed">
                         <p class="o_view_error">{{ failed.error.message }}</p>
                     </t>
-                    <ActionManager t-if="action" action="action" module="module?.name ?? ''"/>
+                    <ActionManager t-if="action" action="action" module="module?.name ?? ''"
+                                   view="route.view" resId="route.id"/>
                     <p t-else="" class="o_no_action">Nothing to open.</p>
                 </ErrorBoundary>
             </main>

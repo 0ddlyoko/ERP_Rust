@@ -1,6 +1,6 @@
 import { Component, computed, inject, props, state, t } from "trame";
-import { type ActionDescription, leadsTo, type MenuEntry, pathsOf } from "../core/menus";
-import { Session } from "../core/session";
+import { type ActionDescription, leadsTo, type MenuEntry, pathsOf } from "@web/core/menus";
+import { Session } from "@web/core/session";
 
 /**
  * The menu on the left: the module chosen, its menus, a search over every module's, and who is

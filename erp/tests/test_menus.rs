@@ -215,3 +215,20 @@ fn test_only_administrators_read_menus_actions_and_views_directly() -> Result<()
     );
     Ok(())
 }
+
+/// A button may open any action by its external identifier, whoever its form is shown to.
+#[test]
+fn test_an_action_is_loaded_by_its_identifier() -> Result<()> {
+    let app = new_app(&[])?;
+    let mut env = app.new_env_as(employee(&app)?)?;
+    let action = env
+        .get_empty_record::<base::models::Action<_>>()
+        .load(&mut env, "base.action_users".to_string())?;
+    assert_eq!(action["model"], "users");
+    assert_eq!(action["views"], json!(["list", "form"]));
+    let missing = env
+        .get_empty_record::<base::models::Action<_>>()
+        .load(&mut env, "base.nowhere".to_string());
+    assert!(missing.is_err());
+    Ok(())
+}

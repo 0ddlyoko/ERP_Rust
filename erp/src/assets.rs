@@ -80,17 +80,22 @@ impl AssetRegistry {
 
     /// The import map a page declares before loading any module, so a browser resolves
     /// `import … from "trame"` as the compiled TypeScript still writes it.
+    ///
+    /// Each plugin serving files is reached as `@<plugin>/`, its `static/src`: `@web/core/orm.js`
+    /// is the very URL a relative import of that file reaches, so the same module either way.
     pub fn import_map(&self) -> String {
-        let imports: BTreeMap<&str, String> = self
-            .imports
-            .iter()
-            .map(|(name, path)| {
-                (
-                    *name,
-                    format!("/static/{}", path.replacen("/static/", "/", 1)),
-                )
-            })
+        let mut imports: BTreeMap<String, String> = self
+            .files
+            .keys()
+            .filter_map(|path| path.split_once("/static/"))
+            .map(|(plugin, _)| (format!("@{plugin}/"), format!("/static/{plugin}/src/")))
             .collect();
+        imports.extend(self.imports.iter().map(|(name, path)| {
+            (
+                name.to_string(),
+                format!("/static/{}", path.replacen("/static/", "/", 1)),
+            )
+        }));
         serde_json::json!({ "imports": imports }).to_string()
     }
 

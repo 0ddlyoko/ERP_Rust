@@ -1,8 +1,8 @@
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::data;
 use erp::environment::Environment;
 use erp::serde_json::{Value, json};
-use erp::types::field::{IdMode, SingleId};
+use erp::types::field::{IdMode, MultipleIds, SingleId};
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -12,7 +12,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 /// `views` lists the kinds of views a client offers, the first one shown: `list,form`. `domain`
 /// narrows the records, as JSON in the form a caller sends; all of them when left out.
 #[derive(Model)]
-#[erp(id = "action")]
+#[erp(id = "action", methods)]
 #[allow(dead_code)]
 pub struct Action<Mode: IdMode> {
     pub id: Mode,
@@ -53,5 +53,20 @@ impl Action<SingleId> {
             "views": views,
             "domain": domain,
         }))
+    }
+}
+
+#[erp_methods]
+impl Action<MultipleIds> {
+    /// An action by its external identifier, described the way a client opens it.
+    ///
+    /// As sudo: actions are read by administrators only, yet a button of anybody's form may open
+    /// one. What it opens stays under the rights of its model.
+    #[erp(rpc)]
+    pub fn load(&self, env: &mut Environment, xml_id: String) -> Result<Value> {
+        let _ = self;
+        let env = &mut *env.sudo();
+        let action: Action<SingleId> = env.named(&xml_id)?;
+        action.describe(env)
     }
 }
