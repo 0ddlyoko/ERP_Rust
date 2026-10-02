@@ -1,4 +1,4 @@
-import { inject } from "trame";
+import { inject, load, resource } from "trame";
 import type { Domain } from "./orm";
 import { Orm } from "./orm";
 
@@ -21,21 +21,16 @@ export interface MenuEntry {
     children: MenuEntry[];
 }
 
-/** The menus the user sees: asked for once, kept for the page. */
+/**
+ * The menus the user sees: loaded the first time something reads them, then kept for the page.
+ *
+ * Nothing it reads can change, so it is never loaded again on its own; `refresh(menus.tree)` does,
+ * for whatever changes the menus, such as installing a plugin.
+ */
 export class Menus {
     @inject(Orm) orm!: Orm;
 
-    private known: Promise<MenuEntry[]> | undefined;
-
-    tree(): Promise<MenuEntry[]> {
-        if (this.known === undefined) {
-            this.known = this.orm.call<MenuEntry[]>("menu", "tree");
-            this.known.catch(() => {
-                this.known = undefined;
-            });
-        }
-        return this.known;
-    }
+    @resource accessor tree: MenuEntry[] = load(() => this.orm.call<MenuEntry[]>("menu", "tree"));
 }
 
 /** Every action of a tree, depth first, in the order the menus show them. */

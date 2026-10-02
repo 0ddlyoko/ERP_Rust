@@ -1,4 +1,4 @@
-import { Component, computed, inject, load, resource, state } from "trame";
+import { Component, computed, inject, state } from "trame";
 import { type ActionDescription, actionsOf, type MenuEntry, Menus } from "../core/menus";
 import { ActionManager } from "./action_manager";
 
@@ -14,7 +14,9 @@ export class WebClient extends Component {
 
     @inject(Menus) menus!: Menus;
 
-    @resource accessor tree: MenuEntry[] = load(() => this.menus.tree());
+    get tree(): MenuEntry[] {
+        return this.menus.tree;
+    }
 
     @state accessor chosen: ActionDescription | null = null;
     @state accessor openEntry: MenuEntry | null = null;
