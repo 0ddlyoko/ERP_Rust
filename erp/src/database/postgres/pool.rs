@@ -8,7 +8,9 @@
 //! instead of handing it to the next caller.
 
 use crate::database::{DatabaseConfig, ErrorType};
-use postgres::{Client, NoTls};
+use crate::request_log;
+use postgres::types::ToSql;
+use postgres::{Client, NoTls, Row, ToStatement};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
@@ -270,6 +272,47 @@ impl PooledConnection {
     /// that leaves its state uncertain, such as a rollback.
     pub fn mark_broken(&mut self) {
         self.broken = true;
+    }
+
+    /// [`Client::query`], counted in the request's SQL.
+    pub fn query<T>(
+        &mut self,
+        query: &T,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> std::result::Result<Vec<Row>, postgres::Error>
+    where
+        T: ?Sized + ToStatement,
+    {
+        request_log::sql(|| self.deref_mut().query(query, params))
+    }
+
+    /// [`Client::query_one`], counted in the request's SQL.
+    pub fn query_one<T>(
+        &mut self,
+        query: &T,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> std::result::Result<Row, postgres::Error>
+    where
+        T: ?Sized + ToStatement,
+    {
+        request_log::sql(|| self.deref_mut().query_one(query, params))
+    }
+
+    /// [`Client::execute`], counted in the request's SQL.
+    pub fn execute<T>(
+        &mut self,
+        query: &T,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> std::result::Result<u64, postgres::Error>
+    where
+        T: ?Sized + ToStatement,
+    {
+        request_log::sql(|| self.deref_mut().execute(query, params))
+    }
+
+    /// [`Client::batch_execute`], counted in the request's SQL.
+    pub fn batch_execute(&mut self, query: &str) -> std::result::Result<(), postgres::Error> {
+        request_log::sql(|| self.deref_mut().batch_execute(query))
     }
 }
 

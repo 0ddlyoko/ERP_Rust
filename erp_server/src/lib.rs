@@ -14,6 +14,7 @@ use axum::http::{HeaderMap, Method, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use erp::app::Application;
+use erp::request_log::{self, RequestLog};
 use erp::{http, jsonrpc};
 use std::error::Error;
 use std::net::SocketAddr;
@@ -165,8 +166,16 @@ async fn call(
     //
     // The token travels no further than this: what it identifies is resolved down there, where a
     // database connection is already open.
-    let answer =
-        tokio::task::spawn_blocking(move || jsonrpc::handle(&app, token.as_deref(), &body)).await;
+    let answer = tokio::task::spawn_blocking(move || {
+        request_log::start();
+        let answer = jsonrpc::handle(&app, token.as_deref(), &body);
+        (answer, request_log::current())
+    })
+    .await;
+    let (answer, log) = match answer {
+        Ok((answer, log)) => (Ok(answer), log),
+        Err(error) => (Err(error), RequestLog::default()),
+    };
 
     let response = match answer {
         // A notification is owed nothing, which over HTTP is an empty answer rather than an
@@ -205,8 +214,9 @@ async fn call(
     // because the path never varies: every call is a POST to the same place, and only the name
     // inside says what happened.
     tracing::info!(
-        "{caller} POST /jsonrpc {} {asked} {:.1?}",
+        "{caller} POST /jsonrpc {} {asked} {} {:.1?}",
         response.status().as_u16(),
+        described(&log),
         started.elapsed(),
     );
     response
@@ -240,7 +250,16 @@ async fn controller(
         return (StatusCode::SERVICE_UNAVAILABLE, "shutting down").into_response();
     };
     let app = Arc::clone(&server.app);
-    let answer = tokio::task::spawn_blocking(move || http::handle(&app, request)).await;
+    let answer = tokio::task::spawn_blocking(move || {
+        request_log::start();
+        let answer = http::handle(&app, request);
+        (answer, request_log::current())
+    })
+    .await;
+    let (answer, log) = match answer {
+        Ok((answer, log)) => (Ok(answer), log),
+        Err(error) => (Err(error), RequestLog::default()),
+    };
 
     let response = match answer {
         Ok(answer) => {
@@ -271,12 +290,25 @@ async fn controller(
     };
 
     tracing::info!(
-        "{caller} {method} {} {} {:.1?}",
+        "{caller} {method} {} {} {} {:.1?}",
         uri.path(),
         response.status().as_u16(),
+        described(&log),
         started.elapsed(),
     );
     response
+}
+
+/// Who a request was answered for and the SQL it took: `uid=2 sql=12/3.4ms`, `uid=-` for nobody.
+fn described(log: &RequestLog) -> String {
+    let uid = log
+        .uid
+        .map_or_else(|| "-".to_string(), |uid| uid.to_string());
+    format!(
+        "uid={uid} sql={}/{:.1}ms",
+        log.queries,
+        log.sql_time.as_secs_f64() * 1000.0
+    )
 }
 
 /// The bearer token a caller presented, if it presented one.

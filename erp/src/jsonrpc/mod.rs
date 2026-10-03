@@ -194,6 +194,7 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
         Some(token) => identify(app, &mut env, token)?,
         None => env.uid(),
     };
+    crate::request_log::identified(caller);
 
     if app.model_manager.try_get_model(model_name).is_err()
         || app

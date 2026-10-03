@@ -13,6 +13,7 @@ pub mod inheritance;
 pub mod jsonrpc;
 pub mod model;
 pub mod plugin;
+pub mod request_log;
 pub mod server_config;
 pub mod shared_cache;
 pub mod util;

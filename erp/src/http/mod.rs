@@ -73,6 +73,7 @@ fn answer(app: &Application, call: HttpFn, request: &Request) -> Response {
         },
         None => None,
     };
+    crate::request_log::identified(caller.or(env.uid()));
     let answer = match caller {
         Some(uid) => call(&mut env.as_user(uid), request),
         None => call(&mut env, request),
