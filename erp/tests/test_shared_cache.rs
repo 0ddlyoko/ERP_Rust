@@ -63,3 +63,60 @@ fn test_an_undeclared_cache_is_an_error() -> Result<()> {
     assert!(env.cached("nobody.declared", "x", |_| Ok(0)).is_err());
     Ok(())
 }
+
+/// The names of every tag, as the cache `test.tag_names` keeps them.
+fn tag_names(env: &mut erp::environment::Environment) -> Result<Vec<String>> {
+    let value = env.cached("test.tag_names", "all", |env| {
+        let ids = env.search_ids("tag", &erp::search::SearchType::Nothing)?;
+        let mut names: Vec<String> = env
+            .read("tag", &erp_types::field::MultipleIds::from(ids), &["name"])?
+            .iter()
+            .filter_map(|row| row.get_option::<&String>("name").cloned())
+            .collect();
+        names.sort();
+        Ok(names)
+    })?;
+    Ok((*value).clone())
+}
+
+/// What a transaction changed and then rolled back never reaches the cache: other requests keep
+/// reading what is committed, while the transaction itself saw its own change.
+#[test]
+fn test_a_rolled_back_change_never_reaches_the_cache() -> Result<()> {
+    let mut app = new_app()?;
+    app.model_manager
+        .shared_caches
+        .register("test.tag_names", &["tag"]);
+    let mut env = app.new_env_as_option(None)?;
+    data::load(
+        &mut env,
+        "seed_plugin",
+        r#"<erp><tag id="kept_tag"><name>kept</name></tag></erp>"#,
+    )?;
+    let id = data::resolve(&mut env, "seed_plugin.kept_tag")?.unwrap();
+    env.close()?;
+
+    let mut env = app.new_env_as_option(None)?;
+    let committed = tag_names(&mut env)?;
+    env.close()?;
+    assert!(committed.contains(&"kept".to_string()), "{committed:?}");
+
+    let mut env = app.new_env_as_option(None)?;
+    let mut values = MapOfFields::default();
+    values.insert("name", "never committed");
+    env.write("tag", &SingleId::from(id), values)?;
+    let seen = tag_names(&mut env)?;
+    assert!(
+        seen.contains(&"never committed".to_string()),
+        "its own change: {seen:?}"
+    );
+    drop(env);
+
+    let mut env = app.new_env_as_option(None)?;
+    assert_eq!(
+        tag_names(&mut env)?,
+        committed,
+        "the rollback left the cache as committed"
+    );
+    Ok(())
+}

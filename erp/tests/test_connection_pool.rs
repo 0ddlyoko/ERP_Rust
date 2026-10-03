@@ -393,3 +393,32 @@ fn test_a_healthy_pool_discards_nothing() -> Result<()> {
     );
     Ok(())
 }
+
+/// A transaction whose connection dies before it rolls back leaves nothing behind: the rollback
+/// fails, the connection is thrown away rather than lent again, and the next caller is served
+/// without what the dead transaction wrote.
+#[test]
+fn test_a_connection_that_could_not_roll_back_is_not_lent_again() -> Result<()> {
+    let app = app_or_skip!("pool_failed_rollback", 2, 0);
+
+    let mut env = app.new_env()?;
+    make_invoice(&mut env, "never committed")?;
+    env.save_all_to_db()?;
+    let before = app.pool_discarded().unwrap_or(0);
+    let killed = terminate_this_pools_backends("pool_failed_rollback")?;
+    assert!(killed >= 1, "the test must actually have killed something");
+    drop(env);
+
+    assert!(
+        app.pool_discarded().unwrap_or(0) > before,
+        "the connection that could not roll back is thrown away"
+    );
+    let mut env = app.new_env()?;
+    assert_eq!(
+        count_invoices(&mut env)?,
+        0,
+        "nothing of the dead transaction"
+    );
+    env.close()?;
+    Ok(())
+}

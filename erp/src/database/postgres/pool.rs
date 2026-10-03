@@ -131,6 +131,7 @@ impl ConnectionPool {
         Ok(PooledConnection {
             pool: Arc::clone(&self.inner),
             client: Some(client),
+            broken: false,
         })
     }
 }
@@ -226,6 +227,19 @@ impl Shared {
         Ok(client)
     }
 
+    /// Close a connection rather than take it back, making room for a new one.
+    fn discard(&self, client: Client) {
+        {
+            let mut state = self.state();
+            state.open = state.open.saturating_sub(1);
+        }
+        self.discarded.fetch_add(1, Ordering::Relaxed);
+        self.returned.notify_one();
+        // Closing talks to the network, so it happens without the lock, and off any thread
+        // that drives the async runtime.
+        std::thread::spawn(move || drop(client));
+    }
+
     /// Take a connection back, unless it is no longer usable.
     fn put_back(&self, client: Client) {
         let mut state = self.state();
@@ -248,6 +262,15 @@ pub struct PooledConnection {
     pool: Arc<Shared>,
     /// Always `Some` until dropped; an `Option` only so the client can be moved out there.
     client: Option<Client>,
+    broken: bool,
+}
+
+impl PooledConnection {
+    /// Close the connection once it is let go, rather than lend it again: something failed
+    /// that leaves its state uncertain, such as a rollback.
+    pub fn mark_broken(&mut self) {
+        self.broken = true;
+    }
 }
 
 impl Deref for PooledConnection {
@@ -266,7 +289,12 @@ impl DerefMut for PooledConnection {
 
 impl Drop for PooledConnection {
     fn drop(&mut self) {
-        if let Some(client) = self.client.take() {
+        let Some(client) = self.client.take() else {
+            return;
+        };
+        if self.broken {
+            self.pool.discard(client);
+        } else {
             self.pool.put_back(client);
         }
     }
