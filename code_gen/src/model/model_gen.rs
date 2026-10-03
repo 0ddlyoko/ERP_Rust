@@ -194,7 +194,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             }
         } else if *is_required {
             quote! {
-                pub fn #set_field_ident(&self, value: #field_type_keyword, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident<V>(&self, value: V, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
+                where
+                    #field_type_keyword: erp::types::field::Accepts<V>,
+                {
+                    let value = <#field_type_keyword as erp::types::field::Accepts<V>>::accept(value);
                     #this.set(#field_name, value, env)
                 }
             }
@@ -469,17 +473,22 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
-        // The kind is derived from the declared Rust type by building its default once at
-        // startup, which reuses the existing `From<T> for FieldType` impls — including the
-        // blanket one for enums — instead of matching on type names in the macro.
-        let kind = if *is_reference_multi {
-            quote! { erp::types::field::FieldKind::Refs }
+        // The kind is derived from the declared Rust type at startup, not from its name: an enum
+        // declared with `#[selection]` is found as one and stored as text, anything else by
+        // building its default once.
+        let (kind, selection) = if *is_reference_multi {
+            (quote! { erp::types::field::FieldKind::Refs }, quote! { None })
         } else if *is_reference {
-            quote! { erp::types::field::FieldKind::Ref }
+            (quote! { erp::types::field::FieldKind::Ref }, quote! { None })
         } else {
-            quote! {
-                erp::types::field::FieldType::from(#field_type_keyword::default()).kind()
-            }
+            let described = quote! {
+                {
+                    #[allow(unused_imports)]
+                    use erp::types::field::{PlainFieldProbe as _, SelectionFieldProbe as _};
+                    (&&erp::types::field::FieldProbe::<#field_type_keyword>::new()).describe()
+                }
+            };
+            (quote! { #described.0 }, quote! { #described.1 })
         };
 
         let label = match label {
@@ -563,6 +572,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     asks_for_storage: #asks_for_storage,
                     compute: #compute,
                     field_ref: #field_reference,
+                    selection: #selection,
                 }
             }
         }

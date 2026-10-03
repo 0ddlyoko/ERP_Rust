@@ -1,10 +1,10 @@
 use crate::models::{BaseSaleOrderLine, BaseTag, SaleOrderLine};
-use code_gen::{Model, erp_methods};
+use code_gen::{Model, erp_methods, selection};
 use erp::environment::Environment;
-use erp::types::field::{EnumType, IdMode, MultipleIds, Reference};
+use erp::types::field::{IdMode, MultipleIds, Reference};
 use std::error::Error;
 
-#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
+#[selection]
 pub enum SaleOrderState {
     #[default]
     Draft,
@@ -12,31 +12,6 @@ pub enum SaleOrderState {
     Paid,
     Cancelled,
 }
-
-impl From<SaleOrderState> for &'static str {
-    fn from(value: SaleOrderState) -> &'static str {
-        match value {
-            SaleOrderState::Draft => "draft",
-            SaleOrderState::Sent => "sent",
-            SaleOrderState::Paid => "paid",
-            SaleOrderState::Cancelled => "cancelled",
-        }
-    }
-}
-
-impl From<&str> for &SaleOrderState {
-    fn from(value: &str) -> Self {
-        match value {
-            "draft" => &SaleOrderState::Draft,
-            "sent" => &SaleOrderState::Sent,
-            "paid" => &SaleOrderState::Paid,
-            "cancelled" => &SaleOrderState::Cancelled,
-            _ => &SaleOrderState::Cancelled,
-        }
-    }
-}
-
-impl EnumType for SaleOrderState {}
 
 #[derive(Model)]
 #[erp(id = "sale_order", methods)]

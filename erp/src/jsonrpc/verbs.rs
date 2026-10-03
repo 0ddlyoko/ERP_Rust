@@ -5,9 +5,9 @@
 
 use crate::access::Operation;
 use crate::environment::Environment;
-use crate::model::RpcFn;
+use crate::model::{RpcFn, Selections};
 use erp_internal_types::FinalInternalField;
-use erp_search::{OrderBy, SearchOptions, SearchType};
+use erp_search::{OrderBy, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
 use erp_types::field::{
     FieldKind, FieldKinds, FieldReferenceType, IdMode, MapOfFieldsSeed, MultipleIds,
 };
@@ -200,9 +200,67 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
                     None => break,
                 }
             }
+            refuse_unknown_keys(env, model_name, tuple)?;
             SearchType::Tuple(tuple.clone())
         }
     })
+}
+
+/// Refuse comparing a field holding an enum with a key it does not have: a misspelt key would
+/// quietly select nothing. Patterns (`like`) are left alone.
+fn refuse_unknown_keys(env: &Environment, model_name: &str, tuple: &SearchTuple) -> Result<()> {
+    if !matches!(
+        tuple.operator,
+        SearchOperator::Equal
+            | SearchOperator::NotEqual
+            | SearchOperator::In
+            | SearchOperator::NotIn
+    ) {
+        return Ok(());
+    }
+    let Some((last, through)) = tuple.left.path.split_last() else {
+        return Ok(());
+    };
+    let mut current = model_name.to_string();
+    for segment in through {
+        let model = env.model_manager.try_get_model(&current)?;
+        match &model.try_get_internal_field(segment)?.inverse {
+            Some(reference) => current = reference.target_model.to_string(),
+            None => return Ok(()),
+        }
+    }
+    let model = env.model_manager.try_get_model(&current)?;
+    let Some(family) = model.fields.get(last).and_then(|field| field.selection) else {
+        return Ok(());
+    };
+    let keys = match &tuple.right {
+        RightTuple::String(key) => vec![key],
+        RightTuple::Array(values) => values
+            .iter()
+            .filter_map(|value| match value {
+                RightTuple::String(key) => Some(key),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    let selections = &env.model_manager.selections;
+    if let Some(unknown) = keys
+        .into_iter()
+        .find(|key| !selections.contains(family.family, key))
+    {
+        let known: Vec<&str> = selections
+            .choices(family.family)
+            .iter()
+            .map(|choice| choice.key.as_str())
+            .collect();
+        return Err(format!(
+            "\"{unknown}\" is not a value of field \"{last}\" of model \"{current}\": {}",
+            known.join(", ")
+        )
+        .into());
+    }
+    Ok(())
 }
 
 /// Drop sort keys naming a hidden field.
@@ -449,7 +507,7 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
         let Some(field) = visible(&name) else {
             return Err(format!("Model \"{model_name}\" has no field \"{name}\"").into());
         };
-        described.insert(name, describe(field)?);
+        described.insert(name, describe(field, &env.model_manager.selections)?);
     }
     Ok(Value::Object(described))
 }
@@ -514,9 +572,11 @@ fn describe_id() -> Value {
     })
 }
 
-fn describe(field: &FinalInternalField) -> Result<Value> {
+/// A field as the client reads it; one holding an enum is a `selection`, with its values in
+/// order as `[[key, label], ...]`.
+fn describe(field: &FinalInternalField, selections: &Selections) -> Result<Value> {
     let mut described = json!({
-        "type": kind_name(field.kind),
+        "type": if field.selection.is_some() { "selection" } else { kind_name(field.kind) },
         "label": field.label,
         "required": field.required,
         "readonly": field.compute.is_some(),
@@ -529,6 +589,13 @@ fn describe(field: &FinalInternalField) -> Result<Value> {
             FieldReferenceType::O2M { .. } => "one2many",
             FieldReferenceType::M2M { .. } => "many2many",
         });
+    }
+    if let Some(family) = field.selection {
+        described["values"] = selections
+            .choices(family.family)
+            .iter()
+            .map(|choice| json!([choice.key, choice.label]))
+            .collect();
     }
     if let Some(default) = &field.default_value {
         described["default"] = serde_json::to_value(default)?;

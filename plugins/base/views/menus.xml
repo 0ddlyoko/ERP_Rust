@@ -13,6 +13,7 @@
             <menu id="menu_security" name="Security">
                 <menu id="menu_access_rules" name="Access rules" action="action_access_rules"/>
             </menu>
+            <menu id="menu_plugins" name="Plugins" action="action_plugins"/>
         </menu>
     </menu>
 </erp>

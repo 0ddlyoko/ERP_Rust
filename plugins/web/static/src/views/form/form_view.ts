@@ -107,11 +107,15 @@ export class FormView extends View {
         );
     }
 
-    /** A field's value as a label reads it: a record's name, how many records, or as it is. */
+    /** A field's value as a label reads it: a record's name, how many records, a value's label, or as it is. */
     display(name: string): string {
         const value = this.current[name];
         if (value === null || value === undefined || value === false) {
             return "";
+        }
+        const values = this.fields?.[name]?.values;
+        if (values !== undefined) {
+            return values.find(([key]) => key === value)?.[1] ?? String(value);
         }
         if (Array.isArray(value)) {
             if (this.fields?.[name]?.type === "ref") {

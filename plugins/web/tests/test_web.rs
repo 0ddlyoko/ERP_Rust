@@ -800,6 +800,8 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/views/widgets/record_search.js",
         "/static/web/src/views/widgets/tags_widget.js",
         "/static/web/src/views/widgets/list_widget.js",
+        "/static/web/src/views/widgets/selection_widget.js",
+        "/static/web/src/views/widgets/statusbar_widget.js",
         "/static/web/src/core/models.js",
         "/static/web/src/core/views.js",
         "/static/web/src/core/menus.js",

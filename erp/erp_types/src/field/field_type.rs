@@ -205,32 +205,6 @@ impl From<&bool> for FieldType {
     }
 }
 
-// Enums
-pub trait EnumType: Debug + PartialEq + Eq + Copy + Clone {}
-
-impl<'a, E> From<&'a FieldType> for Option<&'a E>
-where
-    E: EnumType,
-    &'a str: Into<&'a E>,
-{
-    fn from(t: &'a FieldType) -> Self {
-        match t {
-            FieldType::String(s) => Some(s.as_str().into()),
-            _ => None,
-        }
-    }
-}
-
-impl<'a, E> From<E> for FieldType
-where
-    E: EnumType + Into<&'a str>,
-{
-    fn from(t: E) -> Self {
-        let result: &str = t.into();
-        FieldType::String(result.to_string())
-    }
-}
-
 // Ref
 impl<'a> From<&'a FieldType> for Option<&'a u32> {
     fn from(t: &'a FieldType) -> Self {

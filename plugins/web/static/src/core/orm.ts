@@ -22,13 +22,14 @@ export type Values = Record<string, unknown>;
 
 /** How a field is shown and edited, as the server describes it. */
 export interface FieldDescription {
-    type: "string" | "integer" | "decimal" | "bool" | "date" | "datetime" | "ref" | "refs";
+    type: "string" | "integer" | "decimal" | "bool" | "date" | "datetime" | "ref" | "refs" | "selection";
     label: string;
     required: boolean;
     readonly: boolean;
     stored: boolean;
     relation?: string;
     relation_kind?: "many2one" | "one2many" | "many2many";
+    values?: [string, string][];
     default?: unknown;
 }
 

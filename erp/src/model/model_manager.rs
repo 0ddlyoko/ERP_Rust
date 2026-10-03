@@ -7,11 +7,13 @@ use crate::model::HasMethods;
 use crate::model::Model;
 use crate::model::ModelNotFound;
 use crate::model::rpc::{RpcFn, RpcRegistry};
+use crate::model::selections::Selections;
 use crate::shared_cache::SharedCaches;
 use erp_internal_types::{FinalInternalModel, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
+use erp_types::field::{FieldType, Selection};
 use erp_types::method::MethodFn;
 use std::collections::{HashMap, HashSet};
 
@@ -36,6 +38,7 @@ pub struct ModelManager {
     pub assets: AssetRegistry,
     pub load_hooks: Vec<LoadHook>,
     pub shared_caches: SharedCaches,
+    pub selections: Selections,
     data_bodies: HashMap<String, String>,
     data_children: HashMap<String, String>,
     pub(crate) loaded_plugins: Vec<String>,
@@ -61,6 +64,12 @@ impl ModelManager {
 
         let plugin_name = plugin_name.to_string();
         M::register_methods(self, &plugin_name);
+    }
+
+    /// Apply what an enum declared with `#[selection(extends = ...)]` names, adds, moves or
+    /// relabels in its family. Enums are applied in the order plugins register them.
+    pub fn register_selection<E: Selection>(&mut self) {
+        self.selections.extend::<E>();
     }
 
     /// Expose a method to remote callers.
@@ -94,9 +103,38 @@ impl ModelManager {
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {
         self._post_register_name_fields();
+        self._post_register_selections();
         self._post_register_storage();
         self._post_register_m2o_links();
         self._post_register_compute_links();
+    }
+
+    /// Start the family of every field holding an enum, and refuse a default its family lacks.
+    fn _post_register_selections(&mut self) {
+        for model in self.models.values() {
+            for field in model.fields.values() {
+                let Some(family) = field.selection else {
+                    continue;
+                };
+                self.selections.ensure(family);
+                if let Some(FieldType::String(default)) = &field.default_value
+                    && !self.selections.contains(family.family, default)
+                {
+                    panic!(
+                        "Field \"{}\" of model \"{}\" defaults to \"{default}\", which is not one of \
+                         its values: {}",
+                        field.name,
+                        model.name,
+                        self.selections
+                            .choices(family.family)
+                            .iter()
+                            .map(|choice| choice.key.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
+            }
+        }
     }
 
     /// Refuse a declared name field the model does not have: names would quietly be ids instead.

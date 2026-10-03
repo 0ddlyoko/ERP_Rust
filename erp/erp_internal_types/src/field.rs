@@ -1,4 +1,6 @@
-use erp_types::field::{FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType};
+use erp_types::field::{
+    FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType, SelectionFamily,
+};
 use std::collections::HashSet;
 
 /// Field descriptor represented by a single field in a single struct model
@@ -13,6 +15,7 @@ pub struct InternalField {
     pub asks_for_storage: bool,
     pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
+    pub selection: Option<SelectionFamily>,
 }
 
 /// Final descriptor of a field.
@@ -45,6 +48,7 @@ pub struct FinalInternalField {
     // If the type is M2O, O2M or M2M, there is an inverse here (but the field could be empty)
     pub inverse: Option<FieldReference>,
     pub depends: Vec<Vec<FieldDepend>>,
+    pub selection: Option<SelectionFamily>,
     is_init: bool,
 }
 
@@ -63,6 +67,7 @@ impl FinalInternalField {
             compute: None,
             inverse: None,
             depends: Vec::new(),
+            selection: None,
             is_init: false,
         }
     }
@@ -156,6 +161,17 @@ impl FinalInternalField {
         }
         if let Some(inverse) = &field_descriptor.field_ref {
             self.inverse = Some(inverse.clone());
+        }
+        if let Some(selection) = field_descriptor.selection {
+            if let Some(known) = self.selection
+                && known.family != selection.family
+            {
+                panic!(
+                    "Field {} holds values of {} and of {} in two different structs",
+                    self.name, known.family, selection.family
+                );
+            }
+            self.selection = Some(selection);
         }
         self.is_init = true;
     }

@@ -123,6 +123,7 @@ fn test_conflicting_kinds_are_rejected() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
     field.register_internal_field(&InternalField {
         name: "amount".to_string(),
@@ -135,6 +136,7 @@ fn test_conflicting_kinds_are_rejected() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 }
 
@@ -154,6 +156,7 @@ fn test_an_extension_can_supply_a_default() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
     assert_eq!(field.default_value, None);
 
@@ -168,6 +171,7 @@ fn test_an_extension_can_supply_a_default() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
     assert_eq!(
         field.default_value,

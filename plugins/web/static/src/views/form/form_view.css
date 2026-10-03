@@ -411,3 +411,90 @@
     background: color-mix(in oklch, var(--o-danger) 12%, white);
     color: var(--o-danger);
 }
+
+select.o_input {
+    appearance: none;
+    padding-right: 34px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235a6678' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+.o_widget.o_statusbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.o_statusbar_step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 36px;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_statusbar_step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 27px;
+    bottom: -9px;
+    width: 2px;
+    background: var(--o-border);
+}
+
+.o_statusbar_passed:not(:last-child)::after {
+    background: var(--o-accent);
+}
+
+.o_statusbar_dot {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: 2px solid var(--o-border);
+    border-radius: 999px;
+    background: var(--o-surface);
+    color: #ffffff;
+}
+
+.o_statusbar_passed .o_statusbar_dot {
+    border-color: var(--o-accent);
+    background: var(--o-accent);
+}
+
+.o_statusbar_current .o_statusbar_dot {
+    border: 5px solid var(--o-accent);
+}
+
+.o_statusbar_passed {
+    color: var(--o-ink);
+}
+
+.o_statusbar_current {
+    color: var(--o-ink);
+    font-weight: 700;
+}
+
+button.o_statusbar_label {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+button.o_statusbar_label:hover {
+    color: var(--o-accent-strong);
+    text-decoration: underline;
+}

@@ -3,6 +3,7 @@ extern crate proc_macro;
 mod controller;
 mod methods;
 mod model;
+mod selection;
 
 use proc_macro::TokenStream;
 use syn::{DeriveInput, ItemImpl, parse_macro_input};
@@ -21,6 +22,19 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn erp_methods(_attr: TokenStream, item: TokenStream) -> TokenStream {
     methods::expand(parse_macro_input!(item as ItemImpl))
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+/// Declares an enum whose values a field holds, stored by key: `#[selection]`, or
+/// `#[selection(extends = OtherEnum)]` to name, add to, move or relabel the values of another.
+///
+/// Each variant may say `#[selection(key = "...", label = "...", after = "...", before = "...")]`.
+/// Every selection gets an `Extended` variant for the values other enums of its family add.
+#[proc_macro_attribute]
+pub fn selection(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as selection::EnumArgs);
+    selection::expand(args, parse_macro_input!(item as syn::ItemEnum))
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

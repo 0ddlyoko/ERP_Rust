@@ -76,7 +76,8 @@ fn settings() -> Value {
                         "User interface",
                         [["Views", []], ["Menus", []], ["Actions", []]]
                     ],
-                    ["Security", [["Access rules", []]]]
+                    ["Security", [["Access rules", []]]],
+                    ["Plugins", []]
                 ]
             ]
         ]

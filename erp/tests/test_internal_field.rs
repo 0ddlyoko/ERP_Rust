@@ -27,6 +27,7 @@ fn test_register_field() {
             depends: vec!["age", "test"],
         }),
         field_ref: None,
+        selection: None,
     });
 
     field_age.register_internal_field(&InternalField {
@@ -40,6 +41,7 @@ fn test_register_field() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -77,6 +79,7 @@ fn test_register_field() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -108,6 +111,7 @@ fn test_register_field() {
             depends: vec!["age", "test2"],
         }),
         field_ref: None,
+        selection: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -142,6 +146,7 @@ fn test_register_field() {
             depends: vec!["age"],
         }),
         field_ref: None,
+        selection: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -178,6 +183,7 @@ fn test_register_field_without_default_value_is_allowed() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     assert_eq!(field_name.kind, FieldKind::String);
@@ -204,6 +210,7 @@ fn test_storage_asked_for_a_field_nothing_computes() {
         asks_for_storage: true,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     let wrong = field.settle_storage().expect_err("nothing computes it");
@@ -226,6 +233,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     field_name.register_internal_field(&InternalField {
@@ -239,6 +247,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 }
 

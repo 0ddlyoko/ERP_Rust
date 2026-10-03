@@ -1,33 +1,12 @@
-use code_gen::Model;
-use erp::types::field::{EnumType, IdMode};
+use code_gen::{Model, selection};
+use erp::types::field::IdMode;
 
-#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
+#[selection]
 pub enum PluginState {
     #[default]
     NotInstalled,
     Installed,
 }
-
-impl From<PluginState> for &'static str {
-    fn from(value: PluginState) -> &'static str {
-        match value {
-            PluginState::Installed => "installed",
-            PluginState::NotInstalled => "not_installed",
-        }
-    }
-}
-
-impl From<&str> for &PluginState {
-    fn from(value: &str) -> Self {
-        match value {
-            "not_installed" => &PluginState::NotInstalled,
-            "installed" => &PluginState::Installed,
-            _ => &PluginState::NotInstalled,
-        }
-    }
-}
-
-impl EnumType for PluginState {}
 
 #[derive(Model)]
 #[erp(id = "plugin")]

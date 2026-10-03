@@ -91,6 +91,7 @@ impl FinalInternalModel {
                 asks_for_storage: field.asks_for_storage,
                 compute: field.compute,
                 field_ref: field.field_ref,
+                selection: field.selection,
             };
             self.register_internal_field(&internal_field);
             final_fields.insert(field_name, internal_field);

@@ -16,6 +16,7 @@ fn test_get_fields_name() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     internal_model.register_internal_field(&InternalField {
@@ -29,6 +30,7 @@ fn test_get_fields_name() {
         asks_for_storage: false,
         compute: None,
         field_ref: None,
+        selection: None,
     });
 
     internal_model.settle_storage().expect("plain fields");

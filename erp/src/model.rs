@@ -2,11 +2,13 @@ mod errors;
 mod iterator;
 mod model_manager;
 mod rpc;
+mod selections;
 
 pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;
 pub use rpc::*;
+pub use selections::*;
 
 use crate::environment::Environment;
 use erp_types::field::RequiredFieldEmpty;

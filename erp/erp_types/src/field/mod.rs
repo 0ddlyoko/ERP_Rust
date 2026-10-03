@@ -8,6 +8,7 @@ mod field_type;
 mod id;
 mod password;
 mod reference;
+mod selection;
 
 pub use deserialize::*;
 pub use error::*;
@@ -19,6 +20,7 @@ pub use field_type::*;
 pub use id::*;
 pub use password::*;
 pub use reference::*;
+pub use selection::*;
 
 /// Re-exported so generated model code and plugins can name the field types without depending on
 /// `chrono` and `rust_decimal` directly.

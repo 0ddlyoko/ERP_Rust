@@ -1,6 +1,7 @@
 //! Writing field values into the cache, keeping relational mirrors coherent.
 use super::*;
 use crate::access::Operation;
+use erp_internal_types::FinalInternalField;
 
 impl<'mm> Environment<'mm> {
     /// Write field values onto records, addressing the model and its fields by name.
@@ -242,6 +243,33 @@ impl<'mm> Environment<'mm> {
         model.field_of_relation(relation).map(str::to_string)
     }
 
+    /// Refuse a key the field's enums do not have, naming those they do.
+    fn refuse_unknown_choice(
+        &self,
+        model_name: &str,
+        field: &FinalInternalField,
+        value: &Option<FieldType>,
+    ) -> Result<()> {
+        let (Some(family), Some(FieldType::String(key))) = (field.selection, value) else {
+            return Ok(());
+        };
+        let selections = &self.model_manager.selections;
+        if selections.contains(family.family, key) {
+            return Ok(());
+        }
+        let known: Vec<&str> = selections
+            .choices(family.family)
+            .iter()
+            .map(|choice| choice.key.as_str())
+            .collect();
+        Err(format!(
+            "\"{key}\" is not a value of field \"{}\" of model \"{model_name}\": {}",
+            field.name,
+            known.join(", ")
+        )
+        .into())
+    }
+
     pub(super) fn save_field_to_cache<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -267,6 +295,9 @@ impl<'mm> Environment<'mm> {
         let is_update_if_exists = matches!(update_field, Update::UpdateIfExists);
         let internal_model = self.model_manager.try_get_model(model_name)?;
         let field_info = internal_model.try_get_internal_field(field_name)?;
+        if matches!(update_dirty, Dirty::UpdateDirty) {
+            self.refuse_unknown_choice(model_name, field_info, &value)?;
+        }
         if let Some(FieldReference {
             target_model,
             inverse_field,

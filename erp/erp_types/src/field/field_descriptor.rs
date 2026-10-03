@@ -1,4 +1,4 @@
-use crate::field::{FieldCompute, FieldKind, FieldReference, FieldType};
+use crate::field::{FieldCompute, FieldKind, FieldReference, FieldType, SelectionFamily};
 
 #[derive(Default)]
 pub struct FieldDescriptor {
@@ -27,4 +27,5 @@ pub struct FieldDescriptor {
     pub asks_for_storage: bool,
     pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
+    pub selection: Option<SelectionFamily>,
 }

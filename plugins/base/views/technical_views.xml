@@ -1,4 +1,36 @@
 <erp>
+    <view id="view_plugin_list" name="plugin.list" model="plugin">
+        <list>
+            <field name="name"/>
+            <field name="category"/>
+            <field name="installed_version"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_plugin_form" name="plugin.form" model="plugin">
+        <form>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <block string="About">
+                    <field name="description" readonly="1"/>
+                    <field name="category" readonly="1"/>
+                    <field name="author" readonly="1"/>
+                    <field name="website" readonly="1"/>
+                </block>
+                <block string="Versions">
+                    <field name="installed_version" readonly="1"/>
+                    <field name="latest_version" readonly="1"/>
+                </block>
+            </block>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" nolabel="1" readonly="1"/>
+                </block>
+            </side>
+        </form>
+    </view>
+    <action id="action_plugins" name="Plugins" model="plugin" views="list,form"/>
+
     <view id="view_view_list" name="view.list" model="view">
         <list>
             <field name="name"/>
