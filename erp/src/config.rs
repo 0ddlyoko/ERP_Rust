@@ -34,8 +34,7 @@ impl Config {
             .add_source(
                 config::Environment::with_prefix("ERP")
                     .try_parsing(true)
-                    .separator("_")
-                    .list_separator(" "),
+                    .separator("_"),
             )
             .build()?;
 

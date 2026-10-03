@@ -12,12 +12,15 @@
                             <span class="o_chatter_author">{{ authorOf(message) }}</span>
                             <span class="o_chatter_date">{{ whenOf(message) }}</span>
                         </div>
+                        <p t-if="message.kind === 'creation'" class="o_chatter_created">Created the record</p>
                         <p t-if="message.body" class="o_chatter_body">{{ message.body }}</p>
                         <ul t-if="message.changes.length" class="o_chatter_changes">
                             <li t-foreach="message.changes" t-as="change" t-key="change.field">
                                 <span class="o_chatter_field">{{ change.label }}</span>
-                                <span class="o_chatter_old">{{ change.old ?? "—" }}</span>
-                                <span class="o_chatter_arrow" aria-label="became">→</span>
+                                <t t-if="message.kind !== 'creation'">
+                                    <span class="o_chatter_old">{{ change.old ?? "—" }}</span>
+                                    <span class="o_chatter_arrow" aria-label="became">→</span>
+                                </t>
                                 <span class="o_chatter_new">{{ change.new ?? "—" }}</span>
                             </li>
                         </ul>

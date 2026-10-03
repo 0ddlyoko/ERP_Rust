@@ -2,6 +2,8 @@
 use super::*;
 use crate::access::Operation;
 use crate::errors::MissingRecords;
+use crate::model::{WRITE_DATE, WRITE_UID};
+use chrono::Utc;
 use erp_internal_types::FinalInternalField;
 use erp_types::field::FieldKind;
 
@@ -262,6 +264,48 @@ impl<'mm> Environment<'mm> {
         model.field_of_relation(relation).map(str::to_string)
     }
 
+    /// Refuse writing a field the ORM fills in: when and by whom a record was created or changed.
+    pub(super) fn refuse_automatic(model_name: &str, field: &FinalInternalField) -> Result<()> {
+        if field.automatic {
+            return Err(format!(
+                "Field \"{}\" of model \"{model_name}\" is filled in by the ORM, and written by \
+                 nobody else",
+                field.name
+            )
+            .into());
+        }
+        Ok(())
+    }
+
+    /// Note these records as changed now, by whoever this unit of work runs as.
+    ///
+    /// Written straight into the cache, marked dirty, so it is saved with the change itself and
+    /// names whoever made it, even when saving happens later as somebody else.
+    pub(super) fn stamp_written(&mut self, model_name: &str, ids: &[u32]) -> Result<()> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        if model.fields.contains_key(WRITE_DATE) {
+            self.cache.insert_field_in_cache(
+                model_name,
+                WRITE_DATE,
+                ids,
+                Some(FieldType::DateTime(Utc::now())),
+                &Dirty::UpdateDirty,
+                &Update::UpdateIfExists,
+            );
+        }
+        if model.fields.contains_key(WRITE_UID) {
+            self.cache.insert_field_in_cache(
+                model_name,
+                WRITE_UID,
+                ids,
+                self.uid.map(FieldType::Ref),
+                &Dirty::UpdateDirty,
+                &Update::UpdateIfExists,
+            );
+        }
+        Ok(())
+    }
+
     /// Refuse a value of another type than its field's: a many2one takes one record, a one2many or
     /// a many2many one or several, any other field a value of its own kind.
     ///
@@ -341,9 +385,15 @@ impl<'mm> Environment<'mm> {
         let internal_model = self.model_manager.try_get_model(model_name)?;
         let field_info = internal_model.try_get_internal_field(field_name)?;
         if matches!(update_dirty, Dirty::UpdateDirty) {
+            Self::refuse_automatic(model_name, field_info)?;
             Self::refuse_wrong_kind(model_name, field_info, &value)?;
             self.refuse_unknown_choice(model_name, field_info, &value)?;
             self.remember_before_write(model_name, field_info, ids)?;
+            if (field_info.is_stored() || field_info.inverse.is_some())
+                && !self.is_computing(model_name, field_name)
+            {
+                self.stamp_written(model_name, ids.get_ids_ref())?;
+            }
         }
         if let Some(FieldReference {
             target_model,

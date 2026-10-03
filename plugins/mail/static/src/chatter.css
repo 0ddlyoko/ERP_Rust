@@ -104,3 +104,43 @@
 .o_chatter_new {
     font-weight: 600;
 }
+
+.o_chatter_created {
+    margin: 0;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_statusbar_durations {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.o_statusbar_since {
+    margin: 0;
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_statusbar_durations .o_statusbar_step {
+    align-items: flex-start;
+    min-height: 48px;
+}
+
+.o_statusbar_durations .o_statusbar_step:not(:last-child)::after {
+    top: 21px;
+    bottom: -3px;
+}
+
+.o_statusbar_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.o_statusbar_timing {
+    color: var(--o-muted);
+    font-size: 12px;
+    font-weight: 400;
+}

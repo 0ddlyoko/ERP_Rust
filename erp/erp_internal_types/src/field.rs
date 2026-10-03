@@ -51,6 +51,7 @@ pub struct FinalInternalField {
     pub depends: Vec<Vec<FieldDepend>>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    pub automatic: bool,
     is_init: bool,
 }
 
@@ -71,6 +72,7 @@ impl FinalInternalField {
             depends: Vec::new(),
             selection: None,
             tracking: false,
+            automatic: false,
             is_init: false,
         }
     }

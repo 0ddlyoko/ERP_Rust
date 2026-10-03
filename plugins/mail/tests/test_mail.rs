@@ -71,8 +71,10 @@ fn test_changes_of_tracked_fields_are_noted() -> Result<()> {
     assert_eq!(
         changes,
         [
-            json!({"field": "active", "label": "Active", "old": "No", "new": "Yes"}),
-            json!({"field": "login", "label": "Login", "old": "portal", "new": "visitor"}),
+            json!({"field": "active", "label": "Active", "old": "No", "new": "Yes",
+                   "old_value": "false", "new_value": "true"}),
+            json!({"field": "login", "label": "Login", "old": "portal", "new": "visitor",
+                   "old_value": "portal", "new_value": "visitor"}),
         ]
     );
     Ok(())
@@ -102,19 +104,19 @@ fn test_a_deleted_record_takes_its_thread_along() -> Result<()> {
     let portal = resolve(&app, "base.user_portal")?;
     write(&app, "users", portal, json!({"login": "visitor"}))?;
     let mut env = app.new_env_as_option(None)?;
-    assert_eq!(
-        env.search_ids("message", &erp::search::SearchType::Nothing)?
-            .len(),
-        1
-    );
+    let of_users = erp_search_code_gen::make_domain!([("model", "=", "users")]);
+    let messages = env.search_ids("message", &of_users)?;
+    assert_eq!(messages.len(), 1);
+    let changes_before = env
+        .search_ids("message_change", &erp::search::SearchType::Nothing)?
+        .len();
     env.delete("users", &MultipleIds::from(vec![portal]))?;
-    assert!(
-        env.search_ids("message", &erp::search::SearchType::Nothing)?
-            .is_empty()
-    );
-    assert!(
+    assert!(env.search_ids("message", &of_users)?.is_empty());
+    assert_eq!(
         env.search_ids("message_change", &erp::search::SearchType::Nothing)?
-            .is_empty()
+            .len(),
+        changes_before - 1,
+        "its one change went with it"
     );
     env.close()
 }
@@ -259,15 +261,20 @@ fn test_lists_of_records_are_tracked() -> Result<()> {
         changes,
         [
             json!([
-                {"field": "tasks", "label": "Tasks", "old": "Design, Build", "new": "Build"},
-                {"field": "watchers", "label": "Watchers", "old": "Test", "new": null},
+                {"field": "tasks", "label": "Tasks", "old": "Design, Build", "new": "Build",
+                 "old_value": "1,2", "new_value": "2"},
+                {"field": "watchers", "label": "Watchers", "old": "Test", "new": null,
+                 "old_value": "3", "new_value": null},
             ]),
             json!([
-                {"field": "tasks", "label": "Tasks", "old": null, "new": "Design, Build"},
-                {"field": "watchers", "label": "Watchers", "old": null, "new": "Test"},
+                {"field": "tasks", "label": "Tasks", "old": null, "new": "Design, Build",
+                 "old_value": null, "new_value": "1,2"},
+                {"field": "watchers", "label": "Watchers", "old": null, "new": "Test",
+                 "old_value": null, "new_value": "3"},
             ]),
+            json!([]),
         ],
-        "newest first; the reordering noted nothing"
+        "newest first; the reordering noted nothing; created with nothing in either"
     );
     Ok(())
 }
@@ -276,4 +283,57 @@ fn named(name: &str) -> erp::types::model::MapOfFields {
     let mut values = erp::types::model::MapOfFields::default();
     values.insert("name", name);
     values
+}
+
+/// A record whose model tracks fields starts its thread with its creation and what those fields
+/// started as; a thread asked for one field holds only the messages noting it.
+#[test]
+fn test_creation_starts_the_thread_and_a_field_narrows_it() -> Result<()> {
+    let app = new_app()?;
+    let admin = resolve(&app, "base.user_admin")?;
+    let mut env = app.new_env_as_option(Some(admin))?;
+    let created = env.call_rpc(
+        "users",
+        "create",
+        &json!({"values": {"name": "Claire", "login": "claire", "groups": [1]}}),
+    )?;
+    env.close()?;
+    let claire = created[0].as_u64().expect("an id") as u32;
+    write(&app, "users", claire, json!({"login": "claire.m"}))?;
+
+    let messages = thread(&app, "users", claire)?;
+    let creation = &messages[1];
+    assert_eq!(creation["kind"], "creation");
+    assert_eq!(creation["author"][1], "Administrator");
+    let mut fields: Vec<&str> = creation["changes"]
+        .as_array()
+        .expect("changes")
+        .iter()
+        .map(|change| change["field"].as_str().unwrap_or_default())
+        .collect();
+    fields.sort();
+    assert_eq!(
+        fields,
+        ["active", "groups", "login"],
+        "what they started as"
+    );
+    assert_eq!(
+        messages.as_array().map_or(0, Vec::len),
+        2,
+        "created with them, not changed"
+    );
+
+    let narrowed = |field: &str| -> Result<usize> {
+        let mut env = app.new_env_as_option(Some(admin))?;
+        let found = env.call_rpc(
+            "message",
+            "thread",
+            &json!({"ids": [], "args": {"model": "users", "record": claire, "field": field}}),
+        )?;
+        Ok(found.as_array().map_or(0, Vec::len))
+    };
+    assert_eq!(narrowed("login")?, 2, "created, then changed");
+    assert_eq!(narrowed("active")?, 1, "created only");
+    assert_eq!(narrowed("name")?, 0, "not tracked");
+    Ok(())
 }

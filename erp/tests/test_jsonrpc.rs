@@ -361,13 +361,21 @@ fn test_fields_get_describes_every_field() -> Result<()> {
         names,
         vec![
             "amount",
+            "create_date",
             "id",
             "order",
             "order_tags",
             "price",
             "siblings_total",
-            "total_price"
+            "total_price",
+            "write_date"
         ]
+    );
+    assert_eq!(
+        fields["create_date"],
+        json!({"type": "datetime", "label": "Created on", "required": false, "readonly": true,
+               "stored": true}),
+        "filled in by the ORM"
     );
     assert_eq!(
         fields["price"],

@@ -1,6 +1,9 @@
 //! Creating records and applying default values.
 use super::*;
 use crate::access::{Access, AccessDenied, Operation};
+use crate::model::{CREATE_DATE, CREATE_UID, WRITE_DATE, WRITE_UID};
+use chrono::Utc;
+use erp_internal_types::FinalInternalModel;
 
 impl<'mm> Environment<'mm> {
     /// Create a new record for a specific model and a given list of fields
@@ -76,15 +79,14 @@ impl<'mm> Environment<'mm> {
 
         // Add missing fields
         for d in data.iter_mut() {
+            for (field_name, value) in &d.fields {
+                let field = final_model.try_get_internal_field(field_name)?;
+                Self::refuse_automatic(model_name, field)?;
+                Self::refuse_wrong_kind(model_name, field, value)?;
+            }
             let missing_fields = self.fill_default_values_on_map(model_name, d);
             missing_fields_lst.push(missing_fields);
-            for (field_name, value) in &d.fields {
-                Self::refuse_wrong_kind(
-                    model_name,
-                    final_model.try_get_internal_field(field_name)?,
-                    value,
-                )?;
-            }
+            self.stamp_created(final_model, d);
         }
         // Create a list that will only contain stored fields (to save in db)
         let mut stored_data = data.clone();
@@ -139,7 +141,29 @@ impl<'mm> Environment<'mm> {
 
         self.forget_access_of(model_name, &ids)?;
         self.forget_shared_of(model_name);
+        // What a record is created with is no change of it.
+        self.forget_tracked(model_name, &ids);
+        for hook in self.model_manager.create_hooks.clone() {
+            hook(self, model_name, &ids)?;
+        }
         Ok(ids.into())
+    }
+
+    /// Note when, and by whom, a record about to be created is created — and so last changed.
+    fn stamp_created(&self, model: &FinalInternalModel, values: &mut MapOfFields) {
+        let now = Utc::now();
+        for field in [CREATE_DATE, WRITE_DATE] {
+            if model.fields.contains_key(field) {
+                values.insert(field, now);
+            }
+        }
+        if let Some(uid) = self.uid {
+            for field in [CREATE_UID, WRITE_UID] {
+                if model.fields.contains_key(field) {
+                    values.insert(field, uid);
+                }
+            }
+        }
     }
 
     /// Add default values for a given model on given data

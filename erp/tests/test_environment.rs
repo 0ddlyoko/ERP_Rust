@@ -342,22 +342,20 @@ fn test_get_record() -> Result<()> {
     let amount_cache_record = amount_cache_record.unwrap();
     assert_eq!(*price_cache_record, FieldType::Integer(50));
     assert_eq!(*amount_cache_record, FieldType::Integer(10));
-    // Price has been modified, it should be dirty
+    // Price has been modified, it should be dirty, and so should when the line last changed
     let dirty_fields = env.cache.get_cache_models("sale_order_line").get_dirty(id);
     assert!(dirty_fields.is_some());
     let dirty_fields = dirty_fields.unwrap();
-    assert_eq!(dirty_fields.len(), 1);
+    assert_eq!(dirty_fields.len(), 2);
     assert!(dirty_fields.contains(&"price".to_string()));
+    assert!(dirty_fields.contains(&"write_date".to_string()));
     let cache_models = env.cache.get_cache_models_mut("sale_order_line");
     assert!(cache_models.get_model(id).is_some());
     let dirty_fields = cache_models.get_dirty(id);
     assert!(dirty_fields.is_some());
-    assert!(
-        dirty_fields
-            .unwrap()
-            .iter()
-            .eq(["price".to_string()].iter())
-    );
+    let mut dirty_fields: Vec<&String> = dirty_fields.unwrap().iter().collect();
+    dirty_fields.sort();
+    assert_eq!(dirty_fields, ["price", "write_date"]);
 
     // Clear dirty
     cache_models.clear_dirty(&[id]);
