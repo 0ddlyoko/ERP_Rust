@@ -37,10 +37,14 @@ pub fn identified(uid: Option<u32>) {
 }
 
 /// Run one SQL statement, counted along with the time it took.
-pub fn sql<T>(statement: impl FnOnce() -> T) -> T {
+///
+/// Each statement is also logged under the `erp::sql` target at debug level, to find out what a
+/// request spends its queries on (`RUST_LOG=erp::sql=debug`).
+pub fn sql<T>(query: &str, run: impl FnOnce() -> T) -> T {
     let started = Instant::now();
-    let result = statement();
+    let result = run();
     let elapsed = started.elapsed();
+    tracing::debug!(target: "erp::sql", "{:.2}ms {query}", elapsed.as_secs_f64() * 1000.0);
     let log = CURRENT.get();
     CURRENT.set(RequestLog {
         queries: log.queries + 1,

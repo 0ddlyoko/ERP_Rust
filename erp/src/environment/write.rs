@@ -104,6 +104,31 @@ impl<'mm> Environment<'mm> {
         )
     }
 
+    /// What [`Self::retrieve_field_from_cache_or_database`] would answer for records whose
+    /// field is being loaded from the database with `loaded`: the cached value where there is
+    /// one, else `loaded` itself, which is what the database holds — so it is not asked again.
+    fn loaded_field_values<Mode: IdMode>(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        ids: &Mode,
+        loaded: &Option<FieldType>,
+    ) -> Vec<(bool, Option<FieldType>)> {
+        let cache_model = self.cache.get_cache_models(model_name);
+        ids.get_ids_ref()
+            .iter()
+            .map(|id| {
+                match cache_model
+                    .get_model(*id)
+                    .and_then(|model| model.get_field(field_name))
+                {
+                    Some(field_value) => (true, field_value.get().cloned()),
+                    None => (false, loaded.clone()),
+                }
+            })
+            .collect()
+    }
+
     /// Retrieve given field from the cache, or from the database if not loaded in cache
     ///
     /// If field is retrieved from the database, it will not be added to the cache
@@ -541,9 +566,11 @@ impl<'mm> Environment<'mm> {
                     };
 
                     // For a M2O, we need to verify the old value compared to the new one, and update the related O2M if it's loaded in cache
-                    // First, retrieve data from cache (or database) without loading it again
-                    let mut old_values =
-                        self.retrieve_field_from_cache_or_database(model_name, field_name, ids)?;
+                    let mut old_values = if is_update_if_exists {
+                        self.retrieve_field_from_cache_or_database(model_name, field_name, ids)?
+                    } else {
+                        self.loaded_field_values(model_name, field_name, ids, &value)
+                    };
                     // If we don't have to update loaded fields, remove them from the list
                     let mut ids = ids.get_ids_ref().clone();
                     if !is_update_if_exists {
