@@ -399,6 +399,10 @@ button {
 }
 
 .o_notification {
+    position: relative;
+    overflow: hidden;
+    animation: o_notification_in 200ms ease-out;
+    transition: opacity 200ms ease-in, transform 200ms ease-in;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -439,4 +443,61 @@ button {
     border-radius: 7px;
     background: transparent;
     color: var(--o-muted);
+}
+
+.o_notification_timer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: color-mix(in oklch, currentColor 8%, transparent);
+}
+
+.o_notification_timer_bar {
+    display: block;
+    height: 100%;
+    background: color-mix(in oklch, var(--o-accent) 70%, white);
+    transform-origin: left;
+    animation-name: o_notification_countdown;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+.o_notification_timer_bar.held {
+    animation: none;
+}
+
+@keyframes o_notification_countdown {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+.o_notification.leaving {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+@keyframes o_notification_in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_notification {
+        animation: none;
+        transition: none;
+    }
 }

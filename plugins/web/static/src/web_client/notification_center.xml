@@ -2,13 +2,19 @@
     <t t-name="web.NotificationCenter">
         <div class="o_notifications" role="status" aria-live="polite">
             <div t-foreach="shown" t-as="notification" t-key="notification.id"
-                 t-att-class="'o_notification o_notification_' + notification.kind">
+                 t-att-class="classOf(notification)"
+                 t-on-mouseenter="() => notifications.hold(notification.id)"
+                 t-on-mouseleave="() => notifications.release(notification.id)">
                 <span class="o_notification_text">{{ notification.text }}</span>
                 <button type="button" class="o_notification_close" aria-label="Dismiss"
                         t-on-click="() => dismiss(notification)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
                 </button>
+                <span t-if="!notification.sticky" class="o_notification_timer" aria-hidden="true">
+                    <span t-if="notification.held" class="o_notification_timer_bar held"/>
+                    <span t-else="" t-key="notification.run" class="o_notification_timer_bar" t-att-style="countdown"/>
+                </span>
             </div>
         </div>
     </t>
