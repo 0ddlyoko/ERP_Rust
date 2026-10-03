@@ -2,6 +2,7 @@
 use super::*;
 use crate::access::{AccessDenied, Operation};
 use crate::errors::MissingRecords;
+use crate::model::CREATE_DATE;
 
 impl<'mm> Environment<'mm> {
     pub fn get_empty_record<M>(&self) -> M
@@ -160,31 +161,30 @@ impl<'mm> Environment<'mm> {
         self.search_ids_unchecked(model_name, &domain, options)
     }
 
-    /// Same, whatever the caller's rights.
     /// These records, each once and in the order given, refused when one of them does not exist.
     ///
     /// For ids a caller sends: a record named twice is still one record, and one that is not
     /// there — never created, or deleted since — is the caller's mistake, said as such rather
     /// than met halfway through a write. Whether the caller may touch them is not checked here.
+    ///
+    /// Records known to the cache exist; the others have their stored fields loaded, as reading
+    /// them would, and those the database does not return are missing. So the check costs no
+    /// query of its own: the one it makes is the one a read or write of them would make.
     pub fn existing(&mut self, model_name: &str, ids: Vec<u32>) -> Result<MultipleIds> {
+        self.model_manager.try_get_model(model_name)?;
         let mut seen = HashSet::with_capacity(ids.len());
-        let ids: Vec<u32> = ids.into_iter().filter(|id| seen.insert(*id)).collect();
+        let ids = MultipleIds::from(
+            ids.into_iter()
+                .filter(|id| seen.insert(*id))
+                .collect::<Vec<u32>>(),
+        );
         if ids.is_empty() {
-            return Ok(MultipleIds::from(ids));
+            return Ok(ids);
         }
-        let found: HashSet<u32> = self
-            .search_ids_unchecked(
-                model_name,
-                &make_domain!([("id", "=", ids.clone())]),
-                &SearchOptions::default(),
-            )?
-            .into_iter()
-            .collect();
-        let missing: Vec<u32> = ids
-            .iter()
-            .copied()
-            .filter(|id| !found.contains(id))
-            .collect();
+        self.ensure_fields_in_cache(model_name, CREATE_DATE, &ids)?;
+        let missing = self
+            .cache
+            .get_ids_not_in_cache(model_name, CREATE_DATE, ids.get_ids_ref());
         if !missing.is_empty() {
             return Err(MissingRecords {
                 model_name: model_name.to_string(),
@@ -192,9 +192,10 @@ impl<'mm> Environment<'mm> {
             }
             .into());
         }
-        Ok(MultipleIds::from(ids))
+        Ok(ids)
     }
 
+    /// Same as [`Environment::search_ids_with`], whatever the caller's rights.
     pub(crate) fn search_ids_unchecked(
         &mut self,
         model_name: &str,
