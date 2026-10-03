@@ -42,6 +42,7 @@ impl<'mm> Environment<'mm> {
         F: FnOnce(&mut Self) -> Result<R>,
     {
         let cache_copy = self.cache.export_cache();
+        let tracked_copy = self.tracked.clone();
         let uuid = "svp_".to_string() + &Uuid::new_v4().to_string()[..6];
         self.database.savepoint(uuid.as_str())?;
 
@@ -53,6 +54,7 @@ impl<'mm> Environment<'mm> {
             // Rollback
             self.database.savepoint_rollback(uuid.as_str())?;
             self.cache.import_cache(cache_copy);
+            self.tracked = tracked_copy;
             // What was remembered may have been read from rows the rollback just undid.
             self.forget_access();
         }

@@ -13,7 +13,7 @@ impl<'mm> Environment<'mm> {
     /// express today — there is no `on_delete` attribute — so it is the one applied.
     ///
     /// The deletion is written straight to the database, like creation is; rolling the
-    /// environment back therefore undoes it.
+    /// environment back therefore undoes it. The delete hooks run once the rows are gone.
     ///
     /// Refused as a whole unless the caller may delete every one of the records.
     pub fn delete<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
@@ -49,6 +49,9 @@ impl<'mm> Environment<'mm> {
 
         let number_of_deletions = self.database.delete(model_name, ids.as_ref())?;
         self.cache.remove_records(model_name, ids);
+        for hook in self.model_manager.delete_hooks.clone() {
+            hook(self, model_name, ids.get_ids_ref())?;
+        }
         Ok(number_of_deletions)
     }
 }

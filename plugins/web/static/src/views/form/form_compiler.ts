@@ -239,14 +239,16 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             return [];
         });
 
-    /** The record's conversation, filled in by the chatter to come. */
+    /** The record's thread, as the plugin registered under `chatter` in `formParts` shows it. */
     const chatter = (element: Element): Piece => {
         condition(element, "invisible");
         const shown = shownUnless(element);
         const xml =
             `<section class="o_form_card o_form_chatter"${ifShown(shown)}>` +
-            `<h2 class="o_form_block_title">Activity</h2>` +
-            `<p class="o_form_chatter_empty">Messages and activities will show here.</p></section>`;
+            `<t t-if="__form.chatter" t-component="__form.chatter" model="__form.props.resModel" ` +
+            `record="__form.props.resId ?? null" version="__form.record"/>` +
+            `<t t-else=""><h2 class="o_form_block_title">Activity</h2>` +
+            `<p class="o_form_chatter_empty">Messages and activities will show here.</p></t></section>`;
         return { xml, shown };
     };
 

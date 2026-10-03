@@ -11,14 +11,14 @@ use std::error::Error;
 #[allow(dead_code)]
 pub struct Users<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
+    #[erp(default = "", tracking)]
     login: String,
     password: Password,
     #[erp(default = "")]
     name: String,
-    #[erp(default = true)]
+    #[erp(default = true, tracking)]
     active: bool,
-    #[erp(relation = "user_group_rel")]
+    #[erp(relation = "user_group_rel", tracking)]
     groups: Reference<BaseGroup, MultipleIds>,
 }
 

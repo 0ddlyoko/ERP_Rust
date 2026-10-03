@@ -114,11 +114,14 @@ impl<'mm> Environment<'mm> {
     /// Flush every registered model that holds dirty records to the database.
     ///
     /// Every pending recompute is settled first: recomputing one model can ask for another to be
-    /// recomputed, and that one may otherwise already have been flushed.
+    /// recomputed, and that one may otherwise already have been flushed. Then tracked changes are
+    /// handed to the tracking hooks, so what they write is saved too.
     ///
     /// The `&ModelManager` is copied out first so the registry borrow stays independent of the
     /// `&mut self` that `save_model_to_db` requires.
     pub fn save_all_to_db(&mut self) -> Result<()> {
+        self.recompute_all_stored()?;
+        self.report_tracked_changes()?;
         self.recompute_all_stored()?;
         let model_manager = self.model_manager;
         for model_name in model_manager.get_models().keys() {

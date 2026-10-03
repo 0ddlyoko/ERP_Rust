@@ -24,6 +24,30 @@ use std::collections::{HashMap, HashSet};
 pub type LoadHook =
     fn(&mut Environment, &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
+/// A tracked field of one record that changed: what it held, and what it holds now.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackedChange {
+    pub field: String,
+    pub old: Option<FieldType>,
+    pub new: Option<FieldType>,
+}
+
+/// Work a plugin asks to do when tracked fields of a record changed, given the model, the
+/// record's id, who changed them and what changed. Runs before the changes are saved, so what it
+/// writes is saved with them.
+pub type TrackingHook = fn(
+    &mut Environment,
+    &str,
+    u32,
+    Option<u32>,
+    &[TrackedChange],
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+/// Work a plugin asks to do once records are deleted, given the model and their ids: removing
+/// what pointed at them without a relation the ORM knows of.
+pub type DeleteHook =
+    fn(&mut Environment, &str, &[u32]) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
 #[derive(Default)]
 pub struct ModelManager {
     models: HashMap<String, FinalInternalModel>,
@@ -37,6 +61,8 @@ pub struct ModelManager {
     pub controllers: ControllerRegistry,
     pub assets: AssetRegistry,
     pub load_hooks: Vec<LoadHook>,
+    pub tracking_hooks: Vec<TrackingHook>,
+    pub delete_hooks: Vec<DeleteHook>,
     pub shared_caches: SharedCaches,
     pub selections: Selections,
     data_bodies: HashMap<String, String>,

@@ -28,6 +28,7 @@ fn test_register_field() {
         }),
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     field_age.register_internal_field(&InternalField {
@@ -42,6 +43,7 @@ fn test_register_field() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     assert_eq!(field_name.name, "name");
@@ -80,6 +82,7 @@ fn test_register_field() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     assert_eq!(field_name.name, "name");
@@ -112,6 +115,7 @@ fn test_register_field() {
         }),
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     assert_eq!(field_name.name, "name");
@@ -147,6 +151,7 @@ fn test_register_field() {
         }),
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     assert_eq!(field_name.name, "name");
@@ -184,6 +189,7 @@ fn test_register_field_without_default_value_is_allowed() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     assert_eq!(field_name.kind, FieldKind::String);
@@ -211,6 +217,7 @@ fn test_storage_asked_for_a_field_nothing_computes() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     let wrong = field.settle_storage().expect_err("nothing computes it");
@@ -234,6 +241,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 
     field_name.register_internal_field(&InternalField {
@@ -248,6 +256,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         compute: None,
         field_ref: None,
         selection: None,
+        tracking: false,
     });
 }
 

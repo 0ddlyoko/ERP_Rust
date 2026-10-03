@@ -16,6 +16,7 @@ pub struct InternalField {
     pub compute: Option<FieldCompute>,
     pub field_ref: Option<FieldReference>,
     pub selection: Option<SelectionFamily>,
+    pub tracking: bool,
 }
 
 /// Final descriptor of a field.
@@ -49,6 +50,7 @@ pub struct FinalInternalField {
     pub inverse: Option<FieldReference>,
     pub depends: Vec<Vec<FieldDepend>>,
     pub selection: Option<SelectionFamily>,
+    pub tracking: bool,
     is_init: bool,
 }
 
@@ -68,6 +70,7 @@ impl FinalInternalField {
             inverse: None,
             depends: Vec::new(),
             selection: None,
+            tracking: false,
             is_init: false,
         }
     }
@@ -135,6 +138,7 @@ impl FinalInternalField {
         // Asking for storage wins, the same way hiding does: a struct extending a model may keep
         // a computed field another worked out on every read, and none can take that back.
         self.asked_for_storage |= field_descriptor.asks_for_storage;
+        self.tracking |= field_descriptor.tracking;
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

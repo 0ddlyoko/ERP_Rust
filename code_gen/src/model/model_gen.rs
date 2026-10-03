@@ -401,6 +401,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             relation,
             is_private,
             asks_for_storage,
+            is_tracked,
             ..
         } = f;
 
@@ -570,6 +571,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     required: #is_required,
                     private: #is_private,
                     asks_for_storage: #asks_for_storage,
+                    tracking: #is_tracked,
                     compute: #compute,
                     field_ref: #field_reference,
                     selection: #selection,

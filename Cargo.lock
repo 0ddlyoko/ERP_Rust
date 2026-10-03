@@ -690,6 +690,7 @@ dependencies = [
  "axum",
  "base",
  "erp",
+ "mail",
  "reqwest",
  "serde_json",
  "test_plugin",
@@ -1354,6 +1355,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef9ac18847474e638e3702b76c65d4eb93428471a74778ef0f1be711717f89b5"
 dependencies = [
  "hashbrown 0.17.1",
+]
+
+[[package]]
+name = "mail"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_assets_build",
+ "erp_search",
+ "erp_search_code_gen",
+ "serde_json",
+ "test_utilities",
+ "web",
 ]
 
 [[package]]

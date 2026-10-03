@@ -92,6 +92,7 @@ impl FinalInternalModel {
                 compute: field.compute,
                 field_ref: field.field_ref,
                 selection: field.selection,
+                tracking: field.tracking,
             };
             self.register_internal_field(&internal_field);
             final_fields.insert(field_name, internal_field);

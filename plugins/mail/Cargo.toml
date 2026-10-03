@@ -1,0 +1,23 @@
+[package]
+name = "mail"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+erp = { path = "../../erp" }
+code_gen = { path = "../../code_gen" }
+erp_search = { path = "../../erp_search" }
+erp_search_code_gen = { path = "../../erp_search_code_gen" }
+
+base = { path = "../base" }
+web = { path = "../web" }
+
+[build-dependencies]
+erp_assets_build = { path = "../../erp/erp_assets_build" }
+
+[dev-dependencies]
+serde_json.workspace = true
+test_utilities = { path = "../../erp/test_utilities" }
+
+[lib]
+crate-type = ["dylib"]

@@ -1,0 +1,106 @@
+.o_chatter {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.o_chatter_empty {
+    margin: 0;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_chatter_thread {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.o_chatter_message {
+    display: flex;
+    gap: 10px;
+}
+
+.o_chatter_avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--o-accent) 14%, white);
+    color: var(--o-accent-strong);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.o_chatter_content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.o_chatter_head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.o_chatter_author {
+    font-weight: 700;
+}
+
+.o_chatter_date {
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_chatter_body {
+    margin: 0;
+    font-size: 13px;
+}
+
+.o_chatter_changes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+
+.o_chatter_changes li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.o_chatter_field {
+    color: var(--o-label);
+}
+
+.o_chatter_field::after {
+    content: ":";
+}
+
+.o_chatter_old {
+    color: var(--o-muted);
+    text-decoration: line-through;
+}
+
+.o_chatter_arrow {
+    color: var(--o-muted);
+}
+
+.o_chatter_new {
+    font-weight: 600;
+}

@@ -35,6 +35,7 @@ pub struct FieldGen {
     /// contributing to the model has been seen: being computed belongs to the model's field, not
     /// to whichever struct happens to mention it.
     pub asks_for_storage: bool,
+    pub is_tracked: bool,
 }
 
 impl FieldGen {
@@ -61,6 +62,7 @@ impl FieldGen {
         let mut inverse = None;
         let mut relation = None;
         let mut is_private = false;
+        let mut is_tracked = false;
         let mut stored = None;
 
         for attr in parse_attributes(attrs)? {
@@ -162,6 +164,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Private(_) => {
                     is_private = true;
+                }
+                AllowedFieldAttrs::Tracking(_) => {
+                    is_tracked = true;
                 }
                 AllowedFieldAttrs::Stored(ident) => {
                     stored = Some(ident);
@@ -281,6 +286,7 @@ impl FieldGen {
             relation: relation.map(|rel| rel.1),
             is_private,
             asks_for_storage: stored.is_some(),
+            is_tracked,
         })
     }
 }

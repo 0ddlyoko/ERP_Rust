@@ -297,6 +297,7 @@ impl<'mm> Environment<'mm> {
         let field_info = internal_model.try_get_internal_field(field_name)?;
         if matches!(update_dirty, Dirty::UpdateDirty) {
             self.refuse_unknown_choice(model_name, field_info, &value)?;
+            self.remember_before_write(model_name, field_info, ids)?;
         }
         if let Some(FieldReference {
             target_model,

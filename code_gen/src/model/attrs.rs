@@ -104,6 +104,8 @@ pub enum AllowedFieldAttrs {
     Private(Ident),
     /// Says a computed field is kept in a column rather than worked out on every read.
     Stored(Ident),
+    /// Says changes of the field are noted on the record.
+    Tracking(Ident),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -116,6 +118,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "relation",
     "private",
     "stored",
+    "tracking",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -163,6 +166,7 @@ impl Parse for AllowedFieldAttrs {
             )),
             "private" => Ok(AllowedFieldAttrs::Private(name)),
             "stored" => Ok(AllowedFieldAttrs::Stored(name)),
+            "tracking" => Ok(AllowedFieldAttrs::Tracking(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -184,6 +188,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Relation(ident, _) => ident.span(),
             AllowedFieldAttrs::Private(ident) => ident.span(),
             AllowedFieldAttrs::Stored(ident) => ident.span(),
+            AllowedFieldAttrs::Tracking(ident) => ident.span(),
         }
     }
 }

@@ -1,0 +1,29 @@
+<templates>
+    <t t-name="mail.Chatter">
+        <div class="o_chatter">
+            <h2 class="o_form_block_title">Messages</h2>
+            <p t-if="props.record === null" class="o_chatter_empty">Messages will show once the record is saved.</p>
+            <p t-elif="!messages.length" class="o_chatter_empty">No messages yet.</p>
+            <ol t-else="" class="o_chatter_thread">
+                <li t-foreach="messages" t-as="message" t-key="message.id" class="o_chatter_message">
+                    <span class="o_chatter_avatar" aria-hidden="true">{{ initialsOf(message) }}</span>
+                    <div class="o_chatter_content">
+                        <div class="o_chatter_head">
+                            <span class="o_chatter_author">{{ authorOf(message) }}</span>
+                            <span class="o_chatter_date">{{ whenOf(message) }}</span>
+                        </div>
+                        <p t-if="message.body" class="o_chatter_body">{{ message.body }}</p>
+                        <ul t-if="message.changes.length" class="o_chatter_changes">
+                            <li t-foreach="message.changes" t-as="change" t-key="change.field">
+                                <span class="o_chatter_field">{{ change.label }}</span>
+                                <span class="o_chatter_old">{{ change.old ?? "—" }}</span>
+                                <span class="o_chatter_arrow" aria-label="became">→</span>
+                                <span class="o_chatter_new">{{ change.new ?? "—" }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </t>
+</templates>

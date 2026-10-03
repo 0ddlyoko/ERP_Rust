@@ -29,6 +29,7 @@ mod flush;
 mod method;
 mod read;
 mod shared;
+mod tracking;
 mod transaction;
 mod write;
 
@@ -85,6 +86,7 @@ pub struct Environment<'mm> {
     sudo: bool,
     access_memo: access::AccessMemo,
     changed_cached_models: HashSet<String>,
+    tracked: tracking::Tracked,
     closed: bool,
 }
 
@@ -129,6 +131,7 @@ impl<'mm> Environment<'mm> {
             sudo: false,
             access_memo: access::AccessMemo::default(),
             changed_cached_models: HashSet::new(),
+            tracked: Default::default(),
             closed: false,
         };
         env.database.start_transaction()?;

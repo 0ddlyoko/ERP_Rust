@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state } from "trame";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
@@ -6,6 +6,12 @@ import type { Values } from "@web/core/orm";
 import { View, viewKinds, viewProps } from "@web/views/view";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
+
+/**
+ * Parts of a form other plugins provide: `chatter`, the record's thread, takes `model`, `record`
+ * (null until the record is created) and `version`, which changes each time the record is read.
+ */
+export const formParts = registry.category<ComponentClass>("form_parts");
 
 /**
  * One record, its fields laid out as its view's XML says, edited in place.
@@ -38,6 +44,11 @@ export class FormView extends View {
     @state accessor openPages = new Map<number, number>();
     /** Whether a save was tried: required fields left empty are shown from then on. */
     @state accessor tried = false;
+
+    /** What shows the record's thread, if a plugin provides it. */
+    get chatter(): ComponentClass | null {
+        return formParts.get("chatter", null);
+    }
 
     /** The form's body, set by its template. */
     element: HTMLElement | null = null;

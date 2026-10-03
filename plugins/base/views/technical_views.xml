@@ -26,6 +26,7 @@
                 <block string="Status">
                     <field name="state" widget="statusbar" nolabel="1" readonly="1"/>
                 </block>
+                <chatter/>
             </side>
         </form>
     </view>
