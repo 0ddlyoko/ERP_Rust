@@ -98,8 +98,9 @@ fn label_of(name: &str) -> String {
     }
 }
 
-/// Turn an enum into a selection: its variants, plus `Extended` for the values other enums of
-/// its family add; the conversions to and from keys; and what it declares, for the registry.
+/// Turn an enum into a selection: its variants, plus `Empty` for no value and `Extended` for the
+/// values other enums of its family add; the conversions to and from keys; and what it declares,
+/// for the registry.
 pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
     let name = item.ident.clone();
     if !item.generics.params.is_empty() {
@@ -123,6 +124,12 @@ pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
             return Err(syn::Error::new(
                 variant.span(),
                 "a selection's values are plain names, without fields or numbers",
+            ));
+        }
+        if ident == "Empty" {
+            return Err(syn::Error::new(
+                ident.span(),
+                "`Empty` is the variant every selection gets for no value",
             ));
         }
         if ident == "Extended" {
@@ -177,6 +184,10 @@ pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
             .retain(|attr| !attr.path().is_ident("selection"));
     }
     item.variants.push(syn::parse_quote! {
+        /// No value: what a field of an empty record reads as.
+        Empty
+    });
+    item.variants.push(syn::parse_quote! {
         /// A value of the family this enum does not name: one another enum added.
         Extended(erp::types::field::SelectionKey)
     });
@@ -217,6 +228,7 @@ pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
             fn key(&self) -> erp::types::field::SelectionKey {
                 match self {
                     #(#to_key)*
+                    #name::Empty => erp::types::field::SelectionKey::from_static(""),
                     #name::#extended(key) => *key,
                 }
             }
@@ -225,8 +237,13 @@ pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
                 *Self::from_key_ref(key)
             }
 
+            fn empty_ref() -> &'static Self {
+                &#name::Empty
+            }
+
             fn from_key_ref(key: &str) -> &'static Self {
                 match key {
+                    "" => &#name::Empty,
                     #(#from_key)*
                     _ => {
                         static EXTENDED: ::std::sync::LazyLock<

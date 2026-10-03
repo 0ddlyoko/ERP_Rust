@@ -86,7 +86,7 @@ fn test_date_and_timestamp_round_trip() -> Result<()> {
     let mut env = app.new_env()?;
     let found: Invoice<MultipleIds> = env.search(&make_domain!([("due_date", "=", due)]))?;
     assert_eq!(found.id.get_ids_ref().len(), 1, "a date must be searchable");
-    assert_eq!(found.get_created_at(&mut env)?, vec![&created]);
+    assert_eq!(found.get_created_at(&mut env)?, vec![Some(&created)]);
     Ok(())
 }
 

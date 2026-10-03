@@ -33,7 +33,9 @@ impl<'mm> Environment<'mm> {
         self.check_access(model_name, Operation::Delete, ids.get_ids_ref(), &[])?;
         // A hook deleting records of its own starts a deletion of its own.
         let outer = std::mem::take(&mut self.deleting);
-        let deleted = self.delete_unchecked(model_name, ids.get_ids_ref().clone());
+        let deleted = self
+            .delete_unchecked(model_name, ids.get_ids_ref().clone())
+            .and_then(|deleted| self.refuse_emptied_relations().map(|()| deleted));
         self.deleting = outer;
         deleted
     }

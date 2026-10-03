@@ -19,9 +19,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct AccessRule<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
-    #[erp(default = "")]
     model: String,
     #[erp(ondelete = "cascade")]
     group: Reference<BaseGroup, SingleId>,
@@ -64,9 +62,7 @@ impl AccessRule<SingleId> {
     }
 
     fn to_rule(&self, env: &mut Environment) -> Result<Rule> {
-        let group = self
-            .get_group::<Group<SingleId>>(env)?
-            .map(|group| group.get_id());
+        let group = self.get_group::<Group<SingleId>>(env)?.get_optional_id();
         let read = self.get_domain_read(env)?.cloned();
         let create = self.get_domain_create(env)?.cloned();
         let write = self.get_domain_write(env)?.cloned();

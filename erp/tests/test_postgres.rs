@@ -1125,6 +1125,7 @@ fn test_an_aliased_table_is_reached_from_a_fresh_connection() -> Result<()> {
     let mut env = app.new_env()?;
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     map.insert("reference", "meter one");
+    map.insert("read_on", NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
     map.insert("value", Decimal::from_str("42.5")?);
     env.create_records("meter_reading", vec![map])?;
     env.close()?;
@@ -1443,7 +1444,7 @@ fn test_required_columns_are_not_null() -> Result<()> {
     let app = app_or_skip!("t_not_null");
     let mut database = app.create_new_database()?;
     assert!(!is_nullable(&mut database, "t_not_null", "name")?);
-    assert!(!is_nullable(&mut database, "t_not_null", "due_date")?);
+    assert!(!is_nullable(&mut database, "t_not_null", "amount_untaxed")?);
     assert!(
         is_nullable(&mut database, "t_not_null", "signed_on")?,
         "optional"

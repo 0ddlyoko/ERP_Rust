@@ -58,6 +58,7 @@ fn make_user(env: &mut Environment, login: &str) -> Result<u32> {
     let mut values = MapOfFields::default();
     values.insert("login", login);
     values.insert("name", login);
+    values.insert("name", login);
     Ok(env.create_records("users", vec![values])?.get_ids_ref()[0])
 }
 
@@ -1039,7 +1040,9 @@ fn test_the_administrator_is_seeded_in_both_groups() -> Result<()> {
     drop(env);
 
     let mut env = app.new_env_as(admin.get_id())?;
-    env.create_records("users", vec![tag_values("bob")])?;
+    let mut bob = tag_values("bob");
+    bob.insert("login", "bob");
+    env.create_records("users", vec![bob])?;
     Ok(())
 }
 

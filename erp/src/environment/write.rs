@@ -40,7 +40,7 @@ impl<'mm> Environment<'mm> {
                 &Update::UpdateIfExists,
             )?;
         }
-        Ok(())
+        self.refuse_emptied_relations()
     }
 
     pub(crate) fn save_value_to_cache<Mode: IdMode, E>(
@@ -304,38 +304,16 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
-    /// Refuse emptying a required field, unless its records are being deleted.
-    ///
-    /// A computed field is left to its computation, which may well start empty.
-    pub(super) fn refuse_empty_required(
-        &self,
-        model_name: &str,
-        field: &FinalInternalField,
-        ids: &[u32],
-        value: &Option<FieldType>,
-    ) -> Result<()> {
-        if value.is_some() || !field.required || field.compute.is_some() {
-            return Ok(());
+    /// A value with the references to id 0 left out: 0 is no record, so pointing to it is
+    /// pointing nowhere.
+    pub(super) fn without_empty_references(value: Option<FieldType>) -> Option<FieldType> {
+        match value {
+            Some(FieldType::Ref(0)) => None,
+            Some(FieldType::Refs(ids)) => Some(FieldType::Refs(
+                ids.into_iter().filter(|id| *id != 0).collect(),
+            )),
+            value => value,
         }
-        let deleting = self.deleting.get(model_name);
-        if ids
-            .iter()
-            .all(|id| deleting.is_some_and(|deleting| deleting.contains(id)))
-        {
-            return Ok(());
-        }
-        Err(Self::required_error(model_name, field))
-    }
-
-    pub(super) fn required_error(
-        model_name: &str,
-        field: &FinalInternalField,
-    ) -> Box<dyn Error + Send + Sync> {
-        format!(
-            "Field \"{}\" of model \"{model_name}\" is required: it cannot be left empty",
-            field.name
-        )
-        .into()
     }
 
     /// Note these records as changed now, by whoever this unit of work runs as.
@@ -429,9 +407,10 @@ impl<'mm> Environment<'mm> {
         update_dirty: &Dirty,
         update_field: &Update,
     ) -> Result<()> {
-        if field_name == "id" {
+        if field_name == "id" || ids.is_empty() {
             return Ok(());
         }
+        let value = Self::without_empty_references(value);
         // Loading a value from the database also lands here, and changes no rule.
         if matches!(update_dirty, Dirty::UpdateDirty) {
             self.forget_access_of(model_name, ids.get_ids_ref())?;
@@ -445,6 +424,16 @@ impl<'mm> Environment<'mm> {
         let is_update_if_exists = matches!(update_field, Update::UpdateIfExists);
         let internal_model = self.model_manager.try_get_model(model_name)?;
         let field_info = internal_model.try_get_internal_field(field_name)?;
+        let value = match value {
+            Some(FieldType::String(text))
+                if text.is_empty()
+                    && field_info.compute.is_none()
+                    && matches!(update_dirty, Dirty::UpdateDirty) =>
+            {
+                None
+            }
+            value => value,
+        };
         if matches!(update_dirty, Dirty::UpdateDirty) {
             Self::refuse_automatic(model_name, field_info)?;
             Self::refuse_wrong_kind(model_name, field_info, &value)?;
@@ -491,6 +480,11 @@ impl<'mm> Environment<'mm> {
 
                     let mirror = self.mirror_of_relation(target_model, relation);
                     let touched: Vec<u32> = touched.into_iter().collect();
+                    if let Some(mirror) = &mirror
+                        && is_update_if_exists
+                    {
+                        self.note_maybe_emptied(target_model, mirror, touched.iter().copied())?;
+                    }
 
                     // Dependents are collected under both states. A record that loses its last
                     // link is only reachable through the other side *before* the change; one
@@ -606,6 +600,20 @@ impl<'mm> Environment<'mm> {
                     } else {
                         self.loaded_field_values(model_name, field_name, ids, &value)
                     };
+                    if is_update_if_exists {
+                        let left: Vec<u32> = old_values
+                            .iter()
+                            .filter_map(|(_, old)| match old {
+                                Some(FieldType::Ref(old_id)) if Some(*old_id) != new_id => {
+                                    Some(*old_id)
+                                }
+                                _ => None,
+                            })
+                            .collect();
+                        for inverse_field in inverse_fields {
+                            self.note_maybe_emptied(target_model, inverse_field, left.clone())?;
+                        }
+                    }
                     // If we don't have to update loaded fields, remove them from the list
                     let mut ids = ids.get_ids_ref().clone();
                     if !is_update_if_exists {

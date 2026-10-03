@@ -16,15 +16,14 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct Machine<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
-    name: String,
+    name: Option<String>,
     #[erp(default = 100)]
     base_rate: i32,
     #[erp(default = 1)]
     days: i32,
     /// Never leaves the process, whatever a caller asks for.
-    #[erp(default = "", private)]
-    unlock_code: String,
+    #[erp(private)]
+    unlock_code: Option<String>,
     service_key: Password,
 }
 
@@ -58,7 +57,7 @@ impl Machine<MultipleIds> {
     #[erp(rpc)]
     pub fn refuse_after_writing(&self, env: &mut Environment) -> Result<i32> {
         for machine in self {
-            machine.set_name("written before failing".to_string(), env)?;
+            machine.set_name(Some("written before failing".to_string()), env)?;
         }
         Err("refused on purpose".into())
     }
@@ -66,7 +65,7 @@ impl Machine<MultipleIds> {
     /// Writes, then panics. The call fails alone: its work is undone, and nothing else stops.
     #[erp(rpc)]
     pub fn explode(&self, env: &mut Environment) -> Result<i32> {
-        self.set_name("written before panicking".to_string(), env)?;
+        self.set_name(Some("written before panicking".to_string()), env)?;
         panic!("exploded on purpose");
     }
 

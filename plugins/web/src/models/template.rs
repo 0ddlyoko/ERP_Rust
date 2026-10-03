@@ -26,9 +26,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct Template<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
-    key: String,
-    #[erp(default = "")]
+    key: Option<String>,
     arch: String,
     file: Option<String>,
     #[erp(ondelete = "cascade")]
@@ -68,14 +66,14 @@ impl Templates {
         for template in all {
             let inherit = template
                 .get_inherit::<Template<SingleId>>(env)?
-                .map(|parent| parent.get_id());
+                .get_optional_id();
             let file = template.get_file(env)?.cloned();
             let plugin = file
                 .as_deref()
                 .and_then(|file| file.split_once('/'))
                 .and_then(|(plugin, _)| plugins.iter().position(|loaded| loaded == plugin))
                 .unwrap_or(usize::MAX);
-            let key = template.get_key(env)?.clone();
+            let key = template.get_key(env)?.cloned().unwrap_or_default();
             let label = match (&key, &file) {
                 (key, _) if !key.is_empty() => format!("Template {key}"),
                 (_, Some(file)) => format!("Template extending in {file}"),

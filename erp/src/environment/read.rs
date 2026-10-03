@@ -162,6 +162,7 @@ impl<'mm> Environment<'mm> {
     }
 
     /// These records, each once and in the order given, refused when one of them does not exist.
+    /// Id 0 is no record, and is left out without a word.
     ///
     /// For ids a caller sends: a record named twice is still one record, and one that is not
     /// there — never created, or deleted since — is the caller's mistake, said as such rather
@@ -175,7 +176,7 @@ impl<'mm> Environment<'mm> {
         let mut seen = HashSet::with_capacity(ids.len());
         let ids = MultipleIds::from(
             ids.into_iter()
-                .filter(|id| seen.insert(*id))
+                .filter(|id| *id != 0 && seen.insert(*id))
                 .collect::<Vec<u32>>(),
         );
         if ids.is_empty() {
@@ -390,6 +391,9 @@ impl<'mm> Environment<'mm> {
         field_name: &str,
         id: &SingleId,
     ) -> Result<Option<&'a FieldType>> {
+        if id.is_empty() {
+            return Ok(None);
+        }
         self.check_access(model_name, Operation::Read, &[id.get_id()], &[field_name])?;
         self.ensure_fields_in_cache(model_name, field_name, id)?;
         Ok(self

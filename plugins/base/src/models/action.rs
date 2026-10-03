@@ -16,9 +16,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct Action<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
-    #[erp(default = "")]
     model: String,
     #[erp(default = "list,form")]
     views: String,

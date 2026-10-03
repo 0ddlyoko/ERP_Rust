@@ -94,8 +94,7 @@ fn test_ref() -> Result<()> {
         Some(&"0ddlyoko@test.com".to_string())
     );
     let contact_lang = contact.get_lang::<Lang<_>>(&mut env)?;
-    assert!(contact_lang.is_some());
-    let contact_lang = contact_lang.unwrap();
+    assert!(!contact_lang.is_empty());
     assert_eq!(contact_lang.get_name(&mut env)?, "French");
     assert_eq!(contact_lang.get_code(&mut env)?, "fr_FR");
 
@@ -124,8 +123,8 @@ fn test_many2one_one2many() -> Result<()> {
 
     // Check if there is the link from a sale_order_line to a sale_order
     let sale_order_linked = sale_order_line.get_order::<SaleOrder<_>>(&mut env)?;
-    assert!(sale_order_linked.is_some());
-    assert_eq!(sale_order_linked.unwrap().id, sale_order.id);
+    assert!(!sale_order_linked.is_empty());
+    assert_eq!(sale_order_linked.id, sale_order.id);
     // Check if there is the opposite link
     let sale_order_line_linked = sale_order.get_lines::<SaleOrderLine<_>>(&mut env)?;
     assert_eq!(sale_order_line_linked.id, sale_order_line.id);

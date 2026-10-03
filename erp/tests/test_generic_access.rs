@@ -97,24 +97,23 @@ fn test_unset_optional_field_is_empty() -> Result<()> {
     Ok(())
 }
 
-/// A bare `T` still takes its type's default, and an explicit one still wins.
+/// An explicit default applies; bare text without one is the creator's to give.
 #[test]
 fn test_required_field_keeps_its_default() -> Result<()> {
     let app = new_app();
     let mut env = app.new_env()?;
 
     let ids = env.create_records("invoice", vec![MapOfFields::new(HashMap::new())])?;
-    let rows = env.read("invoice", &ids, &["tax_rate", "due_date"])?;
+    let rows = env.read("invoice", &ids, &["tax_rate"])?;
     assert_eq!(
         rows[0].get::<&erp_types::field::Decimal>("tax_rate"),
         &erp_types::field::Decimal::from_str("0.21")?,
         "an explicit default still applies"
     );
     assert!(
-        rows[0]
-            .get_option::<&erp_types::field::NaiveDate>("due_date")
-            .is_some(),
-        "a bare field with no explicit default falls back to its type's default"
+        env.create_records("tag", vec![MapOfFields::new(HashMap::new())])
+            .is_err(),
+        "a tag is named by whoever creates it"
     );
     Ok(())
 }

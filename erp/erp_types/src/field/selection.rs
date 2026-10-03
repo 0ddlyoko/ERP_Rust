@@ -93,6 +93,9 @@ pub trait Selection: Copy + Eq + Debug + 'static {
     /// The same, as a reference that outlives the value it was read from, for getters.
     fn from_key_ref(key: &str) -> &'static Self;
 
+    /// No value, as a field of this enum reads on an empty record.
+    fn empty_ref() -> &'static Self;
+
     /// Whether both are the same value, whichever enums of the family name them.
     fn is<T: Selection<Root = Self::Root>>(&self, other: T) -> bool {
         self.key() == other.key()

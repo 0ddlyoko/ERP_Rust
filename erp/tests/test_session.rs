@@ -40,6 +40,7 @@ fn make_user(app: &Application, login: &str, password: &str, active: bool) -> Re
     let mut env = app.new_env_as_option(None)?;
     let mut values = MapOfFields::default();
     values.insert("login", login);
+    values.insert("name", login);
     values.insert("password", Password::new(password)?);
     values.insert("active", active);
     let ids: MultipleIds = env.create_records("users", vec![values])?;

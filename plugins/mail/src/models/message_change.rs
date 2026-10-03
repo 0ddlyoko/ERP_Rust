@@ -12,9 +12,7 @@ pub struct MessageChange<Mode: IdMode> {
     pub id: Mode,
     #[erp(ondelete = "cascade")]
     message: Reference<BaseMessage, SingleId>,
-    #[erp(default = "")]
     field: String,
-    #[erp(default = "")]
     label: String,
     old: Option<String>,
     new: Option<String>,

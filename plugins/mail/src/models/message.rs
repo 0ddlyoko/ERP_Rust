@@ -34,7 +34,6 @@ pub enum MessageKind {
 #[allow(dead_code)]
 pub struct Message<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     model: String,
     #[erp(default = 0)]
     record: i32,
@@ -93,9 +92,11 @@ impl Message<MultipleIds> {
 impl Message<SingleId> {
     /// What a client shows of the message: who, when, what kind, and what it says or changed.
     fn describe(&self, env: &mut Environment) -> Result<Value> {
-        let author = match self.get_author::<Users<SingleId>>(env)? {
-            Some(user) => json!([user.get_id(), user.get_name(env)?]),
-            None => Value::Null,
+        let user = self.get_author::<Users<SingleId>>(env)?;
+        let author = if user.is_empty() {
+            Value::Null
+        } else {
+            json!([user.get_id(), user.get_name(env)?])
         };
         let changes: MessageChange<MultipleIds> = self.get_changes(env)?;
         let mut lines = Vec::new();

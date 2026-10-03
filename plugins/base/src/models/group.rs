@@ -8,7 +8,6 @@ use erp::types::field::{IdMode, MultipleIds, Reference};
 #[allow(dead_code)]
 pub struct Group<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
     #[erp(relation = "user_group_rel")]
     users: Reference<BaseUsers, MultipleIds>,

@@ -18,8 +18,6 @@ mod library {
     #[allow(dead_code)]
     pub struct Shelf<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
-        name: String,
     }
 
     #[derive(Model)]
@@ -27,8 +25,6 @@ mod library {
     #[allow(dead_code)]
     pub struct Book<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
-        name: String,
         shelf: Reference<BaseShelf, SingleId>,
     }
 
@@ -37,8 +33,6 @@ mod library {
     #[allow(dead_code)]
     pub struct Chapter<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
-        name: String,
         #[erp(ondelete = "cascade")]
         book: Reference<BaseBook, SingleId>,
         #[erp(ondelete = "cascade")]

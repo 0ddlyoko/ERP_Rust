@@ -7,7 +7,10 @@ use std::slice::Iter;
 use std::sync::Arc;
 use std::vec::IntoIter;
 
-/// One record's id.
+/// One record's id, or none: an empty many2one reads as an empty record.
+///
+/// An empty one holds no id — 0 stands for it, never a record's — so every read of it finds
+/// nothing, every write changes nothing, and its relations are empty in turn.
 ///
 /// `prefetch` holds the ids of the recordset the record was taken from, shared rather than
 /// copied: reading a field of one of them can then load it for the others in the same query.
@@ -20,6 +23,11 @@ pub struct SingleId {
 }
 
 impl SingleId {
+    /// No record.
+    pub fn empty() -> Self {
+        SingleId::default()
+    }
+
     /// An id taken from a recordset, remembering the recordset.
     pub fn within(id: u32, prefetch: Arc<[u32]>) -> Self {
         SingleId {
@@ -80,19 +88,19 @@ impl IdMode for SingleId {
         &self.ids
     }
     fn get_id_at(&self, pos: usize) -> &u32 {
-        if pos != 0 {
+        if pos != 0 || self.ids.is_empty() {
             return &u32::MAX;
         }
         &self.id
     }
     fn contains(&self, id: &u32) -> bool {
-        &self.id == id
+        self.ids.contains(id)
     }
     fn remove_dup(&mut self) {
         // Nothing to do here, as it's already a single id
     }
     fn is_empty(&self) -> bool {
-        false
+        self.ids.is_empty()
     }
     fn prefetch_ids(&self) -> &[u32] {
         self.prefetch.as_deref().unwrap_or(&self.ids)
@@ -140,6 +148,9 @@ impl Sealed for MultipleIds {}
 // From
 impl From<u32> for SingleId {
     fn from(id: u32) -> Self {
+        if id == 0 {
+            return SingleId::empty();
+        }
         SingleId {
             id,
             ids: vec![id],
@@ -200,20 +211,22 @@ impl From<Vec<&u32>> for MultipleIds {
 
 impl From<SingleId> for MultipleIds {
     fn from(id: SingleId) -> Self {
-        id.get_id().into()
+        MultipleIds { ids: id.ids }
     }
 }
 
 impl From<&SingleId> for MultipleIds {
     fn from(id: &SingleId) -> Self {
-        id.get_id().into()
+        MultipleIds {
+            ids: id.ids.clone(),
+        }
     }
 }
 
 impl From<Vec<SingleId>> for MultipleIds {
     fn from(ids: Vec<SingleId>) -> Self {
         MultipleIds {
-            ids: ids.iter().map(|id| id.get_id()).collect(),
+            ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
         }
     }
 }
@@ -221,7 +234,7 @@ impl From<Vec<SingleId>> for MultipleIds {
 impl From<&Vec<SingleId>> for MultipleIds {
     fn from(ids: &Vec<SingleId>) -> Self {
         MultipleIds {
-            ids: ids.iter().map(|id| id.get_id()).collect(),
+            ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
         }
     }
 }
@@ -229,7 +242,7 @@ impl From<&Vec<SingleId>> for MultipleIds {
 impl From<Vec<&SingleId>> for MultipleIds {
     fn from(ids: Vec<&SingleId>) -> Self {
         MultipleIds {
-            ids: ids.iter().map(|&id| id.get_id()).collect(),
+            ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
         }
     }
 }
@@ -257,10 +270,10 @@ impl From<&MultipleIds> for RightTuple {
 // Iterators
 impl IntoIterator for SingleId {
     type Item = SingleId;
-    type IntoIter = std::iter::Once<SingleId>;
+    type IntoIter = std::option::IntoIter<SingleId>;
 
     fn into_iter(self) -> Self::IntoIter {
-        std::iter::once(self)
+        (!self.is_empty()).then_some(self).into_iter()
     }
 }
 
@@ -300,10 +313,10 @@ impl Iterator for MultipleIdsIntoIterator {
 
 impl IntoIterator for &SingleId {
     type Item = SingleId;
-    type IntoIter = std::iter::Once<SingleId>;
+    type IntoIter = std::option::IntoIter<SingleId>;
 
     fn into_iter(self) -> Self::IntoIter {
-        std::iter::once(self.clone())
+        (!self.is_empty()).then(|| self.clone()).into_iter()
     }
 }
 

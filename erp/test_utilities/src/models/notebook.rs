@@ -7,7 +7,6 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 #[allow(dead_code)]
 pub struct Notebook<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
     #[erp(inverse = "notebook", owned)]
     pages: Reference<BasePage, MultipleIds>,
@@ -18,7 +17,6 @@ pub struct Notebook<Mode: IdMode> {
 #[allow(dead_code)]
 pub struct Page<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     text: String,
     notebook: Reference<BaseNotebook, SingleId>,
 }

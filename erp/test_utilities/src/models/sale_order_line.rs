@@ -45,13 +45,9 @@ impl SaleOrderLine<MultipleIds> {
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for line in self {
-            let total = match line.get_order::<SaleOrder<SingleId>>(env)? {
-                Some(order) => {
-                    let siblings: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
-                    siblings.get_price(env)?.into_iter().sum()
-                }
-                None => 0,
-            };
+            let order = line.get_order::<SaleOrder<SingleId>>(env)?;
+            let siblings: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
+            let total = siblings.get_price(env)?.into_iter().sum();
             line.set_siblings_total(total, env)?;
         }
         Ok(())
@@ -62,16 +58,11 @@ impl SaleOrderLine<MultipleIds> {
         env: &mut Environment,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         for line in self {
-            let summary = match line.get_order::<SaleOrder<SingleId>>(env)? {
-                Some(order) => {
-                    let tags: Tag<MultipleIds> = order.get_tags(env)?;
-                    let mut names: Vec<String> = tags.get_name(env)?.into_iter().cloned().collect();
-                    names.sort();
-                    names.join(",")
-                }
-                None => String::new(),
-            };
-            line.set_order_tags(summary, env)?;
+            let order = line.get_order::<SaleOrder<SingleId>>(env)?;
+            let tags: Tag<MultipleIds> = order.get_tags(env)?;
+            let mut names: Vec<String> = tags.get_name(env)?.into_iter().cloned().collect();
+            names.sort();
+            line.set_order_tags(names.join(","), env)?;
         }
         Ok(())
     }

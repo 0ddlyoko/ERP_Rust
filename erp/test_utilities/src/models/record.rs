@@ -10,6 +10,5 @@ use erp::types::field::IdMode;
 #[allow(dead_code)]
 pub struct Record<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
 }

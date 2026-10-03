@@ -11,10 +11,9 @@ use std::error::Error;
 #[allow(dead_code)]
 pub struct Users<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "", tracking)]
+    #[erp(tracking)]
     login: String,
     password: Password,
-    #[erp(default = "")]
     name: String,
     #[erp(default = true, tracking)]
     active: bool,

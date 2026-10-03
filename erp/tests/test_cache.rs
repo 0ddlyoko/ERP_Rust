@@ -139,7 +139,7 @@ fn test_x2x_fields() -> Result<()> {
     assert!(
         sale_order_line
             .get_order::<SaleOrder<_>>(&mut env)?
-            .is_none()
+            .is_empty()
     );
 
     // Linking SO to a line should work, for both side
@@ -153,10 +153,8 @@ fn test_x2x_fields() -> Result<()> {
             .contains(sale_order_line.id.get_id_ref())
     );
     assert_eq!(
-        sale_order_line
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
 
     // Let's add another line
@@ -176,16 +174,12 @@ fn test_x2x_fields() -> Result<()> {
             .contains(sale_order_line_2.id.get_id_ref())
     );
     assert_eq!(
-        sale_order_line
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
     assert_eq!(
-        sale_order_line_2
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line_2.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
 
     // Also, creating a new line that has a direct link to a SO should also have the correct SO
@@ -213,22 +207,16 @@ fn test_x2x_fields() -> Result<()> {
             .contains(sale_order_line_3.id.get_id_ref())
     );
     assert_eq!(
-        sale_order_line
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
     assert_eq!(
-        sale_order_line_2
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line_2.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
     assert_eq!(
-        sale_order_line_3
-            .get_order::<SaleOrder<_>>(&mut env)?
-            .map(|order| order.id),
-        Some(sale_order.id.clone())
+        sale_order_line_3.get_order::<SaleOrder<_>>(&mut env)?.id,
+        sale_order.id.clone()
     );
     Ok(())
 }

@@ -174,7 +174,6 @@ mod tracked {
     #[allow(dead_code)]
     pub struct Project<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
         name: String,
         #[erp(inverse = "project", tracking)]
         tasks: Reference<BaseTask, MultipleIds>,
@@ -187,7 +186,6 @@ mod tracked {
     #[allow(dead_code)]
     pub struct Task<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
         name: String,
         project: Reference<BaseProject, SingleId>,
         #[erp(relation = "project_watcher_rel")]

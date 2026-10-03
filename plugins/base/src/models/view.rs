@@ -22,11 +22,8 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct View<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
-    name: String,
-    #[erp(default = "")]
-    model: String,
-    #[erp(default = "")]
+    name: Option<String>,
+    model: Option<String>,
     arch: String,
     #[erp(ondelete = "cascade")]
     inherit: Reference<BaseView, SingleId>,
@@ -59,14 +56,10 @@ impl Views {
         let all: View<MultipleIds> = env.search(&SearchType::Nothing)?;
         let mut rows = Vec::new();
         for view in all {
-            let inherit = view
-                .get_inherit::<View<SingleId>>(env)?
-                .map(|parent| parent.get_id());
-            let name = view.get_name(env)?.clone();
-            let label = if name.is_empty() {
-                format!("View #{}", view.get_id())
-            } else {
-                format!("View {name}")
+            let inherit = view.get_inherit::<View<SingleId>>(env)?.get_optional_id();
+            let label = match view.get_name(env)? {
+                Some(name) => format!("View {name}"),
+                None => format!("View #{}", view.get_id()),
             };
             rows.push(Markup {
                 id: view.get_id(),
@@ -76,7 +69,7 @@ impl Views {
                 inherit,
                 order: (0, String::new(), i64::from(*view.get_priority(env)?)),
                 data: ViewData {
-                    model: view.get_model(env)?.clone(),
+                    model: view.get_model(env)?.cloned().unwrap_or_default(),
                 },
             });
         }

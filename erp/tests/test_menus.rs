@@ -53,6 +53,7 @@ fn employee(app: &Application) -> Result<u32> {
     let users_group = data::resolve(&mut env, "base.group_user")?.expect("seeded");
     let mut values = MapOfFields::default();
     values.insert("login", "employee");
+    values.insert("name", "employee");
     values.insert("password", Password::new("s3cret")?);
     values.insert(
         "groups",

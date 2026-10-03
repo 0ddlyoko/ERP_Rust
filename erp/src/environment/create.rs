@@ -3,7 +3,7 @@ use super::*;
 use crate::access::{Access, AccessDenied, Operation};
 use crate::model::{CREATE_DATE, CREATE_UID, WRITE_DATE, WRITE_UID};
 use chrono::Utc;
-use erp_internal_types::FinalInternalModel;
+use erp_internal_types::{FinalInternalField, FinalInternalModel};
 use erp_types::field::Command;
 
 impl<'mm> Environment<'mm> {
@@ -57,19 +57,23 @@ impl<'mm> Environment<'mm> {
             .flat_map(|map| map.fields.keys().cloned())
             .collect();
         let fields: Vec<&str> = fields.iter().map(String::as_str).collect();
-        match self.access(model_name, Operation::Create)? {
+        let ids = match self.access(model_name, Operation::Create)? {
             Access::Unrestricted | Access::Restricted(SearchType::Nothing) => {
-                self.insert_new_records(model_name, data)
+                self.insert_new_records(model_name, data)?
             }
             Access::Denied => {
-                Err(AccessDenied::new(model_name, Operation::Create, &fields, Vec::new()).into())
+                return Err(
+                    AccessDenied::new(model_name, Operation::Create, &fields, Vec::new()).into(),
+                );
             }
             Access::Restricted(_) => self.savepoint(|env| {
                 let ids = env.insert_new_records(model_name, data)?;
                 env.check_access(model_name, Operation::Create, ids.get_ids_ref(), &fields)?;
                 Ok(ids)
-            }),
-        }
+            })?,
+        };
+        self.refuse_emptied_relations()?;
+        Ok(ids)
     }
 
     /// Refuse a record created with a required field left empty, its defaults already given.
@@ -80,7 +84,11 @@ impl<'mm> Environment<'mm> {
         for field in model.fields.values() {
             if field.required
                 && field.compute.is_none()
-                && !matches!(values.fields.get(&field.name), Some(Some(_)))
+                && !is_x2many(field)
+                && values
+                    .fields
+                    .get(&field.name)
+                    .is_none_or(required::is_empty_value)
             {
                 return Err(Self::required_error(&model.name, field));
             }
@@ -119,6 +127,12 @@ impl<'mm> Environment<'mm> {
 
         // Add missing fields
         for d in data.iter_mut() {
+            for value in d.fields.values_mut() {
+                *value = match Self::without_empty_references(value.take()) {
+                    Some(FieldType::String(text)) if text.is_empty() => None,
+                    value => value,
+                };
+            }
             for (field_name, value) in &d.fields {
                 let field = final_model.try_get_internal_field(field_name)?;
                 Self::refuse_automatic(model_name, field)?;
@@ -187,6 +201,11 @@ impl<'mm> Environment<'mm> {
                 self.write_commands(model_name, &field_name, *id, commands)?;
             }
         }
+        for (field_name, field) in &final_model.fields {
+            if is_x2many(field) {
+                self.note_maybe_emptied(model_name, field_name, ids.iter().copied())?;
+            }
+        }
         // What a record is created with is no change of it.
         self.forget_tracked(model_name, &ids);
         for hook in self.model_manager.create_hooks.clone() {
@@ -229,4 +248,15 @@ impl<'mm> Environment<'mm> {
         }
         Some(missing_fields_to_load)
     }
+}
+
+/// Whether a field holds a list of records: a one2many or a many2many.
+fn is_x2many(field: &FinalInternalField) -> bool {
+    matches!(
+        field.inverse,
+        Some(FieldReference {
+            inverse_field: FieldReferenceType::O2M { .. } | FieldReferenceType::M2M { .. },
+            ..
+        })
+    )
 }

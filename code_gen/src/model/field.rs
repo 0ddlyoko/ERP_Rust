@@ -75,6 +75,13 @@ impl FieldGen {
                 AllowedFieldAttrs::Default(ident, default_value) => {
                     default_span = Some(ident.span());
                     default = Some(match default_value {
+                        Lit::Str(str) if str.value().is_empty() => {
+                            return Err(syn::Error::new(
+                                str.span(),
+                                "an empty default is no default: a text that may be empty is an \
+                                 `Option<String>`",
+                            ));
+                        }
                         Lit::Str(str) => FieldType::String(str.value()),
                         Lit::Int(i) => {
                             let int = i.base10_parse::<i32>();
@@ -297,17 +304,20 @@ impl FieldGen {
                 "only a one2many — a list with an inverse — owns its records",
             ));
         }
-        // Any other field says it is required by not being an `Option`.
-        let is_many2one = is_reference && !is_reference_multi;
-        if let Some(ident) = on_delete
-            .as_ref()
-            .map(|(ident, _)| ident)
-            .or(required.as_ref())
-            && !is_many2one
+        if let Some((ident, _)) = &on_delete
+            && (!is_reference || is_reference_multi)
         {
             return Err(syn::Error::new(
                 ident.span(),
                 "only a many2one — a `Reference<_, SingleId>` — takes this",
+            ));
+        }
+        if let Some(ident) = &required
+            && !is_reference
+        {
+            return Err(syn::Error::new(
+                ident.span(),
+                "this field is required by not being an `Option`",
             ));
         }
         // A list of references is filled by one of three things; with none it holds nothing.

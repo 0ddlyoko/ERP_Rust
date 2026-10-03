@@ -108,7 +108,16 @@ fn invoices_of(env: &mut erp::environment::Environment, tag: u32) -> Result<Vec<
         .unwrap_or_default())
 }
 fn mk(env: &mut erp::environment::Environment, model: &str) -> Result<u32> {
-    let ids: MultipleIds = env.create_records(model, vec![MapOfFields::new(HashMap::new())])?;
+    let mut values = MapOfFields::new(HashMap::new());
+    if env
+        .model_manager
+        .get_model(model)
+        .fields
+        .contains_key("name")
+    {
+        values.insert("name", model);
+    }
+    let ids: MultipleIds = env.create_records(model, vec![values])?;
     Ok(ids.get_ids_ref()[0])
 }
 

@@ -91,14 +91,22 @@ fn test_relations_have_no_default() {
     assert_eq!(order.get_default_value("lines"), None);
 }
 
-/// Declaring a field `Option<T>` is what makes it start empty; a bare `T` keeps its default.
+/// An `Option<T>` starts empty, and so does bare text: whoever creates the record gives it. A
+/// type with a default of its own — an enum with a `#[default]` — starts there; an explicit
+/// default wins over both.
 #[test]
 fn test_default_follows_optionality() -> Result<()> {
     let app = new_app();
     let invoice = app.model_manager.get_model("invoice");
+    let tag = app.model_manager.get_model("tag");
+    let order = app.model_manager.get_model("sale_order");
 
     assert_eq!(invoice.get_default_value("signed_on"), None);
-    assert!(invoice.get_default_value("due_date").is_some());
+    assert_eq!(tag.get_default_value("name"), None);
+    assert_eq!(
+        order.get_default_value("state"),
+        Some(FieldType::String("draft".to_string()))
+    );
     assert_eq!(
         invoice.get_default_value("tax_rate"),
         Some(FieldType::Decimal("0.21".parse()?))

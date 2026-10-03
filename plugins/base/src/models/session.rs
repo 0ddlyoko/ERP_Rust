@@ -90,9 +90,10 @@ impl Session<SingleId> {
         if *session.get_expires_at(env)? <= Utc::now() {
             return Ok(None);
         }
-        let Some(user): Option<Users<SingleId>> = session.get_user(env)? else {
+        let user: Users<SingleId> = session.get_user(env)?;
+        if user.is_empty() {
             return Ok(None);
-        };
+        }
         // The account, not only the session. An inactive account cannot authenticate, and that
         // has to mean the same thing for somebody already holding a token — otherwise closing an
         // account leaves whoever is logged in exactly where they were, for as long as their

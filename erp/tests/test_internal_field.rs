@@ -295,7 +295,10 @@ fn test_register_fields_with_real_model() -> Result<()> {
     assert_eq!(field.description.as_deref(), Some("New name of the SO"));
     assert!(field.compute.is_none());
     assert!(field.required);
-    assert_eq!(field.default_value, Some(FieldType::String("".to_string())));
+    assert_eq!(
+        field.default_value, None,
+        "text is given by whoever creates the record"
+    );
 
     Ok(())
 }

@@ -17,7 +17,7 @@ use erp_types::field::FieldType;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::error::Error;
 use uuid::Uuid;
 
@@ -29,6 +29,7 @@ mod delete;
 mod flush;
 mod method;
 mod read;
+mod required;
 mod shared;
 mod tracking;
 mod transaction;
@@ -91,6 +92,7 @@ pub struct Environment<'mm> {
     /// Records a deletion under way removes, by model: their own fields may be emptied, required
     /// or not, and records pointing to them are not held back by them.
     deleting: HashMap<String, HashSet<u32>>,
+    maybe_emptied: required::MaybeEmptied,
     closed: bool,
 }
 
@@ -137,6 +139,7 @@ impl<'mm> Environment<'mm> {
             changed_cached_models: HashSet::new(),
             tracked: Default::default(),
             deleting: HashMap::new(),
+            maybe_emptied: Default::default(),
             closed: false,
         };
         env.database.start_transaction()?;

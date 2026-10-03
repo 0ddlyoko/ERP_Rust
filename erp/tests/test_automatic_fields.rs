@@ -110,6 +110,7 @@ fn test_a_deleted_author_is_emptied() -> Result<()> {
     let mut env = app.new_env_as_option(Some(admin))?;
     let mut values = MapOfFields::default();
     values.insert("login", "leaving");
+    values.insert("name", "leaving");
     let author = env.create_records("users", vec![values])?.get_ids_ref()[0];
     env.close()?;
 

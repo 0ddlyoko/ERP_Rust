@@ -97,7 +97,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 })
             } else {
                 Some(quote! {
-                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<Option<M>, Box<dyn std::error::Error + Send + Sync>>
+                    pub fn #get_field_ident<M>(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<M, Box<dyn std::error::Error + Send + Sync>>
                     where
                         M: erp::model::Model<erp::types::field::SingleId, BaseModel=#field_type_keyword>,
                     {
@@ -342,6 +342,16 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 self.id.get_id_ref()
             }
 
+            /// Whether this is no record, as an empty many2one reads.
+            pub fn is_empty(&self) -> bool {
+                erp::types::field::IdMode::is_empty(&self.id)
+            }
+
+            /// The record's id; `None` for no record.
+            pub fn get_optional_id(&self) -> Option<u32> {
+                (!self.is_empty()).then(|| self.get_id())
+            }
+
             #verbs_single
 
             #(#impl_model_fields_single)*
@@ -494,8 +504,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             // A relation starts empty; there is no "no reference" sentinel any more.
             quote! { None }
         } else if *is_required {
-            // A bare `T` takes its type's default.
-            quote! { Some((#field_type_keyword::default()).into()) }
+            // Text and dates mean nothing by default: whoever creates the record gives them.
+            match field_type_keyword.to_string().as_str() {
+                "String" | "NaiveDate" | "Timestamp" => quote! { None },
+                _ => quote! { Some((#field_type_keyword::default()).into()) },
+            }
         } else {
             // `Option<T>` starts empty — that is what declaring it optional now means.
             quote! { None }

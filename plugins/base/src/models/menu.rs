@@ -16,7 +16,6 @@ use std::error::Error;
 #[allow(dead_code)]
 pub struct Menu<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "")]
     name: String,
     #[erp(ondelete = "cascade")]
     parent: Reference<BaseMenu, SingleId>,
@@ -65,13 +64,9 @@ impl Menu<MultipleIds> {
             entries.push(Entry {
                 id: menu.get_id(),
                 name: menu.get_name(env)?.clone(),
-                parent: menu
-                    .get_parent::<Menu<SingleId>>(env)?
-                    .map(|parent| parent.get_id()),
+                parent: menu.get_parent::<Menu<SingleId>>(env)?.get_optional_id(),
                 order: (*menu.get_sequence(env)?, menu.get_id()),
-                action: menu
-                    .get_action::<Action<SingleId>>(env)?
-                    .map(|action| action.get_id()),
+                action: menu.get_action::<Action<SingleId>>(env)?.get_optional_id(),
                 groups: menu.get_groups::<Group<MultipleIds>>(env)?.get_ids(),
             });
         }

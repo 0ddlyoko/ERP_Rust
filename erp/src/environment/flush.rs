@@ -120,6 +120,7 @@ impl<'mm> Environment<'mm> {
     /// The `&ModelManager` is copied out first so the registry borrow stays independent of the
     /// `&mut self` that `save_model_to_db` requires.
     pub fn save_all_to_db(&mut self) -> Result<()> {
+        self.refuse_emptied_relations()?;
         self.recompute_all_stored()?;
         self.report_tracked_changes()?;
         self.recompute_all_stored()?;

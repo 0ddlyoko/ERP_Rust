@@ -397,6 +397,7 @@ fn test_field_tag_alone_reaches_the_field() -> Result<()> {
         "seed_plugin",
         r#"<erp>
             <record id="edge_short" model="tag">
+                <field name="name">edge</field>
                 <field>only the short form</field>
             </record>
         </erp>"#,

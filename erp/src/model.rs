@@ -11,8 +11,7 @@ pub use rpc::*;
 pub use selections::*;
 
 use crate::environment::Environment;
-use erp_types::field::RequiredFieldEmpty;
-use erp_types::field::{FieldType, Reference};
+use erp_types::field::{EmptyValue, FieldType, Reference};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{BaseModel, CommonModel};
 use std::error::Error;
@@ -21,7 +20,8 @@ use std::error::Error;
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {}
 
 impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
-    /// Returns the given field of the given type.
+    /// Returns the given field of the given type; its type's default when it holds none, as
+    /// on an empty record.
     ///
     /// If error, returns the error
     pub fn get<'a, E>(
@@ -31,31 +31,13 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     ) -> Result<&'a E, Box<dyn Error + Send + Sync>>
     where
         &'a FieldType: Into<Option<&'a E>>,
+        E: EmptyValue,
     {
         let model_name = Self::get_model_name();
         let id: &SingleId = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        if let Some(result) = result {
-            let result: Option<&E> = result.into();
-
-            if let Some(result) = result {
-                Ok(result)
-            } else {
-                Err(RequiredFieldEmpty {
-                    model_name: model_name.to_string(),
-                    field_name: field_name.to_string(),
-                    id: id.get_id(),
-                }
-                .into())
-            }
-        } else {
-            Err(RequiredFieldEmpty {
-                model_name: model_name.to_string(),
-                field_name: field_name.to_string(),
-                id: id.get_id(),
-            }
-            .into())
-        }
+        let value: Option<&'a E> = result.and_then(|result| result.into());
+        Ok(value.unwrap_or_else(|| E::empty()))
     }
 
     /// Returns the given optional field of the given type.
@@ -75,14 +57,14 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
         Ok(result.and_then(|result| result.into()))
     }
 
-    /// Returns the given optional reference field.
+    /// Returns the record the given many2one points to: an empty one when it points nowhere.
     ///
     /// If error, returns the error
     pub fn get_reference<M, BM2>(
         &self,
         field_name: &str,
         env: &mut Environment,
-    ) -> Result<Option<M>, Box<dyn Error + Send + Sync>>
+    ) -> Result<M, Box<dyn Error + Send + Sync>>
     where
         M: Model<SingleId, BaseModel = BM2>,
         BM2: BaseModel,
@@ -90,18 +72,16 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
         let model_name = Self::get_model_name();
         let id = self.get_id_mode();
         let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        let reference: Option<Reference<BM2, SingleId>> = result.and_then(|result| match result {
-            FieldType::Ref(id) => Some(id.into()),
-            _ => None,
-        });
-
-        // let reference: Option<Reference<BM2, SingleId>> = result.and_then(|result| result.into());
-        Ok(reference.map(|r| r.get::<M>()))
+        let target = match result {
+            Some(FieldType::Ref(id)) => SingleId::from(*id),
+            _ => SingleId::empty(),
+        };
+        Ok(Reference::<BM2, SingleId>::from(target).get::<M>())
     }
 }
 
 impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
-    /// Returns the given field of the given type.
+    /// Returns the given field of the given type; its type's default where it holds none.
     ///
     /// If error, returns the error
     pub fn gets<'a, E>(
@@ -111,36 +91,18 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
     ) -> Result<Vec<&'a E>, Box<dyn Error + Send + Sync>>
     where
         &'a FieldType: Into<Option<&'a E>>,
+        E: EmptyValue,
     {
         let model_name = Self::get_model_name();
         let ids: &MultipleIds = self.get_id_mode();
         let result: Vec<Option<&FieldType>> = env.get_fields_value(model_name, field_name, ids)?;
-        result
-            .iter()
-            .enumerate()
-            .map(|(idx, res)| {
-                if let Some(res) = *res {
-                    let result: Option<&E> = res.into();
-                    if let Some(result) = result {
-                        Ok(result)
-                    } else {
-                        Err(RequiredFieldEmpty {
-                            model_name: model_name.to_string(),
-                            field_name: field_name.to_string(),
-                            id: *ids.get_id_at(idx),
-                        }
-                        .into())
-                    }
-                } else {
-                    Err(RequiredFieldEmpty {
-                        model_name: model_name.to_string(),
-                        field_name: field_name.to_string(),
-                        id: *ids.get_id_at(idx),
-                    }
-                    .into())
-                }
+        Ok(result
+            .into_iter()
+            .map(|result| {
+                let value: Option<&'a E> = result.and_then(|result| result.into());
+                value.unwrap_or_else(|| E::empty())
             })
-            .collect()
+            .collect())
     }
 
     /// Returns given optional field of the given type.

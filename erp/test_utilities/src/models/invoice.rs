@@ -16,8 +16,8 @@ pub struct Invoice<Mode: IdMode> {
     amount_untaxed: Decimal,
     #[erp(default = 0.21)]
     tax_rate: Decimal,
-    due_date: NaiveDate,
-    created_at: Timestamp,
+    due_date: Option<NaiveDate>,
+    created_at: Option<Timestamp>,
     signed_on: Option<NaiveDate>,
     #[erp(relation = "invoice_tag_rel")]
     tags: Reference<BaseTag, MultipleIds>,

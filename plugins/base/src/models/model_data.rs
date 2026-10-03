@@ -12,13 +12,10 @@ use erp::types::field::IdMode;
 pub struct ModelData<Mode: IdMode> {
     id: Mode,
     /// Plugin the identifier belongs to.
-    #[erp(default = "")]
     module: String,
     /// Identifier within that plugin.
-    #[erp(default = "")]
     name: String,
     /// Model of the record designated.
-    #[erp(default = "")]
     model: String,
     /// Technical id of that record.
     #[erp(default = 0)]

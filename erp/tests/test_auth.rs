@@ -33,6 +33,7 @@ fn create_user(
 ) -> Result<u32> {
     let mut map: MapOfFields = MapOfFields::new(HashMap::new());
     map.insert("login", login);
+    map.insert("name", login);
     map.insert("password", Password::new(password)?);
     map.insert("active", active);
     let ids: MultipleIds = env.create_records("users", vec![map])?;

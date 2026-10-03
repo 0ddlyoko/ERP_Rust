@@ -572,7 +572,6 @@ mod misnamed {
     #[allow(dead_code)]
     pub struct Misnamed<Mode: IdMode> {
         pub id: Mode,
-        #[erp(default = "")]
         name: String,
     }
 }
