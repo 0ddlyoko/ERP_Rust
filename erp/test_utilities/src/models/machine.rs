@@ -63,6 +63,13 @@ impl Machine<MultipleIds> {
         Err("refused on purpose".into())
     }
 
+    /// Writes, then panics. The call fails alone: its work is undone, and nothing else stops.
+    #[erp(rpc)]
+    pub fn explode(&self, env: &mut Environment) -> Result<i32> {
+        self.set_name("written before panicking".to_string(), env)?;
+        panic!("exploded on purpose");
+    }
+
     /// Records how many copies of itself are running, so a test can see a concurrency limit
     /// from the inside rather than inferring it from a stopwatch.
     #[erp(rpc)]

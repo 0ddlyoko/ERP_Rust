@@ -577,3 +577,96 @@ fn test_a_name_field_the_model_lacks_is_refused() {
     app.model_manager.register_model::<misnamed::Misnamed<_>>();
     app.model_manager.post_register();
 }
+
+/// Ids a caller sends are each one record, and one that does not exist is refused by name rather
+/// than met halfway through the work.
+#[test]
+fn test_ids_named_twice_or_missing_are_answered() -> Result<()> {
+    let app = new_app()?;
+    let order = create(&app, "sale_order", json!({"name": "S1"}));
+    let line = create(&app, "sale_order_line", json!({"order": order, "price": 3}));
+
+    let refused = call(
+        &app,
+        "sale_order_line.write",
+        json!({"ids": [999], "values": {"order": null}}),
+    );
+    let message = refused["error"]["message"].as_str().unwrap_or_default();
+    assert!(
+        message.contains("sale_order_line #999 does not exist"),
+        "{refused}"
+    );
+    let refused = call(&app, "sale_order_line.delete", json!({"ids": [line, 999]}));
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("#999"),
+        "{refused}"
+    );
+
+    let deleted = result(&app, "sale_order_line.delete", json!({"ids": [line, line]}));
+    assert_eq!(deleted, json!(1), "named twice, deleted once");
+    Ok(())
+}
+
+/// A call that panics is answered with an error and affects nothing else: what it wrote is
+/// undone, and the other calls of its batch are answered.
+#[test]
+fn test_a_panic_fails_its_call_alone() -> Result<()> {
+    let app = new_app()?;
+    let machine = create(
+        &app,
+        "machine",
+        json!({"name": "digger", "base_rate": 1, "days": 1}),
+    );
+    let body = json!([
+        {"jsonrpc": "2.0", "method": "machine.explode", "params": {"ids": [machine], "args": {}}, "id": 1},
+        {"jsonrpc": "2.0", "method": "machine.count", "params": {"domain": []}, "id": 2},
+    ])
+    .to_string();
+    let answers = jsonrpc::handle(&app, None, &body).expect("a batch is answered");
+    assert_eq!(answers[0]["error"]["code"], -32603, "{answers}");
+    assert!(
+        !answers[0]["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("on purpose"),
+        "what panicked stays in the log: {answers}"
+    );
+    assert_eq!(answers[1]["result"], json!(1), "{answers}");
+    let rows = result(
+        &app,
+        "machine.read",
+        json!({"ids": [machine], "fields": ["name"]}),
+    );
+    assert_eq!(rows[0]["name"], "digger", "undone");
+    Ok(())
+}
+
+/// A domain nesting operators too deeply is refused, however it is written: it never reaches
+/// anything that would follow it to the end.
+#[test]
+fn test_a_domain_too_deep_is_refused() -> Result<()> {
+    let app = new_app()?;
+    let mut domain = Vec::new();
+    for level in 0..20_000 {
+        domain.push(json!(if level % 2 == 0 { "&" } else { "|" }));
+        domain.push(json!(["name", "=", "x"]));
+    }
+    domain.push(json!(["name", "=", "y"]));
+    let refused = call(&app, "machine.search", json!({"domain": domain}));
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("nests operators"),
+        "{refused}"
+    );
+
+    let mut flat = vec![json!("|"); 49_999];
+    flat.extend((0..50_000).map(|value| json!(["base_rate", "=", value])));
+    let found = result(&app, "machine.search", json!({"domain": flat}));
+    assert_eq!(found, json!([]), "a long OR is fine");
+    Ok(())
+}

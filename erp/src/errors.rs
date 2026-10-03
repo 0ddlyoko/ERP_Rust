@@ -25,3 +25,14 @@ pub struct MaximumCallDepth {
     /// The innermost calls, in the order they were made.
     pub path: Vec<String>,
 }
+
+/// Raised when records a caller names do not exist: never created, or deleted since.
+#[derive(Debug, Clone, Error)]
+#[error(
+    "{model_name} #{} does not exist, or was deleted",
+    .ids.iter().map(u32::to_string).collect::<Vec<_>>().join(", #")
+)]
+pub struct MissingRecords {
+    pub model_name: String,
+    pub ids: Vec<u32>,
+}

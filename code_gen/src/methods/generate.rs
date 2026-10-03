@@ -335,9 +335,13 @@ fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStr
 
             let call: Call = erp::serde_json::from_value(params.clone())?;
             let args = call.args;
+            let ids = env.existing(
+                <#self_ty as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::_get_model_name(),
+                call.ids,
+            )?;
             let record = <#self_ty as erp::types::model::CommonModel<
                 erp::types::field::MultipleIds,
-            >>::create_instance(erp::types::field::MultipleIds::from(call.ids));
+            >>::create_instance(ids);
             let out = record.#call(env, #(#values,)*)?;
             Ok(erp::serde_json::to_value(out)?)
         }

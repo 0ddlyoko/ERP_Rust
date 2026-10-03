@@ -96,11 +96,28 @@ pub fn handle(app: &Application, credentials: Option<&str>, body: &str) -> Optio
 }
 
 /// Answer one request. `None` for a notification, which is owed nothing.
+///
+/// A request that panics is answered with an internal error and affects nothing else: its
+/// environment is dropped while unwinding, which rolls its work back, and the other requests of
+/// a batch are answered as usual. What panicked goes to the log, not to the caller.
 fn answer(app: &Application, credentials: Option<&str>, request: Request) -> Option<Response> {
     let id = request.id.clone();
     let is_notification = id.is_none();
 
-    let outcome = run(app, credentials, &request);
+    // Unwind safe: what the call shared — caches, the pool — recovers from a poisoned lock.
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run(app, credentials, &request)
+    }))
+    .unwrap_or_else(|panic| {
+        tracing::error!(
+            method = %request.method,
+            panic = panic_message(&*panic),
+            "A call panicked; its work is rolled back"
+        );
+        Err(RpcError::internal(
+            "The server failed to handle this request; nothing it did was kept",
+        ))
+    });
     if is_notification {
         return None;
     }
@@ -108,6 +125,22 @@ fn answer(app: &Application, credentials: Option<&str>, request: Request) -> Opt
         Ok(result) => Response::ok(result, id),
         Err(error) => Response::failed(error, id),
     })
+}
+
+/// The server failing a call through no fault of the caller: said in the log, for whoever runs
+/// the server, as well as to the caller.
+fn internal(what: &str, error: &(dyn std::error::Error + Send + Sync)) -> RpcError {
+    tracing::error!(%error, "{what}");
+    RpcError::internal(error.to_string())
+}
+
+/// What a panic said, when it said it with text.
+fn panic_message(panic: &(dyn std::any::Any + Send)) -> &str {
+    panic
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("a panic without a message")
 }
 
 /// Who a token identifies, or a refusal.
@@ -128,7 +161,7 @@ fn identify(
     // user nobody authenticated as happens to be allowed to read.
     let mut root = env
         .as_root()
-        .map_err(|error| RpcError::internal(error.to_string()))?;
+        .map_err(|error| internal("Cannot act as root to resolve a token", &*error))?;
     match resolve(&mut root, token) {
         Ok(Some(uid)) => Ok(Some(uid)),
         Ok(None) => Err(RpcError::unauthorized()),
@@ -153,7 +186,7 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
     // returns, and rolls back by being dropped when it does not.
     let mut env = app
         .new_env()
-        .map_err(|error| RpcError::internal(error.to_string()))?;
+        .map_err(|error| internal("Cannot open a unit of work for a call", &*error))?;
 
     // Before the method is even looked up. Who is asking is settled first, so that what exists
     // is not something an unidentified caller can map out by trying names.
@@ -183,7 +216,7 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
         Ok(result) => env
             .close()
             .map(|()| result)
-            .map_err(|error| RpcError::internal(error.to_string())),
+            .map_err(|error| internal("Cannot save what a call did", &*error)),
         // Dropping the environment rolls the transaction back, so nothing a failed call did
         // survives it.
         //

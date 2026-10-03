@@ -1,6 +1,7 @@
 //! Reading records: browsing, searching and filling the cache on demand.
 use super::*;
 use crate::access::{AccessDenied, Operation};
+use crate::errors::MissingRecords;
 
 impl<'mm> Environment<'mm> {
     pub fn get_empty_record<M>(&self) -> M
@@ -160,6 +161,40 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Same, whatever the caller's rights.
+    /// These records, each once and in the order given, refused when one of them does not exist.
+    ///
+    /// For ids a caller sends: a record named twice is still one record, and one that is not
+    /// there — never created, or deleted since — is the caller's mistake, said as such rather
+    /// than met halfway through a write. Whether the caller may touch them is not checked here.
+    pub fn existing(&mut self, model_name: &str, ids: Vec<u32>) -> Result<MultipleIds> {
+        let mut seen = HashSet::with_capacity(ids.len());
+        let ids: Vec<u32> = ids.into_iter().filter(|id| seen.insert(*id)).collect();
+        if ids.is_empty() {
+            return Ok(MultipleIds::from(ids));
+        }
+        let found: HashSet<u32> = self
+            .search_ids_unchecked(
+                model_name,
+                &make_domain!([("id", "=", ids.clone())]),
+                &SearchOptions::default(),
+            )?
+            .into_iter()
+            .collect();
+        let missing: Vec<u32> = ids
+            .iter()
+            .copied()
+            .filter(|id| !found.contains(id))
+            .collect();
+        if !missing.is_empty() {
+            return Err(MissingRecords {
+                model_name: model_name.to_string(),
+                ids: missing,
+            }
+            .into());
+        }
+        Ok(MultipleIds::from(ids))
+    }
+
     pub(crate) fn search_ids_unchecked(
         &mut self,
         model_name: &str,

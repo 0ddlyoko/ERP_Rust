@@ -270,8 +270,15 @@ pub fn external_id_of(env: &mut Environment, model_name: &str, id: u32) -> Resul
         return Ok(None);
     };
     let rows = env.read(MODEL_DATA, &SingleId::from(*found), &["module", "name"])?;
-    let module = rows[0].get::<&String>("module");
-    let name = rows[0].get::<&String>("name");
+    let Some(row) = rows.first() else {
+        return Ok(None);
+    };
+    let (Some(module), Some(name)) = (
+        row.get_option::<&String>("module"),
+        row.get_option::<&String>("name"),
+    ) else {
+        return Ok(None);
+    };
     Ok(Some(format!("{module}.{name}")))
 }
 
@@ -350,9 +357,19 @@ fn designated(env: &mut Environment, external_id: &str) -> Result<Option<(String
         return Ok(None);
     };
     let rows = env.read(MODEL_DATA, &SingleId::from(*id), &["model", "res_id"])?;
-    let model: String = rows[0].get::<&String>("model").clone();
-    let res_id: i32 = *rows[0].get::<&i32>("res_id");
-    Ok(Some((model, res_id as u32)))
+    let Some(row) = rows.first() else {
+        return Ok(None);
+    };
+    let (Some(model), Some(res_id)) = (
+        row.get_option::<&String>("model"),
+        row.get_option::<&i32>("res_id"),
+    ) else {
+        return Ok(None);
+    };
+    let Ok(res_id) = u32::try_from(*res_id) else {
+        return Ok(None);
+    };
+    Ok(Some((model.clone(), res_id)))
 }
 
 impl Environment<'_> {

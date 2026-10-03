@@ -142,7 +142,9 @@ impl<'mm> Environment<'mm> {
             };
             self.call_computed_method_on_all_fields(&model_name)?;
         }
-        let model_name = self.model_with_stored_to_recompute().unwrap_or_default();
+        let Some(model_name) = self.model_with_stored_to_recompute() else {
+            return Ok(());
+        };
         let to_recompute = &self.cache.get_cache_models(&model_name).to_recompute;
         Err(MaximumRecursionDepthCompute {
             fields_name: to_recompute.keys().cloned().collect(),

@@ -94,7 +94,10 @@ impl CacheConnection {
     /// Take a fresh working copy from the shared store, discarding uncommitted changes.
     fn reload_from_store(&mut self) {
         {
-            let store = self.store.lock().expect("cache database mutex poisoned");
+            let store = self
+                .store
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             self.installed = store.installed;
             self.tables = store.tables.clone();
         }
@@ -108,7 +111,10 @@ impl CacheConnection {
     /// is why the write set records the operation and not just the id.
     fn publish_to_store(&mut self) {
         {
-            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            let mut store = self
+                .store
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             store.installed = self.installed;
             for (model_name, ops) in &self.written_rows {
                 let target = store.tables.entry(model_name.clone()).or_default();
@@ -425,7 +431,10 @@ impl CacheConnection {
 impl Database for CacheConnection {
     /// Check if given database is already installed
     fn is_installed(&mut self) -> Result<bool> {
-        let store = self.store.lock().expect("cache database mutex poisoned");
+        let store = self
+            .store
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(store.installed)
     }
 
@@ -435,7 +444,10 @@ impl Database for CacheConnection {
     /// transaction.
     fn initialize(&mut self) -> Result<()> {
         self.installed = true;
-        let mut store = self.store.lock().expect("cache database mutex poisoned");
+        let mut store = self
+            .store
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         store.installed = true;
         Ok(())
     }
@@ -508,7 +520,10 @@ impl Database for CacheConnection {
 
     fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
         let ids = {
-            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            let mut store = self
+                .store
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             store.reserve_ids(model_name, data.len())
         };
         let table = self.tables.entry(model_name.to_string()).or_default();
@@ -586,7 +601,10 @@ impl Database for CacheConnection {
         targets: &[u32],
     ) -> Result<()> {
         let new_ids = {
-            let mut store = self.store.lock().expect("cache database mutex poisoned");
+            let mut store = self
+                .store
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             store.reserve_ids(relation, targets.len())
         };
         let table = self.tables.entry(relation.to_string()).or_default();

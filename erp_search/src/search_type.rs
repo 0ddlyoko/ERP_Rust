@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::{
     InvalidDomainError, LeftTuple, RightTuple, SearchKey, SearchOperator, SearchTuple,
     UnknownSearchOperatorError,
@@ -66,80 +68,146 @@ pub enum ErrorType {
     InvalidDomain(#[from] InvalidDomainError),
     #[error(transparent)]
     UnknownSearchOperator(#[from] UnknownSearchOperatorError),
+    #[error("The domain nests operators of different kinds more than {0} deep")]
+    TooDeep(usize),
+}
+
+/// How deeply operators of different kinds may nest in a domain. Long runs of one operator do
+/// not count: they are folded into a balanced tree, so a list of thousands of conditions is fine.
+pub const MAX_DOMAIN_NESTING: usize = 64;
+
+/// A domain while it is read: runs of one operator gathered into one list.
+enum Node {
+    Tuple(SearchTuple),
+    Operator(SearchKey, VecDeque<Node>, usize),
+}
+
+impl Node {
+    fn nesting(&self) -> usize {
+        match self {
+            Node::Tuple(_) => 0,
+            Node::Operator(_, _, nesting) => *nesting,
+        }
+    }
+
+    /// `operator` over two operands, gathering them into its run when they are runs of it too.
+    /// Growing a run at either end costs nothing, whatever its length.
+    fn combine(operator: SearchKey, left: Node, right: Node) -> Node {
+        match (left, right) {
+            (Node::Operator(key, mut run, mut nesting), other) if key == operator => {
+                Node::append(&operator, &mut run, &mut nesting, other, false);
+                Node::Operator(operator, run, nesting)
+            }
+            (other, Node::Operator(key, mut run, mut nesting)) if key == operator => {
+                Node::append(&operator, &mut run, &mut nesting, other, true);
+                Node::Operator(operator, run, nesting)
+            }
+            (left, right) => {
+                let nesting = left.nesting().max(right.nesting()) + 1;
+                Node::Operator(operator, VecDeque::from([left, right]), nesting)
+            }
+        }
+    }
+
+    /// Put an operand at one end of a run of `operator`, merging it in if it is a run of it too.
+    fn append(
+        operator: &SearchKey,
+        run: &mut VecDeque<Node>,
+        nesting: &mut usize,
+        operand: Node,
+        at_front: bool,
+    ) {
+        match operand {
+            Node::Operator(key, inner, inner_nesting) if key == *operator => {
+                *nesting = (*nesting).max(inner_nesting);
+                if at_front {
+                    for node in inner.into_iter().rev() {
+                        run.push_front(node);
+                    }
+                } else {
+                    run.extend(inner);
+                }
+            }
+            other => {
+                *nesting = (*nesting).max(other.nesting() + 1);
+                if at_front {
+                    run.push_front(other);
+                } else {
+                    run.push_back(other);
+                }
+            }
+        }
+    }
+
+    /// The tree a run becomes: balanced, so its depth grows with the log of its length.
+    fn into_search_type(self) -> SearchType {
+        match self {
+            Node::Tuple(tuple) => SearchType::Tuple(tuple),
+            Node::Operator(key, operands, _) => {
+                let mut level: Vec<SearchType> =
+                    operands.into_iter().map(Node::into_search_type).collect();
+                while level.len() > 1 {
+                    let mut next = Vec::with_capacity(level.len().div_ceil(2));
+                    let mut pairs = level.into_iter();
+                    while let Some(left) = pairs.next() {
+                        next.push(match pairs.next() {
+                            Some(right) if key == SearchKey::Or => {
+                                SearchType::Or(Box::new(left), Box::new(right))
+                            }
+                            Some(right) => SearchType::And(Box::new(left), Box::new(right)),
+                            None => left,
+                        });
+                    }
+                    level = next;
+                }
+                level.pop().unwrap_or(SearchType::Nothing)
+            }
+        }
+    }
 }
 
 impl TryFrom<Vec<SearchKey>> for SearchType {
     type Error = ErrorType;
 
-    fn try_from(mut value: Vec<SearchKey>) -> Result<Self, Self::Error> {
+    /// Read a domain in prefix notation, without recursion: from its end, each condition is put
+    /// on a stack, and each operator takes the two on top. What is left is ANDed. Refused when
+    /// an operator lacks operands, or operators of different kinds nest too deeply.
+    fn try_from(value: Vec<SearchKey>) -> Result<Self, Self::Error> {
         if value.is_empty() {
             return Ok(SearchType::Nothing);
         }
-
-        /// Transform given value to a SearchType if possible, and return the rest of the list that
-        ///  hasn't been parsed.
-        ///
-        /// If one element of the list is not transformable into a SearchType, return None
-        fn parse_value(value: &mut Vec<SearchKey>) -> Option<SearchType> {
-            if value.is_empty() {
-                return Some(SearchType::Nothing);
-            }
-            let search_key = value.remove(0);
-            match search_key {
-                SearchKey::And | SearchKey::Or => {
-                    let left_value = parse_value(value);
-                    if let Some(left_search_type) = left_value {
-                        // Nothing means the keys ran out: an operator is missing an operand.
-                        if left_search_type == SearchType::Nothing {
-                            return None;
-                        }
-                        let right_value = parse_value(value);
-                        if let Some(right_search_type) = right_value {
-                            if right_search_type == SearchType::Nothing {
-                                return None;
-                            }
-                            return Some(if search_key == SearchKey::And {
-                                SearchType::And(
-                                    Box::new(left_search_type),
-                                    Box::new(right_search_type),
-                                )
-                            } else {
-                                SearchType::Or(
-                                    Box::new(left_search_type),
-                                    Box::new(right_search_type),
-                                )
-                            });
-                        }
-                    }
-                    None
+        let invalid = |value: &Vec<SearchKey>| {
+            ErrorType::InvalidDomain(InvalidDomainError {
+                search_key: value.clone(),
+            })
+        };
+        let mut stack: Vec<Node> = Vec::new();
+        for key in value.iter().rev() {
+            let node = match key {
+                SearchKey::Tuple(tuple) => Node::Tuple(tuple.clone()),
+                operator => {
+                    let (Some(left), Some(right)) = (stack.pop(), stack.pop()) else {
+                        return Err(invalid(&value));
+                    };
+                    Node::combine(operator.clone(), left, right)
                 }
-                SearchKey::Tuple(tuple) => Some(SearchType::Tuple(tuple)),
+            };
+            if node.nesting() > MAX_DOMAIN_NESTING {
+                return Err(ErrorType::TooDeep(MAX_DOMAIN_NESTING));
             }
+            stack.push(node);
         }
-
-        let original_value = value.clone();
-        let result = parse_value(&mut value);
-        if result.is_none() {
-            return Err(ErrorType::InvalidDomain(InvalidDomainError {
-                search_key: original_value,
-            }));
+        let mut expressions = stack.into_iter().rev();
+        let Some(first) = expressions.next() else {
+            return Err(invalid(&value));
+        };
+        let all = expressions.fold(first, |left, right| {
+            Node::combine(SearchKey::And, left, right)
+        });
+        if all.nesting() > MAX_DOMAIN_NESTING {
+            return Err(ErrorType::TooDeep(MAX_DOMAIN_NESTING));
         }
-        let mut result = result.unwrap();
-        loop {
-            if value.is_empty() {
-                break;
-            }
-            let new_result = parse_value(&mut value);
-            if new_result.is_none() {
-                return Err(ErrorType::InvalidDomain(InvalidDomainError {
-                    search_key: original_value,
-                }));
-            }
-            let new_result = new_result.unwrap();
-            result = SearchType::And(Box::new(result), Box::new(new_result));
-        }
-
-        Ok(result)
+        Ok(all.into_search_type())
     }
 }
 

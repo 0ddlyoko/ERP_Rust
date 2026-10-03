@@ -182,3 +182,38 @@ fn test_an_extension_can_supply_a_default() {
         Some(FieldType::String("draft".to_string()))
     );
 }
+
+/// A value of another type than its field's, as plugin code may build by hand, is refused with
+/// the field named, whether written or given at creation.
+#[test]
+fn test_a_value_of_the_wrong_kind_is_refused() -> Result<()> {
+    let mut app = erp::app::Application::new_test();
+    app.register_plugin(Box::new(test_utilities::TestLibPlugin {}))?;
+    app.load_plugin("test_lib_plugin")?;
+    let mut env = app.new_env()?;
+
+    let mut order = erp_types::model::MapOfFields::default();
+    order.insert("name", "S1");
+    let orders = env.create_records("sale_order", vec![order])?;
+    let mut line = erp_types::model::MapOfFields::default();
+    line.insert("price", 3);
+    let lines = env.create_records("sale_order_line", vec![line])?;
+
+    let mut wrong = erp_types::model::MapOfFields::default();
+    wrong.insert("order", 7_i32);
+    let refused = env
+        .write("sale_order_line", &lines, wrong)
+        .expect_err("an integer is no record");
+    assert!(refused.to_string().contains("\"order\""), "{refused}");
+
+    let mut wrong = erp_types::model::MapOfFields::default();
+    wrong.insert(
+        "name",
+        erp_types::field::IdMode::get_ids_ref(&orders).to_vec(),
+    );
+    let refused = env
+        .create_records("sale_order", vec![wrong])
+        .expect_err("records are no name");
+    assert!(refused.to_string().contains("\"name\""), "{refused}");
+    Ok(())
+}

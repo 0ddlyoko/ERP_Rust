@@ -11,7 +11,7 @@ use crate::database::{DatabaseConfig, ErrorType};
 use postgres::{Client, NoTls};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 type Result<T> = std::result::Result<T, ErrorType>;
@@ -102,11 +102,7 @@ impl ConnectionPool {
 
     /// How many connections exist right now, lent out or not.
     pub fn open(&self) -> usize {
-        self.inner
-            .state
-            .lock()
-            .expect("the pool is never poisoned")
-            .open
+        self.inner.state().open
     }
 
     /// The most this pool will ever open.
@@ -140,16 +136,22 @@ impl ConnectionPool {
 }
 
 impl Shared {
+    /// The pool's state, even after a panic while it was held: what it counts stays right, as
+    /// every change to it is made in one step.
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     fn check_out(&self) -> Result<Client> {
         let deadline = std::time::Instant::now() + self.timeout;
-        let mut state = self.state.lock().expect("not poisoned");
+        let mut state = self.state();
 
         loop {
             // A connection the server hung up on is worse than no connection: discard them
             // rather than hand one over.
             while let Some(idle) = state.idle.pop() {
                 if idle.client.is_closed() {
-                    state.open -= 1;
+                    state.open = state.open.saturating_sub(1);
                     self.discarded.fetch_add(1, Ordering::Relaxed);
                     continue;
                 }
@@ -162,11 +164,11 @@ impl Shared {
                 self.revalidations.fetch_add(1, Ordering::Relaxed);
                 let mut client = idle.client;
                 let alive = client.is_valid(self.timeout).is_ok();
-                state = self.state.lock().expect("not poisoned");
+                state = self.state();
                 if alive {
                     return Ok(client);
                 }
-                state.open -= 1;
+                state.open = state.open.saturating_sub(1);
                 self.discarded.fetch_add(1, Ordering::Relaxed);
                 // Room came free, so whoever was waiting for one may now open it.
                 self.returned.notify_one();
@@ -180,7 +182,10 @@ impl Shared {
 
                 // Opening is slow and talks to the network, so it happens without the lock.
                 let client = self.open_one().inspect_err(|_| {
-                    self.state.lock().expect("not poisoned").open -= 1;
+                    {
+                        let mut state = self.state();
+                        state.open = state.open.saturating_sub(1);
+                    }
                     self.returned.notify_one();
                 })?;
                 return Ok(client);
@@ -196,7 +201,7 @@ impl Shared {
             let (guard, timed_out) = self
                 .returned
                 .wait_timeout(state, remaining)
-                .expect("not poisoned");
+                .unwrap_or_else(PoisonError::into_inner);
             state = guard;
             if timed_out.timed_out() && state.idle.is_empty() && state.open >= self.max_size {
                 return Err(ErrorType::Pool(format!(
@@ -223,9 +228,9 @@ impl Shared {
 
     /// Take a connection back, unless it is no longer usable.
     fn put_back(&self, client: Client) {
-        let mut state = self.state.lock().expect("not poisoned");
+        let mut state = self.state();
         if client.is_closed() {
-            state.open -= 1;
+            state.open = state.open.saturating_sub(1);
             self.discarded.fetch_add(1, Ordering::Relaxed);
         } else {
             state.idle.push(Idle {
@@ -275,7 +280,13 @@ impl Drop for Shared {
     /// unwind. A pool can be let go from anywhere, including a request handler or a test, so the
     /// rule is kept here rather than asked of every caller.
     fn drop(&mut self) {
-        let idle = std::mem::take(&mut self.state.get_mut().expect("not poisoned").idle);
+        let idle = std::mem::take(
+            &mut self
+                .state
+                .get_mut()
+                .unwrap_or_else(PoisonError::into_inner)
+                .idle,
+        );
         if idle.is_empty() {
             return;
         }

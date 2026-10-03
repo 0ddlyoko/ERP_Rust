@@ -470,12 +470,14 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             let mut values = records_of(env, model_name, params, "values")?;
             refuse_private_writes(env, model_name, &values)?;
             let values = values.pop().unwrap_or_default();
-            env.write(model_name, &MultipleIds::from(ids), values)?;
+            let ids = env.existing(model_name, ids)?;
+            env.write(model_name, &ids, values)?;
             Ok(json!(true))
         }
         Verb::Delete => {
             let IdsParams { ids } = parse(params)?;
-            Ok(json!(env.delete(model_name, &MultipleIds::from(ids))?))
+            let ids = env.existing(model_name, ids)?;
+            Ok(json!(env.delete(model_name, &ids)?))
         }
         Verb::FieldsGet => {
             let FieldsGetParams { fields } = parse(params)?;

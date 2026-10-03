@@ -59,7 +59,10 @@ impl Gate {
     /// guards panics or returns early.
     pub fn enter(&self) -> Pass<'_> {
         if let Some(limit) = self.limit {
-            let mut running = self.running.lock().expect("not poisoned");
+            let mut running = self
+                .running
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             while *running >= limit {
                 running = self.freed.wait(running).expect("not poisoned");
             }
@@ -86,7 +89,11 @@ impl Drop for Pass<'_> {
         if self.gate.limit.is_none() {
             return;
         }
-        let mut running = self.gate.running.lock().expect("not poisoned");
+        let mut running = self
+            .gate
+            .running
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *running = running.saturating_sub(1);
         // One waiter, because one place was freed.
         self.gate.freed.notify_one();

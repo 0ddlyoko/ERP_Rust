@@ -33,11 +33,13 @@ impl<'mm> Environment<'mm> {
             let groups = (source.groups)(&mut self.sudo(), uid)?;
             self.access_memo.groups.insert(uid, groups);
         }
-        Ok(Access::evaluate(
-            &self.access_memo.rules[model_name],
-            &self.access_memo.groups[&uid],
-            operation,
-        ))
+        let (Some(rules), Some(groups)) = (
+            self.access_memo.rules.get(model_name),
+            self.access_memo.groups.get(&uid),
+        ) else {
+            return Err(format!("The access rights to {model_name} could not be read").into());
+        };
+        Ok(Access::evaluate(rules, groups, operation))
     }
 
     /// Refuse the operation unless every one of these records is within the caller's rights.

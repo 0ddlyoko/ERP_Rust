@@ -77,7 +77,14 @@ impl<'mm> Environment<'mm> {
         // Add missing fields
         for d in data.iter_mut() {
             let missing_fields = self.fill_default_values_on_map(model_name, d);
-            missing_fields_lst.push(missing_fields)
+            missing_fields_lst.push(missing_fields);
+            for (field_name, value) in &d.fields {
+                Self::refuse_wrong_kind(
+                    model_name,
+                    final_model.try_get_internal_field(field_name)?,
+                    value,
+                )?;
+            }
         }
         // Create a list that will only contain stored fields (to save in db)
         let mut stored_data = data.clone();

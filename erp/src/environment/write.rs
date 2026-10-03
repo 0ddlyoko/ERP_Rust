@@ -1,7 +1,9 @@
 //! Writing field values into the cache, keeping relational mirrors coherent.
 use super::*;
 use crate::access::Operation;
+use crate::errors::MissingRecords;
 use erp_internal_types::FinalInternalField;
+use erp_types::field::FieldKind;
 
 impl<'mm> Environment<'mm> {
     /// Write field values onto records, addressing the model and its fields by name.
@@ -99,9 +101,11 @@ impl<'mm> Environment<'mm> {
     ///
     /// If field is not stored, return the default value
     ///
-    /// Return a vector sorted by given ids of tuple.
-    /// First element is true if it's from the cache, or false if it's from the database.
-    /// Second element is the value
+    /// Return a vector sorted by given ids of tuple, one per id given, an id named twice
+    /// included. First element is true if it's from the cache, or false if it's from the
+    /// database. Second element is the value.
+    ///
+    /// Refused when a record is in neither: it does not exist, or was deleted since.
     pub(super) fn retrieve_field_from_cache_or_database<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -203,7 +207,12 @@ impl<'mm> Environment<'mm> {
                     let target_id = match field_value {
                         crate::database::FieldType::UInteger(id) => id,
                         // Only "UInteger" should be there. If it's not the case, there is an issue somewhere
-                        _ => panic!("Only UInteger should return here, and not {field_value}"),
+                        _ => {
+                            return Err(format!(
+                                "{target_model}.{inverse_field} holds {field_value}, not a record"
+                            )
+                            .into());
+                        }
                     };
                     result.get_mut(&target_id).unwrap().push(id);
                 }
@@ -224,10 +233,20 @@ impl<'mm> Environment<'mm> {
         }
 
         let mut result: Vec<(bool, Option<FieldType>)> = Vec::with_capacity(size);
+        let mut missing = Vec::new();
         for id in ids.get_ids_ref() {
-            result.push(map_result.remove(id).unwrap());
+            match map_result.get(id) {
+                Some(found) => result.push(found.clone()),
+                None => missing.push(*id),
+            }
         }
-
+        if !missing.is_empty() {
+            return Err(MissingRecords {
+                model_name: model_name.to_string(),
+                ids: missing,
+            }
+            .into());
+        }
         Ok(result)
     }
 
@@ -241,6 +260,32 @@ impl<'mm> Environment<'mm> {
     pub(super) fn mirror_of_relation(&self, model_name: &str, relation: &str) -> Option<String> {
         let model = self.model_manager.try_get_model(model_name).ok()?;
         model.field_of_relation(relation).map(str::to_string)
+    }
+
+    /// Refuse a value of another type than its field's: a many2one takes one record, a one2many or
+    /// a many2many one or several, any other field a value of its own kind.
+    ///
+    /// Values from a client already arrive typed by their field; this is for those plugin code
+    /// builds by hand, which would otherwise fail halfway through a write or at the database.
+    pub(super) fn refuse_wrong_kind(
+        model_name: &str,
+        field: &FinalInternalField,
+        value: &Option<FieldType>,
+    ) -> Result<()> {
+        let Some(value) = value else {
+            return Ok(());
+        };
+        let given = value.kind();
+        let fits =
+            given == field.kind || (field.kind == FieldKind::Refs && given == FieldKind::Ref);
+        if fits {
+            return Ok(());
+        }
+        Err(format!(
+            "Field \"{}\" of model \"{model_name}\" holds a {}, not a {given}",
+            field.name, field.kind
+        )
+        .into())
     }
 
     /// Refuse a key the field's enums do not have, naming those they do.
@@ -296,6 +341,7 @@ impl<'mm> Environment<'mm> {
         let internal_model = self.model_manager.try_get_model(model_name)?;
         let field_info = internal_model.try_get_internal_field(field_name)?;
         if matches!(update_dirty, Dirty::UpdateDirty) {
+            Self::refuse_wrong_kind(model_name, field_info, &value)?;
             self.refuse_unknown_choice(model_name, field_info, &value)?;
             self.remember_before_write(model_name, field_info, ids)?;
         }
@@ -366,10 +412,9 @@ impl<'mm> Environment<'mm> {
                         None => HashSet::new(),
                         Some(FieldType::Ref(id)) => HashSet::from([id]),
                         Some(FieldType::Refs(ids)) => ids.iter().copied().collect(),
-                        _ => panic!(
-                            "Only Ref and Refs are accepted field type, and not {:?}",
-                            value
-                        ),
+                        Some(other) => {
+                            return Err(format!("A one2many takes records, not {other:?}").into());
+                        }
                     };
 
                     let old_values =
@@ -384,10 +429,12 @@ impl<'mm> Environment<'mm> {
                             (_, None) => HashSet::new(),
                             (_, Some(FieldType::Ref(id))) => HashSet::from([id]),
                             (_, Some(FieldType::Refs(ids))) => ids.iter().copied().collect(),
-                            _ => panic!(
-                                "Only Ref and Refs are accepted field type, and not {:?}",
-                                value
-                            ),
+                            (_, Some(other)) => {
+                                return Err(format!(
+                                    "{model_name}.{field_name} holds {other:?}, not records"
+                                )
+                                .into());
+                            }
                         };
 
                         ids_removed.extend(old_ids.difference(&new_ids));
@@ -425,7 +472,9 @@ impl<'mm> Environment<'mm> {
                     let new_id = match value.clone() {
                         None => None,
                         Some(FieldType::Ref(id)) => Some(id),
-                        _ => panic!("Only Ref is accepted field type, and not {:?}", value),
+                        Some(other) => {
+                            return Err(format!("A many2one takes a record, not {other:?}").into());
+                        }
                     };
 
                     // For a M2O, we need to verify the old value compared to the new one, and update the related O2M if it's loaded in cache
@@ -556,10 +605,12 @@ impl<'mm> Environment<'mm> {
                         if let Some(old_value) = old_value {
                             match old_value {
                                 FieldType::Ref(id) => old_values_ids.push(id),
-                                _ => panic!(
-                                    "Only Ref is accepted field type, and not {:?}",
-                                    old_value
-                                ),
+                                other => {
+                                    return Err(format!(
+                                        "{model_name}.{field_name} holds {other:?}, not a record"
+                                    )
+                                    .into());
+                                }
                             }
                         }
                     }
