@@ -674,17 +674,28 @@ fn test_records_linked_are_replaced_whole() -> Result<()> {
     let linked = |field: &str| -> Result<Vec<u32>> {
         let mut env = app.new_env()?;
         let rows = env.read("sale_order", &order.id, &[field])?;
-        let mut ids = rows[0].get_option::<&Vec<u32>>(field).cloned().unwrap_or_default();
+        let mut ids = rows[0]
+            .get_option::<&Vec<u32>>(field)
+            .cloned()
+            .unwrap_or_default();
         ids.sort();
         Ok(ids)
     };
 
     write(serde_json::json!({"lines": [lines[1]], "tags": [tags[1]]}))?;
-    assert_eq!(linked("lines")?, vec![lines[1]], "a line dropped leaves the order");
+    assert_eq!(
+        linked("lines")?,
+        vec![lines[1]],
+        "a line dropped leaves the order"
+    );
     assert_eq!(linked("tags")?, vec![tags[1]], "a tag dropped is unlinked");
 
     write(serde_json::json!({"lines": lines, "tags": []}))?;
-    assert_eq!(linked("lines")?, lines, "a line given back joins the order again");
+    assert_eq!(
+        linked("lines")?,
+        lines,
+        "a line given back joins the order again"
+    );
     assert!(linked("tags")?.is_empty(), "every tag unlinked");
     Ok(())
 }
