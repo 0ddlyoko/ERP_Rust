@@ -632,11 +632,8 @@ impl<'mm> Environment<'mm> {
                 }
 
                 for (id, ids) in result {
-                    let field_value = if ids.is_empty() {
-                        None
-                    } else {
-                        Some(FieldType::Refs(ids))
-                    };
+                    // Holding no record is still a list, as a many2many holding none is.
+                    let field_value = Some(FieldType::Refs(ids));
                     // Save the O2M to the cache. This will also save the M2O thanks to the save_field_to_cache method
                     self.cache.insert_field_in_cache(
                         model_name,

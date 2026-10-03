@@ -430,7 +430,8 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             } = parse(params)?;
             let (readable, hidden) = split_private(env, model_name, &fields)?;
             let names: Vec<&str> = readable.iter().map(String::as_str).collect();
-            let mut rows = env.read(model_name, &MultipleIds::from(ids), &names)?;
+            let ids = env.existing(model_name, ids)?;
+            let mut rows = env.read(model_name, &ids, &names)?;
             blank_out(&mut rows, &hidden);
             let mut rows = serde_json::to_value(rows)?;
             if with_names {

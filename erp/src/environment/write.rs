@@ -226,12 +226,7 @@ impl<'mm> Environment<'mm> {
                     result.get_mut(&target_id).unwrap().push(id);
                 }
                 for (id, ids) in result.into_iter() {
-                    let field_value = if ids.is_empty() {
-                        None
-                    } else {
-                        Some(FieldType::Refs(ids))
-                    };
-                    map_result.insert(id, (false, field_value));
+                    map_result.insert(id, (false, Some(FieldType::Refs(ids))));
                 }
             } else {
                 // Load default value, which may simply be "empty".

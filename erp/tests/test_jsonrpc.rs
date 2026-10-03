@@ -773,6 +773,18 @@ fn test_records_are_deleted_and_cleared() -> Result<()> {
         json!({"domain": [["id", "=", lines[0]]]}),
     );
     assert_eq!(gone, json!([]), "deleted");
+    let refused = call(
+        &app,
+        "sale_order_line.read",
+        json!({"ids": [lines[0]], "fields": ["price"]}),
+    );
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("does not exist"),
+        "a deleted record is not read as an empty one: {refused}"
+    );
     let held = result(
         &app,
         "sale_order.read",
@@ -790,9 +802,10 @@ fn test_records_are_deleted_and_cleared() -> Result<()> {
         "sale_order.read",
         json!({"ids": [order], "fields": ["lines"]}),
     );
-    assert!(
-        held[0]["lines"].as_array().is_none_or(Vec::is_empty),
-        "cleared: {held}"
+    assert_eq!(
+        held[0]["lines"],
+        json!([]),
+        "cleared, and a list like a many2many's"
     );
     let let_go = result(
         &app,
