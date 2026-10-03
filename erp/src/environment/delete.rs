@@ -13,9 +13,6 @@ struct Pointing<'mm> {
     ids: Vec<u32>,
 }
 
-/// Records already removed by a deletion under way, by model.
-type Deleting = HashMap<String, HashSet<u32>>;
-
 impl<'mm> Environment<'mm> {
     /// Delete the given records.
     ///
@@ -34,21 +31,20 @@ impl<'mm> Environment<'mm> {
             return Ok(0);
         }
         self.check_access(model_name, Operation::Delete, ids.get_ids_ref(), &[])?;
-        self.delete_unchecked(model_name, ids.get_ids_ref().clone(), &mut Deleting::new())
+        // A hook deleting records of its own starts a deletion of its own.
+        let outer = std::mem::take(&mut self.deleting);
+        let deleted = self.delete_unchecked(model_name, ids.get_ids_ref().clone());
+        self.deleting = outer;
+        deleted
     }
 
     /// Same, whatever the caller's rights.
     ///
-    /// Records already in `deleting` are skipped, so records pointing to each other through
-    /// cascades are deleted once, and one pointing to a record deleted alongside holds nothing
-    /// back.
-    fn delete_unchecked(
-        &mut self,
-        model_name: &str,
-        ids: Vec<u32>,
-        deleting: &mut Deleting,
-    ) -> Result<u32> {
-        let already = deleting.entry(model_name.to_string()).or_default();
+    /// Records the deletion under way already removes are skipped, so records pointing to each
+    /// other through cascades are deleted once, and one pointing to a record deleted alongside
+    /// holds nothing back.
+    fn delete_unchecked(&mut self, model_name: &str, ids: Vec<u32>) -> Result<u32> {
+        let already = self.deleting.entry(model_name.to_string()).or_default();
         let ids: Vec<u32> = ids.into_iter().filter(|id| already.insert(*id)).collect();
         if ids.is_empty() {
             return Ok(0);
@@ -61,12 +57,12 @@ impl<'mm> Environment<'mm> {
         // reading through the cache, which can itself trigger a flush.
         self.save_model_to_db(model_name)?;
 
-        let pointing = self.records_pointing_to(model_name, &ids, deleting)?;
+        let pointing = self.records_pointing_to(model_name, &ids)?;
         Self::refuse_held_back(model_name, &ids, &pointing)?;
         for pointing in pointing {
             match pointing.on_delete {
                 OnDelete::Cascade => {
-                    self.delete_unchecked(pointing.model, pointing.ids, deleting)?;
+                    self.delete_unchecked(pointing.model, pointing.ids)?;
                 }
                 OnDelete::SetNull => self.empty_pointing(&pointing)?,
                 OnDelete::Restrict => {}
@@ -107,7 +103,6 @@ impl<'mm> Environment<'mm> {
         &mut self,
         model_name: &str,
         ids: &MultipleIds,
-        deleting: &Deleting,
     ) -> Result<Vec<Pointing<'mm>>> {
         let model_manager: &'mm ModelManager = self.model_manager;
         let mut fields = Vec::new();
@@ -128,13 +123,13 @@ impl<'mm> Environment<'mm> {
 
         let mut pointing = Vec::new();
         for (model, field_name, field) in fields {
-            let skipped = deleting.get(model);
-            let found: Vec<u32> = self
-                .search_ids_unchecked(
-                    model,
-                    &make_domain!([(field_name, "=", ids.get_ids_ref().clone())]),
-                    &SearchOptions::default(),
-                )?
+            let found: Vec<u32> = self.search_ids_unchecked(
+                model,
+                &make_domain!([(field_name, "=", ids.get_ids_ref().clone())]),
+                &SearchOptions::default(),
+            )?;
+            let skipped = self.deleting.get(model);
+            let found: Vec<u32> = found
                 .into_iter()
                 .filter(|id| skipped.is_none_or(|skipped| !skipped.contains(id)))
                 .collect();

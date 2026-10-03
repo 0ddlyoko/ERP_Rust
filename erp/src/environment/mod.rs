@@ -88,6 +88,9 @@ pub struct Environment<'mm> {
     access_memo: access::AccessMemo,
     changed_cached_models: HashSet<String>,
     tracked: tracking::Tracked,
+    /// Records a deletion under way removes, by model: their own fields may be emptied, required
+    /// or not, and records pointing to them are not held back by them.
+    deleting: HashMap<String, HashSet<u32>>,
     closed: bool,
 }
 
@@ -133,6 +136,7 @@ impl<'mm> Environment<'mm> {
             access_memo: access::AccessMemo::default(),
             changed_cached_models: HashSet::new(),
             tracked: Default::default(),
+            deleting: HashMap::new(),
             closed: false,
         };
         env.database.start_transaction()?;

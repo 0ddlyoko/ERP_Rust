@@ -72,6 +72,22 @@ impl<'mm> Environment<'mm> {
         }
     }
 
+    /// Refuse a record created with a required field left empty, its defaults already given.
+    fn refuse_empty_required_on_create(
+        model: &FinalInternalModel,
+        values: &MapOfFields,
+    ) -> Result<()> {
+        for field in model.fields.values() {
+            if field.required
+                && field.compute.is_none()
+                && !matches!(values.fields.get(&field.name), Some(Some(_)))
+            {
+                return Err(Self::required_error(&model.name, field));
+            }
+        }
+        Ok(())
+    }
+
     fn insert_new_records(
         &mut self,
         model_name: &str,
@@ -109,6 +125,7 @@ impl<'mm> Environment<'mm> {
                 Self::refuse_wrong_kind(model_name, field, value)?;
             }
             let missing_fields = self.fill_default_values_on_map(model_name, d);
+            Self::refuse_empty_required_on_create(final_model, d)?;
             missing_fields_lst.push(missing_fields);
             self.stamp_created(final_model, d);
         }

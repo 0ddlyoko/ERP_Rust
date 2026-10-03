@@ -1,7 +1,10 @@
 use super::pool::{ConnectionPool, PooledConnection};
-use super::{QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_ident};
+use super::{
+    QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_ident, to_sql_param,
+};
 use crate::database::{Database, ErrorType, FieldType, SearchedRow};
 use crate::model::ModelManager;
+use erp_internal_types::{FinalInternalField, FinalInternalModel};
 use erp_search::{SearchOptions, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
@@ -73,6 +76,87 @@ impl PostgresDatabase {
         rows.iter()
             .map(|row| Ok(row.try_get::<_, String>(0)?))
             .collect()
+    }
+
+    /// Give the rows already there a new column's default, as a record created now would get.
+    ///
+    /// A computed column is left to its computation, which fills it once the schema is in place.
+    fn fill_default(&mut self, qualified: &str, field: &FinalInternalField) -> Result<()> {
+        let Some(default) = &field.default_value else {
+            return Ok(());
+        };
+        if field.compute.is_some() {
+            return Ok(());
+        }
+        let value = to_sql_param(&FieldType::from(default.clone()))?;
+        self.client.execute(
+            &format!("UPDATE {qualified} SET {} = $1", quote_ident(&field.name)),
+            &[&*value],
+        )?;
+        Ok(())
+    }
+
+    /// Hold every required column to `NOT NULL`, and free those no longer required.
+    ///
+    /// Computed and automatic columns are left free: a computed one is filled after its row is
+    /// inserted. When rows already hold no value, the constraint cannot be added: the server says
+    /// so and starts anyway, the ORM still refusing empty values.
+    fn sync_not_null(&mut self, model: &FinalInternalModel, qualified: &str) -> Result<()> {
+        let rows = self.client.query(
+            "SELECT \"column_name\", \"is_nullable\" = 'YES' FROM \"information_schema\".\"columns\" \
+             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
+            &[&self.schema, &model.table_name],
+        )?;
+        let nullable: HashMap<String, bool> = rows
+            .iter()
+            .map(|row| Ok((row.try_get(0)?, row.try_get(1)?)))
+            .collect::<Result<_>>()?;
+        let mut fields: Vec<&FinalInternalField> = model.fields.values().collect();
+        fields.sort_by_key(|field| &field.name);
+        for field in fields {
+            let Some(&is_nullable) = nullable.get(&field.name) else {
+                continue;
+            };
+            let column = quote_ident(&field.name);
+            let wants_not_null = field.required && field.compute.is_none() && !field.automatic;
+            if wants_not_null && is_nullable {
+                let set = format!("ALTER TABLE {qualified} ALTER COLUMN {column} SET NOT NULL");
+                if self.execute_or_undo(&set).is_err() {
+                    let empty: i64 = self
+                        .client
+                        .query_one(
+                            &format!("SELECT COUNT(*) FROM {qualified} WHERE {column} IS NULL"),
+                            &[],
+                        )?
+                        .try_get(0)?;
+                    tracing::warn!(
+                        "{}.{}: cannot be NOT NULL, {empty} rows hold no value",
+                        model.name,
+                        field.name
+                    );
+                }
+            } else if !wants_not_null && !is_nullable {
+                self.client.batch_execute(&format!(
+                    "ALTER TABLE {qualified} ALTER COLUMN {column} DROP NOT NULL"
+                ))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Run a statement that may fail, without its failure ending the transaction around it.
+    fn execute_or_undo(&mut self, statement: &str) -> Result<()> {
+        if !self.is_transaction {
+            return Ok(self.client.batch_execute(statement)?);
+        }
+        self.client.batch_execute("SAVEPOINT \"may_fail\"")?;
+        match self.client.batch_execute(statement) {
+            Ok(()) => Ok(self.client.batch_execute("RELEASE \"may_fail\"")?),
+            Err(error) => {
+                self.client.batch_execute("ROLLBACK TO \"may_fail\"")?;
+                Err(error.into())
+            }
+        }
     }
 
     fn existing_columns(&mut self, table_name: &str) -> Result<HashSet<String>> {
@@ -181,8 +265,10 @@ impl Database for PostgresDatabase {
                 "ALTER TABLE {qualified} ADD COLUMN {} {column_type}",
                 quote_ident(field_name)
             ))?;
+            self.fill_default(&qualified, field)?;
             added.push(field_name.clone());
         }
+        self.sync_not_null(model, &qualified)?;
         Ok(added)
     }
 

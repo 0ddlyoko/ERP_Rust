@@ -304,6 +304,40 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
+    /// Refuse emptying a required field, unless its records are being deleted.
+    ///
+    /// A computed field is left to its computation, which may well start empty.
+    pub(super) fn refuse_empty_required(
+        &self,
+        model_name: &str,
+        field: &FinalInternalField,
+        ids: &[u32],
+        value: &Option<FieldType>,
+    ) -> Result<()> {
+        if value.is_some() || !field.required || field.compute.is_some() {
+            return Ok(());
+        }
+        let deleting = self.deleting.get(model_name);
+        if ids
+            .iter()
+            .all(|id| deleting.is_some_and(|deleting| deleting.contains(id)))
+        {
+            return Ok(());
+        }
+        Err(Self::required_error(model_name, field))
+    }
+
+    pub(super) fn required_error(
+        model_name: &str,
+        field: &FinalInternalField,
+    ) -> Box<dyn Error + Send + Sync> {
+        format!(
+            "Field \"{}\" of model \"{model_name}\" is required: it cannot be left empty",
+            field.name
+        )
+        .into()
+    }
+
     /// Note these records as changed now, by whoever this unit of work runs as.
     ///
     /// Written straight into the cache, marked dirty, so it is saved with the change itself and
@@ -414,6 +448,7 @@ impl<'mm> Environment<'mm> {
         if matches!(update_dirty, Dirty::UpdateDirty) {
             Self::refuse_automatic(model_name, field_info)?;
             Self::refuse_wrong_kind(model_name, field_info, &value)?;
+            self.refuse_empty_required(model_name, field_info, ids.get_ids_ref(), &value)?;
             self.refuse_unknown_choice(model_name, field_info, &value)?;
             self.remember_before_write(model_name, field_info, ids)?;
             if (field_info.is_stored() || field_info.inverse.is_some())

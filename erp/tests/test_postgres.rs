@@ -449,7 +449,8 @@ fn test_a_column_nothing_declares_survives() -> Result<()> {
     };
     connection.client.batch_execute(
         "ALTER TABLE invoice ADD COLUMN retired_field TEXT; \
-         INSERT INTO invoice (name, retired_field) VALUES ('kept', 'precious')",
+         INSERT INTO invoice (name, amount_untaxed, tax_rate, due_date, created_at, retired_field) \
+         VALUES ('kept', 0, 0, '2026-01-01', NOW(), 'precious')",
     )?;
 
     let model = app.model_manager.get_model("invoice");
@@ -1418,5 +1419,106 @@ fn test_commands_create_and_change_lines() -> Result<()> {
     assert_eq!(kept, vec![lines[0]], "the other one is let go");
     let rows = env.read("sale_order_line", &SingleId::from(lines[0]), &["price"])?;
     assert_eq!(rows[0].get_option::<&i32>("price"), Some(&12));
+    Ok(())
+}
+
+/// Whether a column of `invoice` accepts NULL.
+fn is_nullable(database: &mut DatabaseType, schema: &str, column: &str) -> Result<bool> {
+    let DatabaseType::Postgres(connection) = database else {
+        unreachable!()
+    };
+    Ok(connection
+        .client
+        .query_one(
+            "SELECT is_nullable = 'YES' FROM information_schema.columns \
+             WHERE table_schema = $1 AND table_name = 'invoice' AND column_name = $2",
+            &[&schema, &column],
+        )?
+        .get(0))
+}
+
+/// A required column is `NOT NULL`; an optional or automatic one is not.
+#[test]
+fn test_required_columns_are_not_null() -> Result<()> {
+    let app = app_or_skip!("t_not_null");
+    let mut database = app.create_new_database()?;
+    assert!(!is_nullable(&mut database, "t_not_null", "name")?);
+    assert!(!is_nullable(&mut database, "t_not_null", "due_date")?);
+    assert!(
+        is_nullable(&mut database, "t_not_null", "signed_on")?,
+        "optional"
+    );
+    assert!(
+        is_nullable(&mut database, "t_not_null", "create_date")?,
+        "automatic"
+    );
+
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let refused = connection
+        .client
+        .batch_execute("INSERT INTO invoice (name) VALUES (NULL)");
+    assert!(refused.is_err(), "the database refuses it too");
+    Ok(())
+}
+
+/// Rows holding no value keep a column from becoming `NOT NULL`: the server says so and goes
+/// on. A column no longer required is freed.
+#[test]
+fn test_not_null_waits_for_empty_rows() -> Result<()> {
+    let app = app_or_skip!("t_not_null_wait");
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection.client.batch_execute(
+        "ALTER TABLE invoice ALTER COLUMN name DROP NOT NULL; \
+         ALTER TABLE invoice ALTER COLUMN signed_on SET NOT NULL; \
+         INSERT INTO invoice (name, amount_untaxed, tax_rate, due_date, created_at, signed_on) \
+         VALUES (NULL, 0, 0, '2026-01-01', NOW(), '2026-01-01')",
+    )?;
+
+    let model = app.model_manager.get_model("invoice");
+    database.sync_model(model)?;
+    assert!(
+        is_nullable(&mut database, "t_not_null_wait", "name")?,
+        "a row holds no name"
+    );
+    assert!(
+        is_nullable(&mut database, "t_not_null_wait", "signed_on")?,
+        "no longer required"
+    );
+    Ok(())
+}
+
+/// A column added to a table with rows gives them its default.
+#[test]
+fn test_a_new_column_gives_existing_rows_its_default() -> Result<()> {
+    let app = app_or_skip!("t_new_default");
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "old");
+    let _invoice: Invoice<SingleId> = env.create_new_record_from_map(map)?;
+    env.close()?;
+
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    connection
+        .client
+        .batch_execute("ALTER TABLE invoice DROP COLUMN tax_rate")?;
+    let model = app.model_manager.get_model("invoice");
+    database.sync_model(model)?;
+
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let rate: Decimal = connection
+        .client
+        .query_one("SELECT tax_rate FROM invoice WHERE name = 'old'", &[])?
+        .get(0);
+    assert_eq!(rate, Decimal::from_str("0.21")?);
     Ok(())
 }
