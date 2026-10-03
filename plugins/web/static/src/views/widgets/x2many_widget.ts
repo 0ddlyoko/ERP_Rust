@@ -76,7 +76,7 @@ export abstract class X2ManyWidget extends Widget {
     }
 
     /** The value holding these entries, as the form keeps it. */
-    protected valueOf(entries: Entry[]): unknown[] {
+    protected override valueOf(entries: Entry[]): unknown[] {
         return entries.map((entry) => {
             if (entry.id === null) {
                 return { draft: entry.draft, values: entry.changes ?? {} };
