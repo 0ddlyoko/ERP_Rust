@@ -1,0 +1,48 @@
+<templates>
+    <t t-name="web.SearchBar">
+        <div class="o_search_bar">
+            <label class="o_search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+                </svg>
+                <span t-foreach="props.facets" t-as="facet" t-key="facet_index" class="o_facet">
+                    {{ labelOf(facet) }}
+                    <button type="button" class="o_facet_remove" t-att-aria-label="'Remove ' + labelOf(facet)"
+                            t-on-click.prevent="() => remove(facet_index)">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
+                </span>
+                <input type="search" aria-label="Search" placeholder="Search…" role="combobox" aria-autocomplete="list"
+                       t-att-aria-expanded="suggestions.length ? 'true' : 'false'" t-att-value="text"
+                       t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
+                       t-on-blur="() => type('')"/>
+            </label>
+            <ul t-if="suggestions.length" class="o_record_search_results o_search_suggestions" role="listbox">
+                <li t-foreach="suggestions" t-as="field" t-key="field.name" role="option"
+                    t-att-aria-selected="field_index === active ? 'true' : 'false'"
+                    t-att-class="{ o_record_search_result: true, active: field_index === active }"
+                    t-on-mousedown.prevent="() => pick(field)">
+                    Search <strong>{{ field.label }}</strong> for: {{ text.trim() }}
+                </li>
+            </ul>
+            <div t-if="props.view.filters.length" class="o_search_filters">
+                <button type="button" class="o_button_secondary o_search_filters_toggle"
+                        t-att-aria-expanded="filtersOpen ? 'true' : 'false'" t-on-click="() => filtersOpen = !filtersOpen">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+                    Filters
+                </button>
+                <ul t-if="filtersOpen" class="o_search_filters_menu">
+                    <li t-foreach="props.view.filters" t-as="filter" t-key="filter.name">
+                        <label>
+                            <input type="checkbox" t-att-checked="isTicked(filter.name)" t-on-change="() => toggle(filter.name)"/>
+                            {{ filter.label }}
+                        </label>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </t>
+</templates>

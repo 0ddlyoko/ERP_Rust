@@ -201,9 +201,36 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
                 }
             }
             refuse_unknown_keys(env, model_name, tuple)?;
-            SearchType::Tuple(tuple.clone())
+            SearchType::Tuple(by_name(env, model_name, tuple)?)
         }
     })
+}
+
+/// A pattern on a relation matches the names of the records it points to: `("groups", "ilike",
+/// "adm")` reads `("groups.name", "ilike", "adm")`, whatever field names the target's records.
+fn by_name(env: &Environment, model_name: &str, tuple: &SearchTuple) -> Result<SearchTuple> {
+    if !matches!(tuple.operator, SearchOperator::Like | SearchOperator::ILike)
+        || !matches!(tuple.right, RightTuple::String(_))
+    {
+        return Ok(tuple.clone());
+    }
+    let mut current = model_name.to_string();
+    for segment in &tuple.left.path {
+        let model = env.model_manager.try_get_model(&current)?;
+        match &model.try_get_internal_field(segment)?.inverse {
+            Some(reference) => current = reference.target_model.to_string(),
+            None => return Ok(tuple.clone()),
+        }
+    }
+    let target = env.model_manager.try_get_model(&current)?;
+    let mut named = tuple.clone();
+    named.left.path.push(
+        target
+            .name_field()
+            .ok_or_else(|| format!("Model \"{current}\" has no name to search by"))?
+            .to_string(),
+    );
+    Ok(named)
 }
 
 /// Refuse comparing a field holding an enum with a key it does not have: a misspelt key would

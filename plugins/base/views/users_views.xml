@@ -1,6 +1,10 @@
 <erp>
     <view id="view_users_list" name="users.list" model="users">
         <list>
+            <buttons>
+                <button name="archive" type="method" string="Archive"/>
+                <button name="unarchive" type="method" string="Unarchive"/>
+            </buttons>
             <field name="name"/>
             <field name="login"/>
             <field name="active"/>
@@ -28,6 +32,15 @@
                 <chatter/>
             </side>
         </form>
+    </view>
+    <view id="view_users_search" name="users.search" model="users">
+        <search>
+            <field name="name"/>
+            <field name="login"/>
+            <field name="groups"/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
     </view>
     <action id="action_users" name="Users" model="users" views="list,form"/>
 

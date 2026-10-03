@@ -7,15 +7,26 @@
                          stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     New
                 </button>
-                <label class="o_search">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-                    </svg>
-                    <input type="search" aria-label="Search" placeholder="Search…"
-                           t-att-value="query" t-on-input="(ev) => query = ev.target.value"/>
-                </label>
-                <span t-if="selected.size" class="o_selection_count">{{ selected.size }} selected</span>
+                <Suspense>
+                    <t t-set-slot="fallback">
+                        <label class="o_search"><input type="search" aria-label="Search" placeholder="Search…" disabled=""/></label>
+                    </t>
+                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets"/>
+                </Suspense>
+                <div t-if="selected.size" class="o_list_actions">
+                    <span class="o_selection_count">{{ selected.size }} selected</span>
+                    <button type="button" class="o_button_secondary" t-att-disabled="running"
+                            t-att-aria-expanded="actionsOpen ? 'true' : 'false'" t-on-click="() => actionsOpen = !actionsOpen">
+                        Actions
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <ul t-if="actionsOpen" class="o_list_actions_menu" role="menu">
+                        <li t-foreach="actionItems" t-as="item" t-key="item.kind + ':' + item.name" role="none">
+                            <button type="button" role="menuitem" t-on-click="() => act(item)">{{ item.label }}</button>
+                        </li>
+                    </ul>
+                </div>
                 <Suspense>
                     <t t-set-slot="fallback"><div class="o_pager"><span class="o_pager_value">…</span></div></t>
                     <div class="o_pager">
@@ -47,7 +58,16 @@
                                     </Suspense>
                                 </th>
                                 <th t-foreach="columns" t-as="column" t-key="column.name"
-                                    t-att-class="cellClass(column)">{{ column.label }}</th>
+                                    t-att-class="cellClass(column) + (isSortable(column) ? ' o_list_sortable' : '')"
+                                    t-att-aria-sort="sortOf(column)" t-on-click="() => sortBy(column)">
+                                    {{ column.label }}
+                                    <svg t-if="sortOf(column) !== 'none'" class="o_list_sort" width="11" height="11" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+                                         stroke-linejoin="round" aria-hidden="true">
+                                        <path t-if="sortOf(column) === 'ascending'" d="m6 15 6-6 6 6"/>
+                                        <path t-else="" d="m6 9 6 6 6-6"/>
+                                    </svg>
+                                </th>
                             </tr>
                         </thead>
                         <Suspense>
@@ -81,6 +101,15 @@
                     </table>
                 </Suspense>
             </section>
+            <div t-if="confirming" class="o_dialog_backdrop">
+                <div class="o_dialog" role="alertdialog" aria-modal="true" aria-labelledby="o_dialog_message">
+                    <p id="o_dialog_message" class="o_dialog_message">{{ confirming.message }}</p>
+                    <div class="o_dialog_buttons">
+                        <button type="button" class="o_button_secondary" t-on-click="() => confirming = null">Cancel</button>
+                        <button type="button" class="o_button_primary o_button_danger" t-on-click="confirm">{{ confirming.item.label }}</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </t>
 </templates>

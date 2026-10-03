@@ -1,7 +1,20 @@
-/** A list as the user left it: which page, which rows selected, and the records it showed. */
+import type { Facet } from "@web/views/search/search_model";
+
+/** How a list is sorted: by one field, smallest or largest first. */
+export interface Sort {
+    name: string;
+    descending: boolean;
+}
+
+/**
+ * A list as the user left it: which page, which rows selected, the records it showed, how it was
+ * searched and sorted.
+ */
 export interface ListMemory {
     offset: number;
     selected: number[];
+    facets: Facet[];
+    sort: Sort | null;
     /** The records of the page shown, in order: what a form steps through. */
     ids: number[];
     total: number;

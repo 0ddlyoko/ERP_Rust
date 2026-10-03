@@ -58,7 +58,9 @@ fn test_the_users_list_is_the_one_base_ships() -> Result<()> {
         view_of(&app, "users", "list")?
             .split_whitespace()
             .collect::<String>(),
-        "<list><fieldname=\"name\"/><fieldname=\"login\"/><fieldname=\"active\"/>\
+        "<list><buttons><buttonname=\"archive\"type=\"method\"string=\"Archive\"/>\
+         <buttonname=\"unarchive\"type=\"method\"string=\"Unarchive\"/></buttons>\
+         <fieldname=\"name\"/><fieldname=\"login\"/><fieldname=\"active\"/>\
          <fieldname=\"groups\"/></list>"
     );
     Ok(())
@@ -81,7 +83,9 @@ fn test_other_plugins_extend_views_with_paths() -> Result<()> {
         view_of(&app, "users", "list")?
             .split_whitespace()
             .collect::<String>(),
-        "<list><fieldname=\"name\"/><fieldname=\"login\"/><fieldname=\"id\"/>\
+        "<list><buttons><buttonname=\"archive\"type=\"method\"string=\"Archive\"/>\
+         <buttonname=\"unarchive\"type=\"method\"string=\"Unarchive\"/></buttons>\
+         <fieldname=\"name\"/><fieldname=\"login\"/><fieldname=\"id\"/>\
          <fieldname=\"groups\"/></list>"
     );
     Ok(())
@@ -258,5 +262,77 @@ fn test_conditions_read_fields_only() -> Result<()> {
         ],
     )?;
     assert!(view_of(&app, "users", "form")?.contains("invisible"));
+    Ok(())
+}
+
+/// A search lists the fields typing searches in, each narrowed by a domain if it says so, and
+/// filters to tick; a list may have buttons acting on the records selected.
+#[test]
+fn test_a_search_and_list_buttons_are_shown_as_written() -> Result<()> {
+    let app = with_data(
+        "searching",
+        &[r#"<erp>
+            <view id="search" name="search" model="users" priority="1"><search>
+                <field name="name"/>
+                <field name="login" domain='[["active", "=", true]]'/>
+                <filter name="archived" string="Archived" domain='["|", ["active", "=", false], ["groups.name", "=", "x"]]'/>
+            </search></view>
+            <view id="buttons" name="buttons" model="users" priority="1"><list>
+                <buttons><button name="me" type="method" string="Me"/></buttons>
+                <field name="name"/>
+            </list></view>
+        </erp>"#],
+    )?;
+    assert!(view_of(&app, "users", "search")?.contains("archived"));
+    assert!(view_of(&app, "users", "list")?.contains("<buttons>"));
+    Ok(())
+}
+
+/// A search nobody declared searches by the name of the records.
+#[test]
+fn test_a_search_nobody_declared_searches_by_name() -> Result<()> {
+    let app = new_app()?;
+    assert_eq!(
+        view_of(&app, "session", "search")?,
+        "<search></search>",
+        "a session has no name"
+    );
+    assert_eq!(
+        view_of(&app, "group", "search")?,
+        "<search><field name=\"name\"/></search>"
+    );
+    Ok(())
+}
+
+/// What a search may not hold is refused when its plugin installs.
+#[test]
+fn test_what_a_search_may_not_hold_is_refused() -> Result<()> {
+    for (search, expected) in [
+        ("<block/>", "<block> cannot stand in <search>"),
+        ("<filter name=\"x\"/>", "<filter> has no domain"),
+        ("<filter domain='[]'/>", "<filter> has no name"),
+        ("<filter name=\"x\" domain='[[\"active\"]]'/>", "is not one"),
+        (
+            "<filter name=\"x\" domain='[[\"actif\", \"=\", true]]'/>",
+            "\"actif\"",
+        ),
+        ("<field name=\"login\" domain='nope'/>", "is not one"),
+    ] {
+        let data: &'static str = Box::leak(
+            format!(r#"<erp><view id="bad" name="bad" model="users"><search>{search}</search></view></erp>"#)
+                .into_boxed_str(),
+        );
+        let data: &'static [&'static str] = Box::leak(vec![data].into_boxed_slice());
+        let mut app = new_app()?;
+        app.register_plugin(Box::new(DataPlugin {
+            name: "bad_search",
+            data,
+        }))?;
+        let error = app
+            .load_plugin("bad_search")
+            .expect_err("refused")
+            .to_string();
+        assert!(error.contains(expected), "{search}: {error}");
+    }
     Ok(())
 }

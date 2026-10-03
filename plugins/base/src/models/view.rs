@@ -39,7 +39,7 @@ pub struct View<Mode: IdMode> {
 pub const VIEWS_CACHE: &str = "web.views";
 
 /// The kinds of views a model has without anybody declaring one.
-const GENERATED_KINDS: &[&str] = &["list", "form"];
+const GENERATED_KINDS: &[&str] = &["list", "form", "search"];
 
 /// What a view keeps beside its markup: the model it is of, unless it inherits it.
 struct ViewData {
@@ -150,7 +150,8 @@ const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
 impl Arch<'_> {
     fn check(&self, root: &Element) -> std::result::Result<(), String> {
         let allowed: &[&str] = match root.name.as_str() {
-            "list" => &["field"],
+            "list" => &["field", "buttons"],
+            "search" => &["field", "filter"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
                 "chatter",
@@ -205,6 +206,9 @@ impl Arch<'_> {
                 return Err(self.error(format!("<{}> cannot be {attribute}", element.name)));
             }
         }
+        if let Some(domain) = element.attribute("domain") {
+            self.domain(domain)?;
+        }
         if let Some(nolabel) = element.attribute("nolabel")
             && !matches!(nolabel, "0" | "1")
         {
@@ -239,6 +243,11 @@ impl Arch<'_> {
                 self.children(element, &["button"])
             }
             "chatter" => self.children(element, &[]),
+            "filter" => {
+                self.required(element, "name")?;
+                self.required(element, "domain")?;
+                self.children(element, &[])
+            }
             heading if HEADINGS.contains(&heading) => self.children(element, &["field"]),
             _ => Ok(()),
         }
@@ -308,6 +317,20 @@ impl Arch<'_> {
                     "{attribute}=\"{expression}\" reads \"{name}\", which model \"{}\" does not have",
                     self.model_name
                 )));
+            }
+        }
+        Ok(())
+    }
+
+    /// A domain as JSON, the form a caller sends: every path starts with a field of the model.
+    fn domain(&self, domain: &str) -> std::result::Result<(), String> {
+        let parsed: SearchType = erp::serde_json::from_str(domain)
+            .map_err(|error| self.error(format!("domain {domain} is not one: {error}")))?;
+        let mut paths = Vec::new();
+        collect_paths(&parsed, &mut paths);
+        for path in paths {
+            if let Some(first) = path.first() {
+                self.known(first)?;
             }
         }
         Ok(())
@@ -417,6 +440,17 @@ fn arrow_parameters(expression: &str) -> Vec<String> {
     parameters
 }
 
+fn collect_paths<'d>(domain: &'d SearchType, paths: &mut Vec<&'d [String]>) {
+    match domain {
+        SearchType::And(left, right) | SearchType::Or(left, right) => {
+            collect_paths(left, paths);
+            collect_paths(right, paths);
+        }
+        SearchType::Tuple(tuple) => paths.push(&tuple.left.path),
+        SearchType::Nothing | SearchType::Never => {}
+    }
+}
+
 fn as_element(node: &Node) -> Option<&Element> {
     match node {
         Node::Element(element) => Some(element),
@@ -424,9 +458,17 @@ fn as_element(node: &Node) -> Option<&Element> {
     }
 }
 
-/// A view of every field a model shows, for a model nobody declared one of this kind for.
+/// A view of every field a model shows, for a model nobody declared one of this kind for; a
+/// search by its name only.
 fn generated(env: &Environment, model: &str, kind: &str) -> Result<String> {
     let model = env.model_manager.try_get_model(model)?;
+    if kind == "search" {
+        let fields = model
+            .name_field()
+            .map(|name| format!("<field name=\"{name}\"/>"))
+            .unwrap_or_default();
+        return Ok(format!("<search>{fields}</search>"));
+    }
     let mut names: Vec<&String> = model
         .fields
         .iter()
@@ -444,7 +486,8 @@ fn generated(env: &Environment, model: &str, kind: &str) -> Result<String> {
 #[erp_methods]
 impl View<MultipleIds> {
     /// The view shown for a model's records of one kind, as its final XML: the primary one of
-    /// lowest priority, or, for a list or a form nobody declared, one of every field.
+    /// lowest priority, or, for a list or a form nobody declared, one of every field — for a
+    /// search, of its name.
     ///
     /// Kept in a shared cache until a view changes or a plugin loads. The fields it shows are
     /// described by `fields_get`, which the client keeps per model.

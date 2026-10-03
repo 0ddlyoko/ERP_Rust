@@ -527,6 +527,17 @@ fn test_a_read_names_its_references_when_asked() -> Result<()> {
         json!([[line, null]]),
         "a line has no name to give"
     );
+
+    let found = result(
+        &app,
+        "sale_order_line.search",
+        json!({"domain": [["order", "ilike", "%s0004%"]]}),
+    );
+    assert_eq!(
+        found,
+        json!([line]),
+        "a relation is searched by its records' names"
+    );
     assert_eq!(rows[0]["tags"], json!([]), "no record, an empty list");
     Ok(())
 }
