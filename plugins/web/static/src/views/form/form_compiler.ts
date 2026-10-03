@@ -86,7 +86,8 @@ interface Piece {
  * Every condition stays the expression the view wrote — `invisible` a `t-if`, `readonly` a prop —
  * evaluated by Trame with each field it reads set to the record's value. A block, a page or pages
  * with nothing shown in them are hidden; the first page shown is open unless the user opened
- * another.
+ * another. What `<side>` and `<chatter/>` hold goes in a column beside the rest; without them, or
+ * with nothing shown in them, the rest takes the whole width.
  */
 export function compileForm(root: Element, columnOf: (element: Element) => Column): CompiledForm {
     const columns: Column[] = [];
@@ -168,13 +169,13 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return { xml, shown };
     };
 
-    const block = (element: Element, isRoot: boolean): Piece => {
+    const block = (element: Element, asCard: boolean): Piece => {
         condition(element, "invisible");
         const inner = contents(element, false);
         const shown = both(shownUnless(element), anyOf(inner.map((piece) => piece.shown)));
         const title = element.getAttribute("string");
         const xml =
-            `<section class="${isRoot ? "o_form_card" : "o_form_section"}"${ifShown(shown)}>` +
+            `<section class="${asCard ? "o_form_card" : "o_form_section"}"${ifShown(shown)}>` +
             (title === null ? "" : `<h2 class="o_form_block_title">${text(title)}</h2>`) +
             `<div class="o_form_grid">${inner.map((piece) => piece.xml).join("")}</div></section>`;
         return { xml, shown };
@@ -216,11 +217,15 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return { xml, shown };
     };
 
-    const contents = (parent: Element, isRoot: boolean): Piece[] =>
-        Array.from(parent.children).flatMap((element): Piece[] => {
+    /** What elements show; blocks as cards at the root and in the side column. */
+    const contents = (parent: Element, asCards: boolean, children = Array.from(parent.children)): Piece[] =>
+        children.flatMap((element): Piece[] => {
             const tag = element.tagName;
+            if (tag === "chatter") {
+                return [chatter(element)];
+            }
             if (tag === "block") {
-                return [block(element, isRoot)];
+                return [block(element, asCards)];
             }
             if (tag === "field") {
                 return [field(element)];
@@ -232,6 +237,35 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 return [pages(element)];
             }
             return [];
+        });
+
+    /** The record's conversation, filled in by the chatter to come. */
+    const chatter = (element: Element): Piece => {
+        condition(element, "invisible");
+        const shown = shownUnless(element);
+        const xml =
+            `<section class="o_form_card o_form_chatter"${ifShown(shown)}>` +
+            `<h2 class="o_form_block_title">Activity</h2>` +
+            `<p class="o_form_chatter_empty">Messages and activities will show here.</p></section>`;
+        return { xml, shown };
+    };
+
+    /**
+     * The side column: what every `<side>` holds, and a `<chatter/>` written at the root. Blocks
+     * in it are cards, as at the root.
+     */
+    const side = (): Piece[] =>
+        Array.from(root.children).flatMap((element): Piece[] => {
+            if (element.tagName === "chatter") {
+                return [chatter(element)];
+            }
+            if (element.tagName !== "side") {
+                return [];
+            }
+            condition(element, "invisible");
+            const inner = contents(element, true);
+            const shown = both(shownUnless(element), anyOf(inner.map((piece) => piece.shown)));
+            return [{ xml: `<t${ifShown(shown)}>${inner.map((piece) => piece.xml).join("")}</t>`, shown }];
         });
 
     const bar = Array.from(root.children)
@@ -251,9 +285,22 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             );
         })
         .join("");
-    const body = contents(root, true)
+    const main = contents(
+        root,
+        true,
+        Array.from(root.children).filter((element) => element.tagName !== "chatter"),
+    )
         .map((piece) => piece.xml)
         .join("");
+    const aside = side();
+    const sideShown = aside.length === 0 ? "false" : anyOf(aside.map((piece) => piece.shown));
+    const body =
+        `<div t-att-class="${escape(`{ o_form_layout: true, o_form_with_side: ${sideShown} }`)}">` +
+        `<div class="o_form_main">${main}</div>` +
+        (aside.length === 0
+            ? ""
+            : `<aside class="o_form_side"${ifShown(sideShown)}>${aside.map((piece) => piece.xml).join("")}</aside>`) +
+        `</div>`;
 
     const conditionNames = [...new Set(conditions.flatMap(namesRead))];
     const values = conditionNames

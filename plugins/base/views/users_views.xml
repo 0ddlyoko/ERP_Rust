@@ -15,15 +15,18 @@
                     <field name="login"/>
                     <field name="active"/>
                 </block>
-                <block string="Access">
-                    <field name="groups"/>
-                </block>
             </block>
             <pages>
                 <page name="groups" string="Groups of {{ name }}">
                     <field name="groups" widget="list" nolabel="1"/>
                 </page>
             </pages>
+            <side>
+                <block string="Access">
+                    <field name="groups"/>
+                </block>
+                <chatter/>
+            </side>
         </form>
     </view>
     <action id="action_users" name="Users" model="users" views="list,form"/>
