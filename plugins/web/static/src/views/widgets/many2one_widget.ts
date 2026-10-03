@@ -1,7 +1,8 @@
 import { inject, props, state } from "trame";
+import { Breadcrumb } from "@web/core/breadcrumb";
 import { actionsOf, Menus } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
-import { Router } from "@web/core/router";
+import { Router, writeRoute } from "@web/core/router";
 import { Widget, widgetProps, widgets } from "./widget";
 
 /** How long typing has to pause before the records are searched, in milliseconds. */
@@ -17,7 +18,7 @@ type Choice = [number, string];
  * Where a view edits it, entering it lists the first records of its model at once; typing
  * searches them by name, once typing pauses. One is chosen with the mouse, or the arrows and
  * Enter. Emptying it clears it.
- * Its record opens in a form when a menu leads to its model.
+ * Its record opens in a form when a menu leads to its model, the record left in the breadcrumb.
  */
 export class Many2OneWidget extends Widget {
     static override template = "web.Many2OneWidget";
@@ -27,6 +28,7 @@ export class Many2OneWidget extends Widget {
     @inject(Orm) orm!: Orm;
     @inject(Router) router!: Router;
     @inject(Menus) menus!: Menus;
+    @inject(Breadcrumb) breadcrumb!: Breadcrumb;
 
     /** What is typed, while the user types; the record's name otherwise. */
     @state accessor query: string | null = null;
@@ -152,12 +154,20 @@ export class Many2OneWidget extends Widget {
         }
     }
 
-    openRecord(): void {
+    /** Open the record, leaving the one open in the breadcrumb once the user did leave it. */
+    async openRecord(): Promise<void> {
         const action = this.openAction;
         const id = this.id;
-        if (action !== null && id !== null) {
-            void this.router.go({ action, view: "form", id });
+        if (action === null || id === null) {
+            return;
         }
+        const here = this.router.route;
+        const go = () => this.router.go({ action, view: "form", id });
+        if (here.id === null) {
+            await go();
+            return;
+        }
+        await this.breadcrumb.leave(here, go, () => writeRoute(this.router.route) !== writeRoute(here));
     }
 }
 

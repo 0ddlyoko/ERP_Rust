@@ -1,5 +1,5 @@
-import { Component, type ComponentClass, computed, inject, props, t } from "trame";
-import { Breadcrumb } from "@web/core/breadcrumb";
+import { Component, type ComponentClass, computed, effect, inject, props, t } from "trame";
+import { Breadcrumb, type Crumb } from "@web/core/breadcrumb";
 import type { ActionDescription } from "@web/core/menus";
 import { Router } from "@web/core/router";
 import { viewKinds } from "@web/views/view";
@@ -9,7 +9,8 @@ import { viewKinds } from "@web/views/view";
  * when the action offers it, else the first a kind is registered for.
  *
  * On a view of one record, the breadcrumb ends with the record, and the action leads back to the
- * list; the record's view shows its own title.
+ * list; the record's view shows its own title. The records left on the way to it come between,
+ * each leading back to itself; leaving the records for a list forgets them.
  */
 export class ActionManager extends Component {
     static template = "web.ActionManager";
@@ -31,8 +32,25 @@ export class ActionManager extends Component {
         return this.kind === "form";
     }
 
+    /** The action the breadcrumb starts from: the one the first record left was under. */
+    get rootAction(): string {
+        return this.breadcrumb.trail[0]?.action ?? this.props.action.name;
+    }
+
     backToList(): void {
-        this.router.go({ ...this.router.route, view: null, id: null });
+        const first = this.breadcrumb.trail[0];
+        this.router.go({ ...(first?.route ?? this.router.route), view: null, id: null });
+    }
+
+    backTo(crumb: Crumb): void {
+        this.router.go(crumb.route);
+    }
+
+    @effect nameInBreadcrumb(): () => void {
+        this.breadcrumb.action = this.props.action.name;
+        return () => {
+            this.breadcrumb.action = null;
+        };
     }
 
     @computed get kind(): string | null {

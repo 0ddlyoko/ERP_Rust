@@ -1,6 +1,8 @@
-import { Component, type ComponentClass, computed, inject, load, type PropsOf, registry, resource, t } from "trame";
+import { Component, type ComponentClass, computed, effect, inject, load, type PropsOf, registry, resource, t, untrack } from "trame";
+import { Breadcrumb } from "@web/core/breadcrumb";
 import { type Fields, Models } from "@web/core/models";
 import { type FieldDescription, Orm } from "@web/core/orm";
+import { Router } from "@web/core/router";
 import { Views } from "@web/core/views";
 import { StringWidget } from "./widgets/string_widget";
 import { defaultWidget, widgets } from "./widgets/widget";
@@ -44,9 +46,16 @@ export abstract class View extends Component {
     @inject(Models) models!: Models;
     @inject(Orm) orm!: Orm;
     @inject(Views) views!: Views;
+    @inject(Router) router!: Router;
+    @inject(Breadcrumb) breadcrumb!: Breadcrumb;
 
     /** Which view of the model this is: `list`, `form`. */
     abstract get kind(): string;
+
+    /** Shown, the view brings the breadcrumb's trail to where the user now is. */
+    @effect followTrail(): void {
+        untrack(() => this.breadcrumb.shown(this.router.route, this.kind === "form"));
+    }
 
     @resource accessor fields: Fields = load(
         () => this.props.resModel,

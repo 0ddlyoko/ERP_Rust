@@ -1,10 +1,8 @@
 import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state } from "trame";
-import { Breadcrumb } from "@web/core/breadcrumb";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
-import { Router } from "@web/core/router";
 import { View, viewKinds, viewProps } from "@web/views/view";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
@@ -28,8 +26,6 @@ export class FormView extends View {
 
     override props = props({ ...viewProps });
 
-    @inject(Router) router!: Router;
-    @inject(Breadcrumb) breadcrumb!: Breadcrumb;
     @inject(Notifications) notifications!: Notifications;
 
     override get kind(): string {

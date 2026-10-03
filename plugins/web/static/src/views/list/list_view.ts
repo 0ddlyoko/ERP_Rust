@@ -1,7 +1,6 @@
-import { effect, inject, load, props, resource, state, t } from "trame";
+import { effect, load, props, resource, state, t } from "trame";
 import { listMemory, rememberList } from "@web/core/list_memory";
 import type { Values } from "@web/core/orm";
-import { Router } from "@web/core/router";
 import { View, viewKinds, viewProps } from "@web/views/view";
 
 /**
@@ -27,8 +26,6 @@ export class ListView extends View {
     override get kind(): string {
         return "list";
     }
-
-    @inject(Router) router!: Router;
 
     @state accessor offset = listMemory(this.router.route.action)?.offset ?? 0;
     @state accessor query = "";
