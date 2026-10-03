@@ -1,4 +1,4 @@
-use crate::field::{FieldCompute, FieldKind, FieldReference, FieldType, SelectionFamily};
+use crate::field::{FieldCompute, FieldKind, FieldReference, FieldType, OnDelete, SelectionFamily};
 
 #[derive(Default)]
 pub struct FieldDescriptor {
@@ -30,4 +30,7 @@ pub struct FieldDescriptor {
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
     pub owned: bool,
+    /// What a many2one does when the record it points to is deleted; `None` leaves it as
+    /// another struct said, or emptied when none did.
+    pub on_delete: Option<OnDelete>,
 }

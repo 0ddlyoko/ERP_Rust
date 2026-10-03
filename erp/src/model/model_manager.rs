@@ -88,6 +88,7 @@ fn add_automatic_field(
         selection: None,
         tracking: false,
         owned: false,
+        on_delete: None,
     });
     field.automatic = true;
     model.fields.insert(name.to_string(), field);

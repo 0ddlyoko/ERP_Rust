@@ -424,6 +424,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             asks_for_storage,
             is_tracked,
             is_owned,
+            on_delete,
             ..
         } = f;
 
@@ -584,6 +585,13 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             quote! { None }
         };
 
+        let on_delete = match on_delete.as_deref() {
+            Some(key) => {
+                quote! { erp::types::field::OnDelete::from_key(#key) }
+            }
+            None => quote! { None },
+        };
+
         quote! {
             {
                 // Yep, I don't know how to call _get_model_name() without this line
@@ -599,6 +607,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     asks_for_storage: #asks_for_storage,
                     tracking: #is_tracked,
                     owned: #is_owned,
+                    on_delete: #on_delete,
                     compute: #compute,
                     field_ref: #field_reference,
                     selection: #selection,

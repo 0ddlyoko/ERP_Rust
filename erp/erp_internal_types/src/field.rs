@@ -1,5 +1,5 @@
 use erp_types::field::{
-    FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType, SelectionFamily,
+    FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType, OnDelete, SelectionFamily,
 };
 use std::collections::HashSet;
 
@@ -18,6 +18,7 @@ pub struct InternalField {
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
     pub owned: bool,
+    pub on_delete: Option<OnDelete>,
 }
 
 /// Final descriptor of a field.
@@ -53,6 +54,9 @@ pub struct FinalInternalField {
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
     pub owned: bool,
+    /// What a many2one does when the record it points to is deleted: as the last struct saying
+    /// so asked, so an extension may change it.
+    pub on_delete: OnDelete,
     pub automatic: bool,
     is_init: bool,
 }
@@ -75,6 +79,7 @@ impl FinalInternalField {
             selection: None,
             tracking: false,
             owned: false,
+            on_delete: OnDelete::default(),
             automatic: false,
             is_init: false,
         }
@@ -145,6 +150,9 @@ impl FinalInternalField {
         self.asked_for_storage |= field_descriptor.asks_for_storage;
         self.tracking |= field_descriptor.tracking;
         self.owned |= field_descriptor.owned;
+        if let Some(on_delete) = field_descriptor.on_delete {
+            self.on_delete = on_delete;
+        }
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

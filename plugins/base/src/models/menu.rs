@@ -18,6 +18,7 @@ pub struct Menu<Mode: IdMode> {
     pub id: Mode,
     #[erp(default = "")]
     name: String,
+    #[erp(ondelete = "cascade")]
     parent: Reference<BaseMenu, SingleId>,
     #[erp(inverse = "parent")]
     children: Reference<BaseMenu, MultipleIds>,

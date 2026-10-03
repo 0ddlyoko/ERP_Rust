@@ -28,6 +28,7 @@ pub struct View<Mode: IdMode> {
     model: String,
     #[erp(default = "")]
     arch: String,
+    #[erp(ondelete = "cascade")]
     inherit: Reference<BaseView, SingleId>,
     #[erp(default = "extension")]
     mode: String,

@@ -16,6 +16,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[allow(dead_code)]
 pub struct Session<Mode: IdMode> {
     pub id: Mode,
+    #[erp(ondelete = "cascade")]
     user: Reference<BaseUsers, SingleId>,
     secret: Password,
     #[erp(default = true)]

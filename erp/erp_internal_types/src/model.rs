@@ -94,6 +94,7 @@ impl FinalInternalModel {
                 selection: field.selection,
                 tracking: field.tracking,
                 owned: field.owned,
+                on_delete: field.on_delete,
             };
             self.register_internal_field(&internal_field);
             final_fields.insert(field_name, internal_field);

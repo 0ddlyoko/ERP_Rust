@@ -23,6 +23,7 @@ pub struct AccessRule<Mode: IdMode> {
     name: String,
     #[erp(default = "")]
     model: String,
+    #[erp(ondelete = "cascade")]
     group: Reference<BaseGroup, SingleId>,
     domain_read: Option<String>,
     domain_create: Option<String>,

@@ -4,7 +4,7 @@ use crate::model::util::{
     gen_multiple_ids_without_source, gen_option_not_one_generic, gen_password_has_no_default,
     gen_reference_not_two_generic, gen_wrong_default_value,
 };
-use erp_types::field::FieldType;
+use erp_types::field::{FieldType, OnDelete};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{
@@ -37,6 +37,7 @@ pub struct FieldGen {
     pub asks_for_storage: bool,
     pub is_tracked: bool,
     pub is_owned: bool,
+    pub on_delete: Option<String>,
 }
 
 impl FieldGen {
@@ -66,6 +67,8 @@ impl FieldGen {
         let mut is_tracked = false;
         let mut owned = None;
         let mut stored = None;
+        let mut on_delete = None;
+        let mut required = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -173,6 +176,22 @@ impl FieldGen {
                 AllowedFieldAttrs::Owned(ident) => {
                     owned = Some(ident);
                 }
+                AllowedFieldAttrs::OnDelete(ident, value) => {
+                    let key = value.value();
+                    if OnDelete::from_key(&key).is_none() {
+                        return Err(syn::Error::new(
+                            value.span(),
+                            format!(
+                                "\"{key}\" is not what a many2one can do on delete: {}",
+                                OnDelete::KEYS.join(", ")
+                            ),
+                        ));
+                    }
+                    on_delete = Some((ident, key));
+                }
+                AllowedFieldAttrs::Required(ident) => {
+                    required = Some(ident);
+                }
                 AllowedFieldAttrs::Stored(ident) => {
                     stored = Some(ident);
                 }
@@ -278,6 +297,19 @@ impl FieldGen {
                 "only a one2many — a list with an inverse — owns its records",
             ));
         }
+        // Any other field says it is required by not being an `Option`.
+        let is_many2one = is_reference && !is_reference_multi;
+        if let Some(ident) = on_delete
+            .as_ref()
+            .map(|(ident, _)| ident)
+            .or(required.as_ref())
+            && !is_many2one
+        {
+            return Err(syn::Error::new(
+                ident.span(),
+                "only a many2one — a `Reference<_, SingleId>` — takes this",
+            ));
+        }
         // A list of references is filled by one of three things; with none it holds nothing.
         if is_reference_multi && inverse.is_none() && relation.is_none() && compute.is_none() {
             return Err(gen_multiple_ids_without_source(ident.span()));
@@ -287,7 +319,7 @@ impl FieldGen {
             field_name,
             field_span: item.span(),
             field_name_span: ident.span(),
-            is_required,
+            is_required: is_required || required.is_some(),
             is_reference,
             is_reference_multi,
             field_type_keyword: field_type.unwrap(),
@@ -302,6 +334,7 @@ impl FieldGen {
             asks_for_storage: stored.is_some(),
             is_tracked,
             is_owned: owned.is_some(),
+            on_delete: on_delete.map(|(_, key)| key),
         })
     }
 }

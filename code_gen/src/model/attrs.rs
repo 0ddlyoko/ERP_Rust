@@ -108,6 +108,10 @@ pub enum AllowedFieldAttrs {
     Tracking(Ident),
     /// Says the records of a one2many belong to the record: removed from it, they are deleted.
     Owned(Ident),
+    /// Says what a many2one does when the record it points to is deleted.
+    OnDelete(Ident, LitStr),
+    /// Says a many2one always points to a record.
+    Required(Ident),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -122,6 +126,8 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "stored",
     "tracking",
     "owned",
+    "ondelete",
+    "required",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -171,6 +177,11 @@ impl Parse for AllowedFieldAttrs {
             "stored" => Ok(AllowedFieldAttrs::Stored(name)),
             "tracking" => Ok(AllowedFieldAttrs::Tracking(name)),
             "owned" => Ok(AllowedFieldAttrs::Owned(name)),
+            "ondelete" => Ok(AllowedFieldAttrs::OnDelete(
+                name,
+                parse_eq(input, "ondelete = \"cascade\"")?,
+            )),
+            "required" => Ok(AllowedFieldAttrs::Required(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -194,6 +205,8 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Stored(ident) => ident.span(),
             AllowedFieldAttrs::Tracking(ident) => ident.span(),
             AllowedFieldAttrs::Owned(ident) => ident.span(),
+            AllowedFieldAttrs::OnDelete(ident, _) => ident.span(),
+            AllowedFieldAttrs::Required(ident) => ident.span(),
         }
     }
 }

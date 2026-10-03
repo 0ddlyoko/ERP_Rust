@@ -8,5 +8,6 @@ use erp::types::field::{IdMode, Reference, SingleId};
 pub struct Company<Mode: IdMode> {
     id: Mode,
     name: String,
+    #[erp(ondelete = "restrict")]
     contact: Reference<BaseContact, SingleId>,
 }

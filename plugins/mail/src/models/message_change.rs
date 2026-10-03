@@ -10,6 +10,7 @@ use erp::types::field::{IdMode, Reference, SingleId};
 #[allow(dead_code)]
 pub struct MessageChange<Mode: IdMode> {
     pub id: Mode,
+    #[erp(ondelete = "cascade")]
     message: Reference<BaseMessage, SingleId>,
     #[erp(default = "")]
     field: String,

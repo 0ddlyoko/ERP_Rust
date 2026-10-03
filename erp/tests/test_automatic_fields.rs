@@ -5,7 +5,7 @@ use base::BasePlugin;
 use base::models::Group;
 use erp::app::Application;
 use erp::data;
-use erp_types::field::SingleId;
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use serde_json::json;
 use std::error::Error;
@@ -100,5 +100,32 @@ fn test_nobody_else_writes_them() -> Result<()> {
             .to_string()
             .contains("filled in by the ORM")
     );
+    Ok(())
+}
+
+/// A deleted user is emptied from the records they created or last changed, which stay.
+#[test]
+fn test_a_deleted_author_is_emptied() -> Result<()> {
+    let (app, admin) = new_app()?;
+    let mut env = app.new_env_as_option(Some(admin))?;
+    let mut values = MapOfFields::default();
+    values.insert("login", "leaving");
+    let author = env.create_records("users", vec![values])?.get_ids_ref()[0];
+    env.close()?;
+
+    let mut env = app.new_env_as_option(Some(author))?;
+    let mut values = MapOfFields::default();
+    values.insert("name", "Left behind");
+    let group: Group<SingleId> = env.sudo().create_new_record_from_map(values)?;
+    env.close()?;
+
+    let mut env = app.new_env_as_option(Some(admin))?;
+    env.delete("users", &MultipleIds::from(vec![author]))?;
+    env.close()?;
+
+    let mut env = app.new_env_as_option(None)?;
+    assert_eq!(group.get_create_uid(&mut env)?, None);
+    assert_eq!(group.get_write_uid(&mut env)?, None);
+    assert_eq!(group.get_name(&mut env)?, "Left behind");
     Ok(())
 }

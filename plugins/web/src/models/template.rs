@@ -31,6 +31,7 @@ pub struct Template<Mode: IdMode> {
     #[erp(default = "")]
     arch: String,
     file: Option<String>,
+    #[erp(ondelete = "cascade")]
     inherit: Reference<BaseTemplate, SingleId>,
     #[erp(default = "extension")]
     mode: String,
