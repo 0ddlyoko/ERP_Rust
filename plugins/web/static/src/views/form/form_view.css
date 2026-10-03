@@ -210,6 +210,16 @@
 .o_many2one .o_input {
     flex-grow: 1;
     min-width: 0;
+    padding-left: 34px;
+}
+
+.o_many2one_search {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--o-muted);
+    pointer-events: none;
 }
 
 .o_many2one_open {
