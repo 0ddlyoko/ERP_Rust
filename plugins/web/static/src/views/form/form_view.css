@@ -199,3 +199,61 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+.o_many2one {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.o_many2one .o_input {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.o_many2one_open {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--o-input-border);
+    border-radius: var(--o-radius-control);
+    background: var(--o-surface);
+    color: var(--o-muted);
+}
+
+.o_many2one_results {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    border: 1px solid var(--o-border);
+    border-radius: 10px;
+    background: var(--o-surface);
+    box-shadow: 0 12px 28px rgba(23, 32, 46, 0.14);
+}
+
+.o_many2one_result {
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.o_many2one_result.active,
+.o_many2one_result:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+}
+
+.o_many2one_note {
+    padding: 8px 10px;
+    color: var(--o-muted);
+}

@@ -35,6 +35,7 @@ pub enum Verb {
     Delete,
     FieldsGet,
     Names,
+    NameSearch,
 }
 
 impl Verb {
@@ -50,6 +51,7 @@ impl Verb {
         Verb::Delete,
         Verb::FieldsGet,
         Verb::Names,
+        Verb::NameSearch,
     ];
 
     /// The name a caller writes.
@@ -64,6 +66,7 @@ impl Verb {
             Verb::Delete => "delete",
             Verb::FieldsGet => "fields_get",
             Verb::Names => "names",
+            Verb::NameSearch => "name_search",
         }
     }
 
@@ -89,6 +92,7 @@ impl Verb {
             Verb::Delete => |env, model, params| dispatch(env, model, Verb::Delete, params),
             Verb::FieldsGet => |env, model, params| dispatch(env, model, Verb::FieldsGet, params),
             Verb::Names => |env, model, params| dispatch(env, model, Verb::Names, params),
+            Verb::NameSearch => |env, model, params| dispatch(env, model, Verb::NameSearch, params),
         }
     }
 }
@@ -297,6 +301,19 @@ struct FieldsGetParams {
 }
 
 #[derive(Deserialize)]
+struct NameSearchParams {
+    #[serde(default)]
+    text: String,
+    #[serde(default = "name_search_limit")]
+    limit: usize,
+}
+
+/// How many records a name search finds unless told otherwise: what a drop-down shows.
+fn name_search_limit() -> usize {
+    8
+}
+
+#[derive(Deserialize)]
 struct IdsParams {
     ids: Vec<u32>,
 }
@@ -378,6 +395,16 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
         Verb::FieldsGet => {
             let FieldsGetParams { fields } = parse(params)?;
             fields_get(env, model_name, &fields)
+        }
+        Verb::NameSearch => {
+            let NameSearchParams { text, limit } = parse(params)?;
+            let found = env.name_search(model_name, &text, limit)?;
+            Ok(json!(
+                found
+                    .into_iter()
+                    .map(|(id, name)| json!([id, name]))
+                    .collect::<Vec<_>>()
+            ))
         }
         Verb::Names => {
             let IdsParams { ids } = parse(params)?;

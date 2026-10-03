@@ -202,6 +202,52 @@ fn test_ilike_ignores_case() -> Result<()> {
     Ok(())
 }
 
+/// `\\` before a wildcard, or before itself, is that character as written.
+#[test]
+fn test_a_backslash_escapes_a_wildcard() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(&mut env, &["100%", "100 euros", "a_b", "axb", "c\\d"])?;
+
+    let percent = env.count("invoice", &make_domain!([("name", "like", "100\\%")]))?;
+    assert_eq!(percent, 1, "only 100%, not 100 euros");
+    let underscore = env.count("invoice", &make_domain!([("name", "like", "a\\_b")]))?;
+    assert_eq!(underscore, 1, "only a_b, not axb");
+    let backslash = env.count("invoice", &make_domain!([("name", "like", "c\\\\d")]))?;
+    assert_eq!(backslash, 1);
+    Ok(())
+}
+
+/// What a user types to choose a record: found anywhere in its name, whatever the case, the
+/// wildcards it holds taken as written; by name, and no more than asked for.
+#[test]
+fn test_name_search_finds_what_was_typed() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(
+        &mut env,
+        &["Facture B", "facture a", "Brouillon", "50% off", "50 off"],
+    )?;
+
+    let names =
+        |found: Vec<(u32, String)>| found.into_iter().map(|(_, name)| name).collect::<Vec<_>>();
+    assert_eq!(
+        names(env.name_search("invoice", "FACT", 8)?),
+        vec!["Facture B", "facture a"]
+    );
+    assert_eq!(
+        names(env.name_search("invoice", "50%", 8)?),
+        vec!["50% off"]
+    );
+    assert_eq!(
+        env.name_search("invoice", "", 2)?.len(),
+        2,
+        "the limit holds"
+    );
+    assert!(env.name_search("invoice", "nowhere", 8)?.is_empty());
+    Ok(())
+}
+
 #[test]
 fn test_in_and_not_in() -> Result<()> {
     let app = new_app();

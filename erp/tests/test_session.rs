@@ -594,3 +594,23 @@ fn test_names_are_only_the_readers() -> Result<()> {
     assert!(nobody.names("users", &[uid])?.is_empty());
     Ok(())
 }
+
+/// Choosing a record finds only what the chooser may read.
+#[test]
+fn test_a_name_search_finds_only_the_readers() -> Result<()> {
+    let app = new_app()?;
+    let token = open(&app, "admin", DEFAULT_ADMIN_PASSWORD)["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let found = call(
+        &app,
+        Some(&token),
+        "users.name_search",
+        json!({"text": "ADMIN"}),
+    );
+    assert_eq!(found[0][1], "Administrator", "{found}");
+    let hidden = call(&app, None, "users.name_search", json!({"text": "admin"}));
+    assert_eq!(hidden, json!([]), "the portal user reads no account");
+    Ok(())
+}

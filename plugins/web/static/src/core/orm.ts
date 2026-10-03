@@ -77,6 +77,11 @@ export class Orm {
         return this.rpc.call(`${model}.delete`, { ids });
     }
 
+    /** The records whose name holds `text`, whatever its case, as `[id, name]`: at most `limit`. */
+    nameSearch(model: string, text: string, limit = 8): Promise<[number, string][]> {
+        return this.rpc.call(`${model}.name_search`, { text, limit });
+    }
+
     /** The fields of a model the caller may see, all of them or those named. */
     fieldsGet(model: string, fields: string[] = []): Promise<Record<string, FieldDescription>> {
         return this.rpc.call(`${model}.fields_get`, { fields });

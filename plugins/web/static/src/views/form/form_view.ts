@@ -239,7 +239,7 @@ export class FormView extends View {
             const model = this.props.resModel;
             const id = this.props.resId;
             if (id === undefined) {
-                const values = { ...this.record, ...this.changes };
+                const values = this.forServer({ ...this.record, ...this.changes });
                 delete values.id;
                 const [created] = await this.orm.create(model, values);
                 this.changes = {};
@@ -252,7 +252,7 @@ export class FormView extends View {
                 }
                 return true;
             }
-            await this.orm.write(model, [id], this.changes);
+            await this.orm.write(model, [id], this.forServer(this.changes));
             this.record = await this.read(model, id, Object.keys(this.record));
             this.changes = {};
             this.tried = false;
@@ -265,6 +265,16 @@ export class FormView extends View {
             this.saving = false;
             this.notifications.remove(notice);
         }
+    }
+
+    /** Values as the server reads them: a many2one by the id of its record, not `[id, name]`. */
+    private forServer(values: Values): Values {
+        return Object.fromEntries(
+            Object.entries(values).map(([name, value]) => [
+                name,
+                this.fields?.[name]?.type === "ref" && Array.isArray(value) ? value[0] : value,
+            ]),
+        );
     }
 
     private refuse(reason: string): void {

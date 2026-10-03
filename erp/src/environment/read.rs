@@ -49,6 +49,67 @@ impl<'mm> Environment<'mm> {
         Ok(names)
     }
 
+    /// The records the caller may read whose name holds `text`, whatever its case, by name: at most
+    /// `limit` of them, as `(id, name)`.
+    ///
+    /// What is typed is matched as written: `%` and `_` are characters to find, not wildcards. A
+    /// model naming none, named by a private field, or one the caller may read nothing of, has
+    /// nothing to find.
+    pub fn name_search(
+        &mut self,
+        model_name: &str,
+        text: &str,
+        limit: usize,
+    ) -> Result<Vec<(u32, String)>> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        let Some(name_field) = model
+            .name_field()
+            .filter(|field| !model.fields[*field].private)
+            .map(str::to_string)
+        else {
+            return Ok(Vec::new());
+        };
+        let escaped: String = text
+            .chars()
+            .flat_map(|c| match c {
+                '\\' | '%' | '_' => vec!['\\', c],
+                c => vec![c],
+            })
+            .collect();
+        let pattern = format!("%{escaped}%");
+        let domain = SearchType::Tuple(erp_search::SearchTuple {
+            left: LeftTuple::from(name_field.as_str()),
+            operator: erp_search::SearchOperator::ILike,
+            right: erp_search::RightTuple::String(pattern),
+        });
+        let options = SearchOptions {
+            limit: Some(limit),
+            offset: 0,
+            order: vec![erp_search::OrderBy::asc(&name_field)],
+        };
+        let found = match self.search_ids_with(model_name, &domain, &options) {
+            Ok(found) => found,
+            Err(error) if error.downcast_ref::<AccessDenied>().is_some() => return Ok(Vec::new()),
+            Err(error) => return Err(error),
+        };
+        let rows = self.read(
+            model_name,
+            &MultipleIds::from(found),
+            &[name_field.as_str()],
+        )?;
+        Ok(rows
+            .iter()
+            .map(|row| {
+                let id = *row.get::<&u32>("id");
+                let name = row
+                    .get_option::<&String>(&name_field)
+                    .cloned()
+                    .unwrap_or_default();
+                (id, name)
+            })
+            .collect())
+    }
+
     /// Returns an instance of given model for a specific id
     ///
     /// Do not check if given id is valid id, or is present in the cache

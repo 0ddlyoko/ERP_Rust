@@ -117,23 +117,51 @@ impl Row {
     }
 }
 
-/// Match a string against an SQL `LIKE` pattern: `%` stands for any run of characters, `_` for
-/// exactly one.
+/// One piece of an SQL `LIKE` pattern.
+#[derive(Clone, Copy, PartialEq)]
+enum PatternPiece {
+    AnyRun,
+    AnyOne,
+    Exactly(char),
+}
+
+/// Read a `LIKE` pattern: `%` any run of characters, `_` exactly one, and `\` before either — or
+/// before itself — that character as written, as PostgreSQL reads it.
+fn pattern_pieces(pattern: &str) -> Vec<PatternPiece> {
+    let mut pieces = Vec::new();
+    let mut chars = pattern.chars();
+    while let Some(c) = chars.next() {
+        pieces.push(match c {
+            '%' => PatternPiece::AnyRun,
+            '_' => PatternPiece::AnyOne,
+            '\\' => PatternPiece::Exactly(chars.next().unwrap_or('\\')),
+            other => PatternPiece::Exactly(other),
+        });
+    }
+    pieces
+}
+
+/// Match a string against an SQL `LIKE` pattern.
 ///
 /// Greedy with backtracking on the last `%`, which is enough for patterns of this shape and
 /// avoids pulling a regex engine into the workspace.
 fn sql_like(value: &str, pattern: &str) -> bool {
     let value: Vec<char> = value.chars().collect();
-    let pattern: Vec<char> = pattern.chars().collect();
+    let pattern = pattern_pieces(pattern);
     let (mut v, mut p) = (0usize, 0usize);
     let mut last_wildcard: Option<usize> = None;
     let mut resume_at = 0usize;
 
     while v < value.len() {
-        if p < pattern.len() && (pattern[p] == '_' || pattern[p] == value[v]) {
+        let matches_one = match pattern.get(p) {
+            Some(PatternPiece::AnyOne) => true,
+            Some(PatternPiece::Exactly(c)) => *c == value[v],
+            _ => false,
+        };
+        if matches_one {
             v += 1;
             p += 1;
-        } else if p < pattern.len() && pattern[p] == '%' {
+        } else if pattern.get(p) == Some(&PatternPiece::AnyRun) {
             last_wildcard = Some(p);
             resume_at = v;
             p += 1;
@@ -145,5 +173,7 @@ fn sql_like(value: &str, pattern: &str) -> bool {
             return false;
         }
     }
-    pattern[p..].iter().all(|c| *c == '%')
+    pattern[p..]
+        .iter()
+        .all(|piece| *piece == PatternPiece::AnyRun)
 }
