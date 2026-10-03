@@ -60,17 +60,24 @@ export class Chatter extends Component {
     whenOf(message: Message): string {
         const date = new Date(message.date);
         const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        if (day === today) {
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        if (sameDay(date, now)) {
             return `Today · ${time}`;
         }
-        if (day === today - 86_400_000) {
+        if (sameDay(date, yesterday)) {
             return `Yesterday · ${time}`;
         }
         return `${date.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })} · ${time}`;
     }
+}
+
+function sameDay(one: Date, other: Date): boolean {
+    return (
+        one.getFullYear() === other.getFullYear() &&
+        one.getMonth() === other.getMonth() &&
+        one.getDate() === other.getDate()
+    );
 }
 
 formParts.add("chatter", Chatter);
