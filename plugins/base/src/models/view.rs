@@ -458,8 +458,8 @@ fn as_element(node: &Node) -> Option<&Element> {
     }
 }
 
-/// A view of every field a model shows, for a model nobody declared one of this kind for; a
-/// search by its name only.
+/// A view of every field a model shows, for a model nobody declared one of this kind for —
+/// those the ORM fills in left out; a search by its name only.
 fn generated(env: &Environment, model: &str, kind: &str) -> Result<String> {
     let model = env.model_manager.try_get_model(model)?;
     if kind == "search" {
@@ -472,7 +472,7 @@ fn generated(env: &Environment, model: &str, kind: &str) -> Result<String> {
     let mut names: Vec<&String> = model
         .fields
         .iter()
-        .filter(|(_, field)| !field.private)
+        .filter(|(_, field)| !field.private && !field.automatic)
         .map(|(name, _)| name)
         .collect();
     names.sort();

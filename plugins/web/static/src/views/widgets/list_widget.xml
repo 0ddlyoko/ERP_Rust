@@ -14,7 +14,7 @@
                         t-att-class="{ o_list_row: true, o_x2many_openable: openAction !== null }"
                         t-on-click="() => open(row.id)">
                         <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
-                            <t t-component="cellWidget(column)" record="row" name="column.name"
+                            <t t-component="cellWidget(column)" record="row" model="model" name="column.name"
                                field="column.field" attrs="column.attrs"/>
                         </td>
                         <td t-if="editable" class="o_x2many_actions">

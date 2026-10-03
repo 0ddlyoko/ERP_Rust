@@ -1,0 +1,25 @@
+<templates>
+    <t t-name="mail.StatusbarDurationsWidget">
+        <div class="o_statusbar_durations">
+            <p t-if="sinceText" class="o_statusbar_since">{{ sinceText }}</p>
+            <ol t-att-class="className + ' o_statusbar'">
+                <li t-foreach="steps" t-as="step" t-key="step[0]"
+                    t-att-class="'o_statusbar_step o_statusbar_' + stateOf(step)"
+                    t-att-aria-current="stateOf(step) === 'current' ? 'step' : null">
+                    <span class="o_statusbar_dot" aria-hidden="true">
+                        <svg t-if="stateOf(step) === 'passed'" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12.5l4.5 4.5L19 7.5"/>
+                        </svg>
+                    </span>
+                    <span class="o_statusbar_text">
+                        <button t-if="clickable &amp;&amp; stateOf(step) !== 'current'" type="button" class="o_statusbar_label"
+                                t-on-click="() => choose(step[0])">{{ step[1] }}</button>
+                        <span t-else="" class="o_statusbar_label">{{ step[1] }}</span>
+                        <span t-if="timingOf(step)" class="o_statusbar_timing">{{ timingOf(step) }}</span>
+                    </span>
+                </li>
+            </ol>
+        </div>
+    </t>
+</templates>

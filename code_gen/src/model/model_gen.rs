@@ -345,6 +345,27 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             #verbs_single
 
             #(#impl_model_fields_single)*
+
+            /// When the record was created; empty for one created before the ORM noted it.
+            pub fn get_create_date<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<Option<&'a erp::types::field::Timestamp>, Box<dyn std::error::Error + Send + Sync>> {
+                (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_option(erp::model::CREATE_DATE, env)
+            }
+
+            /// When the record was last changed.
+            pub fn get_write_date<'a>(&self, env: &'a mut erp::environment::Environment) -> ::core::result::Result<Option<&'a erp::types::field::Timestamp>, Box<dyn std::error::Error + Send + Sync>> {
+                (self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_option(erp::model::WRITE_DATE, env)
+            }
+
+            /// The user who created the record, by id; empty without a model of users, or for
+            /// work nobody in particular did.
+            pub fn get_create_uid(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<Option<u32>, Box<dyn std::error::Error + Send + Sync>> {
+                Ok((self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_option::<u32>(erp::model::CREATE_UID, env)?.copied())
+            }
+
+            /// The user who last changed the record, by id.
+            pub fn get_write_uid(&self, env: &mut erp::environment::Environment) -> ::core::result::Result<Option<u32>, Box<dyn std::error::Error + Send + Sync>> {
+                Ok((self as &dyn erp::model::Model<erp::types::field::SingleId, BaseModel=<Self as erp::types::model::CommonModel<erp::types::field::SingleId>>::BaseModel>).get_option::<u32>(erp::model::WRITE_UID, env)?.copied())
+            }
         }
 
         impl #struct_name_ident<erp::types::field::MultipleIds> {

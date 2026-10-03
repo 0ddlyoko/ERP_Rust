@@ -32,6 +32,7 @@ impl<'mm> Environment<'mm> {
         let relational_fields: Vec<&'mm str> = model
             .fields
             .iter()
+            .filter(|(_, field)| !field.automatic)
             .filter_map(|(field_name, field)| field.inverse.as_ref().map(|_| field_name.as_str()))
             .collect();
         for field_name in relational_fields {

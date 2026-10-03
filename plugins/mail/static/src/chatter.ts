@@ -13,7 +13,7 @@ interface Change {
 /** A message of a record's thread, as `message.thread` describes it. */
 interface Message {
     id: number;
-    kind: "comment" | "note" | "tracking";
+    kind: "comment" | "note" | "tracking" | "creation";
     date: string;
     author: [number, string] | null;
     body: string | null;
@@ -21,7 +21,8 @@ interface Message {
 }
 
 /**
- * A record's thread, newest first: who changed which tracked field, from what to what, and when.
+ * A record's thread, newest first: who created it and what its tracked fields started as, then
+ * who changed which of them, from what to what, and when.
  *
  * Read again each time the form reads its record, so a save shows what it changed.
  */

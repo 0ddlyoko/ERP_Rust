@@ -31,9 +31,20 @@ pub struct Identities {
     default_user: OnceLock<u32>,
     /// Who every rule will let through.
     root_user: OnceLock<u32>,
+    user_model: Option<&'static str>,
 }
 
 impl Identities {
+    /// Name the model whose records are the users: who creates and who last changes a record
+    /// point to it.
+    pub fn register_user_model(&mut self, model: &'static str) {
+        self.user_model = Some(model);
+    }
+
+    pub fn user_model(&self) -> Option<&'static str> {
+        self.user_model
+    }
+
     /// Name the function that resolves a token.
     ///
     /// Panics on a second one. Two plugins each believing they own authentication would leave one

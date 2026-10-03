@@ -55,6 +55,15 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
+    /// Forget what was remembered of these records: what they are created with is no change.
+    pub(super) fn forget_tracked(&mut self, model_name: &str, ids: &[u32]) {
+        if self.tracked.is_empty() {
+            return;
+        }
+        self.tracked
+            .retain(|(model, id, _), _| model != model_name || !ids.contains(id));
+    }
+
     /// Hand each record's changed tracked fields to the tracking hooks.
     ///
     /// A field written back to what it held is no change — a list of references in another order

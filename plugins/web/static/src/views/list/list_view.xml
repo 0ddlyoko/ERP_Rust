@@ -89,7 +89,7 @@
                                     </td>
                                     <td t-foreach="columns" t-as="column" t-key="column.name"
                                         t-att-class="cellClass(column)">
-                                        <t t-component="widgetFor(column)" record="record" name="column.name"
+                                        <t t-component="widgetFor(column)" record="record" model="props.resModel" name="column.name"
                                            field="column.field" attrs="column.attrs"/>
                                     </td>
                                 </tr>

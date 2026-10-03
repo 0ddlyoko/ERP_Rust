@@ -5,6 +5,8 @@ import type { FieldDescription } from "@web/core/orm";
 export const widgetProps = {
     /** The values of the record shown. */
     record: t.object(),
+    /** The model of that record, where the view knows it. */
+    model: t.string().optional(),
     /** The field of the record the widget shows. */
     name: t.string(),
     /** That field, as the server describes it. */

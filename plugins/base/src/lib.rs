@@ -56,6 +56,7 @@ impl Plugin for BasePlugin {
         model_manager
             .identities
             .register(models::Session::<SingleId>::resolve);
+        model_manager.identities.register_user_model("users");
         model_manager
             .access
             .register(models::AccessRule::<SingleId>::source());

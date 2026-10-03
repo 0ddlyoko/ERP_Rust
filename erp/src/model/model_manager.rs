@@ -9,11 +9,11 @@ use crate::model::ModelNotFound;
 use crate::model::rpc::{RpcFn, RpcRegistry};
 use crate::model::selections::Selections;
 use crate::shared_cache::SharedCaches;
-use erp_internal_types::{FinalInternalModel, InternalModel};
+use erp_internal_types::{FinalInternalField, FinalInternalModel, InternalField, InternalModel};
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
-use erp_types::field::{FieldType, Selection};
+use erp_types::field::{FieldKind, FieldType, Selection};
 use erp_types::method::MethodFn;
 use std::collections::{HashMap, HashSet};
 
@@ -43,10 +43,54 @@ pub type TrackingHook = fn(
     &[TrackedChange],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
+/// Work a plugin asks to do once records are created, given the model and their ids, as whoever
+/// created them.
+pub type CreateHook =
+    fn(&mut Environment, &str, &[u32]) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
 /// Work a plugin asks to do once records are deleted, given the model and their ids: removing
 /// what pointed at them without a relation the ORM knows of.
 pub type DeleteHook =
     fn(&mut Environment, &str, &[u32]) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+/// When a record was created, filled in by the ORM on every model.
+pub const CREATE_DATE: &str = "create_date";
+/// When a record was last changed.
+pub const WRITE_DATE: &str = "write_date";
+/// Who created a record, once a plugin names the model of users.
+pub const CREATE_UID: &str = "create_uid";
+/// Who last changed a record.
+pub const WRITE_UID: &str = "write_uid";
+
+/// Add a field the ORM fills in, unless the model has it already: a plugin may load after others.
+fn add_automatic_field(
+    model: &mut FinalInternalModel,
+    name: &str,
+    label: &str,
+    kind: FieldKind,
+    field_ref: Option<FieldReference>,
+) {
+    if model.fields.contains_key(name) {
+        return;
+    }
+    let mut field = FinalInternalField::new(name);
+    field.register_internal_field(&InternalField {
+        name: name.to_string(),
+        kind,
+        default_value: None,
+        label: Some(label.to_string()),
+        description: None,
+        required: false,
+        private: false,
+        asks_for_storage: false,
+        compute: None,
+        field_ref,
+        selection: None,
+        tracking: false,
+    });
+    field.automatic = true;
+    model.fields.insert(name.to_string(), field);
+}
 
 #[derive(Default)]
 pub struct ModelManager {
@@ -62,6 +106,7 @@ pub struct ModelManager {
     pub assets: AssetRegistry,
     pub load_hooks: Vec<LoadHook>,
     pub tracking_hooks: Vec<TrackingHook>,
+    pub create_hooks: Vec<CreateHook>,
     pub delete_hooks: Vec<DeleteHook>,
     pub shared_caches: SharedCaches,
     pub selections: Selections,
@@ -129,10 +174,38 @@ impl ModelManager {
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {
         self._post_register_name_fields();
+        self._post_register_automatic_fields();
         self._post_register_selections();
         self._post_register_storage();
         self._post_register_m2o_links();
         self._post_register_compute_links();
+    }
+
+    /// Give every model the fields the ORM fills in on its own: when each record was created and
+    /// last changed, and — once a plugin names the model of users — by whom.
+    ///
+    /// Real fields, read, searched and sorted like any other, but written by nobody else.
+    fn _post_register_automatic_fields(&mut self) {
+        let user_model = self
+            .identities
+            .user_model()
+            .filter(|model| self.models.contains_key(*model));
+        for model in self.models.values_mut() {
+            for (name, label) in [(CREATE_DATE, "Created on"), (WRITE_DATE, "Last updated on")] {
+                add_automatic_field(model, name, label, FieldKind::DateTime, None);
+            }
+            if let Some(user_model) = user_model {
+                for (name, label) in [(CREATE_UID, "Created by"), (WRITE_UID, "Last updated by")] {
+                    let reference = FieldReference {
+                        target_model: user_model,
+                        inverse_field: FieldReferenceType::M2O {
+                            inverse_fields: Vec::new(),
+                        },
+                    };
+                    add_automatic_field(model, name, label, FieldKind::Ref, Some(reference));
+                }
+            }
+        }
     }
 
     /// Start the family of every field holding an enum, and refuse a default its family lacks.

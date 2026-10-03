@@ -24,7 +24,7 @@
             </block>
             <side>
                 <block string="Status">
-                    <field name="state" widget="statusbar" nolabel="1" readonly="1"/>
+                    <field name="state" widget="statusbar_durations" nolabel="1" readonly="1"/>
                 </block>
                 <chatter/>
             </side>
