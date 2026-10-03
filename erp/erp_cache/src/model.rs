@@ -62,6 +62,9 @@ impl CacheModel {
     }
 
     /// Insert given field to the cache, and return field & true if the field has been updated, false otherwise
+    ///
+    /// Clearing a field the cache did not hold yet counts as an update: what the database holds is
+    /// unknown, so the clear has to reach it.
     pub fn insert_field(
         &mut self,
         name: &str,
@@ -71,6 +74,7 @@ impl CacheModel {
         if matches!(update_if_exists, Update::NotUpdateIfExists) && self.contains(name) {
             return None;
         }
+        let was_known = self.contains(name);
         let cache_field = self.fields.entry(name.to_string()).or_default();
         let mut dirty = false;
         match field_value {
@@ -81,7 +85,7 @@ impl CacheModel {
                 }
             }
             None => {
-                if cache_field.is_set() {
+                if cache_field.is_set() || !was_known {
                     dirty = true;
                     cache_field.clear();
                 }

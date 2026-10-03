@@ -78,8 +78,12 @@ export class Many2OneWidget extends Widget {
         void this.search("");
     }
 
+    /** Typing searches once it pauses; emptying the input clears the field at once. */
     type(text: string): void {
         this.query = text;
+        if (text === "" && !this.isEmpty) {
+            this.props.onChange?.(null);
+        }
         this.isOpen = true;
         this.searching = true;
         clearTimeout(this.timer);
@@ -112,11 +116,8 @@ export class Many2OneWidget extends Widget {
         this.close();
     }
 
-    /** Leave the input: an emptied one clears the field, anything else goes back to its record. */
+    /** Leave the input: what was typed without being chosen gives way to the record's name. */
     leave(): void {
-        if (this.query === "") {
-            this.props.onChange?.(null);
-        }
         this.close();
     }
 

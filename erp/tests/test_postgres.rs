@@ -574,6 +574,68 @@ fn test_unlink_against_postgres() -> Result<()> {
     Ok(())
 }
 
+/// Writing nothing to a many2one clears it, as the protocol sends it: `null`.
+#[test]
+fn test_a_many2one_is_cleared() -> Result<()> {
+    let app = app_or_skip!("t_clear_ref");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "kept");
+    let order: SaleOrder<SingleId> = env.create_new_record_from_map(map)?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("order", order.get_id());
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let ids = line.id.get_ids_ref().to_vec();
+    env.call_rpc(
+        "sale_order_line",
+        "write",
+        &serde_json::json!({"ids": ids, "values": {"order": null}}),
+    )?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let rows = env.read("sale_order_line", &line.id, &["order"])?;
+    assert!(
+        rows[0].get_option::<&u32>("order").is_none(),
+        "cleared, got {:?}",
+        rows[0].get_option::<&u32>("order")
+    );
+    Ok(())
+}
+
+/// Clearing a field the environment never read still reaches the database.
+#[test]
+fn test_a_field_never_read_is_cleared() -> Result<()> {
+    let app = app_or_skip!("t_clear_unread");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("signed_on", NaiveDate::from_str("2026-07-01")?);
+    let ids: MultipleIds = env.create_records("invoice", vec![map])?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    env.call_rpc(
+        "invoice",
+        "write",
+        &serde_json::json!({"ids": ids.get_ids_ref(), "values": {"signed_on": null}}),
+    )?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let rows = env.read("invoice", &ids, &["signed_on"])?;
+    assert!(
+        rows[0].get_option::<&NaiveDate>("signed_on").is_none(),
+        "cleared, got {:?}",
+        rows[0].get_option::<&NaiveDate>("signed_on")
+    );
+    Ok(())
+}
+
 /// Ordering and paging are emitted as SQL, not applied afterwards.
 #[test]
 fn test_order_limit_and_offset() -> Result<()> {
