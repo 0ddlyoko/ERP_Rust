@@ -21,7 +21,8 @@ export const widgetProps = {
  * How one value of a record is shown, and edited where a view edits.
  *
  * A widget shows `text` in `web.Widget` unless it brings its own template, or, where a view edits
- * it, an input of `inputType` holding `inputValue`, whose text it `parse`s into a value. A widget
+ * it, an input of `inputType` holding `inputValue`, whose text it `parse`s into a value as it is
+ * typed — not once the input is left — so the view knows of a change at once. A widget
  * declares its props as `props = props({ ...widgetProps, ...its own })`, once: the schema is read
  * per class.
  */
