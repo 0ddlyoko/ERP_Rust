@@ -1,5 +1,6 @@
-import { load, props, resource, state, t } from "trame";
+import { inject, load, props, resource, state, t } from "trame";
 import type { Values } from "@web/core/orm";
+import { Router } from "@web/core/router";
 import { View, viewKinds, viewProps } from "@web/views/view";
 
 /**
@@ -7,6 +8,9 @@ import { View, viewKinds, viewProps } from "@web/views/view";
  *
  * The rows and how many records there are in all load side by side. Rows can be selected, page by
  * page: what is done with a selection comes later, as does the search, shown but not yet applied.
+ *
+ * Choosing a row opens its record in a form; once some rows are selected, it selects it instead,
+ * the way its check box does.
  */
 export class ListView extends View {
     static template = "web.ListView";
@@ -20,6 +24,8 @@ export class ListView extends View {
     override get kind(): string {
         return "list";
     }
+
+    @inject(Router) router!: Router;
 
     @state accessor offset = 0;
     @state accessor query = "";
@@ -85,6 +91,15 @@ export class ListView extends View {
         } else {
             this.selected.delete(this.idOf(record));
         }
+    }
+
+    /** A row chosen: its record opened, or, while rows are selected, selected or not in turn. */
+    choose(record: Values): void {
+        if (this.selected.size > 0) {
+            this.select(record, !this.selected.has(this.idOf(record)));
+            return;
+        }
+        this.router.go({ ...this.router.route, view: "form", id: this.idOf(record) });
     }
 
     selectAll(checked: boolean): void {

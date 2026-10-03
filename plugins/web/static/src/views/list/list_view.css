@@ -125,6 +125,10 @@
     border-bottom: 0;
 }
 
+.o_list_row {
+    cursor: pointer;
+}
+
 .o_list_row:hover td {
     background: #fbfcfd;
 }

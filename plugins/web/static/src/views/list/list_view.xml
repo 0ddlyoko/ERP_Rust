@@ -45,8 +45,9 @@
                     </thead>
                     <tbody>
                         <tr t-foreach="records" t-as="record" t-key="record.id"
-                            t-att-class="{ o_list_row: true, selected: selected.has(idOf(record)) }">
-                            <td class="o_list_select">
+                            t-att-class="{ o_list_row: true, selected: selected.has(idOf(record)) }"
+                            t-on-click="() => choose(record)">
+                            <td class="o_list_select" t-on-click.stop="() => {}">
                                 <input type="checkbox" aria-label="Select this row"
                                        t-att-checked="selected.has(idOf(record))"
                                        t-on-change="(ev) => select(record, ev.target.checked)"/>
