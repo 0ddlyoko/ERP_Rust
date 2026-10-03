@@ -1,3 +1,4 @@
+mod command;
 mod deserialize;
 mod error;
 mod field_compute;
@@ -10,6 +11,7 @@ mod password;
 mod reference;
 mod selection;
 
+pub use command::*;
 pub use deserialize::*;
 pub use error::*;
 pub use field_compute::*;

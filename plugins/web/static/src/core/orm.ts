@@ -30,6 +30,7 @@ export interface FieldDescription {
     relation?: string;
     relation_kind?: "many2one" | "one2many" | "many2many";
     values?: [string, string][];
+    inverse?: string;
     default?: unknown;
 }
 

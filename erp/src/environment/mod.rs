@@ -22,6 +22,7 @@ use std::error::Error;
 use uuid::Uuid;
 
 mod access;
+mod commands;
 mod compute;
 mod create;
 mod delete;

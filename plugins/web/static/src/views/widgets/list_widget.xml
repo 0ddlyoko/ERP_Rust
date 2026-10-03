@@ -6,20 +6,28 @@
                     <tr>
                         <th t-foreach="columns" t-as="column" t-key="column.name"
                             t-att-class="cellClass(column)">{{ column.label }}</th>
-                        <th t-if="editable" class="o_x2many_actions"/>
+                        <th t-if="editable || openAction !== null" class="o_x2many_actions"/>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr t-foreach="rows" t-as="row" t-key="row.id"
-                        t-att-class="{ o_list_row: true, o_x2many_openable: openAction !== null }"
-                        t-on-click="() => open(row.id)">
+                    <tr t-foreach="rows" t-as="row" t-key="row.key"
+                        t-att-class="{ o_list_row: true, o_x2many_openable: editable || (openAction !== null &amp;&amp; row.id !== null), o_x2many_editing: editing === row.key }"
+                        t-on-click="() => choose(row)">
                         <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
-                            <t t-component="cellWidget(column)" record="row" model="model" name="column.name"
-                               field="column.field" attrs="column.attrs"/>
+                            <t t-component="cellWidget(column)" record="row.values" model="model" name="column.name"
+                               field="column.field" attrs="column.attrs" readonly="isReadonly(row, column)"
+                               onChange="changer(row, column.name)"/>
                         </td>
-                        <td t-if="editable" class="o_x2many_actions">
-                            <button type="button" class="o_x2many_remove" aria-label="Remove this line"
-                                    title="Remove this line" t-on-click.stop="() => remove(row.id)">
+                        <td t-if="editable || openAction !== null" class="o_x2many_actions" t-on-click.stop="() => {}">
+                            <button t-if="openAction !== null &amp;&amp; row.id !== null" type="button" class="o_x2many_button"
+                                    aria-label="Open this line" title="Open this line" t-on-click="() => open(row.id)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
+                                </svg>
+                            </button>
+                            <button t-if="editable" type="button" class="o_x2many_button o_x2many_remove" aria-label="Remove this line"
+                                    title="Remove this line" t-on-click="() => remove(row.key)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M4 7h16"/><path d="M10 11v6M14 11v6"/>
@@ -29,11 +37,16 @@
                         </td>
                     </tr>
                     <tr t-if="!rows.length" class="o_list_empty">
-                        <td t-att-colspan="columns.length + (editable ? 1 : 0)">No records.</td>
+                        <td t-att-colspan="columns.length + (editable || openAction !== null ? 1 : 0)">No records.</td>
                     </tr>
                 </tbody>
             </table>
-            <RecordSearch t-if="editable" model="model" exclude="ids" onPick="add" placeholder="'Add a line…'"/>
+            <button t-if="editable &amp;&amp; isOne2Many" type="button" class="o_button_secondary o_x2many_add" t-on-click="addLine">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Add a line
+            </button>
+            <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" onPick="add" placeholder="'Add…'"/>
         </div>
     </t>
 </templates>

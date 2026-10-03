@@ -1,9 +1,9 @@
 <templates>
     <t t-name="web.TagsWidget">
         <div t-att-class="className + ' o_tags'">
-            <span t-foreach="linked" t-as="tag" t-key="tag[0]" class="o_tag">
+            <span t-foreach="entries" t-as="tag" t-key="tag.key" class="o_tag">
                 {{ nameOf(tag) }}
-                <button t-if="editable" type="button" class="o_tag_remove" t-on-click="() => remove(tag[0])"
+                <button t-if="editable" type="button" class="o_tag_remove" t-on-click="() => remove(tag.key)"
                         t-att-aria-label="'Remove ' + nameOf(tag)">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>

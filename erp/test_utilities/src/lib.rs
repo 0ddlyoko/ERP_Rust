@@ -20,6 +20,8 @@ impl Plugin for TestLibPlugin {
         model_manager.register_model::<models::Invoice<_>>();
         model_manager.register_model::<models::Machine<_>>();
         model_manager.register_model::<models::MeterReading<_>>();
+        model_manager.register_model::<models::Notebook<_>>();
+        model_manager.register_model::<models::Page<_>>();
         model_manager.register_model::<models::Record<_>>();
         model_manager.register_model::<models::SaleOrder<_>>();
         model_manager.register_model::<models::SaleOrderLine<_>>();

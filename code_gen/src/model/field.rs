@@ -36,6 +36,7 @@ pub struct FieldGen {
     /// to whichever struct happens to mention it.
     pub asks_for_storage: bool,
     pub is_tracked: bool,
+    pub is_owned: bool,
 }
 
 impl FieldGen {
@@ -63,6 +64,7 @@ impl FieldGen {
         let mut relation = None;
         let mut is_private = false;
         let mut is_tracked = false;
+        let mut owned = None;
         let mut stored = None;
 
         for attr in parse_attributes(attrs)? {
@@ -168,6 +170,9 @@ impl FieldGen {
                 AllowedFieldAttrs::Tracking(_) => {
                     is_tracked = true;
                 }
+                AllowedFieldAttrs::Owned(ident) => {
+                    owned = Some(ident);
+                }
                 AllowedFieldAttrs::Stored(ident) => {
                     stored = Some(ident);
                 }
@@ -264,6 +269,15 @@ impl FieldGen {
         if !is_reference_multi && let Some((relation_ident, _)) = relation {
             return Err(gen_inverse_not_multiple_ids(relation_ident.span()));
         }
+        // Only the records a one2many holds can belong to the record holding them.
+        if let Some(owned) = &owned
+            && inverse.is_none()
+        {
+            return Err(syn::Error::new(
+                owned.span(),
+                "only a one2many — a list with an inverse — owns its records",
+            ));
+        }
         // A list of references is filled by one of three things; with none it holds nothing.
         if is_reference_multi && inverse.is_none() && relation.is_none() && compute.is_none() {
             return Err(gen_multiple_ids_without_source(ident.span()));
@@ -287,6 +301,7 @@ impl FieldGen {
             is_private,
             asks_for_storage: stored.is_some(),
             is_tracked,
+            is_owned: owned.is_some(),
         })
     }
 }

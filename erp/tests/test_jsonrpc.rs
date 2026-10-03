@@ -678,3 +678,265 @@ fn test_a_domain_too_deep_is_refused() -> Result<()> {
     assert_eq!(found, json!([]), "a long OR is fine");
     Ok(())
 }
+
+/// A one2many or a many2many is written as commands, carried out in order on what it holds:
+/// records changed by `{"id": ..}`, created by values alone — a line created for an order
+/// pointing back to it — and taken out by `{"unlink": id}`, in one call, on create as on write.
+#[test]
+fn test_lines_are_created_and_changed_with_their_record() -> Result<()> {
+    let app = new_app()?;
+    let tag = create(&app, "tag", json!({"name": "urgent"}));
+    let created = result(
+        &app,
+        "sale_order.create",
+        json!({"values": {
+            "name": "S1",
+            "lines": {"create": [{"price": 10, "amount": 2}, {"price": 4}]},
+            "tags": {"link": [tag], "create": [{"name": "new"}]},
+        }}),
+    );
+    let order = created[0].clone();
+    let rows = result(
+        &app,
+        "sale_order_line.read_matching",
+        json!({"domain": [["order", "=", order]], "fields": ["price", "amount"], "order": ["id asc"]}),
+    );
+    assert_eq!(rows.as_array().map_or(0, Vec::len), 2, "{rows}");
+    let first = rows[0]["id"].clone();
+    let second = rows[1]["id"].clone();
+    assert_eq!(rows[0]["price"], 10);
+    let tags = result(
+        &app,
+        "sale_order.read",
+        json!({"ids": [order], "fields": ["tags"], "names": true}),
+    );
+    assert_eq!(tags[0]["tags"][1][1], "new", "{tags}");
+
+    result(
+        &app,
+        "sale_order.write",
+        json!({"ids": [order], "values": {"lines": {"unlink": [second], "update": [{"id": first, "price": 12}], "create": [{"price": 7}]}}}),
+    );
+    let rows = result(
+        &app,
+        "sale_order_line.read_matching",
+        json!({"domain": [["order", "=", order]], "fields": ["price"], "order": ["id asc"]}),
+    );
+    let prices: Vec<Value> = rows
+        .as_array()
+        .expect("rows")
+        .iter()
+        .map(|row| row["price"].clone())
+        .collect();
+    assert_eq!(
+        prices,
+        [json!(12), json!(7)],
+        "changed, created, and the second one let go"
+    );
+    let let_go = result(
+        &app,
+        "sale_order_line.read",
+        json!({"ids": [second], "fields": ["order"]}),
+    );
+    assert_eq!(
+        let_go[0]["order"],
+        Value::Null,
+        "a line the order does not own is only detached"
+    );
+    Ok(())
+}
+
+/// `delete` takes a record out and deletes it; `clear` takes every record out — let go, or
+/// deleted when the one2many owns them; ids alone replace what the field holds.
+#[test]
+fn test_records_are_deleted_and_cleared() -> Result<()> {
+    let app = new_app()?;
+    let created = result(
+        &app,
+        "sale_order.create",
+        json!({"values": {"name": "S3", "lines": {"create": [{"price": 1}, {"price": 2}, {"price": 3}]}}}),
+    );
+    let order = created[0].clone();
+    let lines = result(
+        &app,
+        "sale_order_line.search",
+        json!({"domain": [["order", "=", order]], "order": ["id asc"]}),
+    );
+    result(
+        &app,
+        "sale_order.write",
+        json!({"ids": [order], "values": {"lines": {"delete": [lines[0]]}}}),
+    );
+    let gone = result(
+        &app,
+        "sale_order_line.search",
+        json!({"domain": [["id", "=", lines[0]]]}),
+    );
+    assert_eq!(gone, json!([]), "deleted");
+    let held = result(
+        &app,
+        "sale_order.read",
+        json!({"ids": [order], "fields": ["lines"]}),
+    );
+    assert_eq!(held[0]["lines"], json!([lines[1], lines[2]]));
+
+    result(
+        &app,
+        "sale_order.write",
+        json!({"ids": [order], "values": {"lines": {"clear": true}}}),
+    );
+    let held = result(
+        &app,
+        "sale_order.read",
+        json!({"ids": [order], "fields": ["lines"]}),
+    );
+    assert!(
+        held[0]["lines"].as_array().is_none_or(Vec::is_empty),
+        "cleared: {held}"
+    );
+    let let_go = result(
+        &app,
+        "sale_order_line.search",
+        json!({"domain": [["id", "in", [lines[1], lines[2]]]]}),
+    );
+    assert_eq!(
+        let_go.as_array().map_or(0, Vec::len),
+        2,
+        "the order does not own them: let go"
+    );
+
+    let notebook = result(
+        &app,
+        "notebook.create",
+        json!({"values": {"name": "N2", "pages": {"create": [{"text": "a"}, {"text": "b"}]}}}),
+    )[0]
+    .clone();
+    result(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": {"clear": true, "create": [{"text": "c"}]}}}),
+    );
+    let pages = result(
+        &app,
+        "page.read_matching",
+        json!({"domain": [["notebook", "=", notebook]], "fields": ["text"]}),
+    );
+    assert_eq!(pages.as_array().map_or(0, Vec::len), 1, "{pages}");
+    assert_eq!(pages[0]["text"], "c", "cleared then added to");
+    let all = result(
+        &app,
+        "page.count",
+        json!({"domain": [["text", "in", ["a", "b"]]]}),
+    );
+    assert_eq!(all, json!(0), "owned pages are deleted when cleared");
+    Ok(())
+}
+
+/// A list of command objects is carried out one object after the other; one object's commands
+/// in a fixed order, whatever order they are written in. Ids and commands do not mix.
+#[test]
+fn test_command_objects_are_carried_out_in_order() -> Result<()> {
+    let app = new_app()?;
+    let notebook = result(
+        &app,
+        "notebook.create",
+        json!({"values": {"name": "N3", "pages": {"create": [{"text": "a"}]}}}),
+    )[0]
+    .clone();
+    result(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": [
+            {"create": [{"text": "b"}]},
+            {"create": [{"text": "c"}], "clear": true},
+        ]}}),
+    );
+    let pages = result(
+        &app,
+        "page.read_matching",
+        json!({"domain": [["notebook", "=", notebook]], "fields": ["text"]}),
+    );
+    let texts: Vec<Value> = pages
+        .as_array()
+        .expect("pages")
+        .iter()
+        .map(|page| page["text"].clone())
+        .collect();
+    assert_eq!(
+        texts,
+        [json!("c")],
+        "b created, then everything cleared, then c created"
+    );
+
+    let refused = call(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": [1, {"clear": true}]}}),
+    );
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("not both"),
+        "{refused}"
+    );
+    let refused = call(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": {"remove": [1]}}}),
+    );
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("\"remove\" is not a command"),
+        "{refused}"
+    );
+    Ok(())
+}
+
+/// Records a one2many owns are deleted once removed from it, not left pointing nowhere.
+#[test]
+fn test_owned_lines_go_with_their_removal() -> Result<()> {
+    let app = new_app()?;
+    let created = result(
+        &app,
+        "notebook.create",
+        json!({"values": {"name": "N1", "pages": {"create": [{"text": "keep"}, {"text": "drop"}]}}}),
+    );
+    let notebook = created[0].clone();
+    let pages = result(
+        &app,
+        "page.read_matching",
+        json!({"domain": [], "fields": ["text", "notebook"], "order": ["id asc"]}),
+    );
+    assert_eq!(
+        pages[0]["notebook"], notebook,
+        "created pointing back: {pages}"
+    );
+    let keep = pages[0]["id"].clone();
+    result(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": [keep]}}),
+    );
+    let left = result(&app, "page.search", json!({"domain": []}));
+    assert_eq!(
+        left,
+        json!([keep]),
+        "ids alone replace: the page left out is deleted"
+    );
+
+    result(
+        &app,
+        "notebook.write",
+        json!({"ids": [notebook], "values": {"pages": {"unlink": [keep]}}}),
+    );
+    let left = result(&app, "page.search", json!({"domain": []}));
+    assert_eq!(
+        left,
+        json!([]),
+        "a page unlinked from the notebook owning it is deleted"
+    );
+    Ok(())
+}

@@ -8,7 +8,7 @@
 //! the seed carries the kind, works with any format, and keeps this crate free of a dependency on
 //! one.
 
-use crate::field::{FieldKind, FieldType, Password};
+use crate::field::{FieldKind, FieldType, Password, RelationValue, RelationValueSeed};
 use crate::model::MapOfFields;
 use serde::Deserialize;
 use serde::de::{DeserializeSeed, Deserializer, Error, MapAccess, Visitor};
@@ -126,6 +126,13 @@ impl<'de> Visitor<'de> for OptionalValueVisitor {
 /// holds instead of a copy built per request.
 pub trait FieldKinds {
     fn kind_of(&self, field_name: &str) -> Option<FieldKind>;
+
+    /// The fields of the model a one2many or a many2many points to, for the records it creates
+    /// or changes; none when only ids are taken.
+    fn target(&self, field_name: &str) -> Option<Box<dyn FieldKinds + '_>> {
+        let _ = field_name;
+        None
+    }
 }
 
 impl FieldKinds for std::collections::HashMap<String, FieldKind> {
@@ -144,11 +151,78 @@ impl<'de, K: FieldKinds + ?Sized> DeserializeSeed<'de> for MapOfFieldsSeed<'_, K
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(MapOfFieldsVisitor(self.0))
+        deserializer.deserialize_map(MapOfFieldsVisitor {
+            kinds: self.0,
+            takes_id: false,
+        })
     }
 }
 
-struct MapOfFieldsVisitor<'a, K: FieldKinds + ?Sized>(&'a K);
+pub(crate) struct MapOfFieldsVisitor<'a, K: FieldKinds + ?Sized> {
+    kinds: &'a K,
+    takes_id: bool,
+}
+
+impl<'a, K: FieldKinds + ?Sized> MapOfFieldsVisitor<'a, K> {
+    /// Read a record that may name itself by an `id`, kept apart from its values.
+    pub(crate) fn with_id(kinds: &'a K) -> Self {
+        MapOfFieldsVisitor {
+            kinds,
+            takes_id: true,
+        }
+    }
+
+    pub(crate) fn without_id(kinds: &'a K) -> Self {
+        MapOfFieldsVisitor {
+            kinds,
+            takes_id: false,
+        }
+    }
+
+    pub(crate) fn read<'de, M>(self, map: M) -> Result<(Option<u32>, MapOfFields), M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        self.read_from(None, map)
+    }
+
+    /// The same, the first key already taken off the map.
+    pub(crate) fn read_from<'de, M>(
+        self,
+        first: Option<String>,
+        mut map: M,
+    ) -> Result<(Option<u32>, MapOfFields), M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut id = None;
+        let mut fields = MapOfFields::default();
+        let mut next = first;
+        if next.is_none() {
+            next = map.next_key::<String>()?;
+        }
+        while let Some(name) = next.take() {
+            if self.takes_id && name == "id" {
+                id = Some(map.next_value::<u32>()?);
+                next = map.next_key::<String>()?;
+                continue;
+            }
+            // An unknown field is refused rather than dropped: over the wire, silently ignoring
+            // one turns a typo into a write that appears to have worked.
+            let kind = self.kinds.kind_of(&name).ok_or_else(|| {
+                Error::custom(format!("Field \"{name}\" is not declared on this model"))
+            })?;
+            let target = self.kinds.target(&name);
+            let value = map.next_value_seed(FieldValue {
+                kind,
+                target: target.as_deref(),
+            })?;
+            fields.fields.insert(name, value);
+            next = map.next_key::<String>()?;
+        }
+        Ok((id, fields))
+    }
+}
 
 impl<'de, K: FieldKinds + ?Sized> Visitor<'de> for MapOfFieldsVisitor<'_, K> {
     type Value = MapOfFields;
@@ -157,20 +231,63 @@ impl<'de, K: FieldKinds + ?Sized> Visitor<'de> for MapOfFieldsVisitor<'_, K> {
         formatter.write_str("a map of field names to values")
     }
 
-    fn visit_map<M>(self, mut map: M) -> Result<MapOfFields, M::Error>
+    fn visit_map<M>(self, map: M) -> Result<MapOfFields, M::Error>
     where
         M: MapAccess<'de>,
     {
-        let mut fields = MapOfFields::default();
-        while let Some(name) = map.next_key::<String>()? {
-            // An unknown field is refused rather than dropped: over the wire, silently ignoring
-            // one turns a typo into a write that appears to have worked.
-            let kind = self.0.kind_of(&name).ok_or_else(|| {
-                Error::custom(format!("Field \"{name}\" is not declared on this model"))
-            })?;
-            let value = map.next_value_seed(OptionalValue(kind))?;
-            fields.fields.insert(name, value);
+        self.read(map).map(|(_, fields)| fields)
+    }
+}
+
+/// A field's value, or nothing: for a one2many or a many2many whose target is known, commands
+/// — read as plain ids when they are only that.
+struct FieldValue<'a> {
+    kind: FieldKind,
+    target: Option<&'a dyn FieldKinds>,
+}
+
+impl<'de> DeserializeSeed<'de> for FieldValue<'_> {
+    type Value = Option<FieldType>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Option<FieldType>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        match (self.kind, self.target) {
+            (FieldKind::Refs, Some(target)) => Ok(deserializer
+                .deserialize_option(OptionalRelation(target))?
+                .map(|value| match value {
+                    RelationValue::Ids(ids) => FieldType::Refs(ids),
+                    RelationValue::Commands(commands) => FieldType::Commands(commands),
+                })),
+            (kind, _) => OptionalValue(kind).deserialize(deserializer),
         }
-        Ok(fields)
+    }
+}
+
+struct OptionalRelation<'a>(&'a dyn FieldKinds);
+
+impl<'de> Visitor<'de> for OptionalRelation<'_> {
+    type Value = Option<RelationValue>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a list of ids, commands, or null")
+    }
+
+    fn visit_none<E: Error>(self) -> Result<Self::Value, E> {
+        Ok(None)
+    }
+
+    fn visit_unit<E: Error>(self) -> Result<Self::Value, E> {
+        Ok(None)
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        RelationValueSeed(self.0)
+            .deserialize(deserializer)
+            .map(Some)
     }
 }

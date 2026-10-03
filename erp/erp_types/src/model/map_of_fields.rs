@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 // Serialized as the bare field map: the wrapper is an implementation detail, and a
 // client reading a record expects `{"name": ...}`, not `{"fields": {"name": ...}}`.
-#[derive(Default, Clone, Debug, serde::Serialize)]
+#[derive(Default, Clone, Debug, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct MapOfFields {
     pub fields: HashMap<String, Option<FieldType>>,

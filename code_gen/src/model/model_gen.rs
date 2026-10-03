@@ -423,6 +423,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             is_private,
             asks_for_storage,
             is_tracked,
+            is_owned,
             ..
         } = f;
 
@@ -482,6 +483,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                 // read, which is where the message belongs. Here to keep the match honest.
                 FieldType::Password(_) => quote! {
                     compile_error!("A password field takes no default")
+                },
+                // Out of reach as well: a default is written as a literal, never as commands.
+                FieldType::Commands(_) => quote! {
+                    compile_error!("A default is a value, not commands")
                 },
             }
         } else if *is_reference {
@@ -593,6 +598,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     private: #is_private,
                     asks_for_storage: #asks_for_storage,
                     tracking: #is_tracked,
+                    owned: #is_owned,
                     compute: #compute,
                     field_ref: #field_reference,
                     selection: #selection,

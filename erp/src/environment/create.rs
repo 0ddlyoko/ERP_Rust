@@ -4,6 +4,7 @@ use crate::access::{Access, AccessDenied, Operation};
 use crate::model::{CREATE_DATE, CREATE_UID, WRITE_DATE, WRITE_UID};
 use chrono::Utc;
 use erp_internal_types::FinalInternalModel;
+use erp_types::field::Command;
 
 impl<'mm> Environment<'mm> {
     /// Create a new record for a specific model and a given list of fields
@@ -31,6 +32,8 @@ impl<'mm> Environment<'mm> {
     ///
     /// The entry point for callers that only hold a model name at runtime; the typed
     /// [`Environment::create_new_record_from_map`] resolves the name from `M` and lands here.
+    /// A one2many or a many2many may be given commands: its lines are created once the record
+    /// exists, pointing back to it.
     pub fn create_records(
         &mut self,
         model_name: &str,
@@ -76,6 +79,27 @@ impl<'mm> Environment<'mm> {
     ) -> Result<MultipleIds> {
         let final_model = self.model_manager.get_model(model_name);
         let mut missing_fields_lst = Vec::new();
+
+        // Commands of a one2many or a many2many are carried out once the records exist: a line
+        // created for one points back to its record.
+        let commands: Vec<Vec<(String, Vec<Command>)>> = data
+            .iter_mut()
+            .map(|d| {
+                let names: Vec<String> = d
+                    .fields
+                    .iter()
+                    .filter(|(_, value)| matches!(value, Some(FieldType::Commands(_))))
+                    .map(|(name, _)| name.clone())
+                    .collect();
+                names
+                    .into_iter()
+                    .filter_map(|name| match d.fields.remove(&name) {
+                        Some(Some(FieldType::Commands(commands))) => Some((name, commands)),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .collect();
 
         // Add missing fields
         for d in data.iter_mut() {
@@ -141,6 +165,11 @@ impl<'mm> Environment<'mm> {
 
         self.forget_access_of(model_name, &ids)?;
         self.forget_shared_of(model_name);
+        for (id, commands) in ids.iter().zip(commands) {
+            for (field_name, commands) in commands {
+                self.write_commands(model_name, &field_name, *id, commands)?;
+            }
+        }
         // What a record is created with is no change of it.
         self.forget_tracked(model_name, &ids);
         for hook in self.model_manager.create_hooks.clone() {

@@ -29,4 +29,5 @@ pub struct FieldDescriptor {
     pub field_ref: Option<FieldReference>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    pub owned: bool,
 }

@@ -17,6 +17,7 @@ pub struct InternalField {
     pub field_ref: Option<FieldReference>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    pub owned: bool,
 }
 
 /// Final descriptor of a field.
@@ -51,6 +52,7 @@ pub struct FinalInternalField {
     pub depends: Vec<Vec<FieldDepend>>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    pub owned: bool,
     pub automatic: bool,
     is_init: bool,
 }
@@ -72,6 +74,7 @@ impl FinalInternalField {
             depends: Vec::new(),
             selection: None,
             tracking: false,
+            owned: false,
             automatic: false,
             is_init: false,
         }
@@ -141,6 +144,7 @@ impl FinalInternalField {
         // a computed field another worked out on every read, and none can take that back.
         self.asked_for_storage |= field_descriptor.asks_for_storage;
         self.tracking |= field_descriptor.tracking;
+        self.owned |= field_descriptor.owned;
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {
                 // The field has one chain, held under one method name. Two structs naming

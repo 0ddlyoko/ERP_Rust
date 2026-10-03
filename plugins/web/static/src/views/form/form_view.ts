@@ -279,19 +279,66 @@ export class FormView extends View {
 
     /** Values as the server reads them: records by their ids, not `[id, name]`. */
     private forServer(values: Values): Values {
-        return Object.fromEntries(Object.entries(values).map(([name, value]) => [name, this.idsOf(name, value)]));
+        return Object.fromEntries(
+            Object.entries(values).map(([name, value]) => [
+                name,
+                this.fields?.[name]?.type === "refs" ? this.commandsOf(name, value) : this.idsOf(name, value),
+            ]),
+        );
     }
 
-    /** A many2one's value as the id of its record, a one2many's or many2many's as their ids. */
+    /** A many2one's value as the id of its record; a one2many's or many2many's as their ids. */
     private idsOf(name: string, value: unknown): unknown {
         const type = this.fields?.[name]?.type;
         if (type === "ref" && Array.isArray(value)) {
             return value[0];
         }
         if (type === "refs" && Array.isArray(value)) {
-            return value.map((item: unknown) => (Array.isArray(item) ? item[0] : item));
+            return value.flatMap((item: unknown) => {
+                if (Array.isArray(item)) {
+                    return [item[0]];
+                }
+                if (item !== null && typeof item === "object") {
+                    const { id } = item as { id?: number };
+                    return id === undefined ? [] : [id];
+                }
+                return [item];
+            });
         }
         return value;
+    }
+
+    /**
+     * What changed in a one2many or a many2many, as the commands the server carries out on what
+     * it holds: records let go, changed, created, and added.
+     */
+    private commandsOf(name: string, value: unknown): Values {
+        const held = new Set(this.idsOf(name, this.record?.[name] ?? []) as number[]);
+        const items = Array.isArray(value) ? value : [];
+        const update: Values[] = [];
+        const create: Values[] = [];
+        const kept = new Set<number>();
+        for (const item of items) {
+            if (item !== null && typeof item === "object" && !Array.isArray(item)) {
+                const { id, values } = item as { id?: number; values: Values };
+                const sent = Object.fromEntries(Object.entries(values).map(([field, inner]) => [field, asSent(inner)]));
+                if (id === undefined) {
+                    create.push(sent);
+                } else {
+                    kept.add(id);
+                    update.push({ id, ...sent });
+                }
+            } else {
+                kept.add(Array.isArray(item) ? (item[0] as number) : (item as number));
+            }
+        }
+        const commands: Values = {
+            unlink: [...held].filter((id) => !kept.has(id)),
+            update,
+            create,
+            link: [...kept].filter((id) => !held.has(id)),
+        };
+        return Object.fromEntries(Object.entries(commands).filter(([, list]) => (list as unknown[]).length > 0));
     }
 
     private refuse(reason: string): void {
@@ -320,6 +367,22 @@ export class FormView extends View {
             this.failure = error instanceof Error ? error.message : String(error);
         }
     }
+}
+
+/**
+ * A value of a line, as the server reads it, from its shape alone — the form does not know the
+ * line's fields: a record as `[id, name]` by its id, records as such by their ids.
+ */
+function asSent(value: unknown): unknown {
+    const isNamed = (item: unknown): boolean =>
+        Array.isArray(item) && item.length === 2 && typeof item[0] === "number" && (typeof item[1] === "string" || item[1] === null);
+    if (isNamed(value)) {
+        return (value as [number, unknown])[0];
+    }
+    if (Array.isArray(value) && value.length > 0 && value.every(isNamed)) {
+        return value.map((item) => (item as [number, unknown])[0]);
+    }
+    return value;
 }
 
 /** A new record's values: each field's default, for the fields the form shows. */

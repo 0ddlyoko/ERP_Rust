@@ -1387,3 +1387,36 @@ fn test_a_saturated_pool_reports_instead_of_hanging() -> Result<()> {
     );
     Ok(())
 }
+
+/// Lines created and changed with their order, in one call, reach the database pointing back
+/// to it.
+#[test]
+fn test_commands_create_and_change_lines() -> Result<()> {
+    let app = app_or_skip!("t_commands");
+
+    let mut env = app.new_env()?;
+    let created = env.call_rpc(
+        "sale_order",
+        "create",
+        &serde_json::json!({"values": {"name": "S1", "lines": {"create": [{"price": 10}, {"price": 4}]}}}),
+    )?;
+    env.close()?;
+    let order = created[0].as_u64().expect("an id") as u32;
+
+    let mut env = app.new_env()?;
+    let lines = env.search_ids("sale_order_line", &make_domain!([("order", "=", order)]))?;
+    assert_eq!(lines.len(), 2, "both lines point to the order");
+    env.call_rpc(
+        "sale_order",
+        "write",
+        &serde_json::json!({"ids": [order], "values": {"lines": {"update": [{"id": lines[0], "price": 12}], "unlink": [lines[1]]}}}),
+    )?;
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let kept = env.search_ids("sale_order_line", &make_domain!([("order", "=", order)]))?;
+    assert_eq!(kept, vec![lines[0]], "the other one is let go");
+    let rows = env.read("sale_order_line", &SingleId::from(lines[0]), &["price"])?;
+    assert_eq!(rows[0].get_option::<&i32>("price"), Some(&12));
+    Ok(())
+}

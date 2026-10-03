@@ -13,7 +13,7 @@ use erp_internal_types::{FinalInternalField, FinalInternalModel, InternalField, 
 use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
-use erp_types::field::{FieldKind, FieldType, Selection};
+use erp_types::field::{FieldKind, FieldKinds, FieldType, Selection};
 use erp_types::method::MethodFn;
 use std::collections::{HashMap, HashSet};
 
@@ -87,6 +87,7 @@ fn add_automatic_field(
         field_ref,
         selection: None,
         tracking: false,
+        owned: false,
     });
     field.automatic = true;
     model.fields.insert(name.to_string(), field);
@@ -557,5 +558,30 @@ impl ModelManager {
             result.extend(model.get_all_models_for_plugin(plugin_name));
         }
         result
+    }
+}
+
+/// The fields of a model as values arriving over the wire are read against: those of the models
+/// its one2many and many2many point to included, for the records they create or change.
+pub struct RegisteredKinds<'a> {
+    pub manager: &'a ModelManager,
+    pub model: &'a FinalInternalModel,
+}
+
+impl FieldKinds for RegisteredKinds<'_> {
+    fn kind_of(&self, field_name: &str) -> Option<FieldKind> {
+        self.model.kind_of(field_name)
+    }
+
+    fn target(&self, field_name: &str) -> Option<Box<dyn FieldKinds + '_>> {
+        let reference = self.model.fields.get(field_name)?.inverse.as_ref()?;
+        if matches!(reference.inverse_field, FieldReferenceType::M2O { .. }) {
+            return None;
+        }
+        let model = self.manager.try_get_model(reference.target_model).ok()?;
+        Some(Box::new(RegisteredKinds {
+            manager: self.manager,
+            model,
+        }))
     }
 }

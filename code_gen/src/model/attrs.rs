@@ -106,6 +106,8 @@ pub enum AllowedFieldAttrs {
     Stored(Ident),
     /// Says changes of the field are noted on the record.
     Tracking(Ident),
+    /// Says the records of a one2many belong to the record: removed from it, they are deleted.
+    Owned(Ident),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -119,6 +121,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "private",
     "stored",
     "tracking",
+    "owned",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -167,6 +170,7 @@ impl Parse for AllowedFieldAttrs {
             "private" => Ok(AllowedFieldAttrs::Private(name)),
             "stored" => Ok(AllowedFieldAttrs::Stored(name)),
             "tracking" => Ok(AllowedFieldAttrs::Tracking(name)),
+            "owned" => Ok(AllowedFieldAttrs::Owned(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -189,6 +193,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Private(ident) => ident.span(),
             AllowedFieldAttrs::Stored(ident) => ident.span(),
             AllowedFieldAttrs::Tracking(ident) => ident.span(),
+            AllowedFieldAttrs::Owned(ident) => ident.span(),
         }
     }
 }

@@ -498,3 +498,38 @@ button.o_statusbar_label:hover {
     color: var(--o-accent-strong);
     text-decoration: underline;
 }
+
+.o_x2many_list .o_list_row.o_x2many_editing td {
+    background: color-mix(in oklch, var(--o-accent) 6%, white);
+}
+
+.o_x2many_list .o_list_row.o_x2many_editing .o_input {
+    height: 34px;
+}
+
+.o_x2many_actions {
+    white-space: nowrap;
+}
+
+.o_x2many_button {
+    display: inline-flex;
+    padding: 6px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--o-muted);
+    cursor: pointer;
+}
+
+.o_x2many_button:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+    color: var(--o-accent-strong);
+}
+
+.o_x2many_add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    height: 36px;
+}

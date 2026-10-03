@@ -1,4 +1,4 @@
-use crate::field::Password;
+use crate::field::{Command, Password};
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use std::fmt::{Debug, Display, Formatter};
@@ -31,6 +31,9 @@ pub enum FieldType {
     Refs(Vec<u32>),
     /// A secret, held as its hash. See [`Password`].
     Password(Password),
+    /// What to do with the records of a one2many or a many2many, some of them to create or
+    /// change. Turned into the ids it holds before anything is saved.
+    Commands(Vec<Command>),
 }
 
 impl Display for FieldType {
@@ -45,6 +48,7 @@ impl Display for FieldType {
             FieldType::Ref(id) => write!(f, "{id}"),
             FieldType::Refs(ids) => write!(f, "{ids:?}"),
             FieldType::Password(password) => write!(f, "{password}"),
+            FieldType::Commands(commands) => write!(f, "{} commands", commands.len()),
         }
     }
 }
@@ -62,7 +66,8 @@ impl PartialEq for FieldType {
             FieldType::DateTime,
             FieldType::Ref,
             FieldType::Refs,
-            FieldType::Password
+            FieldType::Password,
+            FieldType::Commands
         )
     }
 }
@@ -353,6 +358,7 @@ impl serde::Serialize for FieldType {
             // the kind is private, so a read blanks it and a domain on it matches nothing — and
             // this is the one that would not depend on a caller having got something right.
             FieldType::Password(_) => serializer.serialize_none(),
+            FieldType::Commands(commands) => serde::Serialize::serialize(commands, serializer),
         }
     }
 }
@@ -428,6 +434,7 @@ impl FieldType {
             FieldType::Ref(_) => FieldKind::Ref,
             FieldType::Refs(_) => FieldKind::Refs,
             FieldType::Password(_) => FieldKind::Password,
+            FieldType::Commands(_) => FieldKind::Refs,
         }
     }
 }

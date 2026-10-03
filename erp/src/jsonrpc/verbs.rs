@@ -5,7 +5,7 @@
 
 use crate::access::Operation;
 use crate::environment::Environment;
-use crate::model::{RpcFn, Selections};
+use crate::model::{RegisteredKinds, RpcFn, Selections};
 use erp_internal_types::FinalInternalField;
 use erp_search::{OrderBy, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
 use erp_types::field::{
@@ -618,6 +618,9 @@ fn describe(field: &FinalInternalField, selections: &Selections) -> Result<Value
             FieldReferenceType::O2M { .. } => "one2many",
             FieldReferenceType::M2M { .. } => "many2many",
         });
+        if let FieldReferenceType::O2M { inverse_field } = &reference.inverse_field {
+            described["inverse"] = json!(inverse_field);
+        }
     }
     if let Some(family) = field.selection {
         described["values"] = selections
@@ -667,7 +670,11 @@ fn records_of(
         .get(key)
         .ok_or_else(|| format!("missing \"{key}\""))?;
     let model = env.model_manager.try_get_model(model_name)?;
-    let kinds = model as &dyn FieldKinds;
+    let registered = RegisteredKinds {
+        manager: env.model_manager,
+        model,
+    };
+    let kinds = &registered as &dyn FieldKinds;
 
     match raw {
         Value::Array(entries) => entries

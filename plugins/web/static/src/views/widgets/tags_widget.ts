@@ -15,7 +15,7 @@ export class TagsWidget extends X2ManyWidget {
     override props = props({ ...widgetProps });
 
     override get text(): string {
-        return this.linked.map((linked) => this.nameOf(linked)).join(", ");
+        return this.entries.map((entry) => this.nameOf(entry)).join(", ");
     }
 }
 

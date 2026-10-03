@@ -12,7 +12,8 @@ impl<'mm> Environment<'mm> {
     ///
     /// The counterpart of [`Environment::read`] for callers that only hold names at runtime.
     /// Values go through the same path as the generated setters, so relational mirrors stay
-    /// coherent and dependent computes are flagged.
+    /// coherent and dependent computes are flagged. A one2many or a many2many may be given
+    /// commands, carried out in order for each record, on what it holds.
     ///
     /// Refused as a whole unless the caller may write every one of the records.
     pub fn write<Mode: IdMode>(
@@ -24,6 +25,12 @@ impl<'mm> Environment<'mm> {
         let fields: Vec<&str> = values.fields.keys().map(String::as_str).collect();
         self.check_access(model_name, Operation::Write, ids.get_ids_ref(), &fields)?;
         for (field_name, value) in values.fields {
+            if let Some(FieldType::Commands(commands)) = value {
+                for id in ids.get_ids_ref() {
+                    self.write_commands(model_name, &field_name, *id, commands.clone())?;
+                }
+                continue;
+            }
             self.save_field_to_cache(
                 model_name,
                 &field_name,
@@ -494,11 +501,19 @@ impl<'mm> Environment<'mm> {
                         );
                     }
 
-                    if !ids_removed.is_empty() {
+                    // Records the field owns go with it when removed, rather than being left
+                    // pointing nowhere; one moved to another record of this write stays.
+                    let deleted = field_info.owned && matches!(update_dirty, Dirty::UpdateDirty);
+                    if deleted {
+                        let moved: HashSet<u32> = ids_added.values().flatten().copied().collect();
+                        let mut seen = HashSet::new();
+                        ids_removed.retain(|id| !moved.contains(id) && seen.insert(*id));
+                    }
+                    if !ids_removed.is_empty() && !deleted {
                         self.save_field_to_cache::<MultipleIds>(
                             target_model,
                             inverse_field,
-                            &ids_removed.into(),
+                            &ids_removed.clone().into(),
                             None,
                             update_dirty,
                             update_field,
@@ -513,6 +528,9 @@ impl<'mm> Environment<'mm> {
                             update_dirty,
                             update_field,
                         )?;
+                    }
+                    if deleted && !ids_removed.is_empty() {
+                        self.delete(target_model, &MultipleIds::from(ids_removed))?;
                     }
                     Ok(())
                 }

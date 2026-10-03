@@ -127,8 +127,9 @@ impl From<field_type::FieldType> for FieldType {
             field_type::FieldType::Ref(v) => FieldType::UInteger(v),
             // Taken by value, which is what lets the hash out at all — see `Password::into_hash`.
             field_type::FieldType::Password(v) => FieldType::Password(v.into_hash()),
-            // This should not occur
-            field_type::FieldType::Refs(_v) => {
+            // Never reaches a column: a list of references has none, and commands are turned
+            // into ids before anything is saved.
+            field_type::FieldType::Refs(_) | field_type::FieldType::Commands(_) => {
                 panic!("Cannot convert Refs fields to database objet")
             }
         }
