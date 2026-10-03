@@ -183,18 +183,14 @@ impl Users<MultipleIds> {
     /// Archive the users: they can no longer log in.
     #[erp(rpc)]
     pub fn archive(&self, env: &mut Environment) -> Result<bool, Box<dyn Error + Send + Sync>> {
-        for user in self {
-            user.set_active(false, env)?;
-        }
+        self.set_active(false, env)?;
         Ok(true)
     }
 
     /// Bring archived users back: they can log in again.
     #[erp(rpc)]
     pub fn unarchive(&self, env: &mut Environment) -> Result<bool, Box<dyn Error + Send + Sync>> {
-        for user in self {
-            user.set_active(true, env)?;
-        }
+        self.set_active(true, env)?;
         Ok(true)
     }
 }
