@@ -3651,6 +3651,11 @@ var Resource = class {
     this.releaseController();
     controller == null ? void 0 : controller.abort();
   }
+  /**
+   * Les boundaries qui attendaient cette ressource cessent de l'attendre : détruite (ex. par le
+   * fallback d'une <ErrorBoundary>, parfois au milieu de son propre commit), elle ne chargera plus,
+   * et un montage en attente resterait bloqué sans erreur.
+   */
   dispose() {
     var _a, _b;
     if (this.disposed) {
@@ -3662,7 +3667,7 @@ var Resource = class {
     (_a = this.transition) == null ? void 0 : _a.drop(this);
     this.transition = null;
     (_b = this.tracker) == null ? void 0 : _b.dispose();
-    this.waiters.clear();
+    this.notifyWaiters();
   }
 };
 var PeekComputation = class extends Computation {

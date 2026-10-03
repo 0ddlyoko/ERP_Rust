@@ -1116,6 +1116,11 @@ declare module "trame/internal/reactivity/resource" {
         private notifyWaiters;
         private releaseController;
         private abortCurrent;
+        /**
+         * Les boundaries qui attendaient cette ressource cessent de l'attendre : détruite (ex. par le
+         * fallback d'une <ErrorBoundary>, parfois au milieu de son propre commit), elle ne chargera plus,
+         * et un montage en attente resterait bloqué sans erreur.
+         */
         dispose(): void;
     }
     /** Vrai si une des ressources lues par `fn` est en cours de chargement. Ne déclenche aucun chargement. */
