@@ -1,58 +1,7 @@
 <templates>
     <t t-name="web.FormView">
         <div class="o_form_view">
-            <div class="o_form_bar">
-                <button t-foreach="buttons" t-as="button" t-key="button.name" type="button"
-                        class="o_button_secondary" t-att-disabled="saving"
-                        t-on-click="() => press(button)">{{ label(button.title) }}</button>
-                <span class="o_form_bar_gap"/>
-                <button t-if="isDirty" type="button" class="o_button_secondary" t-att-disabled="saving"
-                        t-on-click="discard">Discard</button>
-                <button type="button" class="o_button_primary" t-att-disabled="!canSave"
-                        t-on-click="save">Save</button>
-            </div>
-            <p t-if="failure" class="o_form_failure" role="alert">{{ failure }}</p>
-            <t t-call="web.FormNodes" nodes="nodes" root="true"/>
+            <t t-if="body" t-component="body" form="this"/>
         </div>
-    </t>
-
-    <t t-name="web.FormNodes">
-        <t t-foreach="nodes" t-as="node" t-key="node.key">
-            <section t-if="node.type === 'block'"
-                     t-att-class="root ? 'o_form_card' : 'o_form_section'">
-                <h2 t-if="node.title" class="o_form_block_title">{{ label(node.title) }}</h2>
-                <div class="o_form_grid">
-                    <t t-call="web.FormNodes" nodes="node.children" root="false"/>
-                </div>
-            </section>
-            <div t-elif="node.type === 'field'" class="o_form_field o_form_full">
-                <span class="o_form_label">{{ label(node.column.label) }}</span>
-                <t t-component="widgetFor(node.column)" record="current" name="node.column.name"
-                   field="node.column.field" attrs="node.column.attrs" readonly="false"
-                   onChange="changer(node.column.name)"/>
-            </div>
-            <div t-elif="node.type === 'heading'" role="heading" t-att-aria-level="node.level"
-                 t-att-class="'o_form_heading o_form_h' + node.level + ' o_form_full'">
-                <t t-foreach="node.parts" t-as="part" t-key="part_index">
-                    <span t-if="part.text">{{ part.text }}</span>
-                    <t t-else="" t-component="widgetFor(part.column)" record="current" name="part.column.name"
-                       field="part.column.field" attrs="part.column.attrs" readonly="false"
-                       onChange="changer(part.column.name)"/>
-                </t>
-            </div>
-            <div t-elif="node.type === 'pages'" class="o_form_pages o_form_full">
-                <div role="tablist" class="o_form_tabs">
-                    <button t-foreach="node.pages" t-as="page" t-key="page.name" type="button" role="tab"
-                            t-att-aria-selected="isOpen(node, page) ? 'true' : 'false'"
-                            t-att-class="{ o_form_tab: true, active: isOpen(node, page) }"
-                            t-on-click="() => openPage(node, page)">{{ label(page.title) }}</button>
-                </div>
-                <t t-foreach="node.pages" t-as="page" t-key="page.name">
-                    <div t-if="isOpen(node, page)" role="tabpanel" class="o_form_page o_form_grid">
-                        <t t-call="web.FormNodes" nodes="page.children" root="false"/>
-                    </div>
-                </t>
-            </div>
-        </t>
     </t>
 </templates>

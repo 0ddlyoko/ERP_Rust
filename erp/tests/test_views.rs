@@ -107,13 +107,13 @@ fn test_a_primary_view_of_lower_priority_is_shown() -> Result<()> {
 #[test]
 fn test_a_view_nobody_declared_is_generated() -> Result<()> {
     let app = new_app()?;
-    let form = view_of(&app, "users", "form")?;
+    let form = view_of(&app, "session", "form")?;
     assert!(
-        form.starts_with("<form>") && form.contains("<field name=\"login\"/>"),
+        form.starts_with("<form>") && form.contains("<field name=\"user\"/>"),
         "{form}"
     );
     assert!(
-        !form.contains("password"),
+        !form.contains("secret"),
         "a private field is not shown: {form}"
     );
     let error = view_of(&app, "users", "kanban").expect_err("no such view");
@@ -223,9 +223,40 @@ fn test_what_a_form_may_not_hold_is_refused() -> Result<()> {
             "only a field's name",
         ),
         ("<block string=\"{{ login\"/>", "without closing it"),
+        (
+            "<field name=\"login\" invisible=\"logn === 'x'\"/>",
+            "reads \"logn\"",
+        ),
+        ("<field name=\"login\" readonly=\"\"/>", "readonly is empty"),
+        (
+            "<buttons><button name=\"me\" type=\"method\" readonly=\"1\"/></buttons>",
+            "cannot be readonly",
+        ),
+        ("<field name=\"login\" nolabel=\"yes\"/>", "0 or 1"),
     ] {
         let error = refused_form(form);
         assert!(error.contains(expected), "{form}: {error}");
     }
+    Ok(())
+}
+
+/// Conditions are expressions as Trame reads them: what they read besides fields — strings,
+/// properties, the language's words, an arrow function's parameter — is not taken for a field.
+#[test]
+fn test_conditions_read_fields_only() -> Result<()> {
+    let app = with_data(
+        "conditions",
+        &[
+            r#"<erp><view id="conditions" name="conditions" model="users" priority="1"><form>
+            <block invisible="!active">
+                <field name="login" nolabel="1" readonly="login.length > 3 &amp;&amp; name !== 'x'"
+                       required="['admin', &quot;root&quot;].includes(login)"/>
+                <field name="groups" invisible="groups.some((group) => group === id) || 0"/>
+            </block>
+            <pages invisible="1"><page name="p" invisible="name === `x`"/></pages>
+        </form></view></erp>"#,
+        ],
+    )?;
+    assert!(view_of(&app, "users", "form")?.contains("invisible"));
     Ok(())
 }

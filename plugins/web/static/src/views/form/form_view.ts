@@ -1,30 +1,10 @@
-import { computed, inject, load, props, resource, state } from "trame";
+import { type ComponentClass, computed, inject, load, nextTick, props, resource, state } from "trame";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
 import { Router } from "@web/core/router";
-import { type Column, View, viewKinds, viewProps } from "@web/views/view";
-
-/** A piece of a heading: text as written, or a field's value. */
-export type HeadingPart = { text: string } | { column: Column };
-
-export interface FormPage {
-    name: string;
-    title: string;
-    children: FormNode[];
-}
-
-export interface FormButton {
-    name: string;
-    type: "method" | "action";
-    title: string;
-}
-
-/** An element of a form's XML, as it is laid out. */
-export type FormNode =
-    | { type: "block"; key: string; title: string | null; children: FormNode[] }
-    | { type: "field"; key: string; column: Column }
-    | { type: "heading"; key: string; level: number; parts: HeadingPart[] }
-    | { type: "pages"; key: string; pages: FormPage[] };
+import { View, viewKinds, viewProps } from "@web/views/view";
+import { bodyFor } from "./form_body";
+import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
 
 /**
  * One record, its fields laid out as its view's XML says, edited in place.
@@ -33,6 +13,9 @@ export type FormNode =
  * forgets it. A record not created yet starts from its fields' defaults, and saving creates it.
  * Labels may show a field's value — `string="Groups of {{ name }}"` — and follow it as it is
  * edited.
+ *
+ * Its XML becomes a Trame template ([`compileForm`](./form_compiler.ts)), so `invisible`,
+ * `readonly` and `required` are expressions Trame evaluates, reading the record's fields by name.
  */
 export class FormView extends View {
     static template = "web.FormView";
@@ -48,14 +31,19 @@ export class FormView extends View {
     @state accessor changes: Values = {};
     @state accessor saving = false;
     @state accessor failure: string | null = null;
-    @state accessor openPages = new Map<string, string>();
+    @state accessor openPages = new Map<number, number>();
+    /** Whether a save was tried: required fields left empty are shown from then on. */
+    @state accessor tried = false;
+
+    /** The form's body, set by its template. */
+    element: HTMLElement | null = null;
 
     /** The record as read, or its fields' defaults for one not created yet. */
     @resource accessor record: Values = load(
         () => ({
             model: this.props.resModel,
             id: this.props.resId,
-            names: [...new Set(this.columns.map((column) => column.name))],
+            names: this.readNames,
             fields: this.fields,
         }),
         async ({ model, id, names, fields }) => (id === undefined ? defaultsOf(fields, names) : this.read(model, id, names)),
@@ -67,6 +55,27 @@ export class FormView extends View {
             throw new Error(`Record ${model} #${id} does not exist, or is not yours to read`);
         }
         return record;
+    }
+
+    /** The form's XML as a template, with what it refers to. */
+    @computed get layout(): CompiledForm | undefined {
+        const root = this.archRoot;
+        const fields = this.fields;
+        if (root === undefined || fields === undefined) {
+            return undefined;
+        }
+        return compileForm(root, (element) => this.columnOf(element, fields));
+    }
+
+    @computed get body(): ComponentClass | null {
+        return this.layout === undefined ? null : bodyFor(this.layout.source);
+    }
+
+    /** The fields read with the record: those shown, and those a condition reads. */
+    @computed get readNames(): string[] {
+        const fields = this.fields ?? {};
+        const conditions = (this.layout?.conditionNames ?? []).filter((name) => name in fields);
+        return [...new Set([...this.columns.map((column) => column.name), ...conditions])];
     }
 
     /** The record as the user sees it: what was read, with what they changed over it. */
@@ -85,70 +94,6 @@ export class FormView extends View {
     /** Something to save, and no save under way. */
     get canSave(): boolean {
         return !this.saving && (this.isDirty || this.isNew);
-    }
-
-    /** The form's elements, laid out; buttons aside, shown above it. */
-    @computed get nodes(): FormNode[] {
-        const root = this.archRoot;
-        const fields = this.fields;
-        if (root === undefined || fields === undefined) {
-            return [];
-        }
-        return this.nodesOf(root, fields, "");
-    }
-
-    @computed get buttons(): FormButton[] {
-        const root = this.archRoot;
-        if (root === undefined) {
-            return [];
-        }
-        return Array.from(root.children)
-            .filter((element) => element.tagName === "buttons")
-            .flatMap((element) => Array.from(element.children))
-            .map((button) => ({
-                name: button.getAttribute("name") ?? "",
-                type: button.getAttribute("type") === "action" ? "action" : "method",
-                title: button.getAttribute("string") ?? button.getAttribute("name") ?? "",
-            }));
-    }
-
-    private nodesOf(parent: Element, fields: Fields, path: string): FormNode[] {
-        return Array.from(parent.children).flatMap((element, index): FormNode[] => {
-            const key = `${path}${index}`;
-            const tag = element.tagName;
-            if (tag === "block") {
-                const title = element.getAttribute("string");
-                return [{ type: "block", key, title, children: this.nodesOf(element, fields, `${key}.`) }];
-            }
-            if (tag === "field") {
-                return [{ type: "field", key, column: this.columnOf(element, fields) }];
-            }
-            if (/^h[1-6]$/.test(tag)) {
-                return [{ type: "heading", key, level: Number(tag.slice(1)), parts: this.partsOf(element, fields) }];
-            }
-            if (tag === "pages") {
-                const pages = Array.from(element.children).map((page, at) => ({
-                    name: page.getAttribute("name") ?? String(at),
-                    title: page.getAttribute("string") ?? page.getAttribute("name") ?? "",
-                    children: this.nodesOf(page, fields, `${key}.${at}.`),
-                }));
-                return [{ type: "pages", key, pages }];
-            }
-            return [];
-        });
-    }
-
-    private partsOf(heading: Element, fields: Fields): HeadingPart[] {
-        return Array.from(heading.childNodes).flatMap((node): HeadingPart[] => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent ?? "";
-                return text.trim() ? [{ text }] : [];
-            }
-            if (node instanceof Element && node.tagName === "field") {
-                return [{ column: this.columnOf(node, fields) }];
-            }
-            return [];
-        });
     }
 
     /** A label as written, each `{{ field }}` replaced by the field's value; `\{{` is a brace. */
@@ -174,6 +119,33 @@ export class FormView extends View {
         return String(value);
     }
 
+    /** A field's value as a condition reads it: a many2one as the id of its record. */
+    conditionValue(name: string): unknown {
+        const value = this.current[name];
+        if (this.fields?.[name]?.type === "ref" && Array.isArray(value)) {
+            return value[0];
+        }
+        return value ?? null;
+    }
+
+    isBlank(name: string): boolean {
+        const value = this.current[name];
+        return value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
+    }
+
+    /** The page a pages element shows: the one the user opened while shown, else the first shown. */
+    shownPage(key: number, shown: boolean[]): number {
+        const opened = this.openPages.get(key);
+        if (opened !== undefined && shown[opened]) {
+            return opened;
+        }
+        return shown.indexOf(true);
+    }
+
+    openPage(key: number, page: number): void {
+        this.openPages.set(key, page);
+    }
+
     /** What a widget calls with the value the user gave a field. */
     changer(name: string): (value: unknown) => void {
         return (value) => {
@@ -181,17 +153,10 @@ export class FormView extends View {
         };
     }
 
-    isOpen(pages: { key: string; pages: FormPage[] }, page: FormPage): boolean {
-        return (this.openPages.get(pages.key) ?? pages.pages[0]?.name) === page.name;
-    }
-
-    openPage(pages: { key: string }, page: FormPage): void {
-        this.openPages.set(pages.key, page.name);
-    }
-
     discard(): void {
         this.changes = {};
         this.failure = null;
+        this.tried = false;
     }
 
     /**
@@ -200,6 +165,12 @@ export class FormView extends View {
      * Returns whether it was saved; why not is shown above the form.
      */
     async save(): Promise<boolean> {
+        this.tried = true;
+        await nextTick();
+        if (this.element?.querySelector(".o_form_missing")) {
+            this.failure = "Some required fields are empty.";
+            return false;
+        }
         this.saving = true;
         this.failure = null;
         try {
@@ -210,6 +181,7 @@ export class FormView extends View {
                 delete values.id;
                 const [created] = await this.orm.create(model, values);
                 this.changes = {};
+                this.tried = false;
                 this.router.go({ ...this.router.route, view: "form", id: created });
                 return true;
             }
@@ -218,6 +190,7 @@ export class FormView extends View {
                 this.record = await this.read(model, id, Object.keys(this.record));
                 this.changes = {};
             }
+            this.tried = false;
             return true;
         } catch (error) {
             this.failure = error instanceof Error ? error.message : String(error);

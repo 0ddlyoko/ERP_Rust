@@ -192,6 +192,24 @@ impl Arch<'_> {
         if let Some(string) = element.attribute("string") {
             self.placeholders(string)?;
         }
+        let conditions: &[&str] = match element.name.as_str() {
+            "field" => &["invisible", "readonly", "required"],
+            "block" | "page" | "pages" | "button" => &["invisible"],
+            heading if HEADINGS.contains(&heading) => &["invisible"],
+            _ => &[],
+        };
+        for (attribute, expression) in &element.attributes {
+            if conditions.contains(&attribute.as_str()) {
+                self.condition(attribute, expression)?;
+            } else if ["invisible", "readonly", "required"].contains(&attribute.as_str()) {
+                return Err(self.error(format!("<{}> cannot be {attribute}", element.name)));
+            }
+        }
+        if let Some(nolabel) = element.attribute("nolabel")
+            && !matches!(nolabel, "0" | "1")
+        {
+            return Err(self.error(format!("nolabel is \"{nolabel}\": 0 or 1")));
+        }
         match element.name.as_str() {
             "field" => self.field(element),
             "block" | "page" => self.children(element, CONTENTS),
@@ -279,9 +297,124 @@ impl Arch<'_> {
         Ok(())
     }
 
+    /// A condition the client evaluates as written: every name it reads is a field of the model.
+    fn condition(&self, attribute: &str, expression: &str) -> std::result::Result<(), String> {
+        if expression.trim().is_empty() {
+            return Err(self.error(format!("{attribute} is empty")));
+        }
+        for name in names_read(expression) {
+            if name != "id" && !self.model.fields.contains_key(&name) {
+                return Err(self.error(format!(
+                    "{attribute}=\"{expression}\" reads \"{name}\", which model \"{}\" does not have",
+                    self.model_name
+                )));
+            }
+        }
+        Ok(())
+    }
+
     fn error(&self, message: String) -> String {
         format!("{}: {message}", self.label)
     }
+}
+
+/// Names an expression may read without being fields: the language's own, and a few globals.
+const EXPRESSION_WORDS: &[&str] = &[
+    "true",
+    "false",
+    "null",
+    "undefined",
+    "typeof",
+    "instanceof",
+    "in",
+    "of",
+    "new",
+    "void",
+    "NaN",
+    "Infinity",
+    "Math",
+    "Number",
+    "String",
+    "Boolean",
+    "Array",
+    "Date",
+    "JSON",
+    "Object",
+];
+
+/// The names an expression reads: what is left once strings, numbers, properties (`.includes`),
+/// the language's words and the parameters of arrow functions (`x => x.id`) are set aside.
+pub fn names_read(expression: &str) -> Vec<String> {
+    let chars: Vec<char> = expression.chars().collect();
+    let mut tokens: Vec<(String, bool)> = Vec::new();
+    let mut index = 0;
+    let mut after_dot = false;
+    while index < chars.len() {
+        let c = chars[index];
+        if c == '\'' || c == '"' || c == '`' {
+            index += 1;
+            while index < chars.len() && chars[index] != c {
+                index += if chars[index] == '\\' { 2 } else { 1 };
+            }
+            index += 1;
+            after_dot = false;
+        } else if c.is_ascii_digit() {
+            while index < chars.len()
+                && (chars[index].is_ascii_alphanumeric() || chars[index] == '.')
+            {
+                index += 1;
+            }
+            after_dot = false;
+        } else if c.is_alphabetic() || c == '_' || c == '$' {
+            let start = index;
+            while index < chars.len()
+                && (chars[index].is_alphanumeric() || chars[index] == '_' || chars[index] == '$')
+            {
+                index += 1;
+            }
+            tokens.push((chars[start..index].iter().collect(), after_dot));
+            after_dot = false;
+        } else {
+            after_dot = c == '.';
+            index += 1;
+        }
+    }
+    let parameters = arrow_parameters(expression);
+    let mut names: Vec<String> = Vec::new();
+    for (name, is_property) in tokens {
+        if !is_property
+            && !EXPRESSION_WORDS.contains(&name.as_str())
+            && !parameters.contains(&name)
+            && !names.contains(&name)
+        {
+            names.push(name);
+        }
+    }
+    names
+}
+
+/// The parameters of the arrow functions of an expression: `x` of `x => …`, `a, b` of `(a, b) => …`.
+fn arrow_parameters(expression: &str) -> Vec<String> {
+    let mut parameters = Vec::new();
+    let mut rest = expression;
+    while let Some(arrow) = rest.find("=>") {
+        let before = rest[..arrow].trim_end();
+        let declared = match before.strip_suffix(')') {
+            Some(inside) => inside.rsplit_once('(').map_or("", |(_, list)| list),
+            None => before
+                .rsplit(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'))
+                .next()
+                .unwrap_or(""),
+        };
+        parameters.extend(
+            declared
+                .split(',')
+                .map(|parameter| parameter.trim().to_string())
+                .filter(|parameter| !parameter.is_empty()),
+        );
+        rest = &rest[arrow + 2..];
+    }
+    parameters
 }
 
 fn as_element(node: &Node) -> Option<&Element> {

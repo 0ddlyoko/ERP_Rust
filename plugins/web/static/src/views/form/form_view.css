@@ -1,4 +1,5 @@
-.o_form_view {
+.o_form_view,
+.o_form_body {
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -84,6 +85,21 @@
     color: var(--o-label);
     font-size: 12px;
     font-weight: 600;
+}
+
+.o_form_required > .o_form_label::after {
+    content: " *";
+    color: #b42318;
+}
+
+.o_form_heading_field {
+    display: flex;
+    flex-grow: 1;
+}
+
+.o_form_missing .o_input {
+    border-color: #b42318;
+    background: #fdf3f2;
 }
 
 .o_form_field .o_widget {
