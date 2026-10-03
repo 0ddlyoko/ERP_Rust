@@ -771,6 +771,7 @@ fn test_a_component_template_is_served_in_its_bundle() -> Result<()> {
         "<t t-name=\"web.ActionManager\">",
         "<t t-name=\"web.Sidebar\">",
         "<t t-name=\"web.FormView\">",
+        "<t t-name=\"web.NotificationCenter\">",
     ] {
         assert!(backend.contains(template), "{template} in {backend}");
     }
@@ -803,6 +804,10 @@ fn test_the_list_view_is_in_the_backend_bundle() -> Result<()> {
         "/static/web/src/views/form/form_compiler.js",
         "/static/web/src/views/form/form_body.js",
         "/static/web/src/core/router.js",
+        "/static/web/src/core/breadcrumb.js",
+        "/static/web/src/core/list_memory.js",
+        "/static/web/src/core/notifications.js",
+        "/static/web/src/web_client/notification_center.js",
     ] {
         assert!(
             module.contains(&format!("import \"{path}\";")),

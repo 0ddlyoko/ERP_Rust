@@ -262,6 +262,16 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     const source =
         `<div class="o_form_body" t-ref="__form.element">${values}` +
         `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>` +
+        `<div t-if="__form.pager" class="o_pager"><span class="o_pager_value">` +
+        `{{ __form.pager.position }} / {{ __form.pager.total }}</span>` +
+        `<button type="button" class="o_pager_button" aria-label="Previous record" ` +
+        `t-att-disabled="__form.pager.previous === null" t-on-click="() => __form.step(__form.pager.previous)">` +
+        `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ` +
+        `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>` +
+        `<button type="button" class="o_pager_button" aria-label="Next record" ` +
+        `t-att-disabled="__form.pager.next === null" t-on-click="() => __form.step(__form.pager.next)">` +
+        `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ` +
+        `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>` +
         `<button t-if="__form.isDirty" type="button" class="o_button_secondary" t-att-disabled="__form.saving" ` +
         `t-on-click="() => __form.discard()">Discard</button>` +
         `<button type="button" class="o_button_primary" t-att-disabled="!__form.canSave" ` +

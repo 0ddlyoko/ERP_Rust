@@ -1,4 +1,7 @@
-import { type ComponentClass, computed, inject, load, nextTick, props, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state } from "trame";
+import { Breadcrumb } from "@web/core/breadcrumb";
+import { listMemory } from "@web/core/list_memory";
+import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
 import { Router } from "@web/core/router";
@@ -14,6 +17,9 @@ import { type CompiledForm, compileForm, type FormButton } from "./form_compiler
  * Labels may show a field's value — `string="Groups of {{ name }}"` — and follow it as it is
  * edited.
  *
+ * It names its record in the breadcrumb, steps through the records of the list it was opened
+ * from, and saves its changes before the user leaves it — staying when they cannot be saved.
+ *
  * Its XML becomes a Trame template ([`compileForm`](./form_compiler.ts)), so `invisible`,
  * `readonly` and `required` are expressions Trame evaluates, reading the record's fields by name.
  */
@@ -23,6 +29,8 @@ export class FormView extends View {
     override props = props({ ...viewProps });
 
     @inject(Router) router!: Router;
+    @inject(Breadcrumb) breadcrumb!: Breadcrumb;
+    @inject(Notifications) notifications!: Notifications;
 
     override get kind(): string {
         return "form";
@@ -119,6 +127,54 @@ export class FormView extends View {
         return String(value);
     }
 
+    /** The record's name, as the breadcrumb shows it. */
+    get title(): string {
+        if (this.isNew) {
+            return "New";
+        }
+        return this.fields?.name !== undefined && this.display("name") ? this.display("name") : `#${this.props.resId}`;
+    }
+
+    @effect nameInBreadcrumb(): () => void {
+        this.breadcrumb.record = this.title;
+        return () => {
+            this.breadcrumb.record = null;
+        };
+    }
+
+    /** While changes are not saved, leaving saves them first; failing to, the user stays. */
+    @effect guardChanges(): (() => void) | void {
+        if (!this.isDirty) {
+            return;
+        }
+        this.router.guard = () => this.save({ open: false });
+        return () => {
+            this.router.guard = null;
+        };
+    }
+
+    /** Where the record stands among those of the list it was opened from, if it was. */
+    @computed get pager(): { position: number; total: number; previous: number | null; next: number | null } | null {
+        const memory = listMemory(this.router.route.action);
+        const at = memory?.ids.indexOf(this.props.resId ?? -1) ?? -1;
+        if (memory === undefined || at < 0) {
+            return null;
+        }
+        return {
+            position: memory.offset + at + 1,
+            total: memory.total,
+            previous: memory.ids[at - 1] ?? null,
+            next: memory.ids[at + 1] ?? null,
+        };
+    }
+
+    /** Show another record of the list. */
+    step(id: number | null): void {
+        if (id !== null) {
+            this.router.go({ ...this.router.route, id });
+        }
+    }
+
     /** A field's value as a condition reads it: a many2one as the id of its record. */
     conditionValue(name: string): unknown {
         const value = this.current[name];
@@ -162,15 +218,21 @@ export class FormView extends View {
     /**
      * Write what changed, or create the record, then show it as the server has it.
      *
-     * Returns whether it was saved; why not is shown above the form.
+     * The record created is opened unless `open` is false: when saving on the way somewhere else.
+     * Notified while it saves, then once saved; why it was not is shown above the form too.
+     * Returns whether it was saved — with nothing to save, it was.
      */
-    async save(): Promise<boolean> {
+    async save(options: { open?: boolean } = {}): Promise<boolean> {
+        if (!this.isDirty && !this.isNew) {
+            return true;
+        }
         this.tried = true;
         await nextTick();
         if (this.element?.querySelector(".o_form_missing")) {
-            this.failure = "Some required fields are empty.";
+            this.refuse("Some required fields are empty.");
             return false;
         }
+        const notice = this.notifications.add("info", "Saving…", { sticky: true });
         this.saving = true;
         this.failure = null;
         try {
@@ -182,22 +244,32 @@ export class FormView extends View {
                 const [created] = await this.orm.create(model, values);
                 this.changes = {};
                 this.tried = false;
-                this.router.go({ ...this.router.route, view: "form", id: created });
+                // Saved: nothing is left to guard, though the guard goes only once effects run.
+                this.router.guard = null;
+                this.notifications.add("success", "Record created.");
+                if (options.open !== false) {
+                    void this.router.go({ ...this.router.route, view: "form", id: created });
+                }
                 return true;
             }
-            if (this.isDirty) {
-                await this.orm.write(model, [id], this.changes);
-                this.record = await this.read(model, id, Object.keys(this.record));
-                this.changes = {};
-            }
+            await this.orm.write(model, [id], this.changes);
+            this.record = await this.read(model, id, Object.keys(this.record));
+            this.changes = {};
             this.tried = false;
+            this.notifications.add("success", `${this.title} saved.`);
             return true;
         } catch (error) {
-            this.failure = error instanceof Error ? error.message : String(error);
+            this.refuse(error instanceof Error ? error.message : String(error));
             return false;
         } finally {
             this.saving = false;
+            this.notifications.remove(notice);
         }
+    }
+
+    private refuse(reason: string): void {
+        this.failure = reason;
+        this.notifications.add("danger", `Not saved: ${reason}`);
     }
 
     /**

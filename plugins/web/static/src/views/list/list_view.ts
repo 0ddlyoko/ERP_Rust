@@ -1,4 +1,5 @@
-import { inject, load, props, resource, state, t } from "trame";
+import { effect, inject, load, props, resource, state, t } from "trame";
+import { listMemory, rememberList } from "@web/core/list_memory";
 import type { Values } from "@web/core/orm";
 import { Router } from "@web/core/router";
 import { View, viewKinds, viewProps } from "@web/views/view";
@@ -10,7 +11,9 @@ import { View, viewKinds, viewProps } from "@web/views/view";
  * page: what is done with a selection comes later, as does the search, shown but not yet applied.
  *
  * Choosing a row opens its record in a form; once some rows are selected, it selects it instead,
- * the way its check box does.
+ * the way its check box does. The list is remembered per action — its page, its selection, the
+ * records it shows — so coming back from a form finds it as it was, and the form steps through
+ * those records.
  */
 export class ListView extends View {
     static template = "web.ListView";
@@ -27,9 +30,23 @@ export class ListView extends View {
 
     @inject(Router) router!: Router;
 
-    @state accessor offset = 0;
+    @state accessor offset = listMemory(this.router.route.action)?.offset ?? 0;
     @state accessor query = "";
-    @state accessor selected = new Set<number>();
+    @state accessor selected = new Set<number>(listMemory(this.router.route.action)?.selected ?? []);
+
+    @effect remember(): void {
+        rememberList(this.router.route.action, {
+            offset: this.offset,
+            selected: [...this.selected],
+            ids: (this.records ?? []).map((record) => this.idOf(record)),
+            total: this.total ?? 0,
+        });
+    }
+
+    /** Open a form for a record not created yet. */
+    create(): void {
+        this.router.go({ ...this.router.route, view: "form", id: null });
+    }
 
     @resource accessor records: Values[] = load(
         () => ({

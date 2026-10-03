@@ -349,6 +349,10 @@ button {
     font-size: 13px;
 }
 
+.o_breadcrumb_link {
+    color: var(--o-muted);
+}
+
 .o_breadcrumb_current {
     color: var(--o-ink);
     font-weight: 600;
@@ -379,4 +383,60 @@ button {
     .o_content {
         padding: 16px;
     }
+}
+
+/* Notifications */
+
+.o_notifications {
+    position: fixed;
+    z-index: 100;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: min(360px, calc(100vw - 32px));
+}
+
+.o_notification {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 10px 14px;
+    border: 1px solid var(--o-border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    background: var(--o-surface);
+    box-shadow: 0 8px 24px rgba(23, 32, 46, 0.12);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.o_notification_info {
+    border-left-color: #8794a8;
+}
+
+.o_notification_success {
+    border-left-color: var(--o-accent);
+}
+
+.o_notification_danger {
+    border-left-color: #b42318;
+    color: #8a1c12;
+}
+
+.o_notification_text {
+    flex-grow: 1;
+}
+
+.o_notification_close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--o-muted);
 }

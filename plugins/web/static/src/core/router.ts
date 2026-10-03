@@ -35,18 +35,41 @@ export function writeRoute(route: Route): string {
 /**
  * The route of the page, kept in its address: reloading it, going back or following a link
  * shows the same thing.
+ *
+ * A guard may hold the user back — a form saves its changes first, and stays when it cannot: the
+ * route stays, and the address goes back to it when the browser had already changed it.
  */
 export class Router {
     @state accessor route: Route = readRoute(window.location.hash);
 
+    /** Whether the user may leave the route, once it has done what it must: asked before leaving. */
+    guard: (() => Promise<boolean>) | null = null;
+
     constructor() {
         window.addEventListener("hashchange", () => {
-            this.route = readRoute(window.location.hash);
+            const asked = readRoute(window.location.hash);
+            if (writeRoute(asked) === writeRoute(this.route)) {
+                return;
+            }
+            window.history.replaceState(null, "", writeRoute(this.route));
+            void this.go(asked);
+        });
+        window.addEventListener("beforeunload", (event) => {
+            if (this.guard !== null) {
+                event.preventDefault();
+            }
         });
     }
 
-    /** Go somewhere: the address changes, and with it the route. */
-    go(route: Route): void {
-        window.location.hash = writeRoute(route);
+    /** Go somewhere: the address changes, and with it the route, unless the guard holds back. */
+    async go(route: Route): Promise<void> {
+        if (writeRoute(route) === writeRoute(this.route)) {
+            return;
+        }
+        if (this.guard !== null && !(await this.guard())) {
+            return;
+        }
+        this.route = route;
+        window.history.pushState(null, "", writeRoute(route));
     }
 }

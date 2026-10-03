@@ -1,10 +1,15 @@
-import { Component, type ComponentClass, computed, props, t } from "trame";
+import { Component, type ComponentClass, computed, inject, props, t } from "trame";
+import { Breadcrumb } from "@web/core/breadcrumb";
 import type { ActionDescription } from "@web/core/menus";
+import { Router } from "@web/core/router";
 import { viewKinds } from "@web/views/view";
 
 /**
  * The action open: where it is, its title, and one of its views — the kind the route asks for
  * when the action offers it, else the first a kind is registered for.
+ *
+ * On a view of one record, the breadcrumb ends with the record, and the action leads back to the
+ * list; the record's view shows its own title.
  */
 export class ActionManager extends Component {
     static template = "web.ActionManager";
@@ -18,6 +23,17 @@ export class ActionManager extends Component {
         /** The record shown, by a view showing one. */
         resId: t.number().orNull().default(null),
     });
+
+    @inject(Breadcrumb) breadcrumb!: Breadcrumb;
+    @inject(Router) router!: Router;
+
+    get isRecord(): boolean {
+        return this.kind === "form";
+    }
+
+    backToList(): void {
+        this.router.go({ ...this.router.route, view: null, id: null });
+    }
 
     @computed get kind(): string | null {
         const offered = this.props.action.views.filter((kind) => viewKinds.has(kind));

@@ -3,6 +3,7 @@ import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf } fr
 import { Orm } from "@web/core/orm";
 import { type Route, Router } from "@web/core/router";
 import { ActionManager } from "./action_manager";
+import { NotificationCenter } from "./notification_center";
 import { Sidebar } from "./sidebar";
 
 /**
@@ -14,7 +15,7 @@ import { Sidebar } from "./sidebar";
  */
 export class WebClient extends Component {
     static template = "web.WebClient";
-    static components = { ActionManager, Sidebar };
+    static components = { ActionManager, NotificationCenter, Sidebar };
 
     @inject(Menus) menus!: Menus;
     @inject(Orm) orm!: Orm;

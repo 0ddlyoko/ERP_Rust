@@ -13,6 +13,7 @@
                     <p t-else="" class="o_no_action">Nothing to open.</p>
                 </ErrorBoundary>
             </main>
+            <NotificationCenter/>
         </div>
     </t>
 </templates>
