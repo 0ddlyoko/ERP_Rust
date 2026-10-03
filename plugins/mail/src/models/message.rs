@@ -212,7 +212,9 @@ fn line(
     })
 }
 
-/// Add a message to a record's thread, with the changes it notes.
+/// Add a message to a record's thread, with the changes it notes, as its author: the message is
+/// theirs, whoever this unit of work runs as by now. Without rights checked, since whoever may
+/// change a record may leave the trace of it.
 fn post(
     env: &mut Environment,
     model_name: &str,
@@ -221,7 +223,11 @@ fn post(
     kind: MessageKind,
     lines: Vec<Line>,
 ) -> Result<()> {
-    let env = &mut *env.sudo();
+    let mut as_author = match author {
+        Some(author) => env.as_user(author),
+        None => env.sudo(),
+    };
+    let env = &mut *as_author.sudo();
     let mut values = MapOfFields::default();
     values.insert("model", model_name.to_string());
     values.insert("record", i32::try_from(record)?);

@@ -147,9 +147,20 @@ fn test_changes_are_noted_as_the_caller_over_json_rpc() -> Result<()> {
     });
     let answer = erp::jsonrpc::handle(&app, Some(&token), &body.to_string()).expect("owed");
     assert_eq!(answer["result"], true, "{answer}");
+    let messages = thread(&app, "users", portal)?;
+    assert_eq!(messages[0]["author"][1], "Administrator");
+    let admin = resolve(&app, "base.user_admin")?;
+    let mut env = app.new_env_as_option(None)?;
+    let message = messages[0]["id"].as_u64().expect("an id") as u32;
+    let rows = env.read(
+        "message",
+        &erp::types::field::SingleId::from(message),
+        &["create_uid"],
+    )?;
     assert_eq!(
-        thread(&app, "users", portal)?[0]["author"][1],
-        "Administrator"
+        rows[0].get_option::<&u32>("create_uid").copied(),
+        Some(admin),
+        "the message is created by its author, not by whoever saves the work"
     );
     Ok(())
 }
