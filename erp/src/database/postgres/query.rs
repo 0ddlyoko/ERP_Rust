@@ -203,19 +203,35 @@ impl QueryBuilder {
                 quote_ident(&current_field)
             )
         } else {
-            // one2many: the children hold it, so project them back through it.
-            let FieldReferenceType::O2M { inverse_field } = inverse_field else {
-                return Err(format!(
-                    "Field {model_name}.{current_field} is a many2one where a one2many was expected"
-                )
-                .into());
-            };
-            let inverse = quote_ident(inverse_field);
-            format!(
-                "SELECT {inverse} FROM {} WHERE {} IN ({inner}) AND {inverse} IS NOT NULL",
-                quote_ident(&target.table_name),
-                quote_ident("id")
-            )
+            match inverse_field {
+                // one2many: the children hold it, so project them back through it.
+                FieldReferenceType::O2M { inverse_field } => {
+                    let inverse = quote_ident(inverse_field);
+                    format!(
+                        "SELECT {inverse} FROM {} WHERE {} IN ({inner}) AND {inverse} IS NOT NULL",
+                        quote_ident(&target.table_name),
+                        quote_ident("id")
+                    )
+                }
+                // many2many: the table of pairs maps the targets back to this side.
+                FieldReferenceType::M2M {
+                    relation,
+                    column,
+                    target_column,
+                } => format!(
+                    "SELECT {} FROM {} WHERE {} IN ({inner})",
+                    quote_ident(column),
+                    quote_ident(relation),
+                    quote_ident(target_column)
+                ),
+                FieldReferenceType::M2O { .. } => {
+                    return Err(format!(
+                        "Field {model_name}.{current_field} is a list of references declared as \
+                         a many2one"
+                    )
+                    .into());
+                }
+            }
         })
     }
 

@@ -899,6 +899,11 @@ fn test_many2many_against_postgres() -> Result<()> {
             .is_empty(),
         "the dropped tag must no longer see the invoice"
     );
+
+    let found = env.search_ids("invoice", &make_domain!([("tags.name", "=", "urgent")]))?;
+    assert_eq!(found, vec![invoice], "a path crosses the table of pairs");
+    let found = env.search_ids("invoice", &make_domain!([("tags.name", "=", "late")]))?;
+    assert!(found.is_empty(), "the dropped tag leads nowhere");
     Ok(())
 }
 

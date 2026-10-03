@@ -538,6 +538,19 @@ fn test_a_read_names_its_references_when_asked() -> Result<()> {
         json!([line]),
         "a relation is searched by its records' names"
     );
+
+    let tag = create(&app, "tag", json!({"name": "urgent"}));
+    result(
+        &app,
+        "sale_order.write",
+        json!({"ids": [order], "values": {"tags": [tag]}}),
+    );
+    let found = result(
+        &app,
+        "sale_order.search",
+        json!({"domain": [["tags", "ilike", "%urg%"]]}),
+    );
+    assert_eq!(found, json!([order]), "a many2many too");
     assert_eq!(rows[0]["tags"], json!([]), "no record, an empty list");
     Ok(())
 }

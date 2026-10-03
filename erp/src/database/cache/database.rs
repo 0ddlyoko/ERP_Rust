@@ -278,6 +278,16 @@ impl CacheConnection {
                     }
                 }
                 Ok(result)
+            } else if let FieldReferenceType::M2M { .. } = inverse_field {
+                // The records linked to any of the targets found, through the table of pairs.
+                Ok(self
+                    ._relation_rows(
+                        model_name,
+                        final_field.inverse.as_ref().expect("matched above"),
+                        &SearchOperator::In,
+                        &ids.into(),
+                    )?
+                    .unwrap_or_default())
             } else {
                 panic!(
                     "Field {}.{} is of type M2O. This should not be possible here",
