@@ -55,3 +55,9 @@ export function pathsOf(entries: readonly MenuEntry[], above: string[] = []): { 
         return [...here, ...pathsOf(entry.children, names)];
     });
 }
+
+/** The action a menu opens on a model, as a link names it, to open one of its records with. */
+export function actionFor(entries: readonly MenuEntry[], model: string | undefined): string | null {
+    const action = actionsOf(entries).find((action) => action.model === model);
+    return action === undefined ? null : (action.xml_id ?? String(action.id));
+}

@@ -8,6 +8,7 @@
     --o-input-border: #d3dae3;
     --o-accent: #0b7a80;
     --o-accent-strong: #075a5f;
+    --o-danger: #b42318;
     --o-side: #1e2633;
     --o-side-raised: #283241;
     --o-side-line: #2e3a4b;
@@ -425,7 +426,7 @@ button {
 }
 
 .o_notification_danger {
-    border-left-color: #b42318;
+    border-left-color: var(--o-danger);
     color: #8a1c12;
 }
 
@@ -499,5 +500,36 @@ button {
     .o_notification {
         animation: none;
         transition: none;
+    }
+}
+
+.o_loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 28px 0;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_loading_spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--o-border);
+    border-top-color: var(--o-accent);
+    border-radius: 999px;
+    animation: o_spin 0.8s linear infinite;
+}
+
+@keyframes o_spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_loading_spinner {
+        animation-duration: 2.4s;
     }
 }

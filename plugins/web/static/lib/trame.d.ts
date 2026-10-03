@@ -1,4 +1,4 @@
-/*! Trame v0.2.1 | LGPL v3 | https://github.com/0ddlyoko/Trame */
+/*! Trame v0.2.3 | LGPL v3 | https://github.com/0ddlyoko/Trame */
 // Déclarations de "trame", "trame/testing", "trame/runtime" et "trame/compiler".
 
 declare module "trame/internal/api" {

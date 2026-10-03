@@ -21,7 +21,7 @@
             </block>
             <pages>
                 <page name="groups" string="Groups of {{ name }}">
-                    <field name="groups"/>
+                    <field name="groups" widget="list" nolabel="1"/>
                 </page>
             </pages>
         </form>

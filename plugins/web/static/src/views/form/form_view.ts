@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, resource, state } from "trame";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
@@ -128,6 +128,9 @@ export class FormView extends View {
         if (this.isNew) {
             return "New";
         }
+        if (loading(() => this.record) || loading(() => this.fields)) {
+            return "";
+        }
         return this.fields?.name !== undefined && this.display("name") ? this.display("name") : `#${this.props.resId}`;
     }
 
@@ -171,13 +174,9 @@ export class FormView extends View {
         }
     }
 
-    /** A field's value as a condition reads it: a many2one as the id of its record. */
+    /** A field's value as a condition reads it: records by their ids, not `[id, name]`. */
     conditionValue(name: string): unknown {
-        const value = this.current[name];
-        if (this.fields?.[name]?.type === "ref" && Array.isArray(value)) {
-            return value[0];
-        }
-        return value ?? null;
+        return this.idsOf(name, this.current[name]) ?? null;
     }
 
     isBlank(name: string): boolean {
@@ -263,14 +262,21 @@ export class FormView extends View {
         }
     }
 
-    /** Values as the server reads them: a many2one by the id of its record, not `[id, name]`. */
+    /** Values as the server reads them: records by their ids, not `[id, name]`. */
     private forServer(values: Values): Values {
-        return Object.fromEntries(
-            Object.entries(values).map(([name, value]) => [
-                name,
-                this.fields?.[name]?.type === "ref" && Array.isArray(value) ? value[0] : value,
-            ]),
-        );
+        return Object.fromEntries(Object.entries(values).map(([name, value]) => [name, this.idsOf(name, value)]));
+    }
+
+    /** A many2one's value as the id of its record, a one2many's or many2many's as their ids. */
+    private idsOf(name: string, value: unknown): unknown {
+        const type = this.fields?.[name]?.type;
+        if (type === "ref" && Array.isArray(value)) {
+            return value[0];
+        }
+        if (type === "refs" && Array.isArray(value)) {
+            return value.map((item: unknown) => (Array.isArray(item) ? item[0] : item));
+        }
+        return value;
     }
 
     private refuse(reason: string): void {

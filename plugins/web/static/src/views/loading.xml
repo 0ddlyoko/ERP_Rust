@@ -1,0 +1,8 @@
+<templates>
+    <t t-name="web.Loading">
+        <div class="o_loading" role="status">
+            <span class="o_loading_spinner" aria-hidden="true"/>
+            Loading…
+        </div>
+    </t>
+</templates>

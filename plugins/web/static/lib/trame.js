@@ -1,4 +1,4 @@
-/*! Trame v0.2.1 | LGPL v3 | https://github.com/0ddlyoko/Trame */
+/*! Trame v0.2.3 | LGPL v3 | https://github.com/0ddlyoko/Trame */
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
@@ -3424,6 +3424,14 @@ var ResourceTracker = class extends Effect {
     super(() => resource2.execute(), owner, PRIORITY_RESOURCE);
     __publicField(this, "resource", resource2);
   }
+  /**
+   * Une donnée en attente lue par la source ne fait pas attendre la frontière du propriétaire :
+   * c'est la ressource elle-même qui est signalée en attente à chaque lecteur, dans sa propre
+   * frontière (un <Suspense> autour du lecteur affiche donc son fallback).
+   */
+  get waitsForPending() {
+    return false;
+  }
   mark(state2) {
     if (this.state < state2) {
       this.state = state2;
@@ -6755,7 +6763,7 @@ var Registry = class _Registry {
 var registry = new Registry("registry");
 
 // src/api.ts
-var VERSION = true ? "0.2.1" : "dev";
+var VERSION = true ? "0.2.3" : "dev";
 export {
   Component,
   ErrorBoundary,

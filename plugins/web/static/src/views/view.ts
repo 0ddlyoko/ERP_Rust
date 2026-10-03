@@ -87,22 +87,32 @@ export abstract class View extends Component {
 
     /** What a `<field>` element shows, with what its attributes say. */
     protected columnOf(element: Element, fields: Fields): Column {
-        const name = element.getAttribute("name") ?? "";
-        const field = fields[name];
-        if (field === undefined) {
-            throw new Error(`Model "${this.props.resModel}" shows no field "${name}"`);
-        }
-        const attrs = Object.fromEntries(Array.from(element.attributes, (attr) => [attr.name, attr.value]));
-        return { name, field, label: attrs.string ?? field.label, widget: attrs.widget, attrs };
+        return columnOf(element, fields, this.props.resModel);
     }
 
-    /** The widget a column is shown with: the one it names, or its type's, or plain text. */
+    /** The widget a column is shown with. */
     widgetFor(column: Column): ComponentClass {
-        return widgets.get(column.widget ?? defaultWidget(column.field), StringWidget);
+        return widgetFor(column);
     }
 
     /** The class of a field's cells: numbers align right, check marks centre. */
     cellClass(column: Column): string {
         return `o_field_${column.field.type}`;
     }
+}
+
+/** What a `<field>` element of a view of `model` shows, with what its attributes say. */
+export function columnOf(element: Element, fields: Fields, model: string): Column {
+    const name = element.getAttribute("name") ?? "";
+    const field = fields[name];
+    if (field === undefined) {
+        throw new Error(`Model "${model}" shows no field "${name}"`);
+    }
+    const attrs = Object.fromEntries(Array.from(element.attributes, (attr) => [attr.name, attr.value]));
+    return { name, field, label: attrs.string ?? field.label, widget: attrs.widget, attrs };
+}
+
+/** The widget a column is shown with: the one it names, or its type's, or plain text. */
+export function widgetFor(column: Column, byDefault = defaultWidget(column.field)): ComponentClass {
+    return widgets.get(column.widget ?? byDefault, StringWidget);
 }

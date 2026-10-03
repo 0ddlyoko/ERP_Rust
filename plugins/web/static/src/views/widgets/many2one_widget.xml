@@ -1,15 +1,7 @@
 <templates>
     <t t-name="web.Many2OneWidget">
         <div t-if="editable" t-att-class="className + ' o_many2one'">
-            <svg class="o_many2one_search" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-            </svg>
-            <input type="text" class="o_input" role="combobox" aria-autocomplete="list"
-                   t-att-aria-expanded="isOpen ? 'true' : 'false'" t-att-value="inputText"
-                   t-on-focus="(ev) => enter(ev.target)"
-                   t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
-                   t-on-blur="leave"/>
+            <RecordSearch model="props.field.relation ?? ''" text="text" onPick="pick" onEmpty="clear"/>
             <button t-if="openAction !== null &amp;&amp; id !== null" type="button" class="o_many2one_open"
                     aria-label="Open the record" title="Open the record" t-on-click="openRecord">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -17,14 +9,6 @@
                     <path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
                 </svg>
             </button>
-            <ul t-if="isOpen" class="o_many2one_results" role="listbox">
-                <li t-foreach="results" t-as="choice" t-key="choice[0]" role="option"
-                    t-att-aria-selected="choice_index === active ? 'true' : 'false'"
-                    t-att-class="{ o_many2one_result: true, active: choice_index === active }"
-                    t-on-mousedown.prevent="() => pick(choice)">{{ choice[1] }}</li>
-                <li t-if="searching &amp;&amp; !results.length" class="o_many2one_note">Searching…</li>
-                <li t-elif="!results.length" class="o_many2one_note">No record found.</li>
-            </ul>
         </div>
         <span t-else="" t-att-class="className">{{ text }}</span>
     </t>

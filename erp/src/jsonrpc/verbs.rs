@@ -272,7 +272,7 @@ struct SearchParams {
 struct ReadParams {
     ids: Vec<u32>,
     fields: Vec<String>,
-    /// Many2ones as `[id, name]` rather than the id alone.
+    /// Each record a relation points to as `[id, name]` rather than its id alone.
     #[serde(default)]
     names: bool,
 }
@@ -454,8 +454,9 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
     Ok(Value::Object(described))
 }
 
-/// Write every many2one of these rows as `[id, name]`, the name `null` when the caller may not
-/// read it: one search per relation for all the rows, rather than one per row.
+/// Write every record these rows point to as `[id, name]`, the name `null` when the caller may
+/// not read it: a many2one as one pair, a one2many or a many2many as a list of them. One search
+/// per relation for all the rows, rather than one per row.
 fn name_references(
     env: &mut Environment,
     model_name: &str,
@@ -471,22 +472,32 @@ fn name_references(
         .filter_map(|name| {
             let field = model.fields.get(name)?;
             match (&field.kind, &field.inverse) {
-                (FieldKind::Ref, Some(reference)) => Some((name.clone(), reference.target_model)),
+                (FieldKind::Ref | FieldKind::Refs, Some(reference)) => {
+                    Some((name.clone(), reference.target_model))
+                }
                 _ => None,
             }
         })
         .collect();
+    let id_of = |value: &Value| value.as_u64().map(|id| id as u32);
     for (field, target) in relations {
         let ids: Vec<u32> = rows
             .iter()
-            .filter_map(|row| row[&field].as_u64())
-            .map(|id| id as u32)
+            .flat_map(|row| match &row[&field] {
+                Value::Array(ids) => ids.iter().filter_map(id_of).collect(),
+                value => id_of(value).into_iter().collect::<Vec<_>>(),
+            })
             .collect();
         let names = env.names(target, &ids)?;
+        let named = |id: u32| json!([id, names.get(&id)]);
         for row in rows.iter_mut() {
-            if let Some(id) = row[&field].as_u64() {
-                row[&field] = json!([id, names.get(&(id as u32))]);
-            }
+            row[&field] = match &row[&field] {
+                Value::Array(ids) => ids.iter().filter_map(id_of).map(named).collect(),
+                value => match id_of(value) {
+                    Some(id) => named(id),
+                    None => continue,
+                },
+            };
         }
     }
     Ok(())

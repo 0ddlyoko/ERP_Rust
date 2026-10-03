@@ -516,6 +516,18 @@ fn test_a_read_names_its_references_when_asked() -> Result<()> {
         json!({"ids": [line], "fields": ["order"]}),
     );
     assert_eq!(plain[0]["order"], json!(order), "the id alone unless asked");
+
+    let rows = result(
+        &app,
+        "sale_order.read",
+        json!({"ids": [order], "fields": ["lines", "tags"], "names": true}),
+    );
+    assert_eq!(
+        rows[0]["lines"],
+        json!([[line, null]]),
+        "a line has no name to give"
+    );
+    assert_eq!(rows[0]["tags"], json!([]), "no record, an empty list");
     Ok(())
 }
 

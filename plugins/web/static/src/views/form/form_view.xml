@@ -1,7 +1,10 @@
 <templates>
     <t t-name="web.FormView">
         <div class="o_form_view">
-            <t t-if="body" t-component="body" form="this"/>
+            <Suspense>
+                <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
+                <t t-if="body" t-component="body" form="this"/>
+            </Suspense>
         </div>
     </t>
 </templates>

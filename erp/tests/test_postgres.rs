@@ -636,6 +636,59 @@ fn test_a_field_never_read_is_cleared() -> Result<()> {
     Ok(())
 }
 
+/// A one2many or a many2many is written whole, as the web client sends it: the ids it now holds.
+#[test]
+fn test_records_linked_are_replaced_whole() -> Result<()> {
+    let app = app_or_skip!("t_replace_links");
+
+    let mut env = app.new_env()?;
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", "order");
+    let order: SaleOrder<SingleId> = env.create_new_record_from_map(map)?;
+    let mut lines = Vec::new();
+    let mut tags = Vec::new();
+    for name in ["first", "second"] {
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("order", order.get_id());
+        let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
+        lines.push(line.get_id());
+        let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+        map.insert("name", name);
+        let created: MultipleIds = env.create_records("tag", vec![map])?;
+        tags.extend(created.get_ids_ref());
+    }
+    let mut link: MapOfFields = MapOfFields::new(HashMap::new());
+    link.insert("tags", tags.clone());
+    env.write("sale_order", &order.id, link)?;
+    env.close()?;
+
+    let write = |values: serde_json::Value| -> Result<()> {
+        let mut env = app.new_env()?;
+        env.call_rpc(
+            "sale_order",
+            "write",
+            &serde_json::json!({"ids": [order.get_id()], "values": values}),
+        )?;
+        env.close()
+    };
+    let linked = |field: &str| -> Result<Vec<u32>> {
+        let mut env = app.new_env()?;
+        let rows = env.read("sale_order", &order.id, &[field])?;
+        let mut ids = rows[0].get_option::<&Vec<u32>>(field).cloned().unwrap_or_default();
+        ids.sort();
+        Ok(ids)
+    };
+
+    write(serde_json::json!({"lines": [lines[1]], "tags": [tags[1]]}))?;
+    assert_eq!(linked("lines")?, vec![lines[1]], "a line dropped leaves the order");
+    assert_eq!(linked("tags")?, vec![tags[1]], "a tag dropped is unlinked");
+
+    write(serde_json::json!({"lines": lines, "tags": []}))?;
+    assert_eq!(linked("lines")?, lines, "a line given back joins the order again");
+    assert!(linked("tags")?.is_empty(), "every tag unlinked");
+    Ok(())
+}
+
 /// Ordering and paging are emitted as SQL, not applied afterwards.
 #[test]
 fn test_order_limit_and_offset() -> Result<()> {

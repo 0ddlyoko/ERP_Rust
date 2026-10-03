@@ -16,52 +16,70 @@
                            t-att-value="query" t-on-input="(ev) => query = ev.target.value"/>
                 </label>
                 <span t-if="selected.size" class="o_selection_count">{{ selected.size }} selected</span>
-                <div class="o_pager">
-                    <span class="o_pager_value">{{ range }} / {{ total }}</span>
-                    <button type="button" class="o_pager_button" aria-label="Previous page"
-                            t-att-disabled="!hasPrevious" t-on-click="previous">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-                    </button>
-                    <button type="button" class="o_pager_button" aria-label="Next page"
-                            t-att-disabled="!hasNext" t-on-click="next">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                    </button>
-                </div>
+                <Suspense>
+                    <t t-set-slot="fallback"><div class="o_pager"><span class="o_pager_value">…</span></div></t>
+                    <div class="o_pager">
+                        <span class="o_pager_value">{{ range }} / {{ total }}</span>
+                        <button type="button" class="o_pager_button" aria-label="Previous page"
+                                t-att-disabled="!hasPrevious" t-on-click="previous">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <button type="button" class="o_pager_button" aria-label="Next page"
+                                t-att-disabled="!hasNext" t-on-click="next">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                    </div>
+                </Suspense>
             </div>
             <section class="o_list_card">
-                <table class="o_list_table">
-                    <thead>
-                        <tr>
-                            <th class="o_list_select">
-                                <input type="checkbox" aria-label="Select all rows" t-att-checked="allSelected"
-                                       t-on-change="(ev) => selectAll(ev.target.checked)"/>
-                            </th>
-                            <th t-foreach="columns" t-as="column" t-key="column.name"
-                                t-att-class="cellClass(column)">{{ column.label }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr t-foreach="records" t-as="record" t-key="record.id"
-                            t-att-class="{ o_list_row: true, selected: selected.has(idOf(record)) }"
-                            t-on-click="() => choose(record)">
-                            <td class="o_list_select" t-on-click.stop="() => {}">
-                                <input type="checkbox" aria-label="Select this row"
-                                       t-att-checked="selected.has(idOf(record))"
-                                       t-on-change="(ev) => select(record, ev.target.checked)"/>
-                            </td>
-                            <td t-foreach="columns" t-as="column" t-key="column.name"
-                                t-att-class="cellClass(column)">
-                                <t t-component="widgetFor(column)" record="record" name="column.name"
-                                   field="column.field" attrs="column.attrs"/>
-                            </td>
-                        </tr>
-                        <tr t-if="records?.length === 0" class="o_list_empty">
-                            <td t-att-colspan="columns.length + 1">No records.</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <Suspense>
+                    <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
+                    <table class="o_list_table">
+                        <thead>
+                            <tr>
+                                <th class="o_list_select">
+                                    <Suspense>
+                                        <t t-set-slot="fallback"><input type="checkbox" aria-label="Select all rows" disabled=""/></t>
+                                        <input type="checkbox" aria-label="Select all rows" t-att-checked="allSelected"
+                                               t-on-change="(ev) => selectAll(ev.target.checked)"/>
+                                    </Suspense>
+                                </th>
+                                <th t-foreach="columns" t-as="column" t-key="column.name"
+                                    t-att-class="cellClass(column)">{{ column.label }}</th>
+                            </tr>
+                        </thead>
+                        <Suspense>
+                            <t t-set-slot="fallback">
+                                <tbody>
+                                    <tr class="o_list_empty">
+                                        <td t-att-colspan="columns.length + 1"><t t-call="web.Loading"/></td>
+                                    </tr>
+                                </tbody>
+                            </t>
+                            <tbody>
+                                <tr t-foreach="records" t-as="record" t-key="record.id"
+                                    t-att-class="{ o_list_row: true, selected: selected.has(idOf(record)) }"
+                                    t-on-click="() => choose(record)">
+                                    <td class="o_list_select" t-on-click.stop="() => {}">
+                                        <input type="checkbox" aria-label="Select this row"
+                                               t-att-checked="selected.has(idOf(record))"
+                                               t-on-change="(ev) => select(record, ev.target.checked)"/>
+                                    </td>
+                                    <td t-foreach="columns" t-as="column" t-key="column.name"
+                                        t-att-class="cellClass(column)">
+                                        <t t-component="widgetFor(column)" record="record" name="column.name"
+                                           field="column.field" attrs="column.attrs"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="records?.length === 0" class="o_list_empty">
+                                    <td t-att-colspan="columns.length + 1">No records.</td>
+                                </tr>
+                            </tbody>
+                        </Suspense>
+                    </table>
+                </Suspense>
             </section>
         </div>
     </t>

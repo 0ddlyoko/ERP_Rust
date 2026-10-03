@@ -82,13 +82,16 @@ export abstract class Widget extends Component {
 /** Widgets by name. A plugin adds its own here, or replaces one: every view showing it follows. */
 export const widgets = registry.category<ComponentClass>("widgets");
 
-/** The widget a field is shown with when a view names none: by its type. */
+/**
+ * The widget a field is shown with when a view names none: by its type. The records of a
+ * one2many as a list, those of a many2many as tags; a view may show either with the other.
+ */
 export function defaultWidget(field: FieldDescription): string {
     if (field.type === "ref") {
         return "many2one";
     }
     if (field.type === "refs") {
-        return "x2many";
+        return field.relation_kind === "one2many" ? "list" : "tags";
     }
     return field.type;
 }

@@ -1,7 +1,7 @@
-import { effect, load, props, resource, state, t } from "trame";
+import { type ComponentClass, effect, load, loading, props, resource, state, t } from "trame";
 import { listMemory, rememberList } from "@web/core/list_memory";
 import type { Values } from "@web/core/orm";
-import { View, viewKinds, viewProps } from "@web/views/view";
+import { type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 
 /**
  * Records of a model as rows, one column per field shown, a page at a time.
@@ -31,7 +31,11 @@ export class ListView extends View {
     @state accessor query = "";
     @state accessor selected = new Set<number>(listMemory(this.router.route.action)?.selected ?? []);
 
+    /** Remember the list once its rows are there; reading them sooner would hold the view back. */
     @effect remember(): void {
+        if (loading(() => this.records) || loading(() => this.total)) {
+            return;
+        }
         rememberList(this.router.route.action, {
             offset: this.offset,
             selected: [...this.selected],
@@ -61,6 +65,11 @@ export class ListView extends View {
         () => ({ model: this.props.resModel, domain: [...this.props.domain] }),
         ({ model, domain }) => this.orm.count(model, domain),
     );
+
+    /** A row's records shown as tags, whatever their kind: a list would not fit in a cell. */
+    override widgetFor(column: Column): ComponentClass {
+        return column.field.type === "refs" ? widgetFor(column, "tags") : widgetFor(column);
+    }
 
     idOf(record: Values): number {
         return record.id as number;
