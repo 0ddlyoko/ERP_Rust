@@ -36,6 +36,22 @@ export interface FieldDescription {
     name_field?: boolean;
 }
 
+/** What changing a form's values changes in the fields computed from them, as `onchange` answers. */
+export interface OnchangeAnswer {
+    values: Values;
+    /** The record's fields that could not be computed, with why. */
+    errors: { field: string; message: string }[];
+    /** By one2many or many2many: lines that exist by id, lines being created by draft number. */
+    lines: Record<
+        string,
+        {
+            updated: { id: number; values: Values }[];
+            created: { draft: number; values: Values }[];
+            errors: { id?: number; draft?: number; field: string; message: string }[];
+        }
+    >;
+}
+
 /** The records of any model, through the operations the protocol answers on every one of them. */
 export class Orm {
     @inject(Rpc) rpc!: Rpc;
@@ -84,6 +100,14 @@ export class Orm {
     /** The records whose name holds `text`, whatever its case, as `[id, name]`: at most `limit`. */
     nameSearch(model: string, text: string, limit = 8): Promise<[number, string][]> {
         return this.rpc.call(`${model}.name_search`, { text, limit });
+    }
+
+    /**
+     * The fields a form computes from what the user changed — of `id`, or of a new record — as
+     * the server would once saved; nothing is saved.
+     */
+    onchange(model: string, id: number | undefined, values: Values): Promise<OnchangeAnswer> {
+        return this.rpc.call(`${model}.onchange`, { id, values });
     }
 
     /** Create a record from its name alone; resolves with it as `[id, name]`. */

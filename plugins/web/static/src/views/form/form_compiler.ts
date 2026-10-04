@@ -114,7 +114,8 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return (
             `<t t-component="__form.widgetFor(${column})" record="__form.current" model="__form.props.resModel" name="${column}.name" ` +
             `field="${column}.field" attrs="${column}.attrs" readonly="${escape(editable)}" ` +
-            `onChange="__form.changer(${column}.name)"/>`
+            `onChange="__form.changer(${column}.name)" computed="__form.computedLines[${column}.name] ?? {}" ` +
+            `computeErrors="__form.lineErrors[${column}.name] ?? {}"/>`
         );
     };
     /**
@@ -131,6 +132,11 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return `o_form_required: ${isRequired}, o_form_missing: __form.tried && ${isRequired} && __form.isBlank(${name})`;
     };
     const ifShown = (shown: string): string => (shown === "true" ? "" : ` t-if="${escape(shown)}"`);
+    /** A mark beside a field the server could not compute, saying why when hovered. */
+    const computeMark = (element: Element): string => {
+        const error = escape(`__form.computeErrors[${JSON.stringify(element.getAttribute("name") ?? "")}]`);
+        return `<span t-if="${error}" class="o_compute_error" role="img" aria-label="Could not be computed" t-att-title="${error}">!</span>`;
+    };
 
     const field = (element: Element): Piece => {
         condition(element, "invisible");
@@ -140,8 +146,8 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         const classes = `{ o_form_field: true, o_form_full: true, ${requiredMarks(element, required)} }`;
         const label =
             element.getAttribute("nolabel") === "1"
-                ? ""
-                : `<span class="o_form_label">{{ __form.label(__form.layout.columns[${columns.length}].label) }}</span>`;
+                ? computeMark(element)
+                : `<span class="o_form_label">{{ __form.label(__form.layout.columns[${columns.length}].label) }}${computeMark(element)}</span>`;
         const xml = `<div t-att-class="${escape(classes)}"${ifShown(shown)}>${label}${widget(element, readonly)}</div>`;
         return { xml, shown };
     };

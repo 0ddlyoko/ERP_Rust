@@ -1,5 +1,5 @@
 import { Component, type ComponentClass, computed, effect, inject, props, t } from "trame";
-import { Breadcrumb, type Crumb } from "@web/core/breadcrumb";
+import { Breadcrumb } from "@web/core/breadcrumb";
 import type { ActionDescription } from "@web/core/menus";
 import { Router } from "@web/core/router";
 import { viewKinds } from "@web/views/view";
@@ -42,8 +42,8 @@ export class ActionManager extends Component {
         this.router.go({ ...(first?.route ?? this.router.route), view: null, id: null });
     }
 
-    backTo(crumb: Crumb): void {
-        this.router.go(crumb.route);
+    backTo(index: number): void {
+        void this.breadcrumb.back(index);
     }
 
     @effect nameInBreadcrumb(): () => void {

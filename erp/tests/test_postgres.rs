@@ -1583,3 +1583,39 @@ fn test_read_matching_is_one_query() -> Result<()> {
     );
     Ok(())
 }
+
+/// An onchange works out a form against the real database without writing to it.
+#[test]
+fn test_onchange_writes_nothing() -> Result<()> {
+    let app = app_or_skip!("t_onchange");
+    let mut env = app.new_env()?;
+    let mut order = MapOfFields::new(HashMap::new());
+    order.insert("name", "SO1");
+    let order: SaleOrder<SingleId> = env.create_new_record_from_map(order)?;
+    let mut line = MapOfFields::new(HashMap::new());
+    line.insert("order", order.get_id());
+    line.insert("price", 10);
+    line.insert("amount", 2);
+    let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(line)?;
+    env.close()?;
+
+    let body = serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "sale_order.onchange", "params": {
+        "id": order.get_id(),
+        "values": {"name": "", "lines": {
+            "update": [{"id": line.get_id(), "amount": 3}],
+            "create": [{"draft": 1, "price": 1, "amount": 4}],
+        }},
+    }});
+    let answer = erp::jsonrpc::handle(&app, None, &body.to_string()).expect("answered");
+    assert_eq!(answer["result"]["values"]["total_price"], 34, "{answer}");
+
+    let mut env = app.new_env()?;
+    assert_eq!(order.get_name(&mut env)?, "SO1");
+    assert_eq!(*order.get_total_price(&mut env)?, 20);
+    assert_eq!(*line.get_amount(&mut env)?, 2);
+    assert_eq!(
+        env.count("sale_order_line", &erp_search::SearchType::Nothing)?,
+        1
+    );
+    Ok(())
+}

@@ -123,12 +123,13 @@ export class ListWidget extends X2ManyWidget {
             ids.length === 0 || fields.length === 0 ? Promise.resolve([]) : this.orm.read(model, ids, fields, { names: true }),
     );
 
-    /** The records held, in their order, with what was changed here over what was read. */
+    /** The records held, in their order: what was read, what the server computed, what was changed. */
     get rows(): Row[] {
         const read = new Map((this.read ?? []).map((row) => [row.id as number, row]));
         return this.entries.map((entry) => {
             const base: Values = entry.id === null ? {} : (read.get(entry.id) ?? { id: entry.id, name: entry.name });
-            return { key: entry.key, id: entry.id, values: { ...base, ...(entry.changes ?? {}) } };
+            const computed = (this.props.computed[entry.key] ?? {}) as Values;
+            return { key: entry.key, id: entry.id, values: { ...base, ...computed, ...(entry.changes ?? {}) } };
         });
     }
 
@@ -142,6 +143,12 @@ export class ListWidget extends X2ManyWidget {
 
     cellClass(column: Column): string {
         return `o_field_${column.field.type}`;
+    }
+
+    /** Why a cell's value could not be computed, if it could not. */
+    computeError(row: Row, column: Column): string | null {
+        const errors = (this.props.computeErrors[row.key] ?? {}) as Record<string, string>;
+        return errors[column.name] ?? null;
     }
 
     /** Whether a cell is edited: its row is, and its field can be. */

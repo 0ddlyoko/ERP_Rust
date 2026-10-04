@@ -28,6 +28,8 @@ mod create;
 mod delete;
 mod flush;
 mod method;
+mod onchange;
+pub use onchange::{LineKey, Onchange, OnchangeLines, VIRTUAL_IDS_FROM, is_virtual};
 mod read;
 mod required;
 mod shared;
@@ -93,6 +95,8 @@ pub struct Environment<'mm> {
     /// or not, and records pointing to them are not held back by them.
     deleting: HashMap<String, HashSet<u32>>,
     maybe_emptied: required::MaybeEmptied,
+    /// How many virtual records this unit of work made, for the next one's id.
+    virtual_count: u32,
     closed: bool,
 }
 
@@ -140,6 +144,7 @@ impl<'mm> Environment<'mm> {
             tracked: Default::default(),
             deleting: HashMap::new(),
             maybe_emptied: Default::default(),
+            virtual_count: 0,
             closed: false,
         };
         env.database.start_transaction()?;

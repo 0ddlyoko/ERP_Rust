@@ -44,7 +44,7 @@
 
     <view id="view_menu_list" name="menu.list" model="menu">
         <list>
-            <field name="name"/>
+            <field name="complete_name"/>
             <field name="parent"/>
             <field name="sequence"/>
             <field name="action"/>

@@ -7,6 +7,9 @@ import { View, viewKinds, viewProps } from "@web/views/view";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
 
+/** How long changing has to pause before the fields computed from it are asked for, in milliseconds. */
+const ONCHANGE_AFTER = 250;
+
 /**
  * Parts of a form other plugins provide: `chatter`, the record's thread, takes `model`, `record`
  * (null until the record is created) and `version`, which changes each time the record is read.
@@ -50,6 +53,18 @@ export class FormView extends View {
     @state accessor openPages = new Map<number, number>();
     /** Whether a save was tried: required fields left empty are shown from then on. */
     @state accessor tried = false;
+    /** What the server computed from what the user changed, shown over the record until saved. */
+    @state accessor computedValues: Values = {};
+    /** The same for the lines of its one2many and many2many: by field, then by line key. */
+    @state accessor computedLines: Record<string, Record<string, Values>> = {};
+    /** Why fields of the record could not be computed, by field. */
+    @state accessor computeErrors: Record<string, string> = {};
+    /** The same for its lines: by one2many or many2many, then line key, then field. */
+    @state accessor lineErrors: Record<string, Record<string, Record<string, string>>> = {};
+    /** What the user was told could not be computed, so as to tell it once. */
+    private told = new Set<string>();
+    private onchanges = 0;
+    private onchangeTimer: ReturnType<typeof setTimeout> | undefined;
 
     /** What shows the record's thread, if a plugin provides it. */
     get chatter(): ComponentClass | null {
@@ -101,9 +116,9 @@ export class FormView extends View {
         return [...new Set([...this.columns.map((column) => column.name), ...conditions])];
     }
 
-    /** The record as the user sees it: what was read, with what they changed over it. */
+    /** The record as the user sees it: what was read, what the server computed, what they changed. */
     @computed get current(): Values {
-        return { ...this.record, ...this.changes };
+        return { ...this.record, ...this.computedValues, ...this.changes };
     }
 
     get isNew(): boolean {
@@ -227,13 +242,98 @@ export class FormView extends View {
     changer(name: string): (value: unknown) => void {
         return (value) => {
             this.changes[name] = value;
+            this.scheduleOnchange();
         };
     }
 
     discard(): void {
         this.changes = {};
+        this.forgetComputed();
         this.failure = null;
         this.tried = false;
+    }
+
+    /** Ask the server, once changing pauses, what the changes make of the fields computed from them. */
+    private scheduleOnchange(): void {
+        clearTimeout(this.onchangeTimer);
+        this.onchangeTimer = setTimeout(() => void this.onchange(), ONCHANGE_AFTER);
+    }
+
+    /**
+     * What the server computes from the record as the user changed it, shown until saved.
+     *
+     * Sends what saving would — every value for a new record, what changed for one that exists —
+     * along with each one2many shown, so that its lines are computed with the record. An answer
+     * overtaken by a later change is dropped. What could not be computed is marked beside its
+     * field and told once; a call that fails altogether leaves the form as it was, and says so.
+     */
+    private async onchange(): Promise<void> {
+        const fields = this.fields;
+        if (fields === undefined) {
+            return;
+        }
+        const asked = ++this.onchanges;
+        const values = this.forServer(this.isNew ? { ...this.record, ...this.changes } : this.changes, true);
+        delete values.id;
+        for (const column of this.columns) {
+            if (fields[column.name]?.relation_kind === "one2many" && !(column.name in values)) {
+                values[column.name] = {};
+            }
+        }
+        try {
+            const answer = await this.orm.onchange(this.props.resModel, this.props.resId, values);
+            if (asked !== this.onchanges) {
+                return;
+            }
+            this.computedValues = answer.values;
+            this.computeErrors = Object.fromEntries(answer.errors.map(({ field, message }) => [field, message]));
+            const lineErrors: Record<string, Record<string, Record<string, string>>> = {};
+            for (const [name, { errors }] of Object.entries(answer.lines)) {
+                for (const { id, draft, field, message } of errors) {
+                    const key = id === undefined ? `draft:${draft}` : `id:${id}`;
+                    ((lineErrors[name] ??= {})[key] ??= {})[field] = message;
+                    this.tell(`${fields[name]?.label ?? name}: ${field}`, message);
+                }
+            }
+            this.lineErrors = lineErrors;
+            for (const { field, message } of answer.errors) {
+                this.tell(fields[field]?.label ?? field, message);
+            }
+            this.computedLines = Object.fromEntries(
+                Object.entries(answer.lines).map(([name, { updated, created }]) => [
+                    name,
+                    Object.fromEntries([
+                        ...updated.map(({ id, values: line }) => [`id:${id}`, line]),
+                        ...created.map(({ draft, values: line }) => [`draft:${draft}`, line]),
+                    ]),
+                ]),
+            );
+        } catch (error) {
+            if (asked === this.onchanges) {
+                this.tell("The form", error instanceof Error ? error.message : String(error));
+            }
+        }
+    }
+
+    /** Warn that something could not be computed, once for each thing and reason. */
+    private tell(what: string, why: string): void {
+        const told = `${what}\n${why}`;
+        if (this.told.has(told)) {
+            return;
+        }
+        this.told.add(told);
+        this.notifications.add("warning", `${what} could not be computed: ${why}`);
+    }
+
+    /** Forget what the server computed, and any answer still to come: the record is read again. */
+    private forgetComputed(): void {
+        clearTimeout(this.onchangeTimer);
+        this.onchanges++;
+        this.computedValues = {};
+        this.computedLines = {};
+        this.computeErrors = {};
+        this.lineErrors = {};
+        this.told.clear();
     }
 
     /**
@@ -264,6 +364,7 @@ export class FormView extends View {
                 delete values.id;
                 const [created] = await this.orm.create(model, values);
                 this.changes = {};
+                this.forgetComputed();
                 this.tried = false;
                 if (this.props.onCreated !== undefined) {
                     this.props.onCreated([created, this.nameOf(values)]);
@@ -280,6 +381,7 @@ export class FormView extends View {
             await this.orm.write(model, [id], this.forServer(this.changes));
             this.record = await this.read(model, id, Object.keys(this.record));
             this.changes = {};
+            this.forgetComputed();
             this.tried = false;
             this.notifications.add("success", `${this.title} saved.`);
             return true;
@@ -299,12 +401,15 @@ export class FormView extends View {
         return typeof name === "string" && name !== "" ? name : null;
     }
 
-    /** Values as the server reads them: records by their ids, not `[id, name]`. */
-    private forServer(values: Values): Values {
+    /**
+     * Values as the server reads them: records by their ids, not `[id, name]`. With `drafts`, the
+     * lines created say their draft number, as an onchange names them.
+     */
+    private forServer(values: Values, drafts = false): Values {
         return Object.fromEntries(
             Object.entries(values).map(([name, value]) => [
                 name,
-                this.fields?.[name]?.type === "refs" ? this.commandsOf(name, value) : this.idsOf(name, value),
+                this.fields?.[name]?.type === "refs" ? this.commandsOf(name, value, drafts) : this.idsOf(name, value),
             ]),
         );
     }
@@ -334,7 +439,7 @@ export class FormView extends View {
      * What changed in a one2many or a many2many, as the commands the server carries out on what
      * it holds: records let go, changed, created, and added.
      */
-    private commandsOf(name: string, value: unknown): Values {
+    private commandsOf(name: string, value: unknown, drafts = false): Values {
         const held = new Set(this.idsOf(name, this.record?.[name] ?? []) as number[]);
         const items = Array.isArray(value) ? value : [];
         const update: Values[] = [];
@@ -342,10 +447,10 @@ export class FormView extends View {
         const kept = new Set<number>();
         for (const item of items) {
             if (item !== null && typeof item === "object" && !Array.isArray(item)) {
-                const { id, values } = item as { id?: number; values: Values };
+                const { id, draft, values } = item as { id?: number; draft?: number; values: Values };
                 const sent = Object.fromEntries(Object.entries(values).map(([field, inner]) => [field, asSent(inner)]));
                 if (id === undefined) {
-                    create.push(sent);
+                    create.push(drafts && draft !== undefined ? { draft, ...sent } : sent);
                 } else {
                     kept.add(id);
                     update.push({ id, ...sent });

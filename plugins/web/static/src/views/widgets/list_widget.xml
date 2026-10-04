@@ -19,6 +19,8 @@
                             t-att-class="{ o_list_row: true, o_x2many_openable: editable || (openAction !== null &amp;&amp; row.id !== null), o_x2many_editing: editing === row.key }"
                             t-on-click="() => choose(row)">
                             <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
+                                <span t-if="computeError(row, column)" class="o_compute_error" role="img" aria-label="Could not be computed"
+                                      t-att-title="computeError(row, column)">!</span>
                                 <t t-component="cellWidget(column)" record="row.values" model="model" name="column.name"
                                    field="column.field" attrs="column.attrs" readonly="isReadonly(row, column)"
                                    onChange="changer(row, column.name)"/>

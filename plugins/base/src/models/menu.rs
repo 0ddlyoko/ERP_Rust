@@ -17,6 +17,8 @@ use std::error::Error;
 pub struct Menu<Mode: IdMode> {
     pub id: Mode,
     name: String,
+    #[erp(label = "Full name", compute = "compute_complete_name", depends = ["name", "parent"])]
+    complete_name: String,
     #[erp(ondelete = "cascade")]
     parent: Reference<BaseMenu, SingleId>,
     #[erp(inverse = "parent")]
@@ -40,6 +42,25 @@ struct Entry {
 
 #[erp_methods]
 impl Menu<MultipleIds> {
+    /// Its name after those of the entries above it: `Settings / Technical / Menus`.
+    pub fn compute_complete_name(
+        &self,
+        env: &mut Environment,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        for menu in self {
+            let mut names = vec![menu.get_name(env)?.clone()];
+            let mut seen = HashSet::from([menu.get_id()]);
+            let mut parent: Menu<SingleId> = menu.get_parent(env)?;
+            while !parent.is_empty() && seen.insert(parent.get_id()) {
+                names.push(parent.get_name(env)?.clone());
+                parent = parent.get_parent(env)?;
+            }
+            names.reverse();
+            menu.set_complete_name(names.join(" / "), env)?;
+        }
+        Ok(())
+    }
+
     /// The menus the caller sees, as a tree: each with its name, its action described the way a
     /// client opens it, and the entries under it.
     ///

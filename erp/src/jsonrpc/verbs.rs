@@ -4,7 +4,7 @@
 //! refused when it is registered rather than discovered when a call goes somewhere unexpected.
 
 use crate::access::Operation;
-use crate::environment::Environment;
+use crate::environment::{Environment, LineKey, Onchange};
 use crate::model::{RegisteredKinds, RpcFn, Selections};
 use erp_internal_types::FinalInternalField;
 use erp_search::{OrderBy, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
@@ -15,6 +15,7 @@ use erp_types::model::MapOfFields;
 use serde::Deserialize;
 use serde::de::DeserializeSeed;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -37,6 +38,7 @@ pub enum Verb {
     Names,
     NameSearch,
     NameCreate,
+    Onchange,
 }
 
 impl Verb {
@@ -54,6 +56,7 @@ impl Verb {
         Verb::Names,
         Verb::NameSearch,
         Verb::NameCreate,
+        Verb::Onchange,
     ];
 
     /// The name a caller writes.
@@ -70,6 +73,7 @@ impl Verb {
             Verb::Names => "names",
             Verb::NameSearch => "name_search",
             Verb::NameCreate => "name_create",
+            Verb::Onchange => "onchange",
         }
     }
 
@@ -97,6 +101,7 @@ impl Verb {
             Verb::Names => |env, model, params| dispatch(env, model, Verb::Names, params),
             Verb::NameSearch => |env, model, params| dispatch(env, model, Verb::NameSearch, params),
             Verb::NameCreate => |env, model, params| dispatch(env, model, Verb::NameCreate, params),
+            Verb::Onchange => |env, model, params| dispatch(env, model, Verb::Onchange, params),
         }
     }
 }
@@ -398,6 +403,12 @@ struct NameSearchParams {
 }
 
 #[derive(Deserialize)]
+struct OnchangeParams {
+    #[serde(default)]
+    id: Option<u32>,
+}
+
+#[derive(Deserialize)]
 struct NameCreateParams {
     text: String,
 }
@@ -503,6 +514,16 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
                     .collect::<Vec<_>>()
             ))
         }
+        Verb::Onchange => {
+            let OnchangeParams { id } = parse(params)?;
+            let mut params = params.clone();
+            let drafts = take_drafts(&mut params["values"]);
+            let mut values = records_of(env, model_name, &params, "values")?;
+            refuse_private_writes(env, model_name, &values)?;
+            let values = values.pop().unwrap_or_default();
+            let onchange = env.onchange(model_name, id, values, &drafts)?;
+            onchange_answer(env, model_name, onchange)
+        }
         Verb::NameCreate => {
             let NameCreateParams { text } = parse(params)?;
             let (id, name) = env.name_create(model_name, &text)?;
@@ -563,6 +584,81 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
 /// Write every record these rows point to as `[id, name]`, the name `null` when the caller may
 /// not read it: a many2one as one pair, a one2many or a many2many as a list of them. One search
 /// per relation for all the rows, rather than one per row.
+/// Take the draft numbers out of the lines a form creates, by field, in the order its commands
+/// create them: they name lines for the answer, and are no field of theirs.
+fn take_drafts(values: &mut Value) -> HashMap<String, Vec<Option<u32>>> {
+    let mut drafts: HashMap<String, Vec<Option<u32>>> = HashMap::new();
+    let Some(values) = values.as_object_mut() else {
+        return drafts;
+    };
+    for (field, value) in values.iter_mut() {
+        let objects: Vec<&mut Value> = match value {
+            Value::Object(_) => vec![value],
+            Value::Array(items) => items.iter_mut().filter(|item| item.is_object()).collect(),
+            _ => continue,
+        };
+        for object in objects {
+            let Some(Value::Array(created)) = object.get_mut("create") else {
+                continue;
+            };
+            for line in created {
+                let draft = line
+                    .as_object_mut()
+                    .and_then(|line| line.remove("draft"))
+                    .and_then(|draft| draft.as_u64())
+                    .and_then(|draft| u32::try_from(draft).ok());
+                drafts.entry(field.clone()).or_default().push(draft);
+            }
+        }
+    }
+    drafts
+}
+
+/// What an onchange answers: the record's fields computed again, and those of its lines, by id
+/// for a line that exists and by draft number for one being created; references with names.
+fn onchange_answer(env: &mut Environment, model_name: &str, onchange: Onchange) -> Result<Value> {
+    let named = |env: &mut Environment, model: &str, values: MapOfFields| -> Result<Value> {
+        let fields: Vec<String> = values.fields.keys().cloned().collect();
+        let mut rows = json!([values]);
+        name_references(env, model, &fields, &mut rows)?;
+        Ok(rows[0].clone())
+    };
+    let values = named(env, model_name, onchange.values)?;
+    let errors: Vec<Value> = onchange
+        .errors
+        .into_iter()
+        .map(|(field, message)| json!({"field": field, "message": message}))
+        .collect();
+    let mut lines = serde_json::Map::new();
+    for field in onchange.lines {
+        let mut updated = Vec::with_capacity(field.updated.len());
+        for (id, values) in field.updated {
+            updated.push(json!({"id": id, "values": named(env, &field.model, values)?}));
+        }
+        let mut created = Vec::with_capacity(field.created.len());
+        for (draft, values) in field.created {
+            created.push(json!({"draft": draft, "values": named(env, &field.model, values)?}));
+        }
+        let line_errors: Vec<Value> = field
+            .errors
+            .into_iter()
+            .map(|(line, name, message)| {
+                let mut error = json!({"field": name, "message": message});
+                match line {
+                    LineKey::Id(id) => error["id"] = json!(id),
+                    LineKey::Draft(draft) => error["draft"] = json!(draft),
+                }
+                error
+            })
+            .collect();
+        lines.insert(
+            field.field,
+            json!({"updated": updated, "created": created, "errors": line_errors}),
+        );
+    }
+    Ok(json!({"values": values, "errors": errors, "lines": lines}))
+}
+
 fn name_references(
     env: &mut Environment,
     model_name: &str,

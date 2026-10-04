@@ -69,18 +69,23 @@ impl<'mm> Environment<'mm> {
                     } => {
                         // O2M field, we need to perform a search on this field, so we need to compute it
                         self.save_fields_to_db(target_model, &[target_field])?;
-                        // Now, make a search request
-                        let database_result = self.database.search(
-                            target_model,
-                            &[target_field],
-                            &make_domain!([(target_field, "=", current_ids.clone())]),
-                            self.model_manager,
-                            &SearchOptions::default(),
-                        )?;
-                        current_ids = database_result
-                            .into_iter()
-                            .map(|(id, _)| id)
-                            .collect::<Vec<_>>();
+                        let (virtual_ids, real_ids): (Vec<u32>, Vec<u32>) = current_ids
+                            .iter()
+                            .partition(|id| onchange::is_virtual(**id));
+                        // Only the cache knows what points to a virtual record.
+                        let mut found =
+                            self.virtual_pointing_to(target_model, target_field, &virtual_ids);
+                        if !real_ids.is_empty() {
+                            let database_result = self.database.search(
+                                target_model,
+                                &[target_field],
+                                &make_domain!([(target_field, "=", real_ids)]),
+                                self.model_manager,
+                                &SearchOptions::default(),
+                            )?;
+                            found.extend(database_result.into_iter().map(|(id, _)| id));
+                        }
+                        current_ids = found;
                         current_model = self.model_manager.get_model(target_model);
                     }
                     FieldDepend::CurrentFieldAnotherModel {

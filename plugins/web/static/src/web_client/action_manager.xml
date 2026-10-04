@@ -8,7 +8,7 @@
                         <a href="#" class="o_breadcrumb_link" t-on-click.prevent="backToList">{{ rootAction }}</a>
                         <span aria-hidden="true">/</span>
                         <t t-foreach="breadcrumb.trail" t-as="crumb" t-key="crumb_index">
-                            <a href="#" class="o_breadcrumb_link" t-on-click.prevent="() => backTo(crumb)">{{ crumb.name }}</a>
+                            <a href="#" class="o_breadcrumb_link" t-on-click.prevent="() => backTo(crumb_index)">{{ crumb.name }}</a>
                             <span aria-hidden="true">/</span>
                         </t>
                         <span class="o_breadcrumb_current">{{ breadcrumb.record ?? "" }}</span>

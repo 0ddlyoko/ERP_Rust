@@ -25,6 +25,30 @@ export class Breadcrumb {
 
     /** The record being left, added to the trail once the next one shows. */
     private leaving: Crumb | null = null;
+    /** The crumb being gone back to, by position: the trail ends before it once its record shows. */
+    private returning: number | null = null;
+
+    /**
+     * Go back to a crumb: those from it on are dropped once its record shows — at once when it is
+     * the record already open, which the user may have come back to another way. By position, as
+     * one record can stand in the trail more than once.
+     */
+    async back(index: number): Promise<void> {
+        const crumb = this.trail[index];
+        if (crumb === undefined) {
+            return;
+        }
+        const target = writeRoute(crumb.route);
+        if (target === writeRoute(this.router.route)) {
+            this.trail = this.trail.slice(0, index);
+            return;
+        }
+        this.returning = index;
+        await this.router.go(crumb.route);
+        if (writeRoute(this.router.route) !== target) {
+            this.returning = null;
+        }
+    }
 
     /** Open a record of an action, the record open left in the trail once the user did leave it. */
     async open(action: string, id: number): Promise<void> {
@@ -52,9 +76,13 @@ export class Breadcrumb {
      */
     shown(route: Route, isRecord: boolean): void {
         const leaving = this.leaving;
+        const returning = this.returning;
         this.leaving = null;
+        this.returning = null;
         if (!isRecord) {
             this.trail = [];
+        } else if (returning !== null) {
+            this.trail = this.trail.slice(0, returning);
         } else if (leaving !== null) {
             this.trail = [...this.trail, leaving];
         } else {

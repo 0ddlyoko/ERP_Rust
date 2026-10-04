@@ -425,6 +425,11 @@ button {
     border-left-color: var(--o-accent);
 }
 
+.o_notification_warning {
+    border-left-color: #b54708;
+    color: #7a2e0e;
+}
+
 .o_notification_danger {
     border-left-color: var(--o-danger);
     color: #8a1c12;

@@ -47,6 +47,7 @@
     <view id="view_group_list" name="group.list" model="group">
         <list>
             <field name="name"/>
+            <field name="user_count"/>
             <field name="users"/>
         </list>
     </view>

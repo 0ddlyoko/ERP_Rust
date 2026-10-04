@@ -17,6 +17,10 @@ export const widgetProps = {
     readonly: t.boolean().default(true),
     /** Called with the new value when the user changes it. */
     onChange: t.func<(value: unknown) => void>().optional(),
+    /** What the server computed for the records the field holds, by their key, before saving. */
+    computed: t.object().default({}),
+    /** Why fields of those records could not be computed: by their key, then by field. */
+    computeErrors: t.object().default({}),
 };
 
 /**

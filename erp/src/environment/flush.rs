@@ -237,7 +237,7 @@ impl<'mm> Environment<'mm> {
             if dirty.is_empty() {
                 continue;
             }
-            for (id, values) in &dirty {
+            for (id, values) in dirty.iter().filter(|(id, _)| !onchange::is_virtual(**id)) {
                 let targets = values
                     .get_option::<&Vec<u32>>(field_name)
                     .cloned()
@@ -397,11 +397,21 @@ impl<'mm> Environment<'mm> {
     ///
     /// Returns the number of lines updated
     #[allow(dead_code)]
+    /// Write values to the database; those of virtual records, which only the cache holds, are
+    /// never written.
     pub(super) fn save_data_to_db(
         &mut self,
         model_name: &str,
         data: &HashMap<u32, &MapOfFields>,
     ) -> Result<u32> {
+        if data.keys().any(|id| onchange::is_virtual(*id)) {
+            let real: HashMap<u32, &MapOfFields> = data
+                .iter()
+                .filter(|(id, _)| !onchange::is_virtual(**id))
+                .map(|(id, values)| (*id, *values))
+                .collect();
+            return self.database.update(model_name, &real);
+        }
         self.database.update(model_name, data)
     }
 

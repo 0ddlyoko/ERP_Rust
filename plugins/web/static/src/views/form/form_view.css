@@ -610,3 +610,26 @@ button.o_statusbar_label:hover {
 .o_form_dialog_close:hover {
     background: color-mix(in oklch, var(--o-accent) 10%, white);
 }
+
+/* A field the server could not compute while the form was changed */
+
+.o_compute_error {
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: #b54708;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: 1px;
+    cursor: help;
+}
+
+.o_list_table td > .o_compute_error {
+    float: right;
+    margin: 0 0 0 6px;
+}

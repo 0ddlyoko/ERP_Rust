@@ -3,7 +3,7 @@ import { state } from "trame";
 /** A message shown for a while in a corner of the page. */
 export interface Notification {
     id: number;
-    kind: "info" | "success" | "danger";
+    kind: "info" | "success" | "warning" | "danger";
     text: string;
     /** Stays until removed, rather than going after a while. */
     sticky: boolean;
