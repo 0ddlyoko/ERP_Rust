@@ -1,6 +1,6 @@
 <templates>
     <t t-name="web.ListWidget">
-        <div t-att-class="className + ' o_x2many_list'">
+        <div t-att-class="className + ' o_x2many_list'" t-ref="element">
             <table class="o_list_table">
                 <thead>
                     <tr>

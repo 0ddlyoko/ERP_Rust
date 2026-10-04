@@ -36,6 +36,29 @@ export class ListWidget extends X2ManyWidget {
     @state accessor editing: string | null = null;
     private hadChanges = false;
 
+    /** The widget's element, set by its template. */
+    element: HTMLElement | null = null;
+
+    /**
+     * While a row is edited, pressing anywhere outside it leaves it — except within a dialog,
+     * such as one a cell opened to create a record.
+     */
+    @effect leaveEditingFromOutside(): (() => void) | void {
+        if (this.editing === null) {
+            return;
+        }
+        const leave = (event: MouseEvent): void => {
+            const target = event.target instanceof Element ? event.target : null;
+            const row = this.element?.querySelector(".o_x2many_editing");
+            if (target === null || row?.contains(target) || target.closest(".o_dialog_backdrop") !== null) {
+                return;
+            }
+            this.editing = null;
+        };
+        document.addEventListener("mousedown", leave, true);
+        return () => document.removeEventListener("mousedown", leave, true);
+    }
+
     /** Leave the row edited once what was changed is saved or discarded. */
     @effect forgetEditingOnceSaved(): void {
         const hasChanges = this.entries.some((entry) => entry.changes !== null);

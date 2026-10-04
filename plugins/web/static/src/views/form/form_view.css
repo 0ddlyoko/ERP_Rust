@@ -372,12 +372,30 @@
     gap: 10px;
 }
 
+/* Laid out by its header alone, so editing a row does not move the columns; its corners are
+   rounded cell by cell, since clipping the table would clip a cell's drop-down too. */
 .o_x2many_list .o_list_table {
+    table-layout: fixed;
     border: 1px solid var(--o-border);
     border-radius: var(--o-radius-control);
     border-collapse: separate;
     border-spacing: 0;
-    overflow: hidden;
+}
+
+.o_x2many_list .o_list_table thead th:first-child {
+    border-top-left-radius: var(--o-radius-control);
+}
+
+.o_x2many_list .o_list_table thead th:last-child {
+    border-top-right-radius: var(--o-radius-control);
+}
+
+.o_x2many_list .o_list_table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: var(--o-radius-control);
+}
+
+.o_x2many_list .o_list_table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: var(--o-radius-control);
 }
 
 .o_x2many_list > .o_record_search {
@@ -389,6 +407,38 @@
     height: 44px;
 }
 
+/* A cell's value follows its column's alignment, unlike a field of the form laid out in a row. */
+.o_x2many_list .o_list_table span.o_widget {
+    display: block;
+    min-height: 0;
+}
+
+.o_x2many_list .o_list_table td .o_input {
+    width: 100%;
+}
+
+.o_x2many_list .o_list_table .o_field_integer .o_input,
+.o_x2many_list .o_list_table .o_field_decimal .o_input {
+    text-align: right;
+}
+
+.o_x2many_list .o_list_table th.o_field_integer,
+.o_x2many_list .o_list_table th.o_field_decimal {
+    width: 120px;
+}
+
+.o_x2many_list .o_list_table th.o_field_bool {
+    width: 80px;
+}
+
+.o_x2many_list .o_list_table th.o_field_date {
+    width: 140px;
+}
+
+.o_x2many_list .o_list_table th.o_field_datetime {
+    width: 180px;
+}
+
 .o_x2many_list .o_list_row {
     cursor: default;
 }
@@ -398,7 +448,7 @@
 }
 
 .o_x2many_actions {
-    width: 36px;
+    width: 80px;
     text-align: right;
 }
 
