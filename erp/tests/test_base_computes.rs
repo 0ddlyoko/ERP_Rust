@@ -91,3 +91,66 @@ fn test_a_group_user_count() -> Result<()> {
     assert_eq!(answer["values"]["user_count"], 0);
     Ok(())
 }
+
+/// A user created without a contact gets one, named as they are; one given a contact keeps it. A
+/// contact a user is cannot be deleted.
+#[test]
+fn test_a_user_gets_a_contact() -> Result<()> {
+    let app = new_app()?;
+    let user = call(
+        &app,
+        "users.create",
+        json!({"values": {"login": "ann@example.com", "name": "Ann"}}),
+    )[0]
+    .clone();
+    let read = call(
+        &app,
+        "users.read",
+        json!({"ids": [user], "fields": ["contact"]}),
+    );
+    let contact = read[0]["contact"].clone();
+    let contact_read = call(
+        &app,
+        "contact.read",
+        json!({"ids": [contact], "fields": ["name"]}),
+    );
+    assert_eq!(contact_read[0]["name"], "Ann");
+
+    let given = call(&app, "contact.create", json!({"values": {"name": "Bob's"}}))[0].clone();
+    let bob = call(
+        &app,
+        "users.create",
+        json!({"values": {"login": "bob", "name": "Bob", "contact": given}}),
+    )[0]
+    .clone();
+    let read = call(
+        &app,
+        "users.read",
+        json!({"ids": [bob], "fields": ["contact"]}),
+    );
+    assert_eq!(read[0]["contact"], given);
+
+    let admin = {
+        let mut env = app.new_env_as_option(None)?;
+        data::resolve(&mut env, "base.user_admin")?.expect("seeded")
+    };
+    let mut env = app.new_env_as_option(Some(admin))?;
+    let refused = env.call_rpc("contact", "delete", &json!({"ids": [contact]}));
+    assert!(refused.is_err(), "Ann's contact is hers");
+    Ok(())
+}
+
+/// The users `base` seeds have their contact too.
+#[test]
+fn test_seeded_users_have_a_contact() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env_as_option(None)?;
+    let admin = data::resolve(&mut env, "base.user_admin")?.expect("seeded");
+    let rows = env.read(
+        "users",
+        &erp_types::field::SingleId::from(admin),
+        &["contact"],
+    )?;
+    assert!(rows[0].get_option::<&u32>("contact").is_some());
+    Ok(())
+}

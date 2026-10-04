@@ -17,6 +17,7 @@
                 <h1><field name="name"/></h1>
                 <block string="Account">
                     <field name="login"/>
+                    <field name="contact"/>
                     <field name="active"/>
                 </block>
             </block>

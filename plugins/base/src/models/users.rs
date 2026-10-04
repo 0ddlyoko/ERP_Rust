@@ -1,11 +1,14 @@
-use crate::models::{BaseGroup, Session};
+use crate::models::contact::BaseContact;
+use crate::models::{BaseGroup, Contact, Session};
 use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
+use erp::model::ModelVerbs;
 use erp::types::field::{IdMode, MultipleIds, Password, Reference, SingleId};
+use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use std::error::Error;
 
-/// Someone who can log in.
+/// Someone who can log in, and the contact they are.
 #[derive(Model)]
 #[erp(id = "users", methods)]
 #[allow(dead_code)]
@@ -19,6 +22,8 @@ pub struct Users<Mode: IdMode> {
     active: bool,
     #[erp(relation = "user_group_rel", tracking)]
     groups: Reference<BaseGroup, MultipleIds>,
+    #[erp(required, ondelete = "restrict")]
+    contact: Reference<BaseContact, SingleId>,
 }
 
 impl Users<SingleId> {
@@ -96,8 +101,52 @@ pub struct Authenticated {
     pub expires_at: erp::types::field::Timestamp,
 }
 
+impl Users<MultipleIds> {
+    /// New contacts for users with these values, one each and in their order, named as the user.
+    /// Created together, as sudo: who may create a user may give them a contact.
+    fn contacts_for(
+        env: &mut Environment,
+        users: &[&MapOfFields],
+    ) -> Result<Contact<MultipleIds>, Box<dyn Error + Send + Sync>> {
+        let contacts = users
+            .iter()
+            .map(|user| {
+                let mut contact = MapOfFields::default();
+                contact.insert_option("name", user.get_option::<&String>("name").cloned());
+                contact
+            })
+            .collect();
+        Contact::<MultipleIds>::create(contacts, &mut env.sudo())
+    }
+}
+
 #[erp_methods]
 impl Users<MultipleIds> {
+    /// Each user created without a contact gets one, named as they are; all created together.
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds, Box<dyn Error + Send + Sync>> {
+        let mut values = values;
+        let without: Vec<usize> = values
+            .iter()
+            .enumerate()
+            .filter(|(_, user)| {
+                user.get_option::<&u32>("contact")
+                    .is_none_or(|contact| *contact == 0)
+            })
+            .map(|(index, _)| index)
+            .collect();
+        let users: Vec<&MapOfFields> = without.iter().map(|index| &values[*index]).collect();
+        let contacts = Self::contacts_for(env, &users)?;
+        for (index, contact) in without.into_iter().zip(contacts) {
+            values[index].insert("contact", contact.get_id());
+        }
+        sup.call_with(&(values,), env)
+    }
+
     /// Exchange credentials for a session.
     ///
     /// The one door in, and the one place the token is ever handed out. When API keys arrive they
