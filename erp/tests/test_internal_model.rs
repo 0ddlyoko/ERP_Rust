@@ -20,6 +20,7 @@ fn test_get_fields_name() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     internal_model.register_internal_field(&InternalField {
@@ -37,6 +38,7 @@ fn test_get_fields_name() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     internal_model.settle_storage().expect("plain fields");

@@ -13,3 +13,5 @@ rust_decimal.workspace = true
 syn.workspace = true
 # Not `erp`: that is a shared library, and a macro the compiler runs should not have to load it.
 erp_types = { path = "../erp/erp_types" }
+erp_search = { path = "../erp_search" }
+serde_json.workspace = true

@@ -135,6 +135,7 @@ fn test_conflicting_kinds_are_rejected() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
     field.register_internal_field(&InternalField {
         name: "amount".to_string(),
@@ -151,6 +152,7 @@ fn test_conflicting_kinds_are_rejected() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 }
 
@@ -174,6 +176,7 @@ fn test_an_extension_can_supply_a_default() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
     assert_eq!(field.default_value, None);
 
@@ -192,6 +195,7 @@ fn test_an_extension_can_supply_a_default() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
     assert_eq!(
         field.default_value,

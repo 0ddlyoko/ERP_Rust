@@ -19,6 +19,7 @@ pub struct InternalField {
     pub tracking: bool,
     pub owned: bool,
     pub on_delete: Option<OnDelete>,
+    pub domain: Option<&'static str>,
 }
 
 /// Final descriptor of a field.
@@ -57,6 +58,9 @@ pub struct FinalInternalField {
     /// What a many2one does when the record it points to is deleted: as the last struct saying
     /// so asked, so an extension may change it.
     pub on_delete: OnDelete,
+    /// Which records a relation offers to point to, as a JSON domain: as the last struct saying
+    /// so asked. Only what a client offers; nothing checks what is written against it.
+    pub domain: Option<&'static str>,
     pub automatic: bool,
     is_init: bool,
 }
@@ -80,6 +84,7 @@ impl FinalInternalField {
             tracking: false,
             owned: false,
             on_delete: OnDelete::default(),
+            domain: None,
             automatic: false,
             is_init: false,
         }
@@ -152,6 +157,9 @@ impl FinalInternalField {
         self.owned |= field_descriptor.owned;
         if let Some(on_delete) = field_descriptor.on_delete {
             self.on_delete = on_delete;
+        }
+        if field_descriptor.domain.is_some() {
+            self.domain = field_descriptor.domain;
         }
         if let Some(new_compute) = &field_descriptor.compute {
             if let Some(existing_compute) = &mut self.compute {

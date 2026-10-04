@@ -31,6 +31,8 @@ export interface FieldDescription {
     relation_kind?: "many2one" | "one2many" | "many2many";
     values?: [string, string][];
     inverse?: string;
+    /** The records a relation offers to point to, as the field declares. */
+    domain?: Domain;
     default?: unknown;
     /** Set on the field naming the model's records. */
     name_field?: boolean;
@@ -97,9 +99,12 @@ export class Orm {
         return this.rpc.call(`${model}.delete`, { ids });
     }
 
-    /** The records whose name holds `text`, whatever its case, as `[id, name]`: at most `limit`. */
-    nameSearch(model: string, text: string, limit = 8): Promise<[number, string][]> {
-        return this.rpc.call(`${model}.name_search`, { text, limit });
+    /**
+     * The records whose name holds `text`, whatever its case, as `[id, name]`: at most `limit`,
+     * among those matching `domain`.
+     */
+    nameSearch(model: string, text: string, limit = 8, domain: Domain = []): Promise<[number, string][]> {
+        return this.rpc.call(`${model}.name_search`, { text, limit, domain });
     }
 
     /**

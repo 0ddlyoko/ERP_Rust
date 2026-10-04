@@ -419,6 +419,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             is_tracked,
             is_owned,
             on_delete,
+            domain,
             ..
         } = f;
 
@@ -589,6 +590,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             None => quote! { None },
         };
 
+        let domain = match domain {
+            Some(text) => quote! { Some(#text) },
+            None => quote! { None },
+        };
+
         quote! {
             {
                 // Yep, I don't know how to call _get_model_name() without this line
@@ -605,6 +611,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     tracking: #is_tracked,
                     owned: #is_owned,
                     on_delete: #on_delete,
+                    domain: #domain,
                     compute: #compute,
                     field_ref: #field_reference,
                     selection: #selection,

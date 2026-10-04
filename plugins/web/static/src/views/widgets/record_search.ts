@@ -27,6 +27,8 @@ export class RecordSearch extends Component {
         text: t.string().default(""),
         /** Records not offered: those already chosen. */
         exclude: t.array(t.number()).default([]),
+        /** Only the records matching it are offered. */
+        domain: t.array(t.any()).default([]),
         placeholder: t.string().default(""),
         onEmpty: t.func<() => void>().optional(),
         onCreate: t.func<(name: string) => void>().optional(),
@@ -152,7 +154,12 @@ export class RecordSearch extends Component {
         const search = ++this.searches;
         this.searching = true;
         try {
-            const found = await this.orm.nameSearch(this.props.model, text, 8 + this.props.exclude.length);
+            const found = await this.orm.nameSearch(
+                this.props.model,
+                text,
+                8 + this.props.exclude.length,
+                [...this.props.domain],
+            );
             if (search === this.searches) {
                 this.results = found;
                 this.active = 0;

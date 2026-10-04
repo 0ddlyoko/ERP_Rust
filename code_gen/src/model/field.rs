@@ -38,6 +38,7 @@ pub struct FieldGen {
     pub is_tracked: bool,
     pub is_owned: bool,
     pub on_delete: Option<String>,
+    pub domain: Option<String>,
 }
 
 impl FieldGen {
@@ -68,6 +69,7 @@ impl FieldGen {
         let mut owned = None;
         let mut stored = None;
         let mut on_delete = None;
+        let mut domain = None;
         let mut required = None;
 
         for attr in parse_attributes(attrs)? {
@@ -196,6 +198,16 @@ impl FieldGen {
                     }
                     on_delete = Some((ident, key));
                 }
+                AllowedFieldAttrs::Domain(ident, value) => {
+                    let text = value.value();
+                    if let Err(error) = serde_json::from_str::<erp_search::SearchType>(&text) {
+                        return Err(syn::Error::new(
+                            value.span(),
+                            format!("not a domain: {error}"),
+                        ));
+                    }
+                    domain = Some((ident, text));
+                }
                 AllowedFieldAttrs::Required(ident) => {
                     required = Some(ident);
                 }
@@ -312,6 +324,14 @@ impl FieldGen {
                 "only a many2one — a `Reference<_, SingleId>` — takes this",
             ));
         }
+        if let Some((ident, _)) = &domain
+            && !is_reference
+        {
+            return Err(syn::Error::new(
+                ident.span(),
+                "only a relation — a `Reference` — takes this",
+            ));
+        }
         if let Some(ident) = &required
             && !is_reference
         {
@@ -345,6 +365,7 @@ impl FieldGen {
             is_tracked,
             is_owned: owned.is_some(),
             on_delete: on_delete.map(|(_, key)| key),
+            domain: domain.map(|(_, text)| text),
         })
     }
 }

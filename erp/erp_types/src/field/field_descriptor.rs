@@ -33,4 +33,7 @@ pub struct FieldDescriptor {
     /// What a many2one does when the record it points to is deleted; `None` leaves it as
     /// another struct said, or emptied when none did.
     pub on_delete: Option<OnDelete>,
+    /// Which records a relation offers to point to, as a JSON domain; `None` leaves it as another
+    /// struct said, or every record when none did.
+    pub domain: Option<&'static str>,
 }

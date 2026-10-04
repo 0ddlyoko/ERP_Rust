@@ -110,6 +110,7 @@ pub enum AllowedFieldAttrs {
     Owned(Ident),
     /// Says what a many2one does when the record it points to is deleted.
     OnDelete(Ident, LitStr),
+    Domain(Ident, LitStr),
     /// Says a many2one always points to a record.
     Required(Ident),
 }
@@ -127,6 +128,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "tracking",
     "owned",
     "ondelete",
+    "domain",
     "required",
 ];
 
@@ -181,6 +183,10 @@ impl Parse for AllowedFieldAttrs {
                 name,
                 parse_eq(input, "ondelete = \"cascade\"")?,
             )),
+            "domain" => Ok(AllowedFieldAttrs::Domain(
+                name,
+                parse_eq(input, r#"domain = "[[\"active\", \"=\", true]]""#)?,
+            )),
             "required" => Ok(AllowedFieldAttrs::Required(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
@@ -206,6 +212,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Tracking(ident) => ident.span(),
             AllowedFieldAttrs::Owned(ident) => ident.span(),
             AllowedFieldAttrs::OnDelete(ident, _) => ident.span(),
+            AllowedFieldAttrs::Domain(ident, _) => ident.span(),
             AllowedFieldAttrs::Required(ident) => ident.span(),
         }
     }

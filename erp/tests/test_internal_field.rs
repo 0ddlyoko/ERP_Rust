@@ -31,6 +31,7 @@ fn test_register_field() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     field_age.register_internal_field(&InternalField {
@@ -48,6 +49,7 @@ fn test_register_field() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -89,6 +91,7 @@ fn test_register_field() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -124,6 +127,7 @@ fn test_register_field() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -162,6 +166,7 @@ fn test_register_field() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     assert_eq!(field_name.name, "name");
@@ -202,6 +207,7 @@ fn test_register_field_without_default_value_is_allowed() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     assert_eq!(field_name.kind, FieldKind::String);
@@ -232,6 +238,7 @@ fn test_storage_asked_for_a_field_nothing_computes() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     let wrong = field.settle_storage().expect_err("nothing computes it");
@@ -258,6 +265,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 
     field_name.register_internal_field(&InternalField {
@@ -275,6 +283,7 @@ fn test_register_field_with_another_default_type_should_fail() {
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
 }
 

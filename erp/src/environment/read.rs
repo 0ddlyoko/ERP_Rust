@@ -65,6 +65,17 @@ impl<'mm> Environment<'mm> {
         text: &str,
         limit: usize,
     ) -> Result<Vec<(u32, String)>> {
+        self.name_search_within(model_name, text, &SearchType::Nothing, limit)
+    }
+
+    /// Same, among the records matching a domain as well: those a field may point to.
+    pub fn name_search_within(
+        &mut self,
+        model_name: &str,
+        text: &str,
+        within: &SearchType,
+        limit: usize,
+    ) -> Result<Vec<(u32, String)>> {
         let model = self.model_manager.try_get_model(model_name)?;
         let Some(name_field) = model
             .name_field()
@@ -81,11 +92,15 @@ impl<'mm> Environment<'mm> {
             })
             .collect();
         let pattern = format!("%{escaped}%");
-        let domain = SearchType::Tuple(erp_search::SearchTuple {
+        let named = SearchType::Tuple(erp_search::SearchTuple {
             left: LeftTuple::from(name_field.as_str()),
             operator: erp_search::SearchOperator::ILike,
             right: erp_search::RightTuple::String(pattern),
         });
+        let domain = match within {
+            SearchType::Nothing => named,
+            within => SearchType::And(Box::new(named), Box::new(within.clone())),
+        };
         let options = SearchOptions {
             limit: Some(limit),
             offset: 0,

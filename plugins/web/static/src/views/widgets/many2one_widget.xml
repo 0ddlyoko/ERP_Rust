@@ -1,7 +1,7 @@
 <templates>
     <t t-name="web.Many2OneWidget">
         <div t-if="editable" t-att-class="className + ' o_many2one'">
-            <RecordSearch model="relation" text="text" onPick="pick" onEmpty="clear"
+            <RecordSearch model="relation" text="text" domain="domain" onPick="pick" onEmpty="clear"
                           onCreate="canCreate ? create : undefined" onCreateEdit="canCreate ? createEdit : undefined"/>
             <FormDialog t-if="creating" model="relation" defaults="creating" onCreated="created" onClose="closeDialog"/>
             <button t-if="openAction !== null &amp;&amp; id !== null" type="button" class="o_many2one_open"

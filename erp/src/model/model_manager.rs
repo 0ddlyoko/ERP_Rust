@@ -89,6 +89,7 @@ fn add_automatic_field(
         tracking: false,
         owned: false,
         on_delete: None,
+        domain: None,
     });
     field.automatic = true;
     model.fields.insert(name.to_string(), field);

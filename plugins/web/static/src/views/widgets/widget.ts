@@ -1,5 +1,5 @@
 import { Component, type ComponentClass, type PropsOf, registry, t } from "trame";
-import type { FieldDescription } from "@web/core/orm";
+import type { Domain, FieldDescription } from "@web/core/orm";
 
 /** The props every widget takes; a widget adds its own to them. */
 export const widgetProps = {
@@ -36,6 +36,18 @@ export abstract class Widget extends Component {
     static template = "web.Widget";
 
     declare props: PropsOf<typeof widgetProps>;
+
+    /**
+     * The records the field offers to point to: as its `domain` attribute in the view says, else
+     * as the field declares, else all of them.
+     */
+    get domain(): Domain {
+        const domain = this.props.attrs.domain;
+        if (typeof domain === "string") {
+            return JSON.parse(domain) as Domain;
+        }
+        return [...(this.props.field.domain ?? [])];
+    }
 
     /** The value shown. */
     get value(): unknown {

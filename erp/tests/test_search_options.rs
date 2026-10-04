@@ -248,6 +248,29 @@ fn test_name_search_finds_what_was_typed() -> Result<()> {
     Ok(())
 }
 
+/// Narrowed to a domain, only the records matching it are found: what a field may point to.
+#[test]
+fn test_name_search_within_a_domain() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(&mut env, &["Facture B", "facture a", "Brouillon"])?;
+
+    let within = make_domain!([("name", "!=", "facture a")]);
+    let found = env.name_search_within("invoice", "fact", &within, 8)?;
+    assert_eq!(
+        found.into_iter().map(|(_, name)| name).collect::<Vec<_>>(),
+        vec!["Facture B"]
+    );
+
+    let remote = env.call_rpc(
+        "invoice",
+        "name_search",
+        &serde_json::json!({"text": "fact", "domain": [["name", "!=", "facture a"]]}),
+    )?;
+    assert_eq!(remote.as_array().map(Vec::len), Some(1));
+    Ok(())
+}
+
 #[test]
 fn test_in_and_not_in() -> Result<()> {
     let app = new_app();

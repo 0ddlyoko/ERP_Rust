@@ -55,7 +55,7 @@
                      stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 Add a line
             </button>
-            <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" onPick="add" placeholder="'Add…'"/>
+            <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" domain="domain" onPick="add" placeholder="'Add…'"/>
         </div>
     </t>
 </templates>

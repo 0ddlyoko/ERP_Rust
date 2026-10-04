@@ -398,6 +398,9 @@ struct FieldsGetParams {
 struct NameSearchParams {
     #[serde(default)]
     text: String,
+    /// Only among the records matching it: those the field searched from may point to.
+    #[serde(default = "everything")]
+    domain: SearchType,
     #[serde(default = "name_search_limit")]
     limit: usize,
 }
@@ -505,8 +508,13 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             fields_get(env, model_name, &fields)
         }
         Verb::NameSearch => {
-            let NameSearchParams { text, limit } = parse(params)?;
-            let found = env.name_search(model_name, &text, limit)?;
+            let NameSearchParams {
+                text,
+                domain,
+                limit,
+            } = parse(params)?;
+            let domain = blind_domain(env, model_name, &domain)?;
+            let found = env.name_search_within(model_name, &text, &domain, limit)?;
             Ok(json!(
                 found
                     .into_iter()
@@ -735,6 +743,9 @@ fn describe(field: &FinalInternalField, selections: &Selections) -> Result<Value
         });
         if let FieldReferenceType::O2M { inverse_field } = &reference.inverse_field {
             described["inverse"] = json!(inverse_field);
+        }
+        if let Some(domain) = field.domain {
+            described["domain"] = serde_json::from_str(domain)?;
         }
     }
     if let Some(family) = field.selection {
