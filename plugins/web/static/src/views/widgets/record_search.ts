@@ -1,4 +1,4 @@
-import { Component, inject, props, state, t } from "trame";
+import { Component, effect, inject, props, state, t } from "trame";
 import { Orm } from "@web/core/orm";
 
 /** How long typing has to pause before the records are searched, in milliseconds. */
@@ -41,6 +41,11 @@ export class RecordSearch extends Component {
     @state accessor active = 0;
     @state accessor isOpen = false;
     @state accessor searching = false;
+    /** Where the list of records stands on the page: under the input, as wide as it. */
+    @state accessor place = "";
+
+    /** The input, set by the template. */
+    input: HTMLInputElement | null = null;
 
     private timer: ReturnType<typeof setTimeout> | undefined;
     private searches = 0;
@@ -52,6 +57,29 @@ export class RecordSearch extends Component {
     /** What was found, less the records not offered. */
     get choices(): Choice[] {
         return this.results.filter(([id]) => !this.props.exclude.includes(id));
+    }
+
+    /**
+     * While open, the list follows its input when the page or a box around it scrolls. It is
+     * shown over the page rather than inside the input's box, which could clip it.
+     */
+    @effect followInput(): (() => void) | void {
+        if (!this.isOpen) {
+            return;
+        }
+        const follow = (): void => {
+            const box = this.input?.getBoundingClientRect();
+            if (box !== undefined) {
+                this.place = `top: ${box.bottom + 4}px; left: ${box.left}px; width: ${box.width}px`;
+            }
+        };
+        follow();
+        window.addEventListener("scroll", follow, true);
+        window.addEventListener("resize", follow);
+        return () => {
+            window.removeEventListener("scroll", follow, true);
+            window.removeEventListener("resize", follow);
+        };
     }
 
     /** The records found, then creating one from what was typed, when that is offered. */

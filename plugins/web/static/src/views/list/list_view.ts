@@ -6,6 +6,7 @@ import type { Domain, Values } from "@web/core/orm";
 import { SearchBar } from "@web/views/search/search_bar";
 import { defaultFacets, type Facet, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
 import { type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
+import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { listActions } from "./list_actions";
 
 /** Something the actions menu offers on the selection: a button of the view, or a list action. */
@@ -58,6 +59,22 @@ export class ListView extends View {
     @state accessor actionsOpen = false;
     @state accessor confirming: Confirming | null = null;
     @state accessor running = false;
+    /** The columns' widths, once the user sized one. */
+    @state accessor widths: ColumnWidths | null = null;
+
+    resize(event: MouseEvent, name: string): void {
+        dragColumn(event, name, this.widths, (widths) => {
+            this.widths = widths;
+        });
+    }
+
+    columnStyle(column: Column): string {
+        return columnStyle(this.widths, column.name);
+    }
+
+    get tableStyle(): string {
+        return tableStyle(this.widths);
+    }
 
     /** Remember the list once its rows are there; reading them sooner would hold the view back. */
     @effect remember(): void {

@@ -337,3 +337,47 @@
 .o_button_primary.o_button_danger {
     background: var(--o-danger);
 }
+
+/* Columns sized by hand */
+
+.o_list_table th {
+    position: relative;
+}
+
+.o_list_resize {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+}
+
+.o_list_resize:hover {
+    background: color-mix(in oklch, var(--o-accent) 35%, transparent);
+}
+
+.o_list_table.o_list_sized {
+    table-layout: fixed;
+}
+
+.o_list_table.o_list_sized th[data-column] {
+    box-sizing: border-box;
+}
+
+.o_list_table.o_list_sized td,
+.o_list_table.o_list_sized th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_list_table .o_list_filler {
+    padding: 0;
+}
+
+body.o_resizing,
+body.o_resizing * {
+    cursor: col-resize !important;
+    user-select: none;
+}

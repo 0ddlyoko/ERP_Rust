@@ -5,20 +5,22 @@
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
             </svg>
-            <input type="text" class="o_input" role="combobox" aria-autocomplete="list"
+            <input type="text" class="o_input" role="combobox" aria-autocomplete="list" t-ref="input"
                    t-att-aria-expanded="isOpen ? 'true' : 'false'" t-att-value="inputText"
                    t-att-placeholder="props.placeholder"
                    t-on-focus="(ev) => enter(ev.target)"
                    t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
                    t-on-blur="close"/>
-            <ul t-if="isOpen" class="o_record_search_results" role="listbox">
-                <li t-if="searching &amp;&amp; !choices.length" class="o_record_search_note">Searching…</li>
-                <li t-elif="!entries.length" class="o_record_search_note">No record found.</li>
-                <li t-foreach="entries" t-as="entry" t-key="entry.kind === 'pick' ? entry.choice[0] : entry.kind"
-                    role="option" t-att-aria-selected="entry_index === active ? 'true' : 'false'"
-                    t-att-class="{ o_record_search_result: true, o_record_search_create: entry.kind !== 'pick', active: entry_index === active }"
-                    t-on-mousedown.prevent="() => choose(entry)">{{ label(entry) }}</li>
-            </ul>
+            <Portal t-if="isOpen" target="'body'">
+                <ul class="o_record_search_results" role="listbox" t-att-style="place">
+                    <li t-if="searching &amp;&amp; !choices.length" class="o_record_search_note">Searching…</li>
+                    <li t-elif="!entries.length" class="o_record_search_note">No record found.</li>
+                    <li t-foreach="entries" t-as="entry" t-key="entry.kind === 'pick' ? entry.choice[0] : entry.kind"
+                        role="option" t-att-aria-selected="entry_index === active ? 'true' : 'false'"
+                        t-att-class="{ o_record_search_result: true, o_record_search_create: entry.kind !== 'pick', active: entry_index === active }"
+                        t-on-mousedown.prevent="() => choose(entry)">{{ label(entry) }}</li>
+                </ul>
+            </Portal>
         </div>
     </t>
 </templates>

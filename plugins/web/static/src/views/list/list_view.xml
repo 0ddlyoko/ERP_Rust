@@ -47,7 +47,7 @@
             <section class="o_list_card">
                 <Suspense>
                     <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
-                    <table class="o_list_table">
+                    <table t-att-class="{ o_list_table: true, o_list_sized: widths !== null }" t-att-style="tableStyle">
                         <thead>
                             <tr>
                                 <th class="o_list_select">
@@ -57,8 +57,9 @@
                                                t-on-change="(ev) => selectAll(ev.target.checked)"/>
                                     </Suspense>
                                 </th>
-                                <th t-foreach="columns" t-as="column" t-key="column.name"
+                                <th t-foreach="columns" t-as="column" t-key="column.name" t-att-data-column="column.name"
                                     t-att-class="cellClass(column) + (isSortable(column) ? ' o_list_sortable' : '')"
+                                    t-att-style="columnStyle(column)"
                                     t-att-aria-sort="sortOf(column)" t-on-click="() => sortBy(column)">
                                     {{ column.label }}
                                     <svg t-if="sortOf(column) !== 'none'" class="o_list_sort" width="11" height="11" viewBox="0 0 24 24"
@@ -67,14 +68,17 @@
                                         <path t-if="sortOf(column) === 'ascending'" d="m6 15 6-6 6 6"/>
                                         <path t-else="" d="m6 9 6 6 6-6"/>
                                     </svg>
+                                    <span class="o_list_resize" aria-hidden="true"
+                                          t-on-mousedown="(ev) => resize(ev, column.name)"/>
                                 </th>
+                                <th t-if="widths" class="o_list_filler"/>
                             </tr>
                         </thead>
                         <Suspense>
                             <t t-set-slot="fallback">
                                 <tbody>
                                     <tr class="o_list_empty">
-                                        <td t-att-colspan="columns.length + 1"><t t-call="web.Loading"/></td>
+                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
                                     </tr>
                                 </tbody>
                             </t>
@@ -92,9 +96,10 @@
                                         <t t-component="widgetFor(column)" record="record" model="props.resModel" name="column.name"
                                            field="column.field" attrs="column.attrs"/>
                                     </td>
+                                    <td t-if="widths" class="o_list_filler"/>
                                 </tr>
                                 <tr t-if="records?.length === 0" class="o_list_empty">
-                                    <td t-att-colspan="columns.length + 1">No records.</td>
+                                    <td t-att-colspan="columns.length + (widths ? 2 : 1)">No records.</td>
                                 </tr>
                             </tbody>
                         </Suspense>

@@ -2,6 +2,7 @@ import { type ComponentClass, computed, effect, inject, load, props, resource, s
 import { type Fields, Models } from "@web/core/models";
 import { Orm, type Values } from "@web/core/orm";
 import { Views } from "@web/core/views";
+import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "@web/views/list/column_widths";
 import { type Column, columnOf, widgetFor } from "@web/views/view";
 import { RecordSearch } from "./record_search";
 import { widgetProps, widgets } from "./widget";
@@ -39,9 +40,26 @@ export class ListWidget extends X2ManyWidget {
     /** The widget's element, set by its template. */
     element: HTMLElement | null = null;
 
+    /** The columns' widths, once the user sized one. */
+    @state accessor widths: ColumnWidths | null = null;
+
+    resize(event: MouseEvent, name: string): void {
+        dragColumn(event, name, this.widths, (widths) => {
+            this.widths = widths;
+        });
+    }
+
+    columnStyle(column: Column): string {
+        return columnStyle(this.widths, column.name);
+    }
+
+    get tableStyle(): string {
+        return tableStyle(this.widths);
+    }
+
     /**
-     * While a row is edited, pressing anywhere outside it leaves it — except within a dialog,
-     * such as one a cell opened to create a record.
+     * While a row is edited, pressing anywhere outside it leaves it — except within what a cell
+     * opened over the page: its drop-down, or a dialog creating a record.
      */
     @effect leaveEditingFromOutside(): (() => void) | void {
         if (this.editing === null) {
@@ -50,7 +68,8 @@ export class ListWidget extends X2ManyWidget {
         const leave = (event: MouseEvent): void => {
             const target = event.target instanceof Element ? event.target : null;
             const row = this.element?.querySelector(".o_x2many_editing");
-            if (target === null || row?.contains(target) || target.closest(".o_dialog_backdrop") !== null) {
+            const elsewhere = target?.closest(".o_dialog_backdrop, .o_record_search_results") ?? null;
+            if (target === null || row?.contains(target) || elsewhere !== null) {
                 return;
             }
             this.editing = null;

@@ -1,46 +1,53 @@
 <templates>
     <t t-name="web.ListWidget">
         <div t-att-class="className + ' o_x2many_list'" t-ref="element">
-            <table class="o_list_table">
-                <thead>
-                    <tr>
-                        <th t-foreach="columns" t-as="column" t-key="column.name"
-                            t-att-class="cellClass(column)">{{ column.label }}</th>
-                        <th t-if="editable || openAction !== null" class="o_x2many_actions"/>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr t-foreach="rows" t-as="row" t-key="row.key"
-                        t-att-class="{ o_list_row: true, o_x2many_openable: editable || (openAction !== null &amp;&amp; row.id !== null), o_x2many_editing: editing === row.key }"
-                        t-on-click="() => choose(row)">
-                        <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
-                            <t t-component="cellWidget(column)" record="row.values" model="model" name="column.name"
-                               field="column.field" attrs="column.attrs" readonly="isReadonly(row, column)"
-                               onChange="changer(row, column.name)"/>
-                        </td>
-                        <td t-if="editable || openAction !== null" class="o_x2many_actions" t-on-click.stop="() => {}">
-                            <button t-if="openAction !== null &amp;&amp; row.id !== null" type="button" class="o_x2many_button"
-                                    aria-label="Open this line" title="Open this line" t-on-click="() => open(row.id)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
-                                </svg>
-                            </button>
-                            <button t-if="editable" type="button" class="o_x2many_button o_x2many_remove" aria-label="Remove this line"
-                                    title="Remove this line" t-on-click="() => remove(row.key)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M4 7h16"/><path d="M10 11v6M14 11v6"/>
-                                    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr t-if="!rows.length" class="o_list_empty">
-                        <td t-att-colspan="columns.length + (editable || openAction !== null ? 1 : 0)">No records.</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="o_x2many_scroll">
+                <table t-att-class="{ o_list_table: true, o_list_sized: widths !== null }" t-att-style="tableStyle">
+                    <thead>
+                        <tr>
+                            <th t-foreach="columns" t-as="column" t-key="column.name" t-att-data-column="column.name"
+                                t-att-class="cellClass(column)" t-att-style="columnStyle(column)">
+                                {{ column.label }}
+                                <span class="o_list_resize" aria-hidden="true" t-on-mousedown="(ev) => resize(ev, column.name)"/>
+                            </th>
+                            <th t-if="widths" class="o_list_filler"/>
+                            <th t-if="editable || openAction !== null" class="o_x2many_actions"/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="rows" t-as="row" t-key="row.key"
+                            t-att-class="{ o_list_row: true, o_x2many_openable: editable || (openAction !== null &amp;&amp; row.id !== null), o_x2many_editing: editing === row.key }"
+                            t-on-click="() => choose(row)">
+                            <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
+                                <t t-component="cellWidget(column)" record="row.values" model="model" name="column.name"
+                                   field="column.field" attrs="column.attrs" readonly="isReadonly(row, column)"
+                                   onChange="changer(row, column.name)"/>
+                            </td>
+                            <td t-if="widths" class="o_list_filler"/>
+                            <td t-if="editable || openAction !== null" class="o_x2many_actions" t-on-click.stop="() => {}">
+                                <button t-if="openAction !== null &amp;&amp; row.id !== null" type="button" class="o_x2many_button"
+                                        aria-label="Open this line" title="Open this line" t-on-click="() => open(row.id)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
+                                    </svg>
+                                </button>
+                                <button t-if="editable" type="button" class="o_x2many_button o_x2many_remove" aria-label="Remove this line"
+                                        title="Remove this line" t-on-click="() => remove(row.key)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4 7h16"/><path d="M10 11v6M14 11v6"/>
+                                        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr t-if="!rows.length" class="o_list_empty">
+                            <td t-att-colspan="columns.length + (widths ? 1 : 0) + (editable || openAction !== null ? 1 : 0)">No records.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <button t-if="editable &amp;&amp; isOne2Many" type="button" class="o_button_secondary o_x2many_add" t-on-click="addLine">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>

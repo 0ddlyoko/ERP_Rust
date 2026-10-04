@@ -287,11 +287,8 @@
 }
 
 .o_record_search_results {
-    position: absolute;
-    z-index: 20;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
+    position: fixed;
+    z-index: 60;
     min-width: 220px;
     max-height: 280px;
     overflow-y: auto;
@@ -372,30 +369,18 @@
     gap: 10px;
 }
 
-/* Laid out by its header alone, so editing a row does not move the columns; its corners are
-   rounded cell by cell, since clipping the table would clip a cell's drop-down too. */
-.o_x2many_list .o_list_table {
-    table-layout: fixed;
+/* Scrolled sideways when its columns are sized wider than the form; laid out by its header
+   alone, so that editing a row does not move them. */
+.o_x2many_scroll {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
     border: 1px solid var(--o-border);
     border-radius: var(--o-radius-control);
-    border-collapse: separate;
-    border-spacing: 0;
 }
 
-.o_x2many_list .o_list_table thead th:first-child {
-    border-top-left-radius: var(--o-radius-control);
-}
-
-.o_x2many_list .o_list_table thead th:last-child {
-    border-top-right-radius: var(--o-radius-control);
-}
-
-.o_x2many_list .o_list_table tbody tr:last-child td:first-child {
-    border-bottom-left-radius: var(--o-radius-control);
-}
-
-.o_x2many_list .o_list_table tbody tr:last-child td:last-child {
-    border-bottom-right-radius: var(--o-radius-control);
+.o_x2many_list .o_list_table {
+    table-layout: fixed;
 }
 
 .o_x2many_list > .o_record_search {
