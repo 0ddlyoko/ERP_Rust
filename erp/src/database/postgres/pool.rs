@@ -134,6 +134,7 @@ impl ConnectionPool {
             pool: Arc::clone(&self.inner),
             client: Some(client),
             broken: false,
+            transaction: Transaction::None,
         })
     }
 }
@@ -265,6 +266,17 @@ pub struct PooledConnection {
     /// Always `Some` until dropped; an `Option` only so the client can be moved out there.
     client: Option<Client>,
     broken: bool,
+    transaction: Transaction,
+}
+
+/// Where a connection is in its transaction.
+#[derive(Clone, Copy, PartialEq)]
+enum Transaction {
+    None,
+    /// Asked for, and started by the first statement: a unit of work that never reaches the
+    /// database costs it nothing.
+    Pending,
+    Started,
 }
 
 impl PooledConnection {
@@ -274,12 +286,46 @@ impl PooledConnection {
         self.broken = true;
     }
 
+    /// Start a transaction, sent along with the first statement that needs it.
+    pub fn begin(&mut self) {
+        self.transaction = Transaction::Pending;
+    }
+
+    /// Commit the transaction; nothing to send when no statement started it.
+    pub fn commit(&mut self) -> std::result::Result<(), postgres::Error> {
+        self.end("COMMIT")
+    }
+
+    /// Roll the transaction back; nothing to send when no statement started it.
+    pub fn rollback(&mut self) -> std::result::Result<(), postgres::Error> {
+        self.end("ROLLBACK")
+    }
+
+    fn end(&mut self, statement: &str) -> std::result::Result<(), postgres::Error> {
+        let started = self.transaction == Transaction::Started;
+        self.transaction = Transaction::None;
+        if started {
+            request_log::sql(statement, || self.deref_mut().batch_execute(statement))?;
+        }
+        Ok(())
+    }
+
+    fn start_if_pending(&mut self) -> std::result::Result<(), postgres::Error> {
+        if self.transaction == Transaction::Pending {
+            self.transaction = Transaction::Started;
+            let statement = "START TRANSACTION";
+            request_log::sql(statement, || self.deref_mut().batch_execute(statement))?;
+        }
+        Ok(())
+    }
+
     /// [`Client::query`], counted in the request's SQL.
     pub fn query(
         &mut self,
         query: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<Vec<Row>, postgres::Error> {
+        self.start_if_pending()?;
         request_log::sql(query, || self.deref_mut().query(query, params))
     }
 
@@ -289,6 +335,7 @@ impl PooledConnection {
         query: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<Row, postgres::Error> {
+        self.start_if_pending()?;
         request_log::sql(query, || self.deref_mut().query_one(query, params))
     }
 
@@ -298,11 +345,13 @@ impl PooledConnection {
         query: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<u64, postgres::Error> {
+        self.start_if_pending()?;
         request_log::sql(query, || self.deref_mut().execute(query, params))
     }
 
     /// [`Client::batch_execute`], counted in the request's SQL.
     pub fn batch_execute(&mut self, query: &str) -> std::result::Result<(), postgres::Error> {
+        self.start_if_pending()?;
         request_log::sql(query, || self.deref_mut().batch_execute(query))
     }
 }

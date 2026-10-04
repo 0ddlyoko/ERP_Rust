@@ -120,3 +120,28 @@ fn test_a_rolled_back_change_never_reaches_the_cache() -> Result<()> {
     );
     Ok(())
 }
+
+/// A bounded cache lets go of the value used least recently, not of the oldest one.
+#[test]
+fn test_a_bounded_cache_keeps_what_is_used() -> Result<()> {
+    static BOUNDED_BUILDS: AtomicUsize = AtomicUsize::new(0);
+    let mut app = new_app()?;
+    app.model_manager
+        .shared_caches
+        .register_bounded("test.bounded", &["tag"], 2);
+    let read = |key: &str| -> Result<usize> {
+        let mut env = app.new_env_as_option(None)?;
+        let value = env.cached("test.bounded", key, |_| {
+            Ok(BOUNDED_BUILDS.fetch_add(1, Ordering::SeqCst))
+        })?;
+        env.close()?;
+        Ok(*value)
+    };
+    let a = read("a")?;
+    let b = read("b")?;
+    assert_eq!(read("a")?, a, "used again, so the most recent");
+    read("c")?;
+    assert_eq!(read("a")?, a, "kept");
+    assert_ne!(read("b")?, b, "let go to make room for c, and built again");
+    Ok(())
+}

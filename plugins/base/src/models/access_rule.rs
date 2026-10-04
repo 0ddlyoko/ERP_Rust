@@ -29,6 +29,11 @@ pub struct AccessRule<Mode: IdMode> {
     domain_delete: Option<String>,
 }
 
+/// The rules of each model, by model name.
+pub const RULES_CACHE: &str = "base.access_rules";
+/// The groups of each user, by id.
+pub const GROUPS_CACHE: &str = "base.user_groups";
+
 impl AccessRule<SingleId> {
     /// Where the core gets its rules from, and what makes them stale.
     ///
@@ -45,20 +50,27 @@ impl AccessRule<SingleId> {
         }
     }
 
-    /// Every rule written for a model.
+    /// Every rule written for a model, kept across requests until a rule changes.
     fn rules_for(env: &mut Environment, model_name: &str) -> Result<Vec<Rule>> {
-        let found: AccessRule<MultipleIds> =
-            env.search(&make_domain!([("model", "=", model_name)]))?;
-        let mut rules = Vec::with_capacity(found.get_ids_ref().len());
-        for rule in found {
-            rules.push(rule.to_rule(env)?);
-        }
-        Ok(rules)
+        let rules = env.cached(RULES_CACHE, model_name, |env| {
+            let found: AccessRule<MultipleIds> =
+                env.search(&make_domain!([("model", "=", model_name)]))?;
+            let mut rules = Vec::with_capacity(found.get_ids_ref().len());
+            for rule in found {
+                rules.push(rule.to_rule(env)?);
+            }
+            Ok(rules)
+        })?;
+        Ok(rules.as_ref().clone())
     }
 
+    /// The groups of a user, kept across requests until a user or a group changes.
     fn groups_of(env: &mut Environment, uid: u32) -> Result<Vec<u32>> {
-        let user = Users::<SingleId>::from_id(uid, env);
-        Ok(user.get_groups::<Group<MultipleIds>>(env)?.get_ids())
+        let groups = env.cached(GROUPS_CACHE, &uid.to_string(), |env| {
+            let user = Users::<SingleId>::from_id(uid, env);
+            Ok(user.get_groups::<Group<MultipleIds>>(env)?.get_ids())
+        })?;
+        Ok(groups.as_ref().clone())
     }
 
     fn to_rule(&self, env: &mut Environment) -> Result<Rule> {

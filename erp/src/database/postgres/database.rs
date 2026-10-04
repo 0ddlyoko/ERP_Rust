@@ -582,19 +582,20 @@ impl Database for PostgresDatabase {
 
     fn start_transaction(&mut self) -> Result<()> {
         self.is_transaction = true;
-        Ok(self.client.batch_execute("START TRANSACTION")?)
+        self.client.begin();
+        Ok(())
     }
 
     fn commit_transaction(&mut self) -> Result<()> {
         self.is_transaction = false;
-        Ok(self.client.batch_execute("COMMIT")?)
+        Ok(self.client.commit()?)
     }
 
     /// Roll the transaction back. A connection that could not roll back is closed rather than
     /// lent again: what state it was left in is unknown.
     fn rollback_transaction(&mut self) -> Result<()> {
         self.is_transaction = false;
-        let rolled_back = self.client.batch_execute("ROLLBACK");
+        let rolled_back = self.client.rollback();
         if rolled_back.is_err() {
             self.client.mark_broken();
         }

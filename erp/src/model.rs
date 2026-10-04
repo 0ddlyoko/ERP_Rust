@@ -15,6 +15,7 @@ use erp_types::field::{EmptyValue, FieldType, Reference};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{BaseModel, CommonModel};
 use std::error::Error;
+use std::sync::Arc;
 
 // We need to make another trait here to be able to implement methods, as we are in another crate.
 pub trait Model<Mode: IdMode>: CommonModel<Mode> {}
@@ -59,6 +60,9 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
 
     /// Returns the record the given many2one points to: an empty one when it points nowhere.
     ///
+    /// It remembers what the rest of the recordset points to, as Odoo's prefetching does:
+    /// reading a field of one of them loads it for all.
+    ///
     /// If error, returns the error
     pub fn get_reference<M, BM2>(
         &self,
@@ -71,11 +75,26 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     {
         let model_name = Self::get_model_name();
         let id = self.get_id_mode();
-        let result: Option<&FieldType> = env.get_field_value(model_name, field_name, id)?;
-        let target = match result {
-            Some(FieldType::Ref(id)) => SingleId::from(*id),
-            _ => SingleId::empty(),
+        let target = match env.get_field_value(model_name, field_name, id)? {
+            Some(FieldType::Ref(target)) => *target,
+            _ => return Ok(Reference::<BM2, SingleId>::from(SingleId::empty()).get::<M>()),
         };
+        let mut targets: Vec<u32> = id
+            .prefetch_ids()
+            .iter()
+            .filter_map(|other| {
+                match env
+                    .cache
+                    .get_field_from_cache(model_name, field_name, *other)
+                {
+                    Some(FieldType::Ref(target)) => Some(*target),
+                    _ => None,
+                }
+            })
+            .collect();
+        targets.sort_unstable();
+        targets.dedup();
+        let target = SingleId::within(target, Arc::from(targets));
         Ok(Reference::<BM2, SingleId>::from(target).get::<M>())
     }
 }

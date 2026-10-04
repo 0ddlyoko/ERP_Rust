@@ -9,6 +9,7 @@ use erp_search::SearchType;
 use erp_search_code_gen::make_domain;
 use erp_types::field::{FieldKind, FieldType, IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
+use std::collections::HashMap;
 use std::error::Error;
 use thiserror::Error;
 
@@ -260,26 +261,43 @@ pub fn save_record(
 
 /// The external identifier of a record, `module.name`, if a data file or a plugin gave it one.
 pub fn external_id_of(env: &mut Environment, model_name: &str, id: u32) -> Result<Option<String>> {
+    Ok(external_ids_of(env, model_name, &[id])?.remove(&id))
+}
+
+/// The external identifiers of records, by id, for those a data file or a plugin named: two
+/// queries whatever their number.
+pub fn external_ids_of(
+    env: &mut Environment,
+    model_name: &str,
+    ids: &[u32],
+) -> Result<HashMap<u32, String>> {
+    if ids.is_empty() {
+        return Ok(HashMap::new());
+    }
     let env = &mut *env.sudo();
-    let res_id = id as i32;
-    let ids = env.search_ids(
+    let res_ids: Vec<i32> = ids.iter().map(|id| *id as i32).collect();
+    let found = env.search_ids(
         MODEL_DATA,
-        &make_domain!([("model", "=", model_name), ("res_id", "=", res_id)]),
+        &make_domain!([("model", "=", model_name), ("res_id", "in", res_ids)]),
     )?;
-    let Some(found) = ids.first() else {
-        return Ok(None);
-    };
-    let rows = env.read(MODEL_DATA, &SingleId::from(*found), &["module", "name"])?;
-    let Some(row) = rows.first() else {
-        return Ok(None);
-    };
-    let (Some(module), Some(name)) = (
-        row.get_option::<&String>("module"),
-        row.get_option::<&String>("name"),
-    ) else {
-        return Ok(None);
-    };
-    Ok(Some(format!("{module}.{name}")))
+    let rows = env.read(
+        MODEL_DATA,
+        &MultipleIds::from(found),
+        &["module", "name", "res_id"],
+    )?;
+    let mut named = HashMap::with_capacity(rows.len());
+    for row in &rows {
+        if let (Some(module), Some(name), Some(res_id)) = (
+            row.get_option::<&String>("module"),
+            row.get_option::<&String>("name"),
+            row.get_option::<&i32>("res_id"),
+        ) {
+            named
+                .entry(*res_id as u32)
+                .or_insert_with(|| format!("{module}.{name}"));
+        }
+    }
+    Ok(named)
 }
 
 /// The names a module gave to records of a model, `name` in `module.name`.

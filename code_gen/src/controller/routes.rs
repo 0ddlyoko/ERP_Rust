@@ -10,13 +10,22 @@ struct ParsedRoute {
     args: Vec<(Ident, Type)>,
     ret: Type,
     has_sup: bool,
-    route: Option<(LitStr, Vec<String>, bool)>,
+    route: Option<RouteArgs>,
     item: ImplItemFn,
 }
 
 /// `#[erp_routes]`: the overridable methods of a controller, and the URLs some of them answer.
 ///
 /// Mirrors `#[erp_methods]`. Every method of the block is overridable by name; one with
+/// What a route attribute says: the URL, its verbs, whether it needs a CSRF token, and whether
+/// it answers anyone without looking the session up.
+struct RouteArgs {
+    pattern: LitStr,
+    verbs: Vec<String>,
+    csrf: bool,
+    anyone: bool,
+}
+
 /// `#[erp(route = "...")]` also answers that URL. The route's parameters and the query string
 /// fill the method's arguments by name.
 pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
@@ -70,7 +79,18 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             );
         });
 
-        if let Some((pattern, verbs, csrf)) = &method.route {
+        if let Some(RouteArgs {
+            pattern,
+            verbs,
+            csrf,
+            anyone,
+        }) = &method.route
+        {
+            let auth = if *anyone {
+                quote! { erp::http::Auth::None }
+            } else {
+                quote! { erp::http::Auth::User }
+            };
             free.push(http_fn(method, &http, &self_ty));
             registrations.push(quote! {
                 registry.register_route(
@@ -79,6 +99,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
                     #pattern,
                     &[#(#verbs),*],
                     #csrf,
+                    #auth,
                     #http,
                 );
             });
@@ -135,7 +156,7 @@ fn parse(item: ImplItemFn) -> Result<ParsedRoute> {
         args.push((ident.ident.clone(), (**ty).clone()));
     }
 
-    if let Some((pattern, _, _)) = &route {
+    if let Some(RouteArgs { pattern, .. }) = &route {
         let value = pattern.value();
         let parts: Vec<&str> = value.split('/').filter(|part| !part.is_empty()).collect();
         for (index, part) in parts.iter().enumerate() {
@@ -171,12 +192,14 @@ fn parse(item: ImplItemFn) -> Result<ParsedRoute> {
     })
 }
 
-/// `#[erp(route = "/path/<param>", methods = ["GET", "POST"], csrf = false)]`, GET when no
-/// method is named. A request changing something needs a CSRF token unless `csrf = false`.
-fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>, bool)>> {
+/// `#[erp(route = "/path/<param>", methods = ["GET", "POST"], csrf = false, auth = "none")]`,
+/// GET when no method is named. A request changing something needs a CSRF token unless
+/// `csrf = false`; the caller is the session's user unless `auth = "none"`.
+fn read_route(item: &ImplItemFn) -> Result<Option<RouteArgs>> {
     let mut route: Option<LitStr> = None;
     let mut verbs: Vec<String> = Vec::new();
     let mut csrf: Option<syn::LitBool> = None;
+    let mut auth: Option<LitStr> = None;
     for attr in item.attrs.iter().filter(|attr| attr.path().is_ident("erp")) {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("route") {
@@ -205,9 +228,16 @@ fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>, bool)>> 
             } else if meta.path.is_ident("csrf") {
                 csrf = Some(meta.value()?.parse()?);
                 Ok(())
+            } else if meta.path.is_ident("auth") {
+                let value: LitStr = meta.value()?.parse()?;
+                if !matches!(value.value().as_str(), "user" | "none") {
+                    return Err(Error::new(value.span(), "auth is \"user\" or \"none\""));
+                }
+                auth = Some(value);
+                Ok(())
             } else {
                 Err(meta.error(
-                    "Unknown key. The keys on a controller method are: route, methods, csrf",
+                    "Unknown key. The keys on a controller method are: route, methods, csrf, auth",
                 ))
             }
         })?;
@@ -217,11 +247,17 @@ fn read_route(item: &ImplItemFn) -> Result<Option<(LitStr, Vec<String>, bool)>> 
             if verbs.is_empty() {
                 verbs.push("GET".to_string());
             }
-            Ok(Some((route, verbs, csrf.is_none_or(|csrf| csrf.value))))
+            let anyone = auth.is_some_and(|auth| auth.value() == "none");
+            Ok(Some(RouteArgs {
+                pattern: route,
+                verbs,
+                csrf: csrf.is_none_or(|csrf| csrf.value),
+                anyone,
+            }))
         }
-        None if !verbs.is_empty() || csrf.is_some() => Err(Error::new(
+        None if !verbs.is_empty() || csrf.is_some() || auth.is_some() => Err(Error::new(
             item.sig.ident.span(),
-            "`methods` and `csrf` are about a route, so they need a `route`",
+            "`methods`, `csrf` and `auth` are about a route, so they need a `route`",
         )),
         None => Ok(None),
     }

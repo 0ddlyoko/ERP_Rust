@@ -11,6 +11,10 @@ pub mod models;
 /// Password given to the seeded administrator on a fresh database.
 pub const DEFAULT_ADMIN_PASSWORD: &str = "admin";
 
+/// How many users, and how many sessions, the caches kept across requests hold at most: the
+/// active ones stay, an account seen once makes room for them. A few megabytes at most.
+const CACHED_ACCOUNTS: usize = 10_000;
+
 pub struct BasePlugin;
 
 impl Plugin for BasePlugin {
@@ -49,6 +53,19 @@ impl Plugin for BasePlugin {
         model_manager
             .shared_caches
             .register(models::VIEWS_CACHE, &["view"]);
+        model_manager
+            .shared_caches
+            .register(models::RULES_CACHE, &["access_rule"]);
+        model_manager.shared_caches.register_bounded(
+            models::GROUPS_CACHE,
+            &["users", "group"],
+            CACHED_ACCOUNTS,
+        );
+        model_manager.shared_caches.register_bounded(
+            models::SESSIONS_CACHE,
+            &["session", "users"],
+            CACHED_ACCOUNTS,
+        );
         model_manager
             .load_hooks
             .push(models::View::<SingleId>::on_plugin_loaded);

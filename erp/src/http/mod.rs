@@ -16,7 +16,7 @@ pub use errors::HttpError;
 pub use params::{FromParam, ParamError, find_record};
 pub use request::Request;
 pub use response::Response;
-pub use routes::{Controller, ControllerRegistry, HasRoutes, HttpFn, Resolution};
+pub use routes::{Auth, Controller, ControllerRegistry, HasRoutes, HttpFn, Resolution};
 
 use crate::access::AccessDenied;
 use crate::app::Application;
@@ -33,12 +33,17 @@ pub const SESSION_COOKIE: &str = "session_id";
 /// revoked — it is the user nobody authenticated as, and the controller decides what that may
 /// see.
 pub fn handle(app: &Application, request: Request) -> Response {
-    let (call, params, needs_csrf) = match app
+    let (call, params, needs_csrf, auth) = match app
         .model_manager
         .controllers
         .resolve(request.method(), request.path())
     {
-        Resolution::Found { call, params, csrf } => (call, params, csrf),
+        Resolution::Found {
+            call,
+            params,
+            csrf,
+            auth,
+        } => (call, params, csrf, auth),
         Resolution::NotFound => return refusal(&HttpError::not_found("Nothing is served here")),
         Resolution::MethodNotAllowed(allowed) => {
             return refusal(&HttpError::new(405, "This URL does not answer that method"))
@@ -53,20 +58,24 @@ pub fn handle(app: &Application, request: Request) -> Response {
             "Session expired (invalid CSRF token)",
         ));
     }
-    let response = answer(app, call, &request);
+    let response = answer(app, call, auth, &request);
     match binding.cookie_to_set() {
         Some(cookie) => response.with_header("Set-Cookie", &cookie),
         None => response,
     }
 }
 
-/// Run the controller in its own transaction, as the caller its session cookie names.
-fn answer(app: &Application, call: HttpFn, request: &Request) -> Response {
+/// Run the controller in its own transaction, as the caller its session cookie names — or as
+/// nobody, without looking the session up, for a route answering everyone alike.
+fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Response {
     let mut env = match app.new_env() {
         Ok(env) => env,
         Err(error) => return failure(&*error),
     };
-    let caller = match request.cookie(SESSION_COOKIE) {
+    let cookie = request
+        .cookie(SESSION_COOKIE)
+        .filter(|_| auth == Auth::User);
+    let caller = match cookie {
         Some(token) => match identify(app, &mut env, token) {
             Ok(caller) => caller,
             Err(error) => return failure(&*error),

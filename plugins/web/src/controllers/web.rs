@@ -42,7 +42,7 @@ impl Web {
     ///
     /// Only at its exact path: a TypeScript import written without extension is compiled with it,
     /// and answering both would let a browser load one file as two modules.
-    #[erp(route = "/static/<module>/<*path>")]
+    #[erp(route = "/static/<module>/<*path>", auth = "none")]
     pub fn static_file(
         &self,
         env: &mut Environment,
@@ -63,7 +63,7 @@ impl Web {
     /// separate modules, each at its own URL, so their relative imports resolve as written. The
     /// styles are the bundle's CSS files, one after the other. The templates are those served from
     /// the bundle's `.xml` files, every extension applied.
-    #[erp(route = "/web/assets/<file>")]
+    #[erp(route = "/web/assets/<file>", auth = "none")]
     pub fn bundle(
         &self,
         env: &mut Environment,
@@ -138,12 +138,10 @@ fn session_info(env: &mut Environment, request: &Request) -> Result<erp::serde_j
     // Their own account, which they may not otherwise be allowed to read.
     let env = &mut *env.sudo();
     let user = Users::<SingleId>::from_id(uid, env);
-    let mut groups = Vec::new();
-    for group in user.get_groups::<Group<MultipleIds>>(env)? {
-        if let Some(external_id) = data::external_id_of(env, "group", group.get_id())? {
-            groups.push(external_id);
-        }
-    }
+    let group_ids = user.get_groups::<Group<MultipleIds>>(env)?.get_ids();
+    let mut groups: Vec<String> = data::external_ids_of(env, "group", &group_ids)?
+        .into_values()
+        .collect();
     groups.sort();
     Ok(json!({
         "uid": uid,

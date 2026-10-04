@@ -1523,3 +1523,63 @@ fn test_a_new_column_gives_existing_rows_its_default() -> Result<()> {
     assert_eq!(rate, Decimal::from_str("0.21")?);
     Ok(())
 }
+
+/// Reading records and what their many2one point to costs the same few queries whatever their
+/// number: never one per record.
+#[test]
+fn test_queries_do_not_grow_with_the_records() -> Result<()> {
+    let app = app_or_skip!("t_queries");
+    let queries_for = |count: usize| -> Result<u32> {
+        let mut env = app.new_env()?;
+        let mut lines = Vec::with_capacity(count);
+        for index in 0..count {
+            let mut order = MapOfFields::new(HashMap::new());
+            order.insert("name", format!("order {index}"));
+            let order: SaleOrder<SingleId> = env.create_new_record_from_map(order)?;
+            let mut line = MapOfFields::new(HashMap::new());
+            line.insert("order", order.get_id());
+            let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(line)?;
+            lines.push(line.get_id());
+        }
+        env.close()?;
+
+        let mut env = app.new_env()?;
+        erp::request_log::start();
+        for line in SaleOrderLine::<MultipleIds>::from_ids(lines, &env) {
+            let order: SaleOrder<SingleId> = line.get_order(&mut env)?;
+            order.get_name(&mut env)?;
+        }
+        Ok(erp::request_log::current().queries)
+    };
+    assert_eq!(queries_for(2)?, queries_for(10)?);
+    Ok(())
+}
+
+/// A search reading its records reads them in the same query.
+#[test]
+fn test_read_matching_is_one_query() -> Result<()> {
+    let app = app_or_skip!("t_read_matching");
+    let mut env = app.new_env()?;
+    for name in ["first", "second", "third"] {
+        let mut order = MapOfFields::new(HashMap::new());
+        order.insert("name", name);
+        let _order: SaleOrder<SingleId> = env.create_new_record_from_map(order)?;
+    }
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    erp::request_log::start();
+    let rows = env.read_matching(
+        "sale_order",
+        &["name"],
+        &erp_search::SearchType::Nothing,
+        &SearchOptions::default(),
+    )?;
+    assert_eq!(rows.len(), 3);
+    assert_eq!(
+        erp::request_log::current().queries,
+        2,
+        "the transaction starting, then the search"
+    );
+    Ok(())
+}

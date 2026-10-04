@@ -1,11 +1,11 @@
 use crate::models::{BaseUsers, Users};
 use code_gen::Model;
 use erp::environment::Environment;
+use erp::errors::MissingRecords;
 use erp::types::field::{
-    IdMode, MultipleIds, Password, Reference, SingleId, TimeDelta, Timestamp, Utc, generate_secret,
+    IdMode, Password, Reference, SingleId, TimeDelta, Timestamp, Utc, generate_secret,
 };
 use erp::types::model::MapOfFields;
-use erp_search_code_gen::make_domain;
 use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -34,6 +34,17 @@ pub struct Session<Mode: IdMode> {
 pub struct OpenedSession {
     pub session: Session<SingleId>,
     pub token: String,
+}
+
+/// The sessions, by id, as resolving a token reads them.
+pub const SESSIONS_CACHE: &str = "base.sessions";
+
+struct Held {
+    secret: Password,
+    active: bool,
+    expires_at: Timestamp,
+    user: Option<u32>,
+    user_active: bool,
 }
 
 impl Session<SingleId> {
@@ -67,7 +78,9 @@ impl Session<SingleId> {
     /// Who this token identifies.
     ///
     /// One answer for every way of failing — malformed, unknown, revoked, expired, wrong secret.
-    /// Saying which would tell whoever is guessing how far they got.
+    /// Saying which would tell whoever is guessing how far they got. What a session holds is kept
+    /// across requests until a session or a user changes, so most requests resolve without the
+    /// database.
     pub fn resolve(env: &mut Environment, token: &str) -> Result<Option<u32>> {
         let Some((selector, secret)) = token.split_once('.') else {
             return Ok(None);
@@ -75,33 +88,36 @@ impl Session<SingleId> {
         let Ok(id) = selector.parse::<u32>() else {
             return Ok(None);
         };
-        let found: Session<MultipleIds> = env.search(&make_domain!([("id", "=", id)]))?;
-        let Some(id) = found.get_ids().first().copied() else {
+        let held = env.cached(SESSIONS_CACHE, selector, |env| Self::held(env, id))?;
+        let Some(held) = held.as_ref() else {
             return Ok(None);
         };
+        // The account counts, not only the session: closing an account must log out whoever
+        // holds a token of it, rather than leave them in for as long as their session had left.
+        let live = held.active && held.user_active && held.expires_at > Utc::now();
+        if !live || !held.secret.is_same_password(secret) {
+            return Ok(None);
+        }
+        Ok(held.user)
+    }
 
+    /// What resolving a token needs of a session; `None` when there is no such session.
+    fn held(env: &mut Environment, id: u32) -> Result<Option<Held>> {
+        match env.existing("session", vec![id]) {
+            Ok(_) => {}
+            Err(error) if error.is::<MissingRecords>() => return Ok(None),
+            Err(error) => return Err(error),
+        }
         let session = Session::<SingleId>::from_id(id, env);
-        if !session.get_secret(env)?.is_same_password(secret) {
-            return Ok(None);
-        }
-        if !*session.get_active(env)? {
-            return Ok(None);
-        }
-        if *session.get_expires_at(env)? <= Utc::now() {
-            return Ok(None);
-        }
         let user: Users<SingleId> = session.get_user(env)?;
-        if user.is_empty() {
-            return Ok(None);
-        }
-        // The account, not only the session. An inactive account cannot authenticate, and that
-        // has to mean the same thing for somebody already holding a token — otherwise closing an
-        // account leaves whoever is logged in exactly where they were, for as long as their
-        // session had left to run.
-        if !*user.get_active(env)? {
-            return Ok(None);
-        }
-        Ok(Some(user.get_id()))
+        let user_active = !user.is_empty() && *user.get_active(env)?;
+        Ok(Some(Held {
+            secret: session.get_secret(env)?.clone(),
+            active: *session.get_active(env)?,
+            expires_at: *session.get_expires_at(env)?,
+            user: user.get_optional_id(),
+            user_active,
+        }))
     }
 
     /// End the session a token opens, if it is a live session of `uid`.

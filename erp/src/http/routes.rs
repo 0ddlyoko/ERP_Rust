@@ -34,11 +34,22 @@ enum Segment {
     Rest(String),
 }
 
+/// Who a route answers for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Auth {
+    /// The user the session cookie names, or nobody without one.
+    User,
+    /// Nobody, whatever the cookie: the session is not even looked up. For what is the same for
+    /// everyone, such as the files a plugin serves.
+    None,
+}
+
 struct Route {
     pattern: String,
     segments: Vec<Segment>,
     methods: Vec<String>,
     csrf: bool,
+    auth: Auth,
     controller: String,
     method: String,
     call: HttpFn,
@@ -125,6 +136,7 @@ pub enum Resolution {
         call: HttpFn,
         params: Vec<(String, String)>,
         csrf: bool,
+        auth: Auth,
     },
     MethodNotAllowed(Vec<String>),
     NotFound,
@@ -174,6 +186,7 @@ impl ControllerRegistry {
     /// methods answering the same URL with the same verb is refused, because which one answered
     /// would depend on load order. With `csrf`, a request changing something — any method but
     /// GET, HEAD, OPTIONS and TRACE — must carry a token of the browser's.
+    #[allow(clippy::too_many_arguments)]
     pub fn register_route(
         &mut self,
         controller: &str,
@@ -181,10 +194,12 @@ impl ControllerRegistry {
         pattern: &str,
         methods: &[&str],
         csrf: bool,
+        auth: Auth,
         call: HttpFn,
     ) {
         let route = Route {
             csrf,
+            auth,
             pattern: pattern.to_string(),
             segments: parse_pattern(pattern),
             methods: methods
@@ -259,6 +274,7 @@ impl ControllerRegistry {
                 call: route.call,
                 params,
                 csrf: route.csrf,
+                auth: route.auth,
             },
             None => Resolution::MethodNotAllowed(allowed),
         }

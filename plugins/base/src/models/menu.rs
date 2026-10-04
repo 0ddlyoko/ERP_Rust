@@ -1,4 +1,4 @@
-use crate::models::{Action, BaseAction, BaseGroup, Group, Users};
+use crate::models::{Action, BaseAction, BaseGroup, Group};
 use code_gen::{Model, erp_methods};
 use erp::environment::Environment;
 use erp::search::SearchType;
@@ -50,11 +50,7 @@ impl Menu<MultipleIds> {
     pub fn tree(&self, env: &mut Environment) -> Result<Value, Box<dyn Error + Send + Sync>> {
         let _ = self;
         let member_of: HashSet<u32> = match env.uid() {
-            Some(uid) => Users::<SingleId>::from_id(uid, env)
-                .get_groups::<Group<MultipleIds>>(&mut env.sudo())?
-                .get_ids()
-                .into_iter()
-                .collect(),
+            Some(uid) => env.groups_of(uid)?.into_iter().collect(),
             None => HashSet::new(),
         };
         let env = &mut *env.sudo();
@@ -75,19 +71,21 @@ impl Menu<MultipleIds> {
         for entry in &entries {
             under.entry(entry.parent).or_default().push(entry);
         }
-        let mut actions = HashMap::new();
-        branch(env, None, &under, &member_of, &mut actions)
+        let mut action_ids: Vec<u32> = entries.iter().filter_map(|entry| entry.action).collect();
+        action_ids.sort_unstable();
+        action_ids.dedup();
+        let actions = Action::<MultipleIds>::from_ids(action_ids, env).describe_each(env)?;
+        Ok(branch(None, &under, &member_of, &actions))
     }
 }
 
 /// The visible entries under one parent, each with its own branch.
 fn branch(
-    env: &mut Environment,
     parent: Option<u32>,
     under: &HashMap<Option<u32>, Vec<&Entry>>,
     member_of: &HashSet<u32>,
-    actions: &mut HashMap<u32, Value>,
-) -> Result<Value, Box<dyn Error + Send + Sync>> {
+    actions: &HashMap<u32, Value>,
+) -> Value {
     let mut shown = Vec::new();
     for entry in under.get(&parent).map(Vec::as_slice).unwrap_or_default() {
         let visible =
@@ -95,18 +93,11 @@ fn branch(
         if !visible {
             continue;
         }
-        let children = branch(env, Some(entry.id), under, member_of, actions)?;
-        let action = match entry.action {
-            Some(id) => match actions.get(&id) {
-                Some(described) => described.clone(),
-                None => {
-                    let described = Action::<SingleId>::from_id(id, env).describe(env)?;
-                    actions.insert(id, described.clone());
-                    described
-                }
-            },
-            None => Value::Null,
-        };
+        let children = branch(Some(entry.id), under, member_of, actions);
+        let action = entry
+            .action
+            .and_then(|id| actions.get(&id).cloned())
+            .unwrap_or(Value::Null);
         let leads_somewhere =
             !action.is_null() || children.as_array().is_some_and(|c| !c.is_empty());
         if leads_somewhere {
@@ -118,5 +109,5 @@ fn branch(
             }));
         }
     }
-    Ok(Value::Array(shown))
+    Value::Array(shown)
 }

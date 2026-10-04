@@ -29,17 +29,24 @@ impl<'mm> Environment<'mm> {
             let rules = (source.rules)(&mut self.sudo(), model_name)?;
             self.access_memo.rules.insert(model_name.to_string(), rules);
         }
-        if !self.access_memo.groups.contains_key(&uid) {
-            let groups = (source.groups)(&mut self.sudo(), uid)?;
-            self.access_memo.groups.insert(uid, groups);
-        }
-        let (Some(rules), Some(groups)) = (
-            self.access_memo.rules.get(model_name),
-            self.access_memo.groups.get(&uid),
-        ) else {
+        let groups = self.groups_of(uid)?;
+        let Some(rules) = self.access_memo.rules.get(model_name) else {
             return Err(format!("The access rights to {model_name} could not be read").into());
         };
-        Ok(Access::evaluate(rules, groups, operation))
+        Ok(Access::evaluate(rules, &groups, operation))
+    }
+
+    /// The groups a user is in, as the rights see them; none when no plugin defines rules.
+    pub fn groups_of(&mut self, uid: u32) -> Result<Vec<u32>> {
+        let Some(source) = self.model_manager.access.source() else {
+            return Ok(Vec::new());
+        };
+        if !self.access_memo.groups.contains_key(&uid) {
+            let groups = (source.groups)(&mut self.sudo(), uid)?;
+            self.access_memo.groups.insert(uid, groups.clone());
+            return Ok(groups);
+        }
+        Ok(self.access_memo.groups[&uid].clone())
     }
 
     /// Refuse the operation unless every one of these records is within the caller's rights.

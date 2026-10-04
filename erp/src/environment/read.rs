@@ -1,6 +1,6 @@
 //! Reading records: browsing, searching and filling the cache on demand.
 use super::*;
-use crate::access::{AccessDenied, Operation};
+use crate::access::{Access, AccessDenied, Operation};
 use crate::errors::MissingRecords;
 use crate::model::CREATE_DATE;
 
@@ -29,12 +29,14 @@ impl<'mm> Environment<'mm> {
             return Ok(HashMap::new());
         };
         let ids = ids.to_vec();
-        let readable = match self.search_ids(model_name, &make_domain!([("id", "in", ids)])) {
-            Ok(readable) => readable,
-            Err(error) if error.downcast_ref::<AccessDenied>().is_some() => {
-                return Ok(HashMap::new());
+        let readable = match self.access(model_name, Operation::Read)? {
+            Access::Unrestricted | Access::Restricted(SearchType::Nothing) => {
+                self.present(model_name, ids)?.0
             }
-            Err(error) => return Err(error),
+            Access::Denied => return Ok(HashMap::new()),
+            Access::Restricted(_) => {
+                self.search_ids(model_name, &make_domain!([("id", "in", ids)]))?
+            }
         };
         let rows = self.read(
             model_name,
@@ -172,6 +174,20 @@ impl<'mm> Environment<'mm> {
     /// them would, and those the database does not return are missing. So the check costs no
     /// query of its own: the one it makes is the one a read or write of them would make.
     pub fn existing(&mut self, model_name: &str, ids: Vec<u32>) -> Result<MultipleIds> {
+        let (present, missing) = self.present(model_name, ids)?;
+        if !missing.is_empty() {
+            return Err(MissingRecords {
+                model_name: model_name.to_string(),
+                ids: missing,
+            }
+            .into());
+        }
+        Ok(MultipleIds::from(present))
+    }
+
+    /// These records, each once and in the order given, split into those that exist and those
+    /// that do not; id 0 is neither. Checked as [`Environment::existing`] does, through the cache.
+    fn present(&mut self, model_name: &str, ids: Vec<u32>) -> Result<(Vec<u32>, Vec<u32>)> {
         self.model_manager.try_get_model(model_name)?;
         let mut seen = HashSet::with_capacity(ids.len());
         let ids = MultipleIds::from(
@@ -180,20 +196,15 @@ impl<'mm> Environment<'mm> {
                 .collect::<Vec<u32>>(),
         );
         if ids.is_empty() {
-            return Ok(ids);
+            return Ok((Vec::new(), Vec::new()));
         }
         self.ensure_fields_in_cache(model_name, CREATE_DATE, &ids)?;
-        let missing = self
+        let missing: HashSet<u32> = self
             .cache
-            .get_ids_not_in_cache(model_name, CREATE_DATE, ids.get_ids_ref());
-        if !missing.is_empty() {
-            return Err(MissingRecords {
-                model_name: model_name.to_string(),
-                ids: missing,
-            }
-            .into());
-        }
-        Ok(ids)
+            .get_ids_not_in_cache(model_name, CREATE_DATE, ids.get_ids_ref())
+            .into_iter()
+            .collect();
+        Ok(ids.ids.into_iter().partition(|id| !missing.contains(id)))
     }
 
     /// Same as [`Environment::search_ids_with`], whatever the caller's rights.
@@ -203,6 +214,51 @@ impl<'mm> Environment<'mm> {
         domain: &SearchType,
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
+        self.prepare_search(model_name, domain, options)?;
+        self.database
+            .find_ids(model_name, domain, self.model_manager, options)
+    }
+
+    /// Same, loading the stored fields of the records found in the same query, as reading them
+    /// would; what the cache already holds of them is kept.
+    fn search_and_load(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        options: &SearchOptions,
+    ) -> Result<Vec<u32>> {
+        self.prepare_search(model_name, domain, options)?;
+        let fields = self
+            .model_manager
+            .try_get_model(model_name)?
+            .get_stored_fields();
+        let rows =
+            self.database
+                .search(model_name, &fields, domain, self.model_manager, options)?;
+        let mut ids = Vec::with_capacity(rows.len());
+        for (id, values) in rows {
+            for (field_name, value) in values {
+                self.save_field_to_cache(
+                    model_name,
+                    field_name,
+                    &SingleId::from(id),
+                    value.map(FieldType::from),
+                    &Dirty::NotUpdateDirty,
+                    &Update::NotUpdateIfExists,
+                )?;
+            }
+            ids.push(id);
+        }
+        Ok(ids)
+    }
+
+    /// Check a search before it runs, and save what it reads that is still only in the cache.
+    fn prepare_search(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        options: &SearchOptions,
+    ) -> Result<()> {
         self.refuse_unstored_in_domain(model_name, domain)?;
         self.save_domain_fields_to_db(model_name, domain)?;
         // Sort keys are checked against the registry before any backend sees them. Identifiers
@@ -235,8 +291,7 @@ impl<'mm> Environment<'mm> {
             }
             self.save_fields_to_db(model_name, &[order.field.as_str()])?;
         }
-        self.database
-            .find_ids(model_name, domain, self.model_manager, options)
+        Ok(())
     }
 
     /// Same as [`Environment::search`], ordered and paginated.
@@ -260,7 +315,8 @@ impl<'mm> Environment<'mm> {
         domain: &SearchType,
         options: &SearchOptions,
     ) -> Result<Vec<MapOfFields>> {
-        let ids = self.search_ids_with(model_name, domain, options)?;
+        let domain = self.readable_domain(model_name, domain)?;
+        let ids = self.search_and_load(model_name, &domain, options)?;
         self.read_unchecked(model_name, &MultipleIds::from(ids), fields)
     }
 

@@ -12,7 +12,7 @@ mod session;
 mod users;
 mod view;
 
-pub use access_rule::AccessRule;
+pub use access_rule::{AccessRule, GROUPS_CACHE, RULES_CACHE};
 pub use action::{Action, BaseAction};
 pub use company::Company;
 pub use contact::Contact;
@@ -22,6 +22,6 @@ pub use lang::Lang;
 pub use menu::{BaseMenu, Menu};
 pub use model_data::ModelData;
 pub use plugin::{Plugin, PluginState};
-pub use session::{OpenedSession, Session};
+pub use session::{OpenedSession, SESSIONS_CACHE, Session};
 pub use users::{Authenticated, BaseUsers, Users};
 pub use view::{VIEWS_CACHE, View};
