@@ -36,6 +36,7 @@ pub enum Verb {
     FieldsGet,
     Names,
     NameSearch,
+    NameCreate,
 }
 
 impl Verb {
@@ -52,6 +53,7 @@ impl Verb {
         Verb::FieldsGet,
         Verb::Names,
         Verb::NameSearch,
+        Verb::NameCreate,
     ];
 
     /// The name a caller writes.
@@ -67,6 +69,7 @@ impl Verb {
             Verb::FieldsGet => "fields_get",
             Verb::Names => "names",
             Verb::NameSearch => "name_search",
+            Verb::NameCreate => "name_create",
         }
     }
 
@@ -93,6 +96,7 @@ impl Verb {
             Verb::FieldsGet => |env, model, params| dispatch(env, model, Verb::FieldsGet, params),
             Verb::Names => |env, model, params| dispatch(env, model, Verb::Names, params),
             Verb::NameSearch => |env, model, params| dispatch(env, model, Verb::NameSearch, params),
+            Verb::NameCreate => |env, model, params| dispatch(env, model, Verb::NameCreate, params),
         }
     }
 }
@@ -393,6 +397,11 @@ struct NameSearchParams {
     limit: usize,
 }
 
+#[derive(Deserialize)]
+struct NameCreateParams {
+    text: String,
+}
+
 /// How many records a name search finds unless told otherwise: what a drop-down shows.
 fn name_search_limit() -> usize {
     8
@@ -494,6 +503,11 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
                     .collect::<Vec<_>>()
             ))
         }
+        Verb::NameCreate => {
+            let NameCreateParams { text } = parse(params)?;
+            let (id, name) = env.name_create(model_name, &text)?;
+            Ok(json!([id, name]))
+        }
         Verb::Names => {
             let IdsParams { ids } = parse(params)?;
             let names = env.names(model_name, &ids)?;
@@ -537,7 +551,11 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
         let Some(field) = visible(&name) else {
             return Err(format!("Model \"{model_name}\" has no field \"{name}\"").into());
         };
-        described.insert(name, describe(field, &env.model_manager.selections)?);
+        let mut description = describe(field, &env.model_manager.selections)?;
+        if model.name_field() == Some(name.as_str()) {
+            description["name_field"] = json!(true);
+        }
+        described.insert(name, description);
     }
     Ok(Value::Object(described))
 }

@@ -12,12 +12,12 @@
                    t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
                    t-on-blur="close"/>
             <ul t-if="isOpen" class="o_record_search_results" role="listbox">
-                <li t-foreach="choices" t-as="choice" t-key="choice[0]" role="option"
-                    t-att-aria-selected="choice_index === active ? 'true' : 'false'"
-                    t-att-class="{ o_record_search_result: true, active: choice_index === active }"
-                    t-on-mousedown.prevent="() => pick(choice)">{{ choice[1] }}</li>
                 <li t-if="searching &amp;&amp; !choices.length" class="o_record_search_note">Searching…</li>
-                <li t-elif="!choices.length" class="o_record_search_note">No record found.</li>
+                <li t-elif="!entries.length" class="o_record_search_note">No record found.</li>
+                <li t-foreach="entries" t-as="entry" t-key="entry.kind === 'pick' ? entry.choice[0] : entry.kind"
+                    role="option" t-att-aria-selected="entry_index === active ? 'true' : 'false'"
+                    t-att-class="{ o_record_search_result: true, o_record_search_create: entry.kind !== 'pick', active: entry_index === active }"
+                    t-on-mousedown.prevent="() => choose(entry)">{{ label(entry) }}</li>
             </ul>
         </div>
     </t>

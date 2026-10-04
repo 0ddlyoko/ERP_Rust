@@ -1,0 +1,19 @@
+<templates>
+    <t t-name="web.FormDialog">
+        <Portal target="'body'">
+            <div class="o_dialog_backdrop" t-on-mousedown.self="props.onClose">
+                <div class="o_dialog o_form_dialog" role="dialog" aria-modal="true" aria-label="New record">
+                    <header class="o_form_dialog_header">
+                        <span>New record</span>
+                        <button type="button" class="o_form_dialog_close" aria-label="Close" t-on-click="props.onClose">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                        </button>
+                    </header>
+                    <t t-component="form" resModel="props.model" embedded="true" defaults="props.defaults"
+                       onCreated="created"/>
+                </div>
+            </div>
+        </Portal>
+    </t>
+</templates>

@@ -9,8 +9,10 @@
                          stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
                 </button>
             </span>
-            <RecordSearch t-if="editable" model="props.field.relation ?? ''" exclude="ids" onPick="add"
-                          placeholder="'Add…'"/>
+            <RecordSearch t-if="editable" model="relation" exclude="ids" onPick="add" placeholder="'Add…'"
+                          onCreate="canCreate ? create : undefined"
+                          onCreateEdit="canCreate &amp;&amp; !isOne2Many ? createEdit : undefined"/>
+            <FormDialog t-if="creating" model="relation" defaults="creating" onCreated="created" onClose="closeDialog"/>
         </div>
     </t>
 </templates>

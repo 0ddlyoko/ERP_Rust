@@ -1,6 +1,10 @@
-import { inject, props } from "trame";
+import { inject, props, state } from "trame";
 import { Breadcrumb } from "@web/core/breadcrumb";
 import { actionFor, Menus } from "@web/core/menus";
+import { Models } from "@web/core/models";
+import { Orm, type Values } from "@web/core/orm";
+import { FormDialog } from "@web/views/form/form_dialog";
+import { createByName, nameDefaults } from "./record_creation";
 import { type Choice, RecordSearch } from "./record_search";
 import { Widget, widgetProps, widgets } from "./widget";
 
@@ -10,16 +14,22 @@ import { Widget, widgetProps, widgets } from "./widget";
  *
  * Where a view edits it, it is chosen by searching ([`RecordSearch`](./record_search.ts));
  * emptying it clears it. Its record opens in a form when a menu leads to its model, the record
- * left in the breadcrumb.
+ * left in the breadcrumb. A name matching nothing can become a new record — at once, or through a
+ * form in a dialog — unless the field's element says `no_create="1"`.
  */
 export class Many2OneWidget extends Widget {
     static override template = "web.Many2OneWidget";
-    static components = { RecordSearch };
+    static components = { RecordSearch, FormDialog };
 
     override props = props({ ...widgetProps });
 
     @inject(Breadcrumb) breadcrumb!: Breadcrumb;
     @inject(Menus) menus!: Menus;
+    @inject(Orm) orm!: Orm;
+    @inject(Models) models!: Models;
+
+    /** What the dialog creating a record starts with, while it is open. */
+    @state accessor creating: Values | null = null;
 
     override get text(): string {
         if (this.isEmpty) {
@@ -46,6 +56,36 @@ export class Many2OneWidget extends Widget {
 
     readonly pick = (choice: Choice): void => {
         this.props.onChange?.(choice);
+    };
+
+    get canCreate(): boolean {
+        return this.props.attrs.no_create !== "1";
+    }
+
+    get relation(): string {
+        return this.props.field.relation ?? "";
+    }
+
+    /** A record created from the name typed; through the form when it needs more than a name. */
+    readonly create = async (name: string): Promise<void> => {
+        const created = await createByName(this.orm, this.relation, name);
+        if (created === null) {
+            await this.createEdit(name);
+        } else {
+            this.pick(created);
+        }
+    };
+
+    readonly createEdit = async (name: string): Promise<void> => {
+        this.creating = await nameDefaults(this.models, this.relation, name);
+    };
+
+    readonly created = ([id, name]: [number, string | null]): void => {
+        this.props.onChange?.([id, name]);
+    };
+
+    readonly closeDialog = (): void => {
+        this.creating = null;
     };
 
     readonly clear = (): void => {

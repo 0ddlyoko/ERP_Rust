@@ -15,6 +15,8 @@ export const viewProps = {
     domain: t.array(t.any()).default([]),
     /** The record shown, by a view showing one; a new one when left out. */
     resId: t.number().optional(),
+    /** Shown within another view, as in a dialog: the address and the breadcrumb stay its host's. */
+    embedded: t.boolean().default(false),
 };
 
 /** Views by kind: `list`, `form`. A plugin adds a kind of its own here, or replaces one. */
@@ -54,6 +56,9 @@ export abstract class View extends Component {
 
     /** Shown, the view brings the breadcrumb's trail to where the user now is. */
     @effect followTrail(): void {
+        if (this.props.embedded) {
+            return;
+        }
         untrack(() => this.breadcrumb.shown(this.router.route, this.kind === "form"));
     }
 

@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state, t } from "trame";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
@@ -30,7 +30,13 @@ export const formParts = registry.category<ComponentClass>("form_parts");
 export class FormView extends View {
     static template = "web.FormView";
 
-    override props = props({ ...viewProps });
+    override props = props({
+        ...viewProps,
+        /** What a new record starts with, over its fields' defaults. */
+        defaults: t.object().default({}),
+        /** Called with a record once created, as `[id, name]`, instead of opening it. */
+        onCreated: t.func<(record: [number, string | null]) => void>().optional(),
+    });
 
     @inject(Notifications) notifications!: Notifications;
 
@@ -60,8 +66,10 @@ export class FormView extends View {
             id: this.props.resId,
             names: this.readNames,
             fields: this.fields,
+            defaults: this.props.defaults,
         }),
-        async ({ model, id, names, fields }) => (id === undefined ? defaultsOf(fields, names) : this.read(model, id, names)),
+        async ({ model, id, names, fields, defaults }) =>
+            id === undefined ? { ...defaultsOf(fields, names), ...defaults } : this.read(model, id, names),
     );
 
     private async read(model: string, id: number, names: string[]): Promise<Values> {
@@ -149,7 +157,10 @@ export class FormView extends View {
         return this.fields?.name !== undefined && this.display("name") ? this.display("name") : `#${this.props.resId}`;
     }
 
-    @effect nameInBreadcrumb(): () => void {
+    @effect nameInBreadcrumb(): (() => void) | void {
+        if (this.props.embedded) {
+            return;
+        }
         this.breadcrumb.record = this.title;
         return () => {
             this.breadcrumb.record = null;
@@ -158,7 +169,7 @@ export class FormView extends View {
 
     /** While changes are not saved, leaving saves them first; failing to, the user stays. */
     @effect guardChanges(): (() => void) | void {
-        if (!this.isDirty) {
+        if (!this.isDirty || this.props.embedded) {
             return;
         }
         this.router.guard = () => this.save({ open: false });
@@ -169,7 +180,7 @@ export class FormView extends View {
 
     /** Where the record stands among those of the list it was opened from, if it was. */
     @computed get pager(): { position: number; total: number; previous: number | null; next: number | null } | null {
-        const memory = listMemory(this.router.route.action);
+        const memory = this.props.embedded ? undefined : listMemory(this.router.route.action);
         const at = memory?.ids.indexOf(this.props.resId ?? -1) ?? -1;
         if (memory === undefined || at < 0) {
             return null;
@@ -254,6 +265,10 @@ export class FormView extends View {
                 const [created] = await this.orm.create(model, values);
                 this.changes = {};
                 this.tried = false;
+                if (this.props.onCreated !== undefined) {
+                    this.props.onCreated([created, this.nameOf(values)]);
+                    return true;
+                }
                 // Saved: nothing is left to guard, though the guard goes only once effects run.
                 this.router.guard = null;
                 this.notifications.add("success", "Record created.");
@@ -275,6 +290,13 @@ export class FormView extends View {
             this.saving = false;
             this.notifications.remove(notice);
         }
+    }
+
+    /** The name a record is created with: the value of the field naming the model's records. */
+    private nameOf(values: Values): string | null {
+        const field = Object.entries(this.fields ?? {}).find(([, described]) => described.name_field)?.[0];
+        const name = field === undefined ? undefined : values[field];
+        return typeof name === "string" && name !== "" ? name : null;
     }
 
     /** Values as the server reads them: records by their ids, not `[id, name]`. */

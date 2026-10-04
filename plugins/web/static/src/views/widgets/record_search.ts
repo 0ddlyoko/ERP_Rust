@@ -7,12 +7,16 @@ const SEARCH_AFTER = 250;
 /** A record as a name search finds it: its id and its name. */
 export type Choice = [number, string];
 
+/** What the list offers: a record found, or creating one from what was typed. */
+export type Entry = { kind: "pick"; choice: Choice } | { kind: "create" | "createEdit"; name: string };
+
 /**
  * An input finding records of a model by name, for the user to choose one.
  *
  * Entering it lists the first records at once; typing searches them by name, once typing pauses.
  * One is chosen with the mouse, or the arrows and Enter. Shows `text` while the user is not
- * typing; `onEmpty` is called as soon as they empty it.
+ * typing; `onEmpty` is called as soon as they empty it. With `onCreate` or `onCreateEdit`, what
+ * is typed can also become a new record: created at once, or in a form first.
  */
 export class RecordSearch extends Component {
     static template = "web.RecordSearch";
@@ -25,6 +29,8 @@ export class RecordSearch extends Component {
         exclude: t.array(t.number()).default([]),
         placeholder: t.string().default(""),
         onEmpty: t.func<() => void>().optional(),
+        onCreate: t.func<(name: string) => void>().optional(),
+        onCreateEdit: t.func<(name: string) => void>().optional(),
     });
 
     @inject(Orm) orm!: Orm;
@@ -46,6 +52,45 @@ export class RecordSearch extends Component {
     /** What was found, less the records not offered. */
     get choices(): Choice[] {
         return this.results.filter(([id]) => !this.props.exclude.includes(id));
+    }
+
+    /** The records found, then creating one from what was typed, when that is offered. */
+    get entries(): Entry[] {
+        const entries: Entry[] = this.choices.map((choice) => ({ kind: "pick", choice }));
+        const name = (this.query ?? "").trim();
+        if (name !== "" && this.props.onCreate !== undefined) {
+            entries.push({ kind: "create", name });
+        }
+        if (name !== "" && this.props.onCreateEdit !== undefined) {
+            entries.push({ kind: "createEdit", name });
+        }
+        return entries;
+    }
+
+    label(entry: Entry): string {
+        switch (entry.kind) {
+            case "pick":
+                return entry.choice[1];
+            case "create":
+                return `Create "${entry.name}"`;
+            case "createEdit":
+                return "Create and edit…";
+        }
+    }
+
+    choose(entry: Entry): void {
+        switch (entry.kind) {
+            case "pick":
+                this.pick(entry.choice);
+                return;
+            case "create":
+                this.props.onCreate?.(entry.name);
+                break;
+            case "createEdit":
+                this.props.onCreateEdit?.(entry.name);
+                break;
+        }
+        this.close();
     }
 
     /** Entering the input: the first records listed at once, its text selected to type over. */
@@ -113,13 +158,13 @@ export class RecordSearch extends Component {
                 return;
             }
             const step = event.key === "ArrowDown" ? 1 : -1;
-            const count = this.choices.length;
+            const count = this.entries.length;
             this.active = count === 0 ? 0 : (this.active + step + count) % count;
         } else if (event.key === "Enter" && this.isOpen) {
             event.preventDefault();
-            const choice = this.choices[this.active];
-            if (choice !== undefined) {
-                this.pick(choice);
+            const entry = this.entries[this.active];
+            if (entry !== undefined) {
+                this.choose(entry);
             }
         } else if (event.key === "Escape" && this.isOpen) {
             event.preventDefault();

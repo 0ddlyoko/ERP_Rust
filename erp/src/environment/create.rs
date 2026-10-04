@@ -42,6 +42,27 @@ impl<'mm> Environment<'mm> {
         self._create_new_records(model_name, data)
     }
 
+    /// Create a record from its name alone, as `(id, name)`: what typing a name that matches
+    /// nothing offers to do. Refused for a model named by no field, or by a private one, and
+    /// when other fields are required.
+    pub fn name_create(&mut self, model_name: &str, name: &str) -> Result<(u32, String)> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        let Some(name_field) = model
+            .name_field()
+            .filter(|field| !model.fields[*field].private)
+        else {
+            return Err(format!("A {model_name} is not created from a name").into());
+        };
+        let mut values = MapOfFields::default();
+        values.insert(name_field, name);
+        let ids = self.create_records(model_name, vec![values])?;
+        let id = *ids
+            .get_ids_ref()
+            .first()
+            .ok_or("Creating the record returned no id")?;
+        Ok((id, name.to_string()))
+    }
+
     /// Create records, refused unless the caller may create every one of them.
     ///
     /// Whether a record falls within the rights depends on its values, so the check runs once it

@@ -32,6 +32,8 @@ export interface FieldDescription {
     values?: [string, string][];
     inverse?: string;
     default?: unknown;
+    /** Set on the field naming the model's records. */
+    name_field?: boolean;
 }
 
 /** The records of any model, through the operations the protocol answers on every one of them. */
@@ -82,6 +84,11 @@ export class Orm {
     /** The records whose name holds `text`, whatever its case, as `[id, name]`: at most `limit`. */
     nameSearch(model: string, text: string, limit = 8): Promise<[number, string][]> {
         return this.rpc.call(`${model}.name_search`, { text, limit });
+    }
+
+    /** Create a record from its name alone; resolves with it as `[id, name]`. */
+    nameCreate(model: string, text: string): Promise<[number, string]> {
+        return this.rpc.call(`${model}.name_create`, { text });
     }
 
     /** The fields of a model the caller may see, all of them or those named. */

@@ -952,3 +952,39 @@ fn test_owned_lines_go_with_their_removal() -> Result<()> {
     );
     Ok(())
 }
+
+/// A record created from its name alone answers as `[id, name]`; one needing more than a name is
+/// refused, saying what it needs.
+#[test]
+fn test_name_create() -> Result<()> {
+    let app = new_app()?;
+    let created = result(&app, "tag.name_create", json!({"text": "urgent"}));
+    let id = created[0].clone();
+    assert_eq!(created[1], "urgent");
+    assert_eq!(
+        result(&app, "tag.names", json!({"ids": [id.clone()]})),
+        json!([[id, "urgent"]])
+    );
+
+    let refused = call(
+        &app,
+        "meter_reading.name_create",
+        json!({"text": "meter one"}),
+    );
+    let message = refused["error"]["message"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(message.contains("\"read_on\""), "{refused}");
+    Ok(())
+}
+
+/// The field naming a model's records says so, for a client filling it from a name typed.
+#[test]
+fn test_fields_get_marks_the_name_field() -> Result<()> {
+    let app = new_app()?;
+    let described = result(&app, "meter_reading.fields_get", json!({}));
+    assert_eq!(described["reference"]["name_field"], true);
+    assert!(described["value"].get("name_field").is_none());
+    Ok(())
+}
