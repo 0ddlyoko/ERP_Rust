@@ -156,7 +156,8 @@ fn test_user_belongs_to_groups() -> Result<()> {
     let group_admin = env.named::<Group<SingleId>>("base.group_admin")?.get_id();
     let group_user = env.named::<Group<SingleId>>("base.group_user")?.get_id();
 
-    admin_record.set_groups(vec![group_user, group_admin].into(), &mut env)?;
+    let groups = Group::<MultipleIds>::from_ids(vec![group_user, group_admin], &env);
+    admin_record.set_groups(&groups, &mut env)?;
 
     let rows = env.read("group", &SingleId::from(group_admin), &["users"])?;
     assert_eq!(

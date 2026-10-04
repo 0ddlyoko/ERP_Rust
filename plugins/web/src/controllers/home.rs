@@ -1,9 +1,7 @@
 use code_gen::{Controller, erp_routes};
+use erp::Result;
 use erp::environment::Environment;
 use erp::http::{Request, Response};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// The root of the site sends the browser to the web client.
 #[derive(Controller)]

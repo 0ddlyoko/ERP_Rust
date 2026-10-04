@@ -1,8 +1,8 @@
 use crate::models::{BaseSaleOrderLine, BaseTag, SaleOrderLine};
 use code_gen::{Model, erp_methods, selection};
+use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Reference};
-use std::error::Error;
 
 #[selection]
 pub enum SaleOrderState {
@@ -31,10 +31,7 @@ pub struct SaleOrder<Mode: IdMode> {
 
 #[erp_methods]
 impl SaleOrder<MultipleIds> {
-    pub fn compute_total_price(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_total_price(&self, env: &mut Environment) -> Result<()> {
         for sale_order in self {
             let lines: SaleOrderLine<_> = sale_order.get_lines(env)?;
             let total_prices = lines.get_total_price(env)?;

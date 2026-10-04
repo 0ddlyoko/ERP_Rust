@@ -197,3 +197,51 @@ impl<'a, E: BaseModel> Iterator for ReferenceIterator<'a, E> {
         })
     }
 }
+
+/// What a many2one's setter takes: a record of its model — an empty one empties it — a reference
+/// to one, or `None`.
+pub trait ToRecord<BM> {
+    /// The record's id; 0 for none.
+    fn record_id(self) -> u32;
+}
+
+impl<BM: BaseModel> ToRecord<BM> for Reference<BM, SingleId> {
+    fn record_id(self) -> u32 {
+        self.id_mode.get_id()
+    }
+}
+
+impl<BM: BaseModel> ToRecord<BM> for Option<Reference<BM, SingleId>> {
+    fn record_id(self) -> u32 {
+        self.map_or(0, |reference| reference.id_mode.get_id())
+    }
+}
+
+impl<BM: BaseModel, M: CommonModel<SingleId, BaseModel = BM>> ToRecord<BM> for &M {
+    fn record_id(self) -> u32 {
+        self.get_id_mode().get_id()
+    }
+}
+
+impl<BM: BaseModel, M: CommonModel<SingleId, BaseModel = BM>> ToRecord<BM> for Option<&M> {
+    fn record_id(self) -> u32 {
+        self.map_or(0, |record| record.get_id_mode().get_id())
+    }
+}
+
+/// What a one2many's or a many2many's setter takes: records of its model, or references to them.
+pub trait ToRecords<BM> {
+    fn record_ids(self) -> Vec<u32>;
+}
+
+impl<BM: BaseModel> ToRecords<BM> for Reference<BM, MultipleIds> {
+    fn record_ids(self) -> Vec<u32> {
+        self.id_mode.ids
+    }
+}
+
+impl<BM: BaseModel, M: CommonModel<MultipleIds, BaseModel = BM>> ToRecords<BM> for &M {
+    fn record_ids(self) -> Vec<u32> {
+        self.get_id_mode().get_ids_ref().clone()
+    }
+}

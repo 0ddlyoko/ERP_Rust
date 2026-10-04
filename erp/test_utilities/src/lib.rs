@@ -1,4 +1,5 @@
 use ::config::ConfigError;
+use erp::Result;
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 
@@ -60,7 +61,7 @@ pub fn grant_everything(
     env: &mut erp::environment::Environment,
     uid: u32,
     models: &[&str],
-) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<u32> {
     use erp::types::field::IdMode;
     use erp::types::model::MapOfFields;
 

@@ -496,7 +496,8 @@ fn test_moving_a_line_recomputes_both_orders() -> Result<()> {
 
     let mut env = app.new_env()?;
     let line: SaleOrderLine<SingleId> = env.get_record(line.into());
-    line.set_order(Some(to.into()), &mut env)?;
+    let destination = SaleOrder::<SingleId>::from_id(to, &env);
+    line.set_order(&destination, &mut env)?;
     env.close()?;
 
     let mut env = app.new_env()?;
@@ -604,7 +605,8 @@ mod computed_list {
                         big.push(boat.get_id());
                     }
                 }
-                harbour.set_big_boats(big.into(), env)?;
+                let big = Boat::<MultipleIds>::from_ids(big, env);
+                harbour.set_big_boats(&big, env)?;
             }
             Ok(())
         }
@@ -713,7 +715,8 @@ fn test_a_computed_list_follows_moves_and_deletes() -> Result<()> {
     assert_eq!(big_boats(&mut env, first)?, (vec![large], 1));
 
     let boat: Boat<SingleId> = env.get_record(large.into());
-    boat.set_harbour(Some(second.into()), &mut env)?;
+    let harbour = computed_list::Harbour::<SingleId>::from_id(second, &env);
+    boat.set_harbour(&harbour, &mut env)?;
     assert_eq!(big_boats(&mut env, first)?, (vec![], 0));
     assert_eq!(big_boats(&mut env, second)?, (vec![large], 1));
 

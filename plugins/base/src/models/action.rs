@@ -1,12 +1,10 @@
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::data;
 use erp::environment::Environment;
 use erp::serde_json::{Value, json};
 use erp::types::field::{IdMode, MultipleIds, SingleId};
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// What opening something in a client does: show a model's records.
 ///

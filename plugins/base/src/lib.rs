@@ -1,9 +1,9 @@
+use erp::Result;
 use erp::environment::Environment;
 use erp::http::ControllerRegistry;
 use erp::model::ModelManager;
 use erp::plugin::{Plugin, PluginInfo};
 use erp::types::field::SingleId;
-use std::error::Error;
 
 pub mod controllers;
 pub mod models;
@@ -106,7 +106,7 @@ impl Plugin for BasePlugin {
     /// None of the three is looked up defensively. They come from the file loaded a moment ago,
     /// so one missing is a broken plugin, and failing here says so — where carrying on would
     /// leave the administrator without a password and the framework without a default user.
-    fn post_init(&mut self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
+    fn post_init(&mut self, env: &mut Environment) -> Result<()> {
         let admin: models::Users<SingleId> = env.named("base.user_admin")?;
         if !admin.has_password(env)? {
             admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;

@@ -79,8 +79,9 @@ impl<'a, A, R> Super<'a, A, R> {
         Ok(self.try_call_on(ids, env)?.unwrap_or_default())
     }
 
-    /// Same, with different arguments.
-    pub fn call_with(&self, args: &A, env: &mut dyn ErasedEnvironment) -> Result<R>
+    /// Same, with different arguments: the value alone for a method taking one, a tuple of them
+    /// otherwise.
+    pub fn call_with(&self, args: impl IntoArgs<A>, env: &mut dyn ErasedEnvironment) -> Result<R>
     where
         R: Default,
     {
@@ -108,8 +109,12 @@ impl<'a, A, R> Super<'a, A, R> {
     }
 
     /// Same, with different arguments.
-    pub fn try_call_with(&self, args: &A, env: &mut dyn ErasedEnvironment) -> Result<Option<R>> {
-        self.dispatch(self.ids.clone(), args, env)
+    pub fn try_call_with(
+        &self,
+        args: impl IntoArgs<A>,
+        env: &mut dyn ErasedEnvironment,
+    ) -> Result<Option<R>> {
+        self.dispatch(self.ids.clone(), &args.into_args(), env)
     }
 
     fn dispatch(
@@ -134,3 +139,37 @@ impl<'a, A, R> Super<'a, A, R> {
         .map(Some)
     }
 }
+
+/// The arguments a method is called with, as its chain holds them: a tuple of them, built here from
+/// the value alone for a method taking one, so that a caller never writes a one-element tuple.
+pub trait IntoArgs<A> {
+    fn into_args(self) -> A;
+}
+
+impl IntoArgs<()> for () {
+    fn into_args(self) {}
+}
+
+impl<T> IntoArgs<(T,)> for T {
+    fn into_args(self) -> (T,) {
+        (self,)
+    }
+}
+
+macro_rules! tuples_into_args {
+    ( $( ( $( $name:ident ),+ ) ),* ) => {
+        $( impl<$( $name ),+> IntoArgs<($( $name ),+)> for ($( $name ),+) {
+            fn into_args(self) -> Self {
+                self
+            }
+        } )*
+    };
+}
+
+tuples_into_args!(
+    (A1, A2),
+    (A1, A2, A3),
+    (A1, A2, A3, A4),
+    (A1, A2, A3, A4, A5),
+    (A1, A2, A3, A4, A5, A6)
+);

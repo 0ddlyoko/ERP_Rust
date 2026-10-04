@@ -155,7 +155,7 @@ fn test_saving_a_one2many_saves_its_many2one() -> Result<()> {
     let mut env = app.new_env()?;
     let dock: Dock<SingleId> = env.create_new_record_from_map(MapOfFields::default())?;
     let skiff: Skiff<SingleId> = env.create_new_record_from_map(MapOfFields::default())?;
-    skiff.set_dock(Some(dock.get_id().into()), &mut env)?;
+    skiff.set_dock(&dock, &mut env)?;
     let dirty = |env: &erp::environment::Environment| {
         env.cache
             .get_cache_models("skiff")

@@ -50,8 +50,8 @@ mod notes {
             values: Vec<MapOfFields>,
             sup: Super,
         ) -> Result<MultipleIds> {
-            let values = values.into_iter().map(shouted).collect();
-            sup.call_with(&(values,), env)
+            let values: Vec<MapOfFields> = values.into_iter().map(shouted).collect();
+            sup.call_with(values, env)
         }
 
         /// So are names written; the length is the compute's alone to write.
@@ -59,7 +59,7 @@ mod notes {
             if values.fields.contains_key("length") {
                 return Err("the length is computed".into());
             }
-            sup.call_with(&(shouted(values),), env)
+            sup.call_with(shouted(values), env)
         }
 
         pub fn compute_length(&self, env: &mut Environment) -> Result<()> {
@@ -110,7 +110,7 @@ mod notes {
             values: Vec<MapOfFields>,
             sup: Super,
         ) -> Result<MultipleIds> {
-            let values = values
+            let values: Vec<MapOfFields> = values
                 .into_iter()
                 .map(|mut values| {
                     let name = values
@@ -121,7 +121,7 @@ mod notes {
                     values
                 })
                 .collect();
-            let created: MultipleIds = sup.call_with(&(values,), env)?;
+            let created: MultipleIds = sup.call_with(values, env)?;
             let count = created.get_ids_ref().len();
             for note in Note::<MultipleIds>::from_ids(created.clone(), env) {
                 let name = note.get_name(env)?.clone();

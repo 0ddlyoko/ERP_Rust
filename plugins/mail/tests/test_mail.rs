@@ -1,15 +1,13 @@
 //! The thread of a record: changes of its tracked fields, read by whoever reads the record.
 
 use base::BasePlugin;
+use erp::Result;
 use erp::app::Application;
 use erp::data;
 use erp::types::field::{IdMode, MultipleIds};
 use mail::MailPlugin;
 use serde_json::{Value, json};
-use std::error::Error;
 use web::WebPlugin;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
     let mut app = Application::new_test();

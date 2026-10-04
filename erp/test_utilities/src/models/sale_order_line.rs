@@ -1,9 +1,9 @@
 use crate::models::sale_order::BaseSaleOrder;
 use crate::models::{SaleOrder, Tag};
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
-use std::error::Error;
 
 #[derive(Model, Debug)]
 #[erp(id = "sale_order_line", methods)]
@@ -27,10 +27,7 @@ pub struct SaleOrderLine<Mode: IdMode> {
 
 #[erp_methods]
 impl SaleOrderLine<MultipleIds> {
-    pub fn compute_total_price(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_total_price(&self, env: &mut Environment) -> Result<()> {
         for sale_order_line in self {
             let price = *sale_order_line.get_price(env)?;
             let amount = *sale_order_line.get_amount(env)?;
@@ -40,10 +37,7 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
-    pub fn compute_siblings_total(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_siblings_total(&self, env: &mut Environment) -> Result<()> {
         for line in self {
             let order = line.get_order::<SaleOrder<SingleId>>(env)?;
             let siblings: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
@@ -53,10 +47,7 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
-    pub fn compute_order_tags(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_order_tags(&self, env: &mut Environment) -> Result<()> {
         for line in self {
             let order = line.get_order::<SaleOrder<SingleId>>(env)?;
             let tags: Tag<MultipleIds> = order.get_tags(env)?;

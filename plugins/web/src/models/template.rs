@@ -1,18 +1,16 @@
 use crate::qweb::{Renderer, Values};
 use code_gen::Model;
+use erp::Result;
 use erp::data;
 use erp::environment::Environment;
 use erp::inheritance::{Arch, Archs, failed};
 use erp::search::SearchType;
-use erp::types::field::{FieldType, IdMode, MultipleIds, Reference, SingleId};
+use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp::xml::{Element, Node, XmlError, parse_document, to_markup};
 use erp_search_code_gen::make_domain;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::sync::Arc;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// A template of the web client's components, read from the `.xml` next to their `.ts`.
 ///
@@ -247,9 +245,8 @@ impl Template<SingleId> {
                 })?),
                 None => None,
             };
-            let mut values = MapOfFields::default();
-            values.insert_option("inherit", parent.map(FieldType::Ref));
-            env.write("template", &SingleId::from(id), values)?;
+            let parent = parent.map(|parent| Template::<SingleId>::from_id(parent, env));
+            Template::<SingleId>::from_id(id, env).set_inherit(parent.as_ref(), env)?;
         }
         for name in data::names_of(env, plugin, "template")? {
             if !names.contains(name.as_str()) {

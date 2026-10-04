@@ -87,7 +87,7 @@ fn test_a_reference_to_zero_is_empty() -> Result<()> {
     let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(values)?;
     assert!(line.get_order::<SaleOrder<_>>(&mut env)?.is_empty());
 
-    line.set_order(Some(order.get_id().into()), &mut env)?;
+    line.set_order(&order, &mut env)?;
     env.call_rpc(
         "sale_order_line",
         "write",

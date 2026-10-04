@@ -19,6 +19,9 @@ pub mod shared_cache;
 pub mod util;
 pub mod xml;
 
+/// What a method of a model, a compute or a hook answers: a value, or why it failed.
+pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
+
 pub use erp_types as types;
 // Re-exported so plugins can name the types that `ModelManager` and `Environment` hand back
 // without declaring a direct dependency on each internal crate.

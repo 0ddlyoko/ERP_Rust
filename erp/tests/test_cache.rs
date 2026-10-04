@@ -3,7 +3,7 @@ use erp::environment::make_cache;
 use erp::model::ModelManager;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::FieldType;
-use erp_types::field::{IdMode, SingleId};
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
@@ -144,8 +144,8 @@ fn test_x2x_fields() -> Result<()> {
 
     // Linking SO to a line should work, for both side
     // TODO Allow to add/remove line(s), instead of set
-    // TODO Clean this, to only pass "sale_order_line" instead of "sale_order_line.id.clone().into()"
-    sale_order.set_lines(sale_order_line.id.clone().into(), &mut env)?;
+    let lines = SaleOrderLine::<MultipleIds>::from_ids(sale_order_line.get_id(), &env);
+    sale_order.set_lines(&lines, &mut env)?;
     assert!(
         sale_order
             .get_lines::<SaleOrderLine<_>>(&mut env)?
@@ -160,7 +160,7 @@ fn test_x2x_fields() -> Result<()> {
     // Let's add another line
     let map: MapOfFields = MapOfFields::default();
     let sale_order_line_2: SaleOrderLine<SingleId> = env.create_new_record_from_map(map)?;
-    sale_order_line_2.set_order(Some(sale_order.id.get_id().into()), &mut env)?;
+    sale_order_line_2.set_order(&sale_order, &mut env)?;
     assert!(
         sale_order
             .get_lines::<SaleOrderLine<_>>(&mut env)?

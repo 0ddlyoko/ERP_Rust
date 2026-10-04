@@ -1,13 +1,11 @@
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Password};
-use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static RUNNING: AtomicUsize = AtomicUsize::new(0);
 static HIGH_WATER: AtomicUsize = AtomicUsize::new(0);
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Carries an override point another plugin extends, to pin down that a call reaches the most
 /// derived implementation rather than the one next to it.

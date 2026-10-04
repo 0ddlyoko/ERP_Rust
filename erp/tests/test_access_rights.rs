@@ -853,11 +853,13 @@ fn test_leaving_a_group_applies_at_once() -> Result<()> {
     assert_eq!(env.search_ids("tag", &SearchType::Nothing)?.len(), 2);
 
     let group: Group<SingleId> = env.get_record(fixture.group.into());
-    group.set_users(Vec::<u32>::new().into(), &mut env.sudo())?;
+    let nobody = Users::<MultipleIds>::from_ids(Vec::<u32>::new(), &env);
+    group.set_users(&nobody, &mut env.sudo())?;
     assert!(env.search_ids("tag", &SearchType::Nothing).is_err());
 
     let user: Users<SingleId> = env.get_record(fixture.uid.into());
-    user.set_groups(vec![fixture.group].into(), &mut env.sudo())?;
+    let groups = Group::<MultipleIds>::from_ids(fixture.group, &env);
+    user.set_groups(&groups, &mut env.sudo())?;
     assert_eq!(
         env.search_ids("tag", &SearchType::Nothing)?.len(),
         2,
@@ -1053,7 +1055,8 @@ fn test_a_user_reads_what_is_shared_and_nothing_else() -> Result<()> {
     let uid = make_user(&mut env, "employee")?;
     let group_user: Group<SingleId> = env.named("base.group_user")?;
     let user: Users<SingleId> = env.get_record(uid.into());
-    user.set_groups(vec![group_user.get_id()].into(), &mut env)?;
+    let groups = Group::<MultipleIds>::from_ids(group_user.get_id(), &env);
+    user.set_groups(&groups, &mut env)?;
     env.close()?;
 
     let mut env = app.new_env_as(uid)?;

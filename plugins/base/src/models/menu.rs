@@ -1,11 +1,11 @@
 use crate::models::{Action, BaseAction, BaseGroup, Group};
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::search::SearchType;
 use erp::serde_json::{Value, json};
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 
 /// An entry of a client's menu: a title, the entries under it, and what choosing it opens.
 ///
@@ -43,10 +43,7 @@ struct Entry {
 #[erp_methods]
 impl Menu<MultipleIds> {
     /// Its name after those of the entries above it: `Settings / Technical / Menus`.
-    pub fn compute_complete_name(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_complete_name(&self, env: &mut Environment) -> Result<()> {
         for menu in self {
             let mut names = vec![menu.get_name(env)?.clone()];
             let mut seen = HashSet::from([menu.get_id()]);
@@ -68,7 +65,7 @@ impl Menu<MultipleIds> {
     /// caller's groups. An entry with no action and nothing visible under it is left out too: a
     /// title leading nowhere.
     #[erp(rpc)]
-    pub fn tree(&self, env: &mut Environment) -> Result<Value, Box<dyn Error + Send + Sync>> {
+    pub fn tree(&self, env: &mut Environment) -> Result<Value> {
         let _ = self;
         let member_of: HashSet<u32> = match env.uid() {
             Some(uid) => env.groups_of(uid)?.into_iter().collect(),

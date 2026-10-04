@@ -1,10 +1,11 @@
 use crate::models::{BaseMessageChange, MessageChange};
 use base::models::{BaseUsers, Users};
 use code_gen::{Model, erp_methods, selection};
+use erp::Result;
 use erp::access::Operation;
 use erp::environment::Environment;
 use erp::internal_types::FinalInternalField;
-use erp::model::TrackedChange;
+use erp::model::{ModelVerbs, TrackedChange};
 use erp::serde_json::{Value, json};
 use erp::types::field::{
     FieldType, IdMode, MultipleIds, Reference, Selection, SingleId, Timestamp, Utc,
@@ -12,9 +13,6 @@ use erp::types::field::{
 use erp::types::model::MapOfFields;
 use erp_search::{OrderBy, SearchOptions, SearchType};
 use erp_search_code_gen::make_domain;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[selection]
 pub enum MessageKind {
@@ -253,7 +251,7 @@ fn post(
                 values.insert(name, value);
             }
         }
-        env.create_records("message_change", vec![values])?;
+        MessageChange::<SingleId>::create(values, env)?;
     }
     Ok(())
 }
@@ -320,21 +318,18 @@ pub fn forget_deleted(env: &mut Environment, model_name: &str, ids: &[u32]) -> R
         .map(|id| i32::try_from(*id))
         .collect::<std::result::Result<_, _>>()?;
     let env = &mut *env.sudo();
-    let messages = env.search_ids(
-        "message",
+    let messages = Message::<MultipleIds>::search(
         &make_domain!([
             ("model", "=", model_name.to_string()),
             ("record", "in", records)
         ]),
+        env,
     )?;
-    if messages.is_empty() {
+    if messages.id.is_empty() {
         return Ok(());
     }
-    let changes = env.search_ids(
-        "message_change",
-        &make_domain!([("message", "in", messages.clone())]),
-    )?;
-    env.delete("message_change", &MultipleIds::from(changes))?;
-    env.delete("message", &MultipleIds::from(messages))?;
+    let changes: MessageChange<MultipleIds> = messages.get_changes(env)?;
+    changes.delete(env)?;
+    messages.delete(env)?;
     Ok(())
 }

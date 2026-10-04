@@ -151,6 +151,62 @@ accepts_itself!(
     crate::field::Password
 );
 
+impl Accepts<&str> for String {
+    fn accept(value: &str) -> Self {
+        value.to_string()
+    }
+}
+
+/// What an optional field's setter takes: the value alone, `Some` of it, or `None` to empty it.
+pub trait AcceptsOptional<V>: Sized {
+    fn accept_optional(value: V) -> Option<Self>;
+}
+
+impl<T> AcceptsOptional<Option<T>> for T {
+    fn accept_optional(value: Option<T>) -> Option<Self> {
+        value
+    }
+}
+
+macro_rules! accepts_itself_optionally {
+    ( $( $ty:ty ),* ) => {
+        $( impl AcceptsOptional<$ty> for $ty {
+            fn accept_optional(value: $ty) -> Option<Self> {
+                Some(value)
+            }
+        } )*
+    };
+}
+
+accepts_itself_optionally!(
+    String,
+    i32,
+    u32,
+    bool,
+    rust_decimal::Decimal,
+    chrono::NaiveDate,
+    chrono::DateTime<chrono::Utc>,
+    crate::field::Password
+);
+
+impl AcceptsOptional<&str> for String {
+    fn accept_optional(value: &str) -> Option<Self> {
+        Some(value.to_string())
+    }
+}
+
+impl AcceptsOptional<Option<&str>> for String {
+    fn accept_optional(value: Option<&str>) -> Option<Self> {
+        value.map(str::to_string)
+    }
+}
+
+impl<E: Selection> AcceptsOptional<E> for E {
+    fn accept_optional(value: E) -> Option<Self> {
+        Some(value)
+    }
+}
+
 impl<E: Selection> From<E> for FieldType {
     fn from(value: E) -> Self {
         FieldType::String(value.key().as_str().to_string())

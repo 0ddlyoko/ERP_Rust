@@ -7,11 +7,9 @@
 //! `t-call-assets` loads a bundle. Anything else starting with `t-` is refused, rather than
 //! silently written out.
 
+use erp::Result;
 use erp::xml::{Element, Node};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// A value a template writes out.
 #[derive(Debug, Clone, PartialEq, Eq)]

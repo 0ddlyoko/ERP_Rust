@@ -1,14 +1,12 @@
 use crate::models::{BaseUsers, Users};
 use code_gen::Model;
+use erp::Result;
 use erp::environment::Environment;
 use erp::errors::MissingRecords;
 use erp::types::field::{
     IdMode, Password, Reference, SingleId, TimeDelta, Timestamp, Utc, generate_secret,
 };
 use erp::types::model::MapOfFields;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Proof that someone authenticated, and how long it stays good for.
 #[derive(Model)]
@@ -135,9 +133,7 @@ impl Session<SingleId> {
         else {
             return Ok(false);
         };
-        let mut values = MapOfFields::default();
-        values.insert("active", false);
-        env.write("session", &SingleId::from(id), values)?;
+        Session::<SingleId>::from_id(id, env).set_active(false, env)?;
         Ok(true)
     }
 }

@@ -1,7 +1,7 @@
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds};
-use std::error::Error;
 
 #[derive(Model)]
 #[erp(id = "sale_order_test", methods)]
@@ -23,7 +23,7 @@ pub struct SaleOrderTest<Mode: IdMode> {
 #[erp_methods]
 impl SaleOrderTest<MultipleIds> {
     /// Base implementation of the chain.
-    pub fn compute_label(&self, env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_label(&self, env: &mut Environment) -> Result<()> {
         for record in self {
             let name = record.get_name(env)?.clone();
             record.set_label(format!("base:{name}"), env)?;
@@ -31,20 +31,14 @@ impl SaleOrderTest<MultipleIds> {
         Ok(())
     }
 
-    pub fn compute_replaced(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_replaced(&self, env: &mut Environment) -> Result<()> {
         for record in self {
             record.set_replaced("base".to_string(), env)?;
         }
         Ok(())
     }
 
-    pub fn compute_narrowed(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_narrowed(&self, env: &mut Environment) -> Result<()> {
         for record in self {
             record.set_narrowed("base".to_string(), env)?;
         }
@@ -74,11 +68,7 @@ pub struct SaleOrderTest2<Mode: IdMode> {
 #[erp_methods]
 impl SaleOrderTest2<MultipleIds> {
     /// Extends the base: calls it, then appends to what it produced.
-    pub fn compute_label(
-        &self,
-        env: &mut Environment,
-        parent: Super,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_label(&self, env: &mut Environment, parent: Super) -> Result<()> {
         assert!(parent.exists(), "the base implementation must be reachable");
         parent.call(env)?;
         for record in self {
@@ -89,10 +79,7 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Replaces the base: never calls it.
-    pub fn compute_replaced(
-        &self,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_replaced(&self, env: &mut Environment) -> Result<()> {
         for record in self {
             record.set_replaced("derived".to_string(), env)?;
         }
@@ -100,11 +87,7 @@ impl SaleOrderTest2<MultipleIds> {
     }
 
     /// Handles some records itself and hands only the rest down the chain.
-    pub fn compute_narrowed(
-        &self,
-        env: &mut Environment,
-        parent: Super,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn compute_narrowed(&self, env: &mut Environment, parent: Super) -> Result<()> {
         let mut handed_down = Vec::new();
         for record in self {
             if record.get_name(env)? == "skip" {

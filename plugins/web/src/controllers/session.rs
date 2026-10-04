@@ -2,12 +2,10 @@ use crate::models::Template;
 use crate::qweb::{Value, Values};
 use base::models::Users;
 use code_gen::{Controller, erp_routes};
+use erp::Result;
 use erp::environment::Environment;
 use erp::http::{Request, Response, SESSION_COOKIE};
 use erp::types::field::SingleId;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Logging in and out of the web client, with a session cookie.
 #[derive(Controller)]

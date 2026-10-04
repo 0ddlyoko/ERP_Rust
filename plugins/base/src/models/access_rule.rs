@@ -1,13 +1,11 @@
 use crate::models::{BaseGroup, Group, Users};
 use code_gen::Model;
+use erp::Result;
 use erp::access::{Rule, RuleSource};
 use erp::environment::Environment;
 use erp::search::SearchType;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp_search_code_gen::make_domain;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Which records of a model a group may read, create, write or delete.
 ///

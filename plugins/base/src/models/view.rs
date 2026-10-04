@@ -1,4 +1,5 @@
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::inheritance::{Arch as Markup, Archs};
 use erp::internal_types::FinalInternalModel;
@@ -6,9 +7,6 @@ use erp::search::SearchType;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::xml::{Element, Node, to_markup};
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// How a model's records are shown — a list, a form — described in XML in a plugin's `views/`.
 ///
@@ -486,12 +484,7 @@ impl View<MultipleIds> {
     /// Kept in a shared cache until a view changes or a plugin loads. The fields it shows are
     /// described by `fields_get`, which the client keeps per model.
     #[erp(rpc)]
-    pub fn load(
-        &self,
-        env: &mut Environment,
-        model: String,
-        kind: String,
-    ) -> std::result::Result<String, Box<dyn Error + Send + Sync>> {
+    pub fn load(&self, env: &mut Environment, model: String, kind: String) -> erp::Result<String> {
         let _ = self;
         let shown = env.cached(VIEWS_CACHE, "all", |env| {
             let mut shown: HashMap<(String, String), String> = HashMap::new();

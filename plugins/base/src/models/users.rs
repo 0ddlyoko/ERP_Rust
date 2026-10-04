@@ -1,12 +1,12 @@
 use crate::models::contact::BaseContact;
 use crate::models::{BaseGroup, Contact, Session};
 use code_gen::{Model, erp_methods};
+use erp::Result;
 use erp::environment::Environment;
 use erp::model::ModelVerbs;
 use erp::types::field::{IdMode, MultipleIds, Password, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
-use std::error::Error;
 
 /// Someone who can log in, and the contact they are.
 #[derive(Model)]
@@ -38,7 +38,7 @@ impl Users<SingleId> {
         env: &mut Environment,
         login: &str,
         password: &str,
-    ) -> Result<Option<Users<SingleId>>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Option<Users<SingleId>>> {
         // Checking credentials decides who the caller is, so it cannot wait on their rights.
         let env = &mut *env.sudo();
         let found: Users<MultipleIds> = env.search(&make_domain!([
@@ -60,11 +60,7 @@ impl Users<SingleId> {
     }
 
     /// Whether this password is the user's.
-    pub fn check_password(
-        &self,
-        env: &mut Environment,
-        password: &str,
-    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub fn check_password(&self, env: &mut Environment, password: &str) -> Result<bool> {
         Ok(self.get_password(env)?.is_same_password(password))
     }
 
@@ -72,19 +68,12 @@ impl Users<SingleId> {
     ///
     /// Not named `set_password`: that is the generated setter for the field, which takes a
     /// [`Password`] — already hashed — rather than the clear password.
-    pub fn change_password(
-        &self,
-        env: &mut Environment,
-        password: &str,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn change_password(&self, env: &mut Environment, password: &str) -> Result<()> {
         self.set_password(Password::new(password)?, env)
     }
 
     /// Whether the user has a usable password yet.
-    pub fn has_password(
-        &self,
-        env: &mut Environment,
-    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub fn has_password(&self, env: &mut Environment) -> Result<bool> {
         Ok(self.get_password(env)?.is_set())
     }
 }
@@ -104,10 +93,7 @@ pub struct Authenticated {
 impl Users<MultipleIds> {
     /// New contacts for users with these values, one each and in their order, named as the user.
     /// Created together, as sudo: who may create a user may give them a contact.
-    fn contacts_for(
-        env: &mut Environment,
-        users: &[&MapOfFields],
-    ) -> Result<Contact<MultipleIds>, Box<dyn Error + Send + Sync>> {
+    fn contacts_for(env: &mut Environment, users: &[&MapOfFields]) -> Result<Contact<MultipleIds>> {
         let contacts = users
             .iter()
             .map(|user| {
@@ -128,7 +114,7 @@ impl Users<MultipleIds> {
         env: &mut Environment,
         values: Vec<MapOfFields>,
         sup: Super,
-    ) -> Result<MultipleIds, Box<dyn Error + Send + Sync>> {
+    ) -> Result<MultipleIds> {
         let mut values = values;
         let without: Vec<usize> = values
             .iter()
@@ -144,7 +130,7 @@ impl Users<MultipleIds> {
         for (index, contact) in without.into_iter().zip(contacts) {
             values[index].insert("contact", contact.get_id());
         }
-        sup.call_with(&(values,), env)
+        sup.call_with(values, env)
     }
 
     /// Exchange credentials for a session.
@@ -156,7 +142,7 @@ impl Users<MultipleIds> {
         env: &mut Environment,
         login: String,
         password: String,
-    ) -> Result<Authenticated, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Authenticated> {
         let _ = self;
         let Some(user) = Users::<SingleId>::identified_by(env, &login, &password)? else {
             return Err("These credentials identify nobody".into());
@@ -175,11 +161,7 @@ impl Users<MultipleIds> {
     ///
     /// The token rather than the caller alone: logging out of one browser leaves the others
     /// logged in. Returns whether a session ended.
-    pub fn log_out(
-        &self,
-        env: &mut Environment,
-        token: String,
-    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub fn log_out(&self, env: &mut Environment, token: String) -> Result<bool> {
         let _ = self;
         let Some(uid) = env.uid() else {
             return Ok(false);
@@ -203,7 +185,7 @@ impl Users<MultipleIds> {
         env: &mut Environment,
         current: String,
         new: String,
-    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    ) -> Result<bool> {
         let _ = self;
         let Some(uid) = env.uid() else {
             return Err("Only somebody can change their password".into());
@@ -223,21 +205,21 @@ impl Users<MultipleIds> {
     /// `None` for a caller that presented no token, which is how a client tells "my token was not
     /// read" from "my token was read and I am nobody in particular".
     #[erp(rpc)]
-    pub fn me(&self, env: &mut Environment) -> Result<Option<u32>, Box<dyn Error + Send + Sync>> {
+    pub fn me(&self, env: &mut Environment) -> Result<Option<u32>> {
         let _ = self;
         Ok(env.uid())
     }
 
     /// Archive the users: they can no longer log in.
     #[erp(rpc)]
-    pub fn archive(&self, env: &mut Environment) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub fn archive(&self, env: &mut Environment) -> Result<bool> {
         self.set_active(false, env)?;
         Ok(true)
     }
 
     /// Bring archived users back: they can log in again.
     #[erp(rpc)]
-    pub fn unarchive(&self, env: &mut Environment) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    pub fn unarchive(&self, env: &mut Environment) -> Result<bool> {
         self.set_active(true, env)?;
         Ok(true)
     }

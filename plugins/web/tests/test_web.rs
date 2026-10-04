@@ -2,6 +2,7 @@
 //! installed plugins bring.
 
 use base::BasePlugin;
+use erp::Result;
 use erp::app::Application;
 use erp::assets::{StaticFiles, TemplateFiles};
 use erp::data;
@@ -11,13 +12,10 @@ use erp::plugin::Plugin;
 use erp::serde_json::json;
 use erp::types::field::SingleId;
 use erp::types::model::MapOfFields;
-use std::error::Error;
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
 use web::WebPlugin;
 use web::models::Template;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// `base`, which brings `web` along on its own, and `test_plugin`, which serves files.
 fn new_app() -> Result<Application> {

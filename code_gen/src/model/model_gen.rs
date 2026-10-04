@@ -178,18 +178,22 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         };
         Some(if *is_reference && *is_reference_multi {
             quote! {
-                pub fn #set_field_ident(&self, value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident<V>(&self, value: V, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
+                where
+                    V: erp::types::field::ToRecords<#field_type_keyword>,
+                {
+                    let value: erp::types::field::Reference<#field_type_keyword, erp::types::field::MultipleIds> = value.record_ids().into();
                     #this.set_references(#field_name, value, env)
                 }
             }
         } else if *is_reference {
             quote! {
-                pub fn #set_field_ident(&self, value: Option<erp::types::field::Reference<#field_type_keyword, erp::types::field::SingleId>>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
-                    if let Some(value) = value {
-                        #this.set_reference(#field_name, value, env)
-                    } else {
-                        #this.set_option::<u32>(#field_name, None, env)
-                    }
+                pub fn #set_field_ident<V>(&self, value: V, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
+                where
+                    V: erp::types::field::ToRecord<#field_type_keyword>,
+                {
+                    let id = value.record_id();
+                    #this.set_option::<u32>(#field_name, (id != 0).then_some(id), env)
                 }
             }
         } else if *is_required {
@@ -204,7 +208,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             }
         } else {
             quote! {
-                pub fn #set_field_ident(&self, value: Option<#field_type_keyword>, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+                pub fn #set_field_ident<V>(&self, value: V, env: &mut erp::environment::Environment) -> ::core::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
+                where
+                    #field_type_keyword: erp::types::field::AcceptsOptional<V>,
+                {
+                    let value = <#field_type_keyword as erp::types::field::AcceptsOptional<V>>::accept_optional(value);
                     #this.set_option(#field_name, value, env)
                 }
             }

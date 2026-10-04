@@ -2,16 +2,14 @@ use crate::models::Template;
 use crate::qweb::{Value, Values};
 use base::models::{Group, Users};
 use code_gen::{Controller, erp_routes};
+use erp::Result;
 use erp::assets::content_type;
 use erp::data;
 use erp::environment::Environment;
 use erp::http::{HttpError, Request, Response};
 use erp::serde_json::json;
 use erp::types::field::{MultipleIds, SingleId};
-use std::error::Error;
 use std::hash::{DefaultHasher, Hash, Hasher};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// The web client, and what it loads.
 #[derive(Controller)]
