@@ -136,6 +136,7 @@ impl ModelManager {
             .register_internal_model::<M>(plugin_name);
 
         let plugin_name = plugin_name.to_string();
+        super::register_crud::<M>(self);
         M::register_methods(self, &plugin_name);
     }
 

@@ -1,20 +1,22 @@
 //! Creating records and applying default values.
 use super::*;
 use crate::access::{Access, AccessDenied, Operation};
+use crate::model::{CREATE, CreateArgs};
 use crate::model::{CREATE_DATE, CREATE_UID, WRITE_DATE, WRITE_UID};
 use chrono::Utc;
 use erp_internal_types::{FinalInternalField, FinalInternalModel};
 use erp_types::field::Command;
 
 impl<'mm> Environment<'mm> {
-    /// Create a new record for a specific model and a given list of fields
+    /// Create a new record for a specific model and a given list of fields; an empty record when
+    /// an override of its `create` made none.
     pub fn create_new_record_from_map<M>(&mut self, data: MapOfFields) -> Result<M>
     where
         M: Model<SingleId>,
     {
         let model_name = M::_get_model_name();
-        let ids = self._create_new_records(model_name, vec![data])?;
-        let id = ids.get_id_at(0);
+        let ids = self.create_records(model_name, vec![data])?;
+        let id = ids.get_ids_ref().first().copied().unwrap_or(0);
         Ok(self.get_record::<M, SingleId>(id.into()))
     }
 
@@ -24,7 +26,7 @@ impl<'mm> Environment<'mm> {
         M: Model<MultipleIds>,
     {
         let model_name = M::_get_model_name();
-        let ids = self._create_new_records(model_name, data)?;
+        let ids = self.create_records(model_name, data)?;
         Ok(self.get_record::<M, MultipleIds>(ids))
     }
 
@@ -34,12 +36,20 @@ impl<'mm> Environment<'mm> {
     /// [`Environment::create_new_record_from_map`] resolves the name from `M` and lands here.
     /// A one2many or a many2many may be given commands: its lines are created once the record
     /// exists, pointing back to it.
+    ///
+    /// Goes through the model's `create`, so what a plugin overrode there runs.
     pub fn create_records(
         &mut self,
         model_name: &str,
         data: Vec<MapOfFields>,
     ) -> Result<MultipleIds> {
-        self._create_new_records(model_name, data)
+        self.model_manager.try_get_model(model_name)?;
+        self.call_method::<CreateArgs, MultipleIds>(
+            model_name,
+            CREATE,
+            &MultipleIds::default(),
+            &(data,),
+        )
     }
 
     /// Create a record from its name alone, as `(id, name)`: what typing a name that matches
@@ -68,7 +78,7 @@ impl<'mm> Environment<'mm> {
     /// Whether a record falls within the rights depends on its values, so the check runs once it
     /// exists — inside a savepoint, so that a refused record does not outlive the refusal. The
     /// savepoint copies the cache, and is only paid for when a domain actually restricts.
-    pub(super) fn _create_new_records(
+    pub(crate) fn _create_new_records(
         &mut self,
         model_name: &str,
         data: Vec<MapOfFields>,

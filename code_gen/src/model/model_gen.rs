@@ -256,14 +256,6 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             env.get_record::<Self, erp::types::field::MultipleIds>(ids.into())
         }
 
-        /// Create one record per set of values.
-        pub fn create(
-            values: Vec<erp::types::model::MapOfFields>,
-            env: &mut erp::environment::Environment,
-        ) -> ::core::result::Result<Self, #err> {
-            env.create_new_records_from_maps::<Self>(values)
-        }
-
         /// Read fields of these records, one map per record.
         pub fn read(
             &self,
@@ -273,22 +265,6 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             env.read(#model_name_multi, &self.id, fields)
         }
 
-        /// Write the same values to every record of the set.
-        pub fn write(
-            &self,
-            values: erp::types::model::MapOfFields,
-            env: &mut erp::environment::Environment,
-        ) -> ::core::result::Result<(), #err> {
-            env.write(#model_name_multi, &self.id, values)
-        }
-
-        /// Delete these records, and report how many went.
-        pub fn delete(
-            &self,
-            env: &mut erp::environment::Environment,
-        ) -> ::core::result::Result<u32, #err> {
-            env.delete(#model_name_multi, &self.id)
-        }
     };
 
     let verbs_single = quote! {

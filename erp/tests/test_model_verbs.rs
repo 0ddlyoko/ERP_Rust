@@ -4,6 +4,7 @@
 //! caller is thinking in. It is the same call underneath.
 
 use erp::app::Application;
+use erp::model::ModelVerbs;
 use erp_search::SearchOptions;
 use erp_search_code_gen::make_domain;
 use erp_types::field::{MultipleIds, SingleId};

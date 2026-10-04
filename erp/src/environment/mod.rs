@@ -94,6 +94,9 @@ pub struct Environment<'mm> {
     /// Records a deletion under way removes, by model: their own fields may be emptied, required
     /// or not, and records pointing to them are not held back by them.
     deleting: HashMap<String, HashSet<u32>>,
+    /// Records a cascade is about to delete through their model's `delete`, by model: deleted
+    /// there as part of the deletion under way, whatever the caller's rights.
+    cascading: HashMap<String, HashSet<u32>>,
     maybe_emptied: required::MaybeEmptied,
     /// How many virtual records this unit of work made, for the next one's id.
     virtual_count: u32,
@@ -143,6 +146,7 @@ impl<'mm> Environment<'mm> {
             changed_cached_models: HashSet::new(),
             tracked: Default::default(),
             deleting: HashMap::new(),
+            cascading: HashMap::new(),
             maybe_emptied: Default::default(),
             virtual_count: 0,
             closed: false,

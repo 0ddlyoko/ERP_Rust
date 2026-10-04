@@ -1,6 +1,7 @@
 //! Removing records, and untangling them from their relations on the way out.
 use super::*;
 use crate::access::Operation;
+use crate::model::{DELETE, DeleteArgs};
 use erp_types::field::OnDelete;
 
 /// Records of a model pointing through one of its many2one to records being deleted.
@@ -26,9 +27,32 @@ impl<'mm> Environment<'mm> {
     ///
     /// Refused as a whole unless the caller may delete every one of the records. What goes with
     /// them through a cascade is not held to the caller's rights: the field asked for it.
+    ///
+    /// Goes through the model's `delete`, so what a plugin overrode there runs — for records
+    /// deleted by a cascade too.
     pub fn delete<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
         if ids.is_empty() {
             return Ok(0);
+        }
+        self.model_manager.try_get_model(model_name)?;
+        let ids: MultipleIds = ids.clone().into();
+        self.call_method::<DeleteArgs, u32>(model_name, DELETE, &ids, &())
+    }
+
+    /// What deleting does, below every override of `delete`: for records a cascade is deleting,
+    /// as part of that deletion and whatever the caller's rights; otherwise as a deletion of its
+    /// own.
+    pub(crate) fn delete_records(&mut self, model_name: &str, ids: &MultipleIds) -> Result<u32> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        if let Some(pending) = self.cascading.get_mut(model_name)
+            && ids.get_ids_ref().iter().all(|id| pending.contains(id))
+        {
+            for id in ids.get_ids_ref() {
+                pending.remove(id);
+            }
+            return self.delete_unchecked(model_name, ids.get_ids_ref().clone());
         }
         self.check_access(model_name, Operation::Delete, ids.get_ids_ref(), &[])?;
         // A hook deleting records of its own starts a deletion of its own.
@@ -64,7 +88,12 @@ impl<'mm> Environment<'mm> {
         for pointing in pointing {
             match pointing.on_delete {
                 OnDelete::Cascade => {
-                    self.delete_unchecked(pointing.model, pointing.ids)?;
+                    let ids = MultipleIds::from(pointing.ids);
+                    self.cascading
+                        .entry(pointing.model.to_string())
+                        .or_default()
+                        .extend(ids.get_ids_ref().iter().copied());
+                    self.delete(pointing.model, &ids)?;
                 }
                 OnDelete::SetNull => self.empty_pointing(&pointing)?,
                 OnDelete::Restrict => {}

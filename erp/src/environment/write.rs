@@ -2,6 +2,7 @@
 use super::*;
 use crate::access::Operation;
 use crate::errors::MissingRecords;
+use crate::model::{WRITE, WriteArgs};
 use crate::model::{WRITE_DATE, WRITE_UID};
 use chrono::Utc;
 use erp_internal_types::FinalInternalField;
@@ -15,8 +16,21 @@ impl<'mm> Environment<'mm> {
     /// coherent and dependent computes are flagged. A one2many or a many2many may be given
     /// commands, carried out in order for each record, on what it holds.
     ///
-    /// Refused as a whole unless the caller may write every one of the records.
+    /// Refused as a whole unless the caller may write every one of the records. Goes through the
+    /// model's `write`, so what a plugin overrode there runs.
     pub fn write<Mode: IdMode>(
+        &mut self,
+        model_name: &str,
+        ids: &Mode,
+        values: MapOfFields,
+    ) -> Result<()> {
+        self.model_manager.try_get_model(model_name)?;
+        let ids: MultipleIds = ids.clone().into();
+        self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))
+    }
+
+    /// What writing does, below every override of `write`.
+    pub(crate) fn write_records<Mode: IdMode>(
         &mut self,
         model_name: &str,
         ids: &Mode,
@@ -56,10 +70,11 @@ impl<'mm> Environment<'mm> {
         self.save_option_to_cache(model_name, field_name, ids, Some(value))
     }
 
-    /// Write one field, as a generated setter does.
+    /// Write one field, as a generated setter does: through the model's `write`, as setting a
+    /// field in Odoo does, so that what a plugin overrode there runs.
     ///
-    /// Refused unless the caller may write every one of the records, or the field is a stored one
-    /// its compute is filling in right now.
+    /// Except for the field a compute is filling in right now, and for virtual records: those are
+    /// put in the cache as they are, as Odoo does too.
     pub(crate) fn save_option_to_cache<Mode: IdMode, E>(
         &mut self,
         model_name: &str,
@@ -70,15 +85,13 @@ impl<'mm> Environment<'mm> {
     where
         E: Into<FieldType>,
     {
-        if !self.is_computing(model_name, field_name) {
-            self.check_access(
-                model_name,
-                Operation::Write,
-                ids.get_ids_ref(),
-                &[field_name],
-            )?;
+        let is_virtual = ids.get_ids_ref().iter().any(|id| onchange::is_virtual(*id));
+        if self.is_computing(model_name, field_name) || is_virtual {
+            return self.save_option_to_cache_unchecked(model_name, field_name, ids, value);
         }
-        self.save_option_to_cache_unchecked(model_name, field_name, ids, value)
+        let mut values = MapOfFields::default();
+        values.insert_option(field_name, value);
+        self.write(model_name, ids, values)
     }
 
     /// Same, whatever the caller's rights.
