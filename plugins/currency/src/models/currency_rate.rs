@@ -23,26 +23,6 @@ pub struct CurrencyRate<Mode: IdMode> {
 
 #[erp_methods]
 impl CurrencyRate<MultipleIds> {
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            CurrencyRate::<MultipleIds>::from_ids(ids.clone(), env).check_rates(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_rates(env)
-        })
-    }
-
     /// A rate is positive, and a currency has one rate a day.
     pub fn check_rates(&self, env: &mut Environment) -> Result<()> {
         for rate in self {
@@ -65,5 +45,25 @@ impl CurrencyRate<MultipleIds> {
             }
         }
         Ok(())
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            CurrencyRate::<MultipleIds>::from_ids(ids.clone(), env).check_rates(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            self.check_rates(env)
+        })
     }
 }
