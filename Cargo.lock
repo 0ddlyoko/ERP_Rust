@@ -718,6 +718,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "erp_test_support"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "erp",
+]
+
+[[package]]
 name = "erp_types"
 version = "0.1.0"
 dependencies = [

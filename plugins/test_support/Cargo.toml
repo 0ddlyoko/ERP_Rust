@@ -1,0 +1,9 @@
+[package]
+name = "erp_test_support"
+version = "0.1.0"
+edition = "2024"
+description = "What the tests of the plugins share: an application on a database of their own."
+
+[dependencies]
+erp = { path = "../../erp" }
+base = { path = "../base" }
