@@ -2221,6 +2221,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "sale_stock"
+version = "0.1.0"
+dependencies = [
+ "account",
+ "base",
+ "chrono",
+ "code_gen",
+ "contacts",
+ "currency",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "product",
+ "sale",
+ "sequence",
+ "serde_json",
+ "stock",
+ "uom",
+ "web",
+]
+
+[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
