@@ -520,6 +520,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "currency"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "rust_decimal",
+ "serde_json",
+ "web",
+]
+
+[[package]]
 name = "dashmap"
 version = "6.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

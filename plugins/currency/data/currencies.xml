@@ -1,0 +1,7 @@
+<erp noupdate="1">
+    <currency id="currency_eur" name="EUR" full_name="Euro" symbol="€" position="after" rounding="0.01"/>
+    <currency id="currency_usd" name="USD" full_name="US Dollar" symbol="$" position="before" rounding="0.01"/>
+    <currency id="currency_gbp" name="GBP" full_name="Pound sterling" symbol="£" position="before" rounding="0.01"/>
+    <currency id="currency_chf" name="CHF" full_name="Swiss franc" symbol="CHF" position="after" rounding="0.01"/>
+    <currency id="currency_jpy" name="JPY" full_name="Japanese yen" symbol="¥" position="before" rounding="1"/>
+</erp>

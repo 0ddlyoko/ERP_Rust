@@ -1,0 +1,58 @@
+<erp>
+    <view id="view_currency_list" name="currency.list" model="currency">
+        <list>
+            <field name="name"/>
+            <field name="full_name"/>
+            <field name="symbol"/>
+            <field name="rate"/>
+            <field name="active"/>
+        </list>
+    </view>
+    <view id="view_currency_form" name="currency.form" model="currency">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="full_name"/>
+                <block string="Display">
+                    <field name="symbol"/>
+                    <field name="position"/>
+                    <field name="rounding"/>
+                </block>
+                <block string="Rate">
+                    <field name="rate"/>
+                    <field name="active"/>
+                </block>
+            </block>
+            <pages>
+                <page name="rates" string="Rates">
+                    <field name="rates" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_currency_search" name="currency.search" model="currency">
+        <search>
+            <field name="name"/>
+            <field name="full_name"/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_currencies" name="Currencies" model="currency" views="list,form"/>
+
+    <view id="view_currency_rate_list" name="currency_rate.list" model="currency_rate">
+        <list>
+            <field name="date"/>
+            <field name="currency"/>
+            <field name="rate"/>
+        </list>
+    </view>
+    <action id="action_currency_rates" name="Exchange rates" model="currency_rate"
+            views="list,form"/>
+
+    <view id="view_company_form_currency" name="company.form.currency" inherit="base.view_company_form">
+        <xpath expr="//field[@name='contact']" position="after">
+            <field name="currency" no_create="1"/>
+        </xpath>
+    </view>
+</erp>
