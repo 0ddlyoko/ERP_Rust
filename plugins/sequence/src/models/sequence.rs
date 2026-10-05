@@ -113,26 +113,6 @@ impl Sequence<SingleId> {
 
 #[erp_methods]
 impl Sequence<MultipleIds> {
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Sequence::<MultipleIds>::from_ids(ids.clone(), env).check_series(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_series(env)
-        })
-    }
-
     /// One active series per code; numbers and steps are positive; padding is within reason.
     pub fn check_series(&self, env: &mut Environment) -> Result<()> {
         for sequence in self {
@@ -155,6 +135,26 @@ impl Sequence<MultipleIds> {
             }
         }
         Ok(())
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            Sequence::<MultipleIds>::from_ids(ids.clone(), env).check_series(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            self.check_series(env)
+        })
     }
 
     /// The next name of the series for a document dated `date` (today when absent).
