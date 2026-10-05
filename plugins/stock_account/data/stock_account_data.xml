@@ -1,0 +1,3 @@
+<erp noupdate="1">
+    <account_journal id="journal_stock" name="Inventory valuation" code="STJ" journal_type="general" sequence_order="30"/>
+</erp>

@@ -2546,6 +2546,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "stock_account"
+version = "0.1.0"
+dependencies = [
+ "account",
+ "base",
+ "chrono",
+ "code_gen",
+ "contacts",
+ "currency",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "product",
+ "sequence",
+ "serde_json",
+ "stock",
+ "uom",
+ "web",
+]
+
+[[package]]
 name = "string_enum"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

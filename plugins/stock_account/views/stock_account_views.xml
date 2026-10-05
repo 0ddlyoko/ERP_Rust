@@ -1,0 +1,16 @@
+<erp>
+    <view id="view_product_category_form_valuation" name="product_category.form.valuation"
+          inherit="product.view_product_category_form">
+        <xpath expr="//field[@name='parent']" position="after">
+            <field name="stock_valuation_account" no_create="1"/>
+            <field name="stock_input_account" no_create="1" invisible="!stock_valuation_account"/>
+            <field name="stock_output_account" no_create="1" invisible="!stock_valuation_account"/>
+            <field name="stock_journal" no_create="1" invisible="!stock_valuation_account"/>
+        </xpath>
+    </view>
+    <view id="view_move_form_valuation" name="stock_move.form.valuation" inherit="stock.view_move_form">
+        <xpath expr="//field[@name='value']" position="after">
+            <field name="account_move" readonly="1"/>
+        </xpath>
+    </view>
+</erp>
