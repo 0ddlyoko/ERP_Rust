@@ -1,0 +1,10 @@
+<erp noupdate="1">
+    <contact id="main_company_contact">
+        <name>My Company</name>
+        <is_company>true</is_company>
+    </contact>
+    <company id="main_company">
+        <name>My Company</name>
+        <contact ref="main_company_contact"/>
+    </company>
+</erp>

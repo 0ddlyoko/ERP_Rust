@@ -170,6 +170,7 @@ dependencies = [
  "erp",
  "erp_search",
  "erp_search_code_gen",
+ "serde_json",
  "tracing",
 ]
 

@@ -89,8 +89,10 @@ impl Plugin for BasePlugin {
             include_str!("../data/users.xml"),
             include_str!("../data/access.xml"),
             include_str!("../data/countries.xml"),
+            include_str!("../data/company.xml"),
             include_str!("../views/users_views.xml"),
             include_str!("../views/contact_views.xml"),
+            include_str!("../views/company_views.xml"),
             include_str!("../views/technical_views.xml"),
             include_str!("../views/menus.xml"),
         ]

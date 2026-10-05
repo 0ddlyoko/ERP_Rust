@@ -13,3 +13,6 @@ tracing.workspace = true
 
 [lib]
 crate-type = ["dylib"]
+
+[dev-dependencies]
+serde_json.workspace = true

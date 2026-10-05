@@ -1,0 +1,20 @@
+<erp>
+    <view id="view_company_list" name="company.list" model="company">
+        <list>
+            <field name="name"/>
+            <field name="contact"/>
+        </list>
+    </view>
+    <view id="view_company_form" name="company.form" model="company">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="contact" widget="contact" show="address,email"/>
+            </block>
+            <side>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <action id="action_companies" name="Companies" model="company" views="list,form"/>
+</erp>

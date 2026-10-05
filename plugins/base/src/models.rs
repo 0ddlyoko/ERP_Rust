@@ -15,7 +15,7 @@ mod view;
 
 pub use access_rule::{AccessRule, GROUPS_CACHE, RULES_CACHE};
 pub use action::{Action, BaseAction};
-pub use company::Company;
+pub use company::{BaseCompany, Company};
 pub use contact::{BaseContact, Contact};
 pub use contact_tag::{BaseContactTag, ContactTag};
 pub use country::{BaseCountry, Country};
