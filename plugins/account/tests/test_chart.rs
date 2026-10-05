@@ -295,3 +295,28 @@ fn test_views_and_menus() -> Result<()> {
     );
     Ok(())
 }
+
+/// A product made without taxes gets the company's default ones; given taxes, it keeps them.
+#[test]
+fn test_products_get_the_default_taxes() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let (sale, purchase, six) = (
+        chart(&mut env, "tax_sale_21"),
+        chart(&mut env, "tax_purchase_21"),
+        chart(&mut env, "tax_sale_6"),
+    );
+    let desk = create(&mut env, "product", json!({"name": "Desk"}))?;
+    let row = read(&mut env, "product", desk, &["taxes", "supplier_taxes"])?;
+    assert_eq!(row["taxes"], json!([sale]));
+    assert_eq!(row["supplier_taxes"], json!([purchase]));
+    let book = create(
+        &mut env,
+        "product",
+        json!({"name": "Book", "taxes": [six], "supplier_taxes": []}),
+    )?;
+    let row = read(&mut env, "product", book, &["taxes", "supplier_taxes"])?;
+    assert_eq!(row["taxes"], json!([six]));
+    assert_eq!(row["supplier_taxes"], json!([]));
+    Ok(())
+}
