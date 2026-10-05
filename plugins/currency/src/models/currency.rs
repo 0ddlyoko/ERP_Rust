@@ -130,21 +130,4 @@ impl Currency<MultipleIds> {
         }
         Ok(())
     }
-
-    /// `amount` of the currency in `to_currency` at the rates of `date` (today when absent).
-    #[erp(rpc)]
-    pub fn convert_amount(
-        &self,
-        env: &mut Environment,
-        amount: Decimal,
-        to_currency: u32,
-        date: Option<NaiveDate>,
-    ) -> Result<Decimal> {
-        let date = date.unwrap_or_else(|| Utc::now().date_naive());
-        let to: Currency<SingleId> = env.get_record(to_currency.into());
-        match self.into_iter().next() {
-            Some(from) => from.convert(env, amount, &to, date),
-            None => Ok(amount),
-        }
-    }
 }

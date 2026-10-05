@@ -159,23 +159,6 @@ fn test_rates_follow_their_rules() -> Result<()> {
     Ok(())
 }
 
-/// Clients convert through the protocol.
-#[test]
-fn test_conversion_over_rpc() -> Result<()> {
-    let app = new_app()?;
-    let mut env = admin_env(&app)?;
-    add_rate(&mut env, "usd", "2026-01-01", "1.25")?;
-    let euro = xml_id(&mut env, "currency.currency_eur");
-    let usd = xml_id(&mut env, "currency.currency_usd");
-    let answer = env.call_rpc(
-        "currency",
-        "convert_amount",
-        &json!({"ids": [euro], "args": {"amount": "8", "to_currency": usd, "date": "2026-06-01"}}),
-    )?;
-    assert_eq!(answer, json!("10"));
-    Ok(())
-}
-
 /// Employees read currencies and rates; administrators change them.
 #[test]
 fn test_access_rights() -> Result<()> {
