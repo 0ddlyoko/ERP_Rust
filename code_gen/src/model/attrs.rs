@@ -106,6 +106,9 @@ pub enum AllowedFieldAttrs {
     Stored(Ident),
     /// Says changes of the field are noted on the record.
     Tracking(Ident),
+    /// Says a computed field may also be set by hand: it is worked out when what it depends on
+    /// changes, and a value written to it is kept.
+    Editable(Ident),
     /// Says the records of a one2many belong to the record: removed from it, they are deleted.
     Owned(Ident),
     /// Says what a many2one does when the record it points to is deleted.
@@ -126,6 +129,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "private",
     "stored",
     "tracking",
+    "editable",
     "owned",
     "ondelete",
     "domain",
@@ -178,6 +182,7 @@ impl Parse for AllowedFieldAttrs {
             "private" => Ok(AllowedFieldAttrs::Private(name)),
             "stored" => Ok(AllowedFieldAttrs::Stored(name)),
             "tracking" => Ok(AllowedFieldAttrs::Tracking(name)),
+            "editable" => Ok(AllowedFieldAttrs::Editable(name)),
             "owned" => Ok(AllowedFieldAttrs::Owned(name)),
             "ondelete" => Ok(AllowedFieldAttrs::OnDelete(
                 name,
@@ -210,6 +215,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Private(ident) => ident.span(),
             AllowedFieldAttrs::Stored(ident) => ident.span(),
             AllowedFieldAttrs::Tracking(ident) => ident.span(),
+            AllowedFieldAttrs::Editable(ident) => ident.span(),
             AllowedFieldAttrs::Owned(ident) => ident.span(),
             AllowedFieldAttrs::OnDelete(ident, _) => ident.span(),
             AllowedFieldAttrs::Domain(ident, _) => ident.span(),

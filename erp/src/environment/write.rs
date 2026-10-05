@@ -38,6 +38,7 @@ impl<'mm> Environment<'mm> {
     ) -> Result<()> {
         let fields: Vec<&str> = values.fields.keys().map(String::as_str).collect();
         self.check_access(model_name, Operation::Write, ids.get_ids_ref(), &fields)?;
+        let written_by_hand = self.editable_computed(model_name, &fields);
         for (field_name, value) in values.fields {
             if let Some(FieldType::Commands(commands)) = value {
                 for id in ids.get_ids_ref() {
@@ -54,7 +55,40 @@ impl<'mm> Environment<'mm> {
                 &Update::UpdateIfExists,
             )?;
         }
+        self.keep_written_by_hand(model_name, &written_by_hand, ids.get_ids_ref());
         self.refuse_emptied_relations()
+    }
+
+    /// Of `fields`, the computed ones that may be set by hand.
+    pub(super) fn editable_computed(&self, model_name: &str, fields: &[&str]) -> Vec<String> {
+        let model = self.model_manager.get_model(model_name);
+        fields
+            .iter()
+            .filter(|field| {
+                model
+                    .fields
+                    .get(**field)
+                    .is_some_and(|field| field.editable && field.compute.is_some())
+            })
+            .map(|field| field.to_string())
+            .collect()
+    }
+
+    /// Keep what was written by hand to editable computed fields: what else the same write
+    /// changed would otherwise have them worked out again over it.
+    pub(super) fn keep_written_by_hand(
+        &mut self,
+        model_name: &str,
+        fields: &[String],
+        ids: &[u32],
+    ) {
+        if fields.is_empty() {
+            return;
+        }
+        let fields: Vec<&str> = fields.iter().map(String::as_str).collect();
+        self.cache
+            .get_cache_models_mut(model_name)
+            .remove_to_recompute(&fields, ids);
     }
 
     pub(crate) fn save_value_to_cache<Mode: IdMode, E>(

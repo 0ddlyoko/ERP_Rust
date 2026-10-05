@@ -156,6 +156,14 @@ impl<'mm> Environment<'mm> {
             })
             .collect();
 
+        let written_by_hand: Vec<Vec<String>> = data
+            .iter()
+            .map(|d| {
+                let fields: Vec<&str> = d.fields.keys().map(String::as_str).collect();
+                self.editable_computed(model_name, &fields)
+            })
+            .collect();
+
         // Add missing fields
         for d in data.iter_mut() {
             for value in d.fields.values_mut() {
@@ -225,6 +233,9 @@ impl<'mm> Environment<'mm> {
             }
         }
 
+        for (id, fields) in ids.iter().zip(&written_by_hand) {
+            self.keep_written_by_hand(model_name, fields, &[*id]);
+        }
         self.forget_access_of(model_name, &ids)?;
         self.forget_shared_of(model_name);
         for (id, commands) in ids.iter().zip(commands) {

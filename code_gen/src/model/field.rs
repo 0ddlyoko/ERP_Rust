@@ -36,6 +36,7 @@ pub struct FieldGen {
     /// to whichever struct happens to mention it.
     pub asks_for_storage: bool,
     pub is_tracked: bool,
+    pub is_editable: bool,
     pub is_owned: bool,
     pub on_delete: Option<String>,
     pub domain: Option<String>,
@@ -66,6 +67,7 @@ impl FieldGen {
         let mut relation = None;
         let mut is_private = false;
         let mut is_tracked = false;
+        let mut editable = None;
         let mut owned = None;
         let mut stored = None;
         let mut on_delete = None;
@@ -181,6 +183,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Tracking(_) => {
                     is_tracked = true;
+                }
+                AllowedFieldAttrs::Editable(ident) => {
+                    editable = Some(ident);
                 }
                 AllowedFieldAttrs::Owned(ident) => {
                     owned = Some(ident);
@@ -340,6 +345,14 @@ impl FieldGen {
                 "this field is required by not being an `Option`",
             ));
         }
+        if let Some(ident) = &editable
+            && (compute.is_none() || stored.is_none())
+        {
+            return Err(syn::Error::new(
+                ident.span(),
+                "only a stored computed field can also be set by hand",
+            ));
+        }
         // A list of references is filled by one of three things; with none it holds nothing.
         if is_reference_multi && inverse.is_none() && relation.is_none() && compute.is_none() {
             return Err(gen_multiple_ids_without_source(ident.span()));
@@ -363,6 +376,7 @@ impl FieldGen {
             is_private,
             asks_for_storage: stored.is_some(),
             is_tracked,
+            is_editable: editable.is_some(),
             is_owned: owned.is_some(),
             on_delete: on_delete.map(|(_, key)| key),
             domain: domain.map(|(_, text)| text),

@@ -731,7 +731,7 @@ fn describe(field: &FinalInternalField, selections: &Selections) -> Result<Value
         "type": if field.selection.is_some() { "selection" } else { kind_name(field.kind) },
         "label": field.label,
         "required": field.required,
-        "readonly": field.compute.is_some() || field.automatic,
+        "readonly": (field.compute.is_some() && !field.editable) || field.automatic,
         "stored": field.is_stored(),
     });
     if let Some(reference) = &field.inverse {

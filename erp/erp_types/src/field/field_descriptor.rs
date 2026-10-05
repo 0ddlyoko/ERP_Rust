@@ -29,6 +29,8 @@ pub struct FieldDescriptor {
     pub field_ref: Option<FieldReference>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    /// Whether a computed field may also be set by hand, keeping what was written.
+    pub editable: bool,
     pub owned: bool,
     /// What a many2one does when the record it points to is deleted; `None` leaves it as
     /// another struct said, or emptied when none did.

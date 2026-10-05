@@ -54,6 +54,8 @@ pub struct FinalInternalField {
     pub depends: Vec<Vec<FieldDepend>>,
     pub selection: Option<SelectionFamily>,
     pub tracking: bool,
+    /// Whether the field, though computed, may be set by hand: any struct saying so makes it so.
+    pub editable: bool,
     pub owned: bool,
     /// What a many2one does when the record it points to is deleted: as the last struct saying
     /// so asked, so an extension may change it.
@@ -82,6 +84,7 @@ impl FinalInternalField {
             depends: Vec::new(),
             selection: None,
             tracking: false,
+            editable: false,
             owned: false,
             on_delete: OnDelete::default(),
             domain: None,
