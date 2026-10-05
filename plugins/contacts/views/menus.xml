@@ -6,4 +6,6 @@
             <menu id="menu_countries" name="Countries" action="base.action_countries"/>
         </menu>
     </menu>
+    <menu id="menu_companies" name="Companies" parent="base.menu_users_companies" sequence="30"
+          action="base.action_companies"/>
 </erp>

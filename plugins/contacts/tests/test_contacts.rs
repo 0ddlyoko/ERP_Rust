@@ -56,3 +56,29 @@ fn test_the_address_book_is_an_application() -> Result<()> {
     );
     Ok(())
 }
+
+/// With the address book installed, the companies are reached from the settings, after the
+/// users and groups.
+#[test]
+fn test_companies_are_in_the_settings() -> Result<()> {
+    let app = new_app()?;
+    let admin = {
+        let mut env = app.new_env_as_option(None)?;
+        data::resolve(&mut env, "base.user_admin")?.expect("seeded")
+    };
+    let mut env = app.new_env_as_option(Some(admin))?;
+    let tree = env.call_rpc("menu", "tree", &json!({}))?;
+    let settings = tree
+        .as_array()
+        .expect("a list")
+        .iter()
+        .find(|entry| entry["name"] == "Settings")
+        .expect("the settings");
+    let users_companies = &settings["children"][0];
+    assert_eq!(
+        names(&users_companies["children"]),
+        vec!["Users", "Groups", "Companies"]
+    );
+    assert_eq!(users_companies["children"][2]["action"]["model"], "company");
+    Ok(())
+}
