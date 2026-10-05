@@ -2,7 +2,7 @@ use crate::format;
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, NaiveDate, SingleId, Utc};
+use erp::types::field::{IdMode, MultipleIds, NaiveDate, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 
@@ -97,18 +97,6 @@ impl Sequence<SingleId> {
         let padding = *self.get_padding(env)?;
         Ok(format::format_name(&prefix, number, padding, &suffix, date))
     }
-
-    /// What the next document of this series would be named today, without using it.
-    pub fn preview(&self, env: &mut Environment) -> Result<String> {
-        let today = Utc::now().date_naive();
-        let prefix = self.get_prefix(env)?.cloned().unwrap_or_default();
-        let suffix = self.get_suffix(env)?.cloned().unwrap_or_default();
-        let padding = *self.get_padding(env)?;
-        let number = *self.get_number_next(env)?;
-        Ok(format::format_name(
-            &prefix, number, padding, &suffix, today,
-        ))
-    }
 }
 
 #[erp_methods]
@@ -155,15 +143,5 @@ impl Sequence<MultipleIds> {
             sup.call_with(values, env)?;
             self.check_series(env)
         })
-    }
-
-    /// The next name of the series for a document dated `date` (today when absent).
-    #[erp(rpc)]
-    pub fn next_name(&self, env: &mut Environment, date: Option<NaiveDate>) -> Result<String> {
-        let date = date.unwrap_or_else(|| Utc::now().date_naive());
-        match self.into_iter().next() {
-            Some(sequence) => sequence.next(env, date),
-            None => Err("No numbering given".into()),
-        }
     }
 }

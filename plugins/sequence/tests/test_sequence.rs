@@ -115,7 +115,6 @@ fn test_steps_and_manual_restart() -> Result<()> {
     assert_eq!(series.next(&mut env, date("2026-01-01"))?, "S00001");
     assert_eq!(series.next(&mut env, date("2026-01-01"))?, "S00011");
     series.set_number_next(500, &mut env)?;
-    assert_eq!(series.preview(&mut env)?, "S00500");
     assert_eq!(series.next(&mut env, date("2026-01-01"))?, "S00500");
     Ok(())
 }
@@ -180,21 +179,6 @@ fn test_access_rights() -> Result<()> {
         found.map(|found| found == json!([])).unwrap_or(true),
         "employees do not browse the series"
     );
-    Ok(())
-}
-
-/// Clients ask for the next name through the protocol.
-#[test]
-fn test_next_name_over_rpc() -> Result<()> {
-    let app = new_app()?;
-    let mut env = admin_env(&app)?;
-    let id = new_series(&mut env, "rpc", "R{year}-", "yearly")?;
-    let answer = env.call_rpc(
-        "sequence",
-        "next_name",
-        &json!({"ids": [id], "args": {"date": "2026-05-04"}}),
-    )?;
-    assert_eq!(answer, json!("R2026-00001"));
     Ok(())
 }
 
