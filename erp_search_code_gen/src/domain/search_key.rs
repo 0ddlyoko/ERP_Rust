@@ -3,6 +3,8 @@ use syn::__private::ToTokens;
 use syn::__private::quote::quote;
 use syn::Expr;
 
+/// Only built while expanding a macro, a handful at a time: their size does not matter.
+#[allow(clippy::large_enum_variant)]
 pub enum SearchType {
     And(Box<SearchType>, Box<SearchType>),
     Or(Box<SearchType>, Box<SearchType>),
@@ -10,6 +12,7 @@ pub enum SearchType {
     Nothing,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum SearchKey {
     And,
     Or,
