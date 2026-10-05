@@ -5,7 +5,7 @@ import { Notifications } from "@web/core/notifications";
 import type { Domain, Values } from "@web/core/orm";
 import { SearchBar } from "@web/views/search/search_bar";
 import { defaultFacets, type Facet, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
-import { type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
+import { asksReload, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { listActions } from "./list_actions";
 
@@ -201,7 +201,11 @@ export class ListView extends View {
         this.running = true;
         try {
             if (item.kind === "method") {
-                await this.orm.call(this.props.resModel, item.name, ids);
+                const answer = await this.orm.call(this.props.resModel, item.name, ids);
+                if (asksReload(answer)) {
+                    window.location.reload();
+                    return;
+                }
             } else {
                 await listActions.get(item.name).run({ orm: this.orm, model: this.props.resModel, ids });
             }

@@ -18,13 +18,24 @@ use erp::request_log::{self, RequestLog};
 use erp::{http, jsonrpc};
 use std::error::Error;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 use tokio::sync::Semaphore;
 
+/// How the server makes the application that replaces the one it serves, with plugins installed:
+/// from the one served now, and the plugins to install.
+pub type Reload = dyn Fn(&Application, Vec<String>) -> Result<Application, Box<dyn Error + Send + Sync>>
+    + Send
+    + Sync;
+
 /// Everything a request needs.
 pub struct Server {
-    app: Arc<Application>,
+    /// The application served. Replaced whole once plugins are installed: a request holds the
+    /// one it started on until it is answered, and the next one gets the new.
+    app: RwLock<Arc<Application>>,
+    reload: Arc<Reload>,
+    /// Taken while plugins install, so that two installs never load two applications at once.
+    installing: tokio::sync::Mutex<()>,
     /// How many requests may be served at once.
     ///
     /// Asynchronous on purpose. The limit exists because serving a request costs a database
@@ -43,14 +54,47 @@ impl Server {
             limit => limit,
         };
         Self {
-            app: Arc::new(app),
+            app: RwLock::new(Arc::new(app)),
+            reload: Arc::new(|current: &Application, install: Vec<String>| {
+                let mut next = current.successor();
+                next.set_install(install);
+                next.load()?;
+                Ok(next)
+            }),
+            installing: tokio::sync::Mutex::new(()),
             permits: Arc::new(Semaphore::new(permits)),
         }
     }
 
-    /// The application being served, for whoever needs to reach it directly.
-    pub fn application(&self) -> &Application {
-        &self.app
+    /// The same, making the application with plugins installed another way: a test serving an
+    /// application whose plugins are not libraries.
+    pub fn with_reload(
+        mut self,
+        reload: impl Fn(&Application, Vec<String>) -> Result<Application, Box<dyn Error + Send + Sync>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.reload = Arc::new(reload);
+        self
+    }
+
+    /// The application being served now.
+    pub fn application(&self) -> Arc<Application> {
+        Arc::clone(&self.app.read().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    /// Install plugins, with what they depend on, on a new application, and serve that one from
+    /// now on. The one served until then is left as it was if anything fails.
+    pub async fn install(&self, plugins: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let _turn = self.installing.lock().await;
+        let current = self.application();
+        let reload = Arc::clone(&self.reload);
+        let names = plugins.join(", ");
+        let next = tokio::task::spawn_blocking(move || reload(&current, plugins)).await??;
+        *self.app.write().unwrap_or_else(PoisonError::into_inner) = Arc::new(next);
+        tracing::info!(plugins = %names, "Installed: the application is served with them");
+        Ok(())
     }
 }
 
@@ -140,19 +184,23 @@ async fn call(
             carried = carried.with_header(name.as_str(), value);
         }
     }
-    let token = match jsonrpc::credentials(&server.app, bearer(&headers).as_deref(), &carried) {
-        Ok(token) => token,
-        Err(refused) => {
-            tracing::warn!("{caller} POST /jsonrpc refused: no valid CSRF token with the session");
-            let answer = erp::serde_json::json!({"jsonrpc": "2.0", "error": refused, "id": null});
-            return (
-                StatusCode::BAD_REQUEST,
-                [(header::CONTENT_TYPE, "application/json")],
-                answer.to_string(),
-            )
-                .into_response();
-        }
-    };
+    let token =
+        match jsonrpc::credentials(&server.application(), bearer(&headers).as_deref(), &carried) {
+            Ok(token) => token,
+            Err(refused) => {
+                tracing::warn!(
+                    "{caller} POST /jsonrpc refused: no valid CSRF token with the session"
+                );
+                let answer =
+                    erp::serde_json::json!({"jsonrpc": "2.0", "error": refused, "id": null});
+                return (
+                    StatusCode::BAD_REQUEST,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    answer.to_string(),
+                )
+                    .into_response();
+            }
+        };
 
     // Taken before any thread is occupied: a request waiting its turn is a suspended future, not
     // a parked worker.
@@ -160,7 +208,7 @@ async fn call(
         return (StatusCode::SERVICE_UNAVAILABLE, "shutting down").into_response();
     };
 
-    let app = Arc::clone(&server.app);
+    let app = server.application();
     // The ORM is synchronous down to the database driver, so the work happens on a thread that
     // is allowed to block rather than on the runtime's.
     //
@@ -168,14 +216,30 @@ async fn call(
     // database connection is already open.
     let answer = tokio::task::spawn_blocking(move || {
         request_log::start();
+        erp::plugin::take_requested_installs();
         let answer = jsonrpc::handle(&app, token.as_deref(), &body);
-        (answer, request_log::current())
+        (
+            answer,
+            request_log::current(),
+            erp::plugin::take_requested_installs(),
+        )
     })
     .await;
-    let (answer, log) = match answer {
-        Ok((answer, log)) => (Ok(answer), log),
-        Err(error) => (Err(error), RequestLog::default()),
+    let (mut answer, log, installs) = match answer {
+        Ok((answer, log, installs)) => (Ok(answer), log, installs),
+        Err(error) => (Err(error), RequestLog::default(), Vec::new()),
     };
+    if !installs.is_empty()
+        && let Err(error) = server.install(installs.clone()).await
+        && let Ok(Some(value)) = &mut answer
+    {
+        tracing::error!(%error, plugins = %installs.join(", "), "Installing failed");
+        *value = erp::serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32603, "message": format!("Installing {} failed: {error}", installs.join(", "))},
+            "id": value.get("id").cloned().unwrap_or_default(),
+        });
+    }
 
     let response = match answer {
         // A notification is owed nothing, which over HTTP is an empty answer rather than an
@@ -249,17 +313,27 @@ async fn controller(
     let Ok(_permit) = Arc::clone(&server.permits).acquire_owned().await else {
         return (StatusCode::SERVICE_UNAVAILABLE, "shutting down").into_response();
     };
-    let app = Arc::clone(&server.app);
+    let app = server.application();
     let answer = tokio::task::spawn_blocking(move || {
         request_log::start();
+        erp::plugin::take_requested_installs();
         let answer = http::handle(&app, request);
-        (answer, request_log::current())
+        (
+            answer,
+            request_log::current(),
+            erp::plugin::take_requested_installs(),
+        )
     })
     .await;
-    let (answer, log) = match answer {
-        Ok((answer, log)) => (Ok(answer), log),
-        Err(error) => (Err(error), RequestLog::default()),
+    let (answer, log, installs) = match answer {
+        Ok((answer, log, installs)) => (Ok(answer), log, installs),
+        Err(error) => (Err(error), RequestLog::default(), Vec::new()),
     };
+    if !installs.is_empty()
+        && let Err(error) = server.install(installs.clone()).await
+    {
+        tracing::error!(%error, plugins = %installs.join(", "), "Installing failed");
+    }
 
     let response = match answer {
         Ok(answer) => {

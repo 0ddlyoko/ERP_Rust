@@ -1,6 +1,9 @@
 <erp>
     <view id="view_plugin_list" name="plugin.list" model="plugin">
         <list>
+            <buttons>
+                <button name="install" type="method" string="Install"/>
+            </buttons>
             <field name="name"/>
             <field name="category"/>
             <field name="installed_version"/>
@@ -9,6 +12,9 @@
     </view>
     <view id="view_plugin_form" name="plugin.form" model="plugin">
         <form>
+            <buttons>
+                <button name="install" type="method" string="Install" invisible="state === 'installed'"/>
+            </buttons>
             <block>
                 <h1><field name="name" readonly="1"/></h1>
                 <block string="About">

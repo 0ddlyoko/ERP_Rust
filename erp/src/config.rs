@@ -5,7 +5,7 @@ use directories::ProjectDirs;
 use serde_derive::Deserialize;
 use std::path::Path;
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 #[allow(dead_code)]
 pub struct Config {
     pub database: DatabaseConfig,

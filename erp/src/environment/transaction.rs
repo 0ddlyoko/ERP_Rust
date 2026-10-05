@@ -10,6 +10,7 @@ impl<'mm> Environment<'mm> {
         self.database.commit_transaction()?;
         self.closed = true;
         self.forget_shared_after_commit();
+        crate::plugin::request_installs(std::mem::take(&mut self.requested_installs));
         Ok(())
     }
     /// If an error is returned, rollback the commit and put back the cache as it was
@@ -43,6 +44,7 @@ impl<'mm> Environment<'mm> {
     {
         let cache_copy = self.cache.export_cache();
         let tracked_copy = self.tracked.clone();
+        let requested_installs = self.requested_installs.len();
         let uuid = "svp_".to_string() + &Uuid::new_v4().to_string()[..6];
         self.database.savepoint(uuid.as_str())?;
 
@@ -55,6 +57,7 @@ impl<'mm> Environment<'mm> {
             self.database.savepoint_rollback(uuid.as_str())?;
             self.cache.import_cache(cache_copy);
             self.tracked = tracked_copy;
+            self.requested_installs.truncate(requested_installs);
             // What was remembered may have been read from rows the rollback just undid.
             self.forget_access();
         }

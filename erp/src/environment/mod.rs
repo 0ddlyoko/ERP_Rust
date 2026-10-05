@@ -99,6 +99,8 @@ pub struct Environment<'mm> {
     cascading: HashMap<String, HashSet<u32>>,
     maybe_emptied: required::MaybeEmptied,
     /// How many virtual records this unit of work made, for the next one's id.
+    /// Plugins this unit of work asks to install once it is committed.
+    requested_installs: Vec<String>,
     virtual_count: u32,
     closed: bool,
 }
@@ -148,6 +150,7 @@ impl<'mm> Environment<'mm> {
             deleting: HashMap::new(),
             cascading: HashMap::new(),
             maybe_emptied: Default::default(),
+            requested_installs: Vec::new(),
             virtual_count: 0,
             closed: false,
         };
@@ -210,6 +213,19 @@ impl<'mm> Environment<'mm> {
             env: self,
             previous,
             previous_sudo,
+        }
+    }
+
+    /// Ask for a plugin to be installed, with what it depends on, once this unit of work is
+    /// committed: whoever serves the application installs it then, and serves the application
+    /// with it from the next request on. Nothing is asked if the work is rolled back.
+    pub fn request_install(&mut self, plugin_name: &str) {
+        if !self
+            .requested_installs
+            .iter()
+            .any(|name| name == plugin_name)
+        {
+            self.requested_installs.push(plugin_name.to_string());
         }
     }
 

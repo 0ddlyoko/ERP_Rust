@@ -128,6 +128,27 @@ impl Application {
         }
     }
 
+    /// A new application on the same configuration and database, signing with the same secret,
+    /// not loaded yet: what replaces this one once plugins are installed, so that sessions and
+    /// tokens signed before still hold.
+    pub fn successor(&self) -> Application {
+        let successor = Application {
+            config: self.config.clone(),
+            model_manager: ModelManager::default(),
+            plugin_manager: PluginManager::default(),
+            is_test: self.is_test,
+            cache_db: self.cache_db.clone(),
+            pool: OnceLock::new(),
+            data_update: DataUpdate::default(),
+            install: Vec::new(),
+            signing_secret: OnceLock::new(),
+        };
+        let _ = successor
+            .signing_secret
+            .set(self.signing_secret().to_string());
+        successor
+    }
+
     /// Create a new test instance of this application.
     /// Database used is a cache database, so saved in memory.
     /// Creating new environment instances of this Application will create separated memory database, so

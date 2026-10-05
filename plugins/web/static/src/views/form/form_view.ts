@@ -3,7 +3,7 @@ import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
-import { View, viewKinds, viewProps } from "@web/views/view";
+import { asksReload, View, viewKinds, viewProps } from "@web/views/view";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
 
@@ -488,7 +488,11 @@ export class FormView extends View {
             return;
         }
         try {
-            await this.orm.call(this.props.resModel, button.name, [id]);
+            const answer = await this.orm.call(this.props.resModel, button.name, [id]);
+            if (asksReload(answer)) {
+                window.location.reload();
+                return;
+            }
             this.record = await this.read(this.props.resModel, id, Object.keys(this.record));
         } catch (error) {
             this.failure = error instanceof Error ? error.message : String(error);

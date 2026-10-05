@@ -1,8 +1,11 @@
 pub mod errors;
+mod install_request;
 mod internal_plugin;
 mod plugin_manager;
 mod record;
 
+pub(crate) use install_request::request as request_installs;
+pub use install_request::take_requested_installs;
 pub(crate) use internal_plugin::InternalPlugin;
 pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;

@@ -121,3 +121,11 @@ export function columnOf(element: Element, fields: Fields, model: string): Colum
 export function widgetFor(column: Column, byDefault = defaultWidget(column.field)): ComponentClass {
     return widgets.get(column.widget ?? byDefault, StringWidget);
 }
+
+/**
+ * Whether what a button's method answered asks for the page to load again, `{ type: "reload" }`:
+ * what the user runs changed, such as plugins installed.
+ */
+export function asksReload(answer: unknown): boolean {
+    return typeof answer === "object" && answer !== null && (answer as { type?: unknown }).type === "reload";
+}
