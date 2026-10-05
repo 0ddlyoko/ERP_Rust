@@ -379,6 +379,12 @@ impl StockMove<MultipleIds> {
         Ok(())
     }
 
+    /// What a back order or a return of the move carries over from it, besides the product and
+    /// the quantities: nothing here; sales carry the order line on.
+    pub fn copy_values(&self, _env: &mut Environment) -> Result<MapOfFields> {
+        Ok(MapOfFields::default())
+    }
+
     /// What follows a move done, valued: nothing here; accounting books the value it moved.
     pub fn on_moved(&self, _env: &mut Environment) -> Result<()> {
         Ok(())

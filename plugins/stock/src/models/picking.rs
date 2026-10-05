@@ -222,6 +222,9 @@ impl Picking<SingleId> {
             };
             values.insert("price_unit", price);
             values.insert_option("origin", stock_move.get_origin(env)?.cloned());
+            let carried = StockMove::<MultipleIds>::from_ids(vec![stock_move.get_id()], env)
+                .copy_values(env)?;
+            values.fields.extend(carried.fields);
             moves.push(values);
         }
         let mut values = MapOfFields::default();
