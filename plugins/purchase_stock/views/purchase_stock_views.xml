@@ -1,0 +1,20 @@
+<erp>
+    <view id="view_purchase_order_form_stock" name="purchase_order.form.stock" inherit="purchase.view_purchase_order_form">
+        <xpath expr="//page[@name='bills']" position="before">
+            <page name="receipts" string="Receipts" invisible="state !== 'purchase'">
+                <field name="receipt_status" readonly="1"/>
+                <field name="pickings" nolabel="1" readonly="1"/>
+            </page>
+        </xpath>
+    </view>
+    <view id="view_purchase_order_list_stock" name="purchase_order.list.stock" inherit="purchase.view_purchase_order_list">
+        <xpath expr="//field[@name='bill_status']" position="before">
+            <field name="receipt_status"/>
+        </xpath>
+    </view>
+    <view id="view_move_form_purchase" name="stock_move.form.purchase" inherit="stock.view_move_form">
+        <xpath expr="//field[@name='price_unit']" position="before">
+            <field name="purchase_line" readonly="1"/>
+        </xpath>
+    </view>
+</erp>

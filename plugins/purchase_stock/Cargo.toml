@@ -1,0 +1,30 @@
+[package]
+name = "purchase_stock"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+erp = { path = "../../erp" }
+code_gen = { path = "../../code_gen" }
+erp_search = { path = "../../erp_search" }
+erp_search_code_gen = { path = "../../erp_search_code_gen" }
+chrono.workspace = true
+
+base = { path = "../base" }
+web = { path = "../web" }
+mail = { path = "../mail" }
+contacts = { path = "../contacts" }
+currency = { path = "../currency" }
+sequence = { path = "../sequence" }
+uom = { path = "../uom" }
+product = { path = "../product" }
+account = { path = "../account" }
+purchase = { path = "../purchase" }
+stock = { path = "../stock" }
+
+[lib]
+crate-type = ["dylib"]
+
+[dev-dependencies]
+serde_json.workspace = true
+erp_test_support = { path = "../test_support" }
