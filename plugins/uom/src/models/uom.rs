@@ -80,41 +80,6 @@ impl Uom<SingleId> {
 
 #[erp_methods]
 impl Uom<MultipleIds> {
-    /// `quantity` of the unit, counted in `to_uom`, rounded half up to its precision.
-    #[erp(rpc)]
-    pub fn compute_quantity(
-        &self,
-        env: &mut Environment,
-        quantity: Decimal,
-        to_uom: u32,
-    ) -> Result<Decimal> {
-        let to: Uom<SingleId> = env.get_record(to_uom.into());
-        let Some(from) = self.into_iter().next() else {
-            return Ok(quantity);
-        };
-        from.convert_to(env, quantity, &to, Rounding::HalfUp)
-    }
-
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Uom::<MultipleIds>::from_ids(ids.clone(), env).check_ratios(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_ratios(env)
-        })
-    }
-
     /// A reference unit is worth exactly one, a bigger unit more and a smaller one less; a
     /// rounding is positive; a category has a single active reference unit.
     pub fn check_ratios(&self, env: &mut Environment) -> Result<()> {
@@ -156,5 +121,40 @@ impl Uom<MultipleIds> {
             }
         }
         Ok(())
+    }
+
+    /// `quantity` of the unit, counted in `to_uom`, rounded half up to its precision.
+    #[erp(rpc)]
+    pub fn compute_quantity(
+        &self,
+        env: &mut Environment,
+        quantity: Decimal,
+        to_uom: u32,
+    ) -> Result<Decimal> {
+        let to: Uom<SingleId> = env.get_record(to_uom.into());
+        let Some(from) = self.into_iter().next() else {
+            return Ok(quantity);
+        };
+        from.convert_to(env, quantity, &to, Rounding::HalfUp)
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            Uom::<MultipleIds>::from_ids(ids.clone(), env).check_ratios(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            self.check_ratios(env)
+        })
     }
 }
