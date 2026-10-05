@@ -1,57 +1,27 @@
 <erp noupdate="1">
-    <uom_category id="category_unit"><name>Unit</name></uom_category>
-    <uom_category id="category_weight"><name>Weight</name></uom_category>
-    <uom_category id="category_length"><name>Length</name></uom_category>
-    <uom_category id="category_volume"><name>Volume</name></uom_category>
-    <uom_category id="category_time"><name>Working time</name></uom_category>
+    <uom_category id="category_unit" name="Unit"/>
+    <uom_category id="category_weight" name="Weight"/>
+    <uom_category id="category_length" name="Length"/>
+    <uom_category id="category_volume" name="Volume"/>
+    <uom_category id="category_time" name="Working time"/>
 
-    <uom id="uom_unit" name="Units" uom_type="reference" ratio="1" rounding="0.01">
-        <category ref="category_unit"/>
-    </uom>
-    <uom id="uom_dozen" name="Dozens" uom_type="bigger" ratio="12" rounding="0.01">
-        <category ref="category_unit"/>
-    </uom>
+    <uom id="uom_unit" name="Units" uom_type="reference" ratio="1" rounding="0.01" category="category_unit"/>
+    <uom id="uom_dozen" name="Dozens" uom_type="bigger" ratio="12" rounding="0.01" category="category_unit"/>
 
-    <uom id="uom_kg" name="kg" uom_type="reference" ratio="1" rounding="0.001">
-        <category ref="category_weight"/>
-    </uom>
-    <uom id="uom_gram" name="g" uom_type="smaller" ratio="0.001" rounding="1">
-        <category ref="category_weight"/>
-    </uom>
-    <uom id="uom_ton" name="t" uom_type="bigger" ratio="1000" rounding="0.001">
-        <category ref="category_weight"/>
-    </uom>
-    <uom id="uom_lb" name="lb" uom_type="smaller" ratio="0.45359237" rounding="0.01">
-        <category ref="category_weight"/>
-    </uom>
+    <uom id="uom_kg" name="kg" uom_type="reference" ratio="1" rounding="0.001" category="category_weight"/>
+    <uom id="uom_gram" name="g" uom_type="smaller" ratio="0.001" rounding="1" category="category_weight"/>
+    <uom id="uom_ton" name="t" uom_type="bigger" ratio="1000" rounding="0.001" category="category_weight"/>
+    <uom id="uom_lb" name="lb" uom_type="smaller" ratio="0.45359237" rounding="0.01" category="category_weight"/>
 
-    <uom id="uom_meter" name="m" uom_type="reference" ratio="1" rounding="0.01">
-        <category ref="category_length"/>
-    </uom>
-    <uom id="uom_cm" name="cm" uom_type="smaller" ratio="0.01" rounding="1">
-        <category ref="category_length"/>
-    </uom>
-    <uom id="uom_mm" name="mm" uom_type="smaller" ratio="0.001" rounding="1">
-        <category ref="category_length"/>
-    </uom>
-    <uom id="uom_km" name="km" uom_type="bigger" ratio="1000" rounding="0.001">
-        <category ref="category_length"/>
-    </uom>
+    <uom id="uom_meter" name="m" uom_type="reference" ratio="1" rounding="0.01" category="category_length"/>
+    <uom id="uom_cm" name="cm" uom_type="smaller" ratio="0.01" rounding="1" category="category_length"/>
+    <uom id="uom_mm" name="mm" uom_type="smaller" ratio="0.001" rounding="1" category="category_length"/>
+    <uom id="uom_km" name="km" uom_type="bigger" ratio="1000" rounding="0.001" category="category_length"/>
 
-    <uom id="uom_litre" name="L" uom_type="reference" ratio="1" rounding="0.01">
-        <category ref="category_volume"/>
-    </uom>
-    <uom id="uom_ml" name="mL" uom_type="smaller" ratio="0.001" rounding="1">
-        <category ref="category_volume"/>
-    </uom>
-    <uom id="uom_cubic_meter" name="m³" uom_type="bigger" ratio="1000" rounding="0.001">
-        <category ref="category_volume"/>
-    </uom>
+    <uom id="uom_litre" name="L" uom_type="reference" ratio="1" rounding="0.01" category="category_volume"/>
+    <uom id="uom_ml" name="mL" uom_type="smaller" ratio="0.001" rounding="1" category="category_volume"/>
+    <uom id="uom_cubic_meter" name="m³" uom_type="bigger" ratio="1000" rounding="0.001" category="category_volume"/>
 
-    <uom id="uom_hour" name="Hours" uom_type="reference" ratio="1" rounding="0.01">
-        <category ref="category_time"/>
-    </uom>
-    <uom id="uom_day" name="Days" uom_type="bigger" ratio="8" rounding="0.01">
-        <category ref="category_time"/>
-    </uom>
+    <uom id="uom_hour" name="Hours" uom_type="reference" ratio="1" rounding="0.01" category="category_time"/>
+    <uom id="uom_day" name="Days" uom_type="bigger" ratio="8" rounding="0.01" category="category_time"/>
 </erp>
