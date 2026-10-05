@@ -1,0 +1,34 @@
+<erp>
+    <access_rule id="access_product_category_group_user">
+        <name>product_category: group_user</name>
+        <model>product_category</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_product_category_group_admin">
+        <name>product_category: group_admin</name>
+        <model>product_category</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_group_user">
+        <name>product: group_user</name>
+        <model>product</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_product_group_admin">
+        <name>product: group_admin</name>
+        <model>product</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

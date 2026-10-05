@@ -1,0 +1,97 @@
+<erp>
+    <view id="view_product_list" name="product.list" model="product">
+        <list>
+            <buttons>
+                <button name="archive" type="method" string="Archive"/>
+                <button name="unarchive" type="method" string="Unarchive"/>
+            </buttons>
+            <field name="default_code"/>
+            <field name="name"/>
+            <field name="category"/>
+            <field name="product_type"/>
+            <field name="list_price"/>
+            <field name="standard_price"/>
+            <field name="uom"/>
+        </list>
+    </view>
+    <view id="view_product_form" name="product.form" model="product">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="General">
+                    <field name="product_type"/>
+                    <field name="category" no_create="1"/>
+                    <field name="default_code"/>
+                    <field name="barcode"/>
+                </block>
+                <block string="Price">
+                    <field name="list_price"/>
+                    <field name="standard_price"/>
+                </block>
+                <block string="Units">
+                    <field name="uom" no_create="1"/>
+                    <field name="purchase_uom" no_create="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="sales" string="Sales">
+                    <field name="sale_ok"/>
+                    <field name="description_sale" widget="text"/>
+                </page>
+                <page name="purchase" string="Purchase">
+                    <field name="purchase_ok"/>
+                    <field name="description_purchase" widget="text"/>
+                </page>
+                <page name="inventory" string="Inventory" invisible="product_type === 'service'">
+                    <field name="weight"/>
+                    <field name="volume"/>
+                </page>
+                <page name="notes" string="Notes">
+                    <field name="description" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="active"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_product_search" name="product.search" model="product">
+        <search>
+            <field name="display_name"/>
+            <field name="default_code"/>
+            <field name="barcode"/>
+            <field name="category"/>
+            <filter name="goods" string="Goods" domain='[["product_type", "=", "goods"]]'/>
+            <filter name="services" string="Services" domain='[["product_type", "=", "service"]]'/>
+            <filter name="can_be_sold" string="Can be sold" domain='[["sale_ok", "=", true]]'/>
+            <filter name="can_be_purchased" string="Can be purchased" domain='[["purchase_ok", "=", true]]'/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_products" name="Products" model="product" views="list,form"/>
+
+    <view id="view_product_category_list" name="product_category.list" model="product_category">
+        <list>
+            <field name="complete_name"/>
+        </list>
+    </view>
+    <view id="view_product_category_form" name="product_category.form" model="product_category">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="parent" no_create="1"/>
+            </block>
+            <pages>
+                <page name="children" string="Subcategories">
+                    <field name="children" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <action id="action_product_categories" name="Product categories" model="product_category"
+            views="list,form"/>
+</erp>

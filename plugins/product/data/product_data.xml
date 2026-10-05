@@ -1,0 +1,11 @@
+<erp noupdate="1">
+    <product_category id="category_all"><name>All</name></product_category>
+    <product_category id="category_saleable">
+        <name>Saleable</name>
+        <parent ref="category_all"/>
+    </product_category>
+    <product_category id="category_services">
+        <name>Services</name>
+        <parent ref="category_all"/>
+    </product_category>
+</erp>

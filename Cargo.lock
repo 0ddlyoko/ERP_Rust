@@ -1861,6 +1861,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "product"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "serde_json",
+ "uom",
+ "web",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
