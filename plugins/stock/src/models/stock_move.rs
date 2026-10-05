@@ -208,7 +208,7 @@ impl StockMove<SingleId> {
         values.insert("date_done", Utc::now());
         env.sudo()
             .write("stock_move", &SingleId::from(self.get_id()), values)?;
-        Ok(())
+        StockMove::<MultipleIds>::from_ids(vec![self.get_id()], env).on_moved(env)
     }
 
     /// Take `quantity` off the quants of these locations, unpromised quantities first.
@@ -376,6 +376,11 @@ impl StockMove<MultipleIds> {
             };
             stock_move.set_uom(&uom, env)?;
         }
+        Ok(())
+    }
+
+    /// What follows a move done, valued: nothing here; accounting books the value it moved.
+    pub fn on_moved(&self, _env: &mut Environment) -> Result<()> {
         Ok(())
     }
 
