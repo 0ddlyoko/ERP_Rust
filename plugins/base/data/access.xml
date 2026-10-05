@@ -36,6 +36,15 @@
         <domain_write>[]</domain_write>
         <domain_delete>[]</domain_delete>
     </access_rule>
+    <access_rule id="access_contact_tag_admin">
+        <name>contact_tag: administrators</name>
+        <model>contact_tag</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
     <access_rule id="access_country_admin">
         <name>country: administrators</name>
         <model>country</model>
@@ -113,6 +122,14 @@
     <access_rule id="access_contact_user">
         <name>contact: users</name>
         <model>contact</model>
+        <group ref="group_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_contact_tag_user">
+        <name>contact_tag: users</name>
+        <model>contact_tag</model>
         <group ref="group_user"/>
         <domain_read>[]</domain_read>
         <domain_create>[]</domain_create>

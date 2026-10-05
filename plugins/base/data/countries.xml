@@ -1,0 +1,999 @@
+<erp>
+    <!-- Every country ISO 3166-1 lists, by its common name. -->
+    <country id="country_af">
+        <name>Afghanistan</name>
+        <code>AF</code>
+    </country>
+    <country id="country_al">
+        <name>Albania</name>
+        <code>AL</code>
+    </country>
+    <country id="country_dz">
+        <name>Algeria</name>
+        <code>DZ</code>
+    </country>
+    <country id="country_as">
+        <name>American Samoa</name>
+        <code>AS</code>
+    </country>
+    <country id="country_ad">
+        <name>Andorra</name>
+        <code>AD</code>
+    </country>
+    <country id="country_ao">
+        <name>Angola</name>
+        <code>AO</code>
+    </country>
+    <country id="country_ai">
+        <name>Anguilla</name>
+        <code>AI</code>
+    </country>
+    <country id="country_aq">
+        <name>Antarctica</name>
+        <code>AQ</code>
+    </country>
+    <country id="country_ag">
+        <name>Antigua and Barbuda</name>
+        <code>AG</code>
+    </country>
+    <country id="country_ar">
+        <name>Argentina</name>
+        <code>AR</code>
+    </country>
+    <country id="country_am">
+        <name>Armenia</name>
+        <code>AM</code>
+    </country>
+    <country id="country_aw">
+        <name>Aruba</name>
+        <code>AW</code>
+    </country>
+    <country id="country_au">
+        <name>Australia</name>
+        <code>AU</code>
+    </country>
+    <country id="country_at">
+        <name>Austria</name>
+        <code>AT</code>
+    </country>
+    <country id="country_az">
+        <name>Azerbaijan</name>
+        <code>AZ</code>
+    </country>
+    <country id="country_bs">
+        <name>Bahamas</name>
+        <code>BS</code>
+    </country>
+    <country id="country_bh">
+        <name>Bahrain</name>
+        <code>BH</code>
+    </country>
+    <country id="country_bd">
+        <name>Bangladesh</name>
+        <code>BD</code>
+    </country>
+    <country id="country_bb">
+        <name>Barbados</name>
+        <code>BB</code>
+    </country>
+    <country id="country_by">
+        <name>Belarus</name>
+        <code>BY</code>
+    </country>
+    <country id="country_be">
+        <name>Belgium</name>
+        <code>BE</code>
+    </country>
+    <country id="country_bz">
+        <name>Belize</name>
+        <code>BZ</code>
+    </country>
+    <country id="country_bj">
+        <name>Benin</name>
+        <code>BJ</code>
+    </country>
+    <country id="country_bm">
+        <name>Bermuda</name>
+        <code>BM</code>
+    </country>
+    <country id="country_bt">
+        <name>Bhutan</name>
+        <code>BT</code>
+    </country>
+    <country id="country_bo">
+        <name>Bolivia</name>
+        <code>BO</code>
+    </country>
+    <country id="country_bq">
+        <name>Bonaire, Sint Eustatius and Saba</name>
+        <code>BQ</code>
+    </country>
+    <country id="country_ba">
+        <name>Bosnia and Herzegovina</name>
+        <code>BA</code>
+    </country>
+    <country id="country_bw">
+        <name>Botswana</name>
+        <code>BW</code>
+    </country>
+    <country id="country_bv">
+        <name>Bouvet Island</name>
+        <code>BV</code>
+    </country>
+    <country id="country_br">
+        <name>Brazil</name>
+        <code>BR</code>
+    </country>
+    <country id="country_io">
+        <name>British Indian Ocean Territory</name>
+        <code>IO</code>
+    </country>
+    <country id="country_bn">
+        <name>Brunei Darussalam</name>
+        <code>BN</code>
+    </country>
+    <country id="country_bg">
+        <name>Bulgaria</name>
+        <code>BG</code>
+    </country>
+    <country id="country_bf">
+        <name>Burkina Faso</name>
+        <code>BF</code>
+    </country>
+    <country id="country_bi">
+        <name>Burundi</name>
+        <code>BI</code>
+    </country>
+    <country id="country_cv">
+        <name>Cabo Verde</name>
+        <code>CV</code>
+    </country>
+    <country id="country_kh">
+        <name>Cambodia</name>
+        <code>KH</code>
+    </country>
+    <country id="country_cm">
+        <name>Cameroon</name>
+        <code>CM</code>
+    </country>
+    <country id="country_ca">
+        <name>Canada</name>
+        <code>CA</code>
+    </country>
+    <country id="country_ky">
+        <name>Cayman Islands</name>
+        <code>KY</code>
+    </country>
+    <country id="country_cf">
+        <name>Central African Republic</name>
+        <code>CF</code>
+    </country>
+    <country id="country_td">
+        <name>Chad</name>
+        <code>TD</code>
+    </country>
+    <country id="country_cl">
+        <name>Chile</name>
+        <code>CL</code>
+    </country>
+    <country id="country_cn">
+        <name>China</name>
+        <code>CN</code>
+    </country>
+    <country id="country_cx">
+        <name>Christmas Island</name>
+        <code>CX</code>
+    </country>
+    <country id="country_cc">
+        <name>Cocos (Keeling) Islands</name>
+        <code>CC</code>
+    </country>
+    <country id="country_co">
+        <name>Colombia</name>
+        <code>CO</code>
+    </country>
+    <country id="country_km">
+        <name>Comoros</name>
+        <code>KM</code>
+    </country>
+    <country id="country_cg">
+        <name>Congo</name>
+        <code>CG</code>
+    </country>
+    <country id="country_cd">
+        <name>Congo, The Democratic Republic of the</name>
+        <code>CD</code>
+    </country>
+    <country id="country_ck">
+        <name>Cook Islands</name>
+        <code>CK</code>
+    </country>
+    <country id="country_cr">
+        <name>Costa Rica</name>
+        <code>CR</code>
+    </country>
+    <country id="country_hr">
+        <name>Croatia</name>
+        <code>HR</code>
+    </country>
+    <country id="country_cu">
+        <name>Cuba</name>
+        <code>CU</code>
+    </country>
+    <country id="country_cw">
+        <name>Curaçao</name>
+        <code>CW</code>
+    </country>
+    <country id="country_cy">
+        <name>Cyprus</name>
+        <code>CY</code>
+    </country>
+    <country id="country_cz">
+        <name>Czechia</name>
+        <code>CZ</code>
+    </country>
+    <country id="country_ci">
+        <name>Côte d'Ivoire</name>
+        <code>CI</code>
+    </country>
+    <country id="country_dk">
+        <name>Denmark</name>
+        <code>DK</code>
+    </country>
+    <country id="country_dj">
+        <name>Djibouti</name>
+        <code>DJ</code>
+    </country>
+    <country id="country_dm">
+        <name>Dominica</name>
+        <code>DM</code>
+    </country>
+    <country id="country_do">
+        <name>Dominican Republic</name>
+        <code>DO</code>
+    </country>
+    <country id="country_ec">
+        <name>Ecuador</name>
+        <code>EC</code>
+    </country>
+    <country id="country_eg">
+        <name>Egypt</name>
+        <code>EG</code>
+    </country>
+    <country id="country_sv">
+        <name>El Salvador</name>
+        <code>SV</code>
+    </country>
+    <country id="country_gq">
+        <name>Equatorial Guinea</name>
+        <code>GQ</code>
+    </country>
+    <country id="country_er">
+        <name>Eritrea</name>
+        <code>ER</code>
+    </country>
+    <country id="country_ee">
+        <name>Estonia</name>
+        <code>EE</code>
+    </country>
+    <country id="country_sz">
+        <name>Eswatini</name>
+        <code>SZ</code>
+    </country>
+    <country id="country_et">
+        <name>Ethiopia</name>
+        <code>ET</code>
+    </country>
+    <country id="country_fk">
+        <name>Falkland Islands (Malvinas)</name>
+        <code>FK</code>
+    </country>
+    <country id="country_fo">
+        <name>Faroe Islands</name>
+        <code>FO</code>
+    </country>
+    <country id="country_fj">
+        <name>Fiji</name>
+        <code>FJ</code>
+    </country>
+    <country id="country_fi">
+        <name>Finland</name>
+        <code>FI</code>
+    </country>
+    <country id="country_fr">
+        <name>France</name>
+        <code>FR</code>
+    </country>
+    <country id="country_gf">
+        <name>French Guiana</name>
+        <code>GF</code>
+    </country>
+    <country id="country_pf">
+        <name>French Polynesia</name>
+        <code>PF</code>
+    </country>
+    <country id="country_tf">
+        <name>French Southern Territories</name>
+        <code>TF</code>
+    </country>
+    <country id="country_ga">
+        <name>Gabon</name>
+        <code>GA</code>
+    </country>
+    <country id="country_gm">
+        <name>Gambia</name>
+        <code>GM</code>
+    </country>
+    <country id="country_ge">
+        <name>Georgia</name>
+        <code>GE</code>
+    </country>
+    <country id="country_de">
+        <name>Germany</name>
+        <code>DE</code>
+    </country>
+    <country id="country_gh">
+        <name>Ghana</name>
+        <code>GH</code>
+    </country>
+    <country id="country_gi">
+        <name>Gibraltar</name>
+        <code>GI</code>
+    </country>
+    <country id="country_gr">
+        <name>Greece</name>
+        <code>GR</code>
+    </country>
+    <country id="country_gl">
+        <name>Greenland</name>
+        <code>GL</code>
+    </country>
+    <country id="country_gd">
+        <name>Grenada</name>
+        <code>GD</code>
+    </country>
+    <country id="country_gp">
+        <name>Guadeloupe</name>
+        <code>GP</code>
+    </country>
+    <country id="country_gu">
+        <name>Guam</name>
+        <code>GU</code>
+    </country>
+    <country id="country_gt">
+        <name>Guatemala</name>
+        <code>GT</code>
+    </country>
+    <country id="country_gg">
+        <name>Guernsey</name>
+        <code>GG</code>
+    </country>
+    <country id="country_gn">
+        <name>Guinea</name>
+        <code>GN</code>
+    </country>
+    <country id="country_gw">
+        <name>Guinea-Bissau</name>
+        <code>GW</code>
+    </country>
+    <country id="country_gy">
+        <name>Guyana</name>
+        <code>GY</code>
+    </country>
+    <country id="country_ht">
+        <name>Haiti</name>
+        <code>HT</code>
+    </country>
+    <country id="country_hm">
+        <name>Heard Island and McDonald Islands</name>
+        <code>HM</code>
+    </country>
+    <country id="country_va">
+        <name>Holy See (Vatican City State)</name>
+        <code>VA</code>
+    </country>
+    <country id="country_hn">
+        <name>Honduras</name>
+        <code>HN</code>
+    </country>
+    <country id="country_hk">
+        <name>Hong Kong</name>
+        <code>HK</code>
+    </country>
+    <country id="country_hu">
+        <name>Hungary</name>
+        <code>HU</code>
+    </country>
+    <country id="country_is">
+        <name>Iceland</name>
+        <code>IS</code>
+    </country>
+    <country id="country_in">
+        <name>India</name>
+        <code>IN</code>
+    </country>
+    <country id="country_id">
+        <name>Indonesia</name>
+        <code>ID</code>
+    </country>
+    <country id="country_ir">
+        <name>Iran</name>
+        <code>IR</code>
+    </country>
+    <country id="country_iq">
+        <name>Iraq</name>
+        <code>IQ</code>
+    </country>
+    <country id="country_ie">
+        <name>Ireland</name>
+        <code>IE</code>
+    </country>
+    <country id="country_im">
+        <name>Isle of Man</name>
+        <code>IM</code>
+    </country>
+    <country id="country_il">
+        <name>Israel</name>
+        <code>IL</code>
+    </country>
+    <country id="country_it">
+        <name>Italy</name>
+        <code>IT</code>
+    </country>
+    <country id="country_jm">
+        <name>Jamaica</name>
+        <code>JM</code>
+    </country>
+    <country id="country_jp">
+        <name>Japan</name>
+        <code>JP</code>
+    </country>
+    <country id="country_je">
+        <name>Jersey</name>
+        <code>JE</code>
+    </country>
+    <country id="country_jo">
+        <name>Jordan</name>
+        <code>JO</code>
+    </country>
+    <country id="country_kz">
+        <name>Kazakhstan</name>
+        <code>KZ</code>
+    </country>
+    <country id="country_ke">
+        <name>Kenya</name>
+        <code>KE</code>
+    </country>
+    <country id="country_ki">
+        <name>Kiribati</name>
+        <code>KI</code>
+    </country>
+    <country id="country_kw">
+        <name>Kuwait</name>
+        <code>KW</code>
+    </country>
+    <country id="country_kg">
+        <name>Kyrgyzstan</name>
+        <code>KG</code>
+    </country>
+    <country id="country_la">
+        <name>Laos</name>
+        <code>LA</code>
+    </country>
+    <country id="country_lv">
+        <name>Latvia</name>
+        <code>LV</code>
+    </country>
+    <country id="country_lb">
+        <name>Lebanon</name>
+        <code>LB</code>
+    </country>
+    <country id="country_ls">
+        <name>Lesotho</name>
+        <code>LS</code>
+    </country>
+    <country id="country_lr">
+        <name>Liberia</name>
+        <code>LR</code>
+    </country>
+    <country id="country_ly">
+        <name>Libya</name>
+        <code>LY</code>
+    </country>
+    <country id="country_li">
+        <name>Liechtenstein</name>
+        <code>LI</code>
+    </country>
+    <country id="country_lt">
+        <name>Lithuania</name>
+        <code>LT</code>
+    </country>
+    <country id="country_lu">
+        <name>Luxembourg</name>
+        <code>LU</code>
+    </country>
+    <country id="country_mo">
+        <name>Macao</name>
+        <code>MO</code>
+    </country>
+    <country id="country_mg">
+        <name>Madagascar</name>
+        <code>MG</code>
+    </country>
+    <country id="country_mw">
+        <name>Malawi</name>
+        <code>MW</code>
+    </country>
+    <country id="country_my">
+        <name>Malaysia</name>
+        <code>MY</code>
+    </country>
+    <country id="country_mv">
+        <name>Maldives</name>
+        <code>MV</code>
+    </country>
+    <country id="country_ml">
+        <name>Mali</name>
+        <code>ML</code>
+    </country>
+    <country id="country_mt">
+        <name>Malta</name>
+        <code>MT</code>
+    </country>
+    <country id="country_mh">
+        <name>Marshall Islands</name>
+        <code>MH</code>
+    </country>
+    <country id="country_mq">
+        <name>Martinique</name>
+        <code>MQ</code>
+    </country>
+    <country id="country_mr">
+        <name>Mauritania</name>
+        <code>MR</code>
+    </country>
+    <country id="country_mu">
+        <name>Mauritius</name>
+        <code>MU</code>
+    </country>
+    <country id="country_yt">
+        <name>Mayotte</name>
+        <code>YT</code>
+    </country>
+    <country id="country_mx">
+        <name>Mexico</name>
+        <code>MX</code>
+    </country>
+    <country id="country_fm">
+        <name>Micronesia, Federated States of</name>
+        <code>FM</code>
+    </country>
+    <country id="country_md">
+        <name>Moldova</name>
+        <code>MD</code>
+    </country>
+    <country id="country_mc">
+        <name>Monaco</name>
+        <code>MC</code>
+    </country>
+    <country id="country_mn">
+        <name>Mongolia</name>
+        <code>MN</code>
+    </country>
+    <country id="country_me">
+        <name>Montenegro</name>
+        <code>ME</code>
+    </country>
+    <country id="country_ms">
+        <name>Montserrat</name>
+        <code>MS</code>
+    </country>
+    <country id="country_ma">
+        <name>Morocco</name>
+        <code>MA</code>
+    </country>
+    <country id="country_mz">
+        <name>Mozambique</name>
+        <code>MZ</code>
+    </country>
+    <country id="country_mm">
+        <name>Myanmar</name>
+        <code>MM</code>
+    </country>
+    <country id="country_na">
+        <name>Namibia</name>
+        <code>NA</code>
+    </country>
+    <country id="country_nr">
+        <name>Nauru</name>
+        <code>NR</code>
+    </country>
+    <country id="country_np">
+        <name>Nepal</name>
+        <code>NP</code>
+    </country>
+    <country id="country_nl">
+        <name>Netherlands</name>
+        <code>NL</code>
+    </country>
+    <country id="country_nc">
+        <name>New Caledonia</name>
+        <code>NC</code>
+    </country>
+    <country id="country_nz">
+        <name>New Zealand</name>
+        <code>NZ</code>
+    </country>
+    <country id="country_ni">
+        <name>Nicaragua</name>
+        <code>NI</code>
+    </country>
+    <country id="country_ne">
+        <name>Niger</name>
+        <code>NE</code>
+    </country>
+    <country id="country_ng">
+        <name>Nigeria</name>
+        <code>NG</code>
+    </country>
+    <country id="country_nu">
+        <name>Niue</name>
+        <code>NU</code>
+    </country>
+    <country id="country_nf">
+        <name>Norfolk Island</name>
+        <code>NF</code>
+    </country>
+    <country id="country_kp">
+        <name>North Korea</name>
+        <code>KP</code>
+    </country>
+    <country id="country_mk">
+        <name>North Macedonia</name>
+        <code>MK</code>
+    </country>
+    <country id="country_mp">
+        <name>Northern Mariana Islands</name>
+        <code>MP</code>
+    </country>
+    <country id="country_no">
+        <name>Norway</name>
+        <code>NO</code>
+    </country>
+    <country id="country_om">
+        <name>Oman</name>
+        <code>OM</code>
+    </country>
+    <country id="country_pk">
+        <name>Pakistan</name>
+        <code>PK</code>
+    </country>
+    <country id="country_pw">
+        <name>Palau</name>
+        <code>PW</code>
+    </country>
+    <country id="country_ps">
+        <name>Palestine, State of</name>
+        <code>PS</code>
+    </country>
+    <country id="country_pa">
+        <name>Panama</name>
+        <code>PA</code>
+    </country>
+    <country id="country_pg">
+        <name>Papua New Guinea</name>
+        <code>PG</code>
+    </country>
+    <country id="country_py">
+        <name>Paraguay</name>
+        <code>PY</code>
+    </country>
+    <country id="country_pe">
+        <name>Peru</name>
+        <code>PE</code>
+    </country>
+    <country id="country_ph">
+        <name>Philippines</name>
+        <code>PH</code>
+    </country>
+    <country id="country_pn">
+        <name>Pitcairn</name>
+        <code>PN</code>
+    </country>
+    <country id="country_pl">
+        <name>Poland</name>
+        <code>PL</code>
+    </country>
+    <country id="country_pt">
+        <name>Portugal</name>
+        <code>PT</code>
+    </country>
+    <country id="country_pr">
+        <name>Puerto Rico</name>
+        <code>PR</code>
+    </country>
+    <country id="country_qa">
+        <name>Qatar</name>
+        <code>QA</code>
+    </country>
+    <country id="country_ro">
+        <name>Romania</name>
+        <code>RO</code>
+    </country>
+    <country id="country_ru">
+        <name>Russian Federation</name>
+        <code>RU</code>
+    </country>
+    <country id="country_rw">
+        <name>Rwanda</name>
+        <code>RW</code>
+    </country>
+    <country id="country_re">
+        <name>Réunion</name>
+        <code>RE</code>
+    </country>
+    <country id="country_bl">
+        <name>Saint Barthélemy</name>
+        <code>BL</code>
+    </country>
+    <country id="country_sh">
+        <name>Saint Helena, Ascension and Tristan da Cunha</name>
+        <code>SH</code>
+    </country>
+    <country id="country_kn">
+        <name>Saint Kitts and Nevis</name>
+        <code>KN</code>
+    </country>
+    <country id="country_lc">
+        <name>Saint Lucia</name>
+        <code>LC</code>
+    </country>
+    <country id="country_mf">
+        <name>Saint Martin (French part)</name>
+        <code>MF</code>
+    </country>
+    <country id="country_pm">
+        <name>Saint Pierre and Miquelon</name>
+        <code>PM</code>
+    </country>
+    <country id="country_vc">
+        <name>Saint Vincent and the Grenadines</name>
+        <code>VC</code>
+    </country>
+    <country id="country_ws">
+        <name>Samoa</name>
+        <code>WS</code>
+    </country>
+    <country id="country_sm">
+        <name>San Marino</name>
+        <code>SM</code>
+    </country>
+    <country id="country_st">
+        <name>Sao Tome and Principe</name>
+        <code>ST</code>
+    </country>
+    <country id="country_sa">
+        <name>Saudi Arabia</name>
+        <code>SA</code>
+    </country>
+    <country id="country_sn">
+        <name>Senegal</name>
+        <code>SN</code>
+    </country>
+    <country id="country_rs">
+        <name>Serbia</name>
+        <code>RS</code>
+    </country>
+    <country id="country_sc">
+        <name>Seychelles</name>
+        <code>SC</code>
+    </country>
+    <country id="country_sl">
+        <name>Sierra Leone</name>
+        <code>SL</code>
+    </country>
+    <country id="country_sg">
+        <name>Singapore</name>
+        <code>SG</code>
+    </country>
+    <country id="country_sx">
+        <name>Sint Maarten (Dutch part)</name>
+        <code>SX</code>
+    </country>
+    <country id="country_sk">
+        <name>Slovakia</name>
+        <code>SK</code>
+    </country>
+    <country id="country_si">
+        <name>Slovenia</name>
+        <code>SI</code>
+    </country>
+    <country id="country_sb">
+        <name>Solomon Islands</name>
+        <code>SB</code>
+    </country>
+    <country id="country_so">
+        <name>Somalia</name>
+        <code>SO</code>
+    </country>
+    <country id="country_za">
+        <name>South Africa</name>
+        <code>ZA</code>
+    </country>
+    <country id="country_gs">
+        <name>South Georgia and the South Sandwich Islands</name>
+        <code>GS</code>
+    </country>
+    <country id="country_kr">
+        <name>South Korea</name>
+        <code>KR</code>
+    </country>
+    <country id="country_ss">
+        <name>South Sudan</name>
+        <code>SS</code>
+    </country>
+    <country id="country_es">
+        <name>Spain</name>
+        <code>ES</code>
+    </country>
+    <country id="country_lk">
+        <name>Sri Lanka</name>
+        <code>LK</code>
+    </country>
+    <country id="country_sd">
+        <name>Sudan</name>
+        <code>SD</code>
+    </country>
+    <country id="country_sr">
+        <name>Suriname</name>
+        <code>SR</code>
+    </country>
+    <country id="country_sj">
+        <name>Svalbard and Jan Mayen</name>
+        <code>SJ</code>
+    </country>
+    <country id="country_se">
+        <name>Sweden</name>
+        <code>SE</code>
+    </country>
+    <country id="country_ch">
+        <name>Switzerland</name>
+        <code>CH</code>
+    </country>
+    <country id="country_sy">
+        <name>Syria</name>
+        <code>SY</code>
+    </country>
+    <country id="country_tw">
+        <name>Taiwan</name>
+        <code>TW</code>
+    </country>
+    <country id="country_tj">
+        <name>Tajikistan</name>
+        <code>TJ</code>
+    </country>
+    <country id="country_tz">
+        <name>Tanzania</name>
+        <code>TZ</code>
+    </country>
+    <country id="country_th">
+        <name>Thailand</name>
+        <code>TH</code>
+    </country>
+    <country id="country_tl">
+        <name>Timor-Leste</name>
+        <code>TL</code>
+    </country>
+    <country id="country_tg">
+        <name>Togo</name>
+        <code>TG</code>
+    </country>
+    <country id="country_tk">
+        <name>Tokelau</name>
+        <code>TK</code>
+    </country>
+    <country id="country_to">
+        <name>Tonga</name>
+        <code>TO</code>
+    </country>
+    <country id="country_tt">
+        <name>Trinidad and Tobago</name>
+        <code>TT</code>
+    </country>
+    <country id="country_tn">
+        <name>Tunisia</name>
+        <code>TN</code>
+    </country>
+    <country id="country_tm">
+        <name>Turkmenistan</name>
+        <code>TM</code>
+    </country>
+    <country id="country_tc">
+        <name>Turks and Caicos Islands</name>
+        <code>TC</code>
+    </country>
+    <country id="country_tv">
+        <name>Tuvalu</name>
+        <code>TV</code>
+    </country>
+    <country id="country_tr">
+        <name>Türkiye</name>
+        <code>TR</code>
+    </country>
+    <country id="country_ug">
+        <name>Uganda</name>
+        <code>UG</code>
+    </country>
+    <country id="country_ua">
+        <name>Ukraine</name>
+        <code>UA</code>
+    </country>
+    <country id="country_ae">
+        <name>United Arab Emirates</name>
+        <code>AE</code>
+    </country>
+    <country id="country_gb">
+        <name>United Kingdom</name>
+        <code>GB</code>
+    </country>
+    <country id="country_us">
+        <name>United States</name>
+        <code>US</code>
+    </country>
+    <country id="country_um">
+        <name>United States Minor Outlying Islands</name>
+        <code>UM</code>
+    </country>
+    <country id="country_uy">
+        <name>Uruguay</name>
+        <code>UY</code>
+    </country>
+    <country id="country_uz">
+        <name>Uzbekistan</name>
+        <code>UZ</code>
+    </country>
+    <country id="country_vu">
+        <name>Vanuatu</name>
+        <code>VU</code>
+    </country>
+    <country id="country_ve">
+        <name>Venezuela</name>
+        <code>VE</code>
+    </country>
+    <country id="country_vn">
+        <name>Vietnam</name>
+        <code>VN</code>
+    </country>
+    <country id="country_vg">
+        <name>Virgin Islands, British</name>
+        <code>VG</code>
+    </country>
+    <country id="country_vi">
+        <name>Virgin Islands, U.S.</name>
+        <code>VI</code>
+    </country>
+    <country id="country_wf">
+        <name>Wallis and Futuna</name>
+        <code>WF</code>
+    </country>
+    <country id="country_eh">
+        <name>Western Sahara</name>
+        <code>EH</code>
+    </country>
+    <country id="country_ye">
+        <name>Yemen</name>
+        <code>YE</code>
+    </country>
+    <country id="country_zm">
+        <name>Zambia</name>
+        <code>ZM</code>
+    </country>
+    <country id="country_zw">
+        <name>Zimbabwe</name>
+        <code>ZW</code>
+    </country>
+    <country id="country_ax">
+        <name>Åland Islands</name>
+        <code>AX</code>
+    </country>
+</erp>

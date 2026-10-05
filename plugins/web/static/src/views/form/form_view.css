@@ -267,6 +267,72 @@
     color: var(--o-muted);
 }
 
+.o_contact {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: 6px;
+    min-width: 0;
+}
+
+.o_contact_details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--o-muted);
+    font-size: 13px;
+    white-space: pre-line;
+}
+
+textarea.o_input.o_text {
+    flex-grow: 1;
+    height: auto;
+    min-height: 96px;
+    padding: 8px 12px;
+    resize: vertical;
+}
+
+span.o_text {
+    white-space: pre-line;
+}
+
+.o_link_field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.o_link_field .o_input {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.o_link_open {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--o-input-border);
+    border-radius: var(--o-radius-control);
+    background: var(--o-surface);
+    color: var(--o-muted);
+}
+
+.o_link_open:hover {
+    color: var(--o-accent);
+}
+
+.o_link {
+    color: var(--o-accent);
+    text-decoration: none;
+}
+
+.o_link:hover {
+    text-decoration: underline;
+}
+
 .o_record_search {
     position: relative;
     min-width: 0;

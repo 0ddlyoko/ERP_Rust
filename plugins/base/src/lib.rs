@@ -39,6 +39,7 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::Group<_>>();
         model_manager.register_model::<models::Users<_>>();
         model_manager.register_model::<models::Contact<_>>();
+        model_manager.register_model::<models::ContactTag<_>>();
         model_manager.register_model::<models::Country<_>>();
         model_manager.register_model::<models::Lang<_>>();
         model_manager.register_model::<models::ModelData<_>>();
@@ -87,7 +88,9 @@ impl Plugin for BasePlugin {
         vec![
             include_str!("../data/users.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/countries.xml"),
             include_str!("../views/users_views.xml"),
+            include_str!("../views/contact_views.xml"),
             include_str!("../views/technical_views.xml"),
             include_str!("../views/menus.xml"),
         ]

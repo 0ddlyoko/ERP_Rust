@@ -25,24 +25,40 @@ pub enum DataUpdate {
     Only(Vec<String>),
 }
 
-impl DataUpdate {
-    /// Read `-u`/`--update` from the command line: `all`, or plugin names separated by commas.
+/// What the command line asks of a start: plugins to install, and plugins whose data to load
+/// again.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LaunchArgs {
+    pub install: Vec<String>,
+    pub update: DataUpdate,
+}
+
+impl LaunchArgs {
+    /// Read `-i`/`--install` (plugin names separated by commas) and `-u`/`--update` (`all`, or
+    /// plugin names) from the command line, each as often as wanted.
     ///
-    /// Anything else is refused rather than ignored, so a mistyped flag is not an update that
-    /// silently did not happen.
+    /// Anything else is refused rather than ignored, so a mistyped flag is not an install or an
+    /// update that silently did not happen.
     pub fn from_args(args: impl IntoIterator<Item = String>) -> Result<Self> {
-        let usage = "Usage: [-u|--update all|<plugin>[,<plugin>...]]";
-        let mut update = DataUpdate::Nothing;
+        let usage =
+            "Usage: [-i|--install <plugin>[,<plugin>...]] [-u|--update all|<plugin>[,<plugin>...]]";
+        let mut launch = LaunchArgs::default();
         let mut args = args.into_iter();
         while let Some(arg) = args.next() {
-            let value = match arg.as_str() {
-                "-u" | "--update" => args
+            let (flag, value) = match arg.split_once('=') {
+                Some((flag, value)) if flag.starts_with("--") => (flag, Some(value.to_string())),
+                _ => (arg.as_str(), None),
+            };
+            let install = match flag {
+                "-i" | "--install" => true,
+                "-u" | "--update" => false,
+                _ => return Err(format!("Unknown argument {arg}. {usage}").into()),
+            };
+            let value = match value {
+                Some(value) => value,
+                None => args
                     .next()
-                    .ok_or_else(|| format!("{arg} needs a value. {usage}"))?,
-                _ => match arg.strip_prefix("--update=") {
-                    Some(value) => value.to_string(),
-                    None => return Err(format!("Unknown argument {arg}. {usage}").into()),
-                },
+                    .ok_or_else(|| format!("{flag} needs a value. {usage}"))?,
             };
             let names: Vec<String> = value
                 .split(',')
@@ -50,16 +66,27 @@ impl DataUpdate {
                 .filter(|name| !name.is_empty())
                 .map(str::to_string)
                 .collect();
-            update = match (update, names.iter().any(|name| name == "all")) {
-                (DataUpdate::All, _) | (_, true) => DataUpdate::All,
-                (DataUpdate::Only(mut before), false) => {
-                    before.extend(names);
-                    DataUpdate::Only(before)
-                }
-                (DataUpdate::Nothing, false) => DataUpdate::Only(names),
-            };
+            if install {
+                launch.install.extend(names);
+            } else {
+                launch.update = launch.update.and(names);
+            }
         }
-        Ok(update)
+        Ok(launch)
+    }
+}
+
+impl DataUpdate {
+    /// This update, and the plugins named as well: `all` among them updates everything.
+    fn and(self, names: Vec<String>) -> Self {
+        match (self, names.iter().any(|name| name == "all")) {
+            (DataUpdate::All, _) | (_, true) => DataUpdate::All,
+            (DataUpdate::Only(mut before), false) => {
+                before.extend(names);
+                DataUpdate::Only(before)
+            }
+            (DataUpdate::Nothing, false) => DataUpdate::Only(names),
+        }
     }
 
     fn includes(&self, plugin_name: &str) -> bool {
@@ -81,6 +108,7 @@ pub struct Application {
     /// database — a test, a `--help` — never tries to.
     pool: OnceLock<ConnectionPool>,
     data_update: DataUpdate,
+    install: Vec<String>,
     signing_secret: OnceLock<String>,
 }
 
@@ -95,6 +123,7 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
     }
@@ -112,6 +141,7 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
     }
@@ -203,6 +233,15 @@ impl Application {
         self.record_registered_plugins()?;
         self.load_plugins()?;
         self.auto_install_plugins()?;
+        for name in self.install.clone() {
+            if self.plugin_manager.get_plugin(&name).is_none() {
+                return Err(format!("Cannot install {name}: no such plugin").into());
+            }
+            if !self.plugin_manager.is_installed(&name) {
+                tracing::info!(plugin = %name, "Installing, as asked");
+                self.load_plugin(&name)?;
+            }
+        }
         if let DataUpdate::Only(names) = &self.data_update {
             for name in names {
                 if !self.plugin_manager.is_installed(name) {
@@ -211,6 +250,11 @@ impl Application {
             }
         }
         Ok(())
+    }
+
+    /// Say which plugins the next load installs, with their dependencies, unless they already are.
+    pub fn set_install(&mut self, names: Vec<String>) {
+        self.install = names;
     }
 
     /// Say which plugins get their data loaded again at the next load, whatever their version.

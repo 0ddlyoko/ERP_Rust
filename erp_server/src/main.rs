@@ -1,6 +1,6 @@
 //! The server.
 
-use erp::app::{Application, DataUpdate};
+use erp::app::{Application, LaunchArgs};
 use erp::config::Config;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -37,7 +37,9 @@ async fn serve() -> Result<(), Box<dyn Error + Send + Sync>> {
     };
 
     let mut app = Application::new(config);
-    app.set_data_update(DataUpdate::from_args(std::env::args().skip(1))?);
+    let launch = LaunchArgs::from_args(std::env::args().skip(1))?;
+    app.set_install(launch.install);
+    app.set_data_update(launch.update);
     erp_server::load_and_serve(app, address).await
 }
 

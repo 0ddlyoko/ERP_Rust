@@ -4,7 +4,7 @@
 //! ordinary boot, which would otherwise undo whatever users changed in records a file declared.
 
 use base::BasePlugin;
-use erp::app::{Application, DataUpdate};
+use erp::app::{Application, DataUpdate, LaunchArgs};
 use erp::data;
 use erp::database::cache::CacheDatabase;
 use erp_search_code_gen::make_domain;
@@ -106,7 +106,9 @@ fn test_an_update_only_reaches_the_plugins_named() -> Result<()> {
 
 #[test]
 fn test_the_command_line_says_what_to_update() -> Result<()> {
-    let parse = |args: &[&str]| DataUpdate::from_args(args.iter().map(|arg| arg.to_string()));
+    let parse = |args: &[&str]| {
+        LaunchArgs::from_args(args.iter().map(|arg| arg.to_string())).map(|launch| launch.update)
+    };
     assert_eq!(parse(&[])?, DataUpdate::Nothing);
     assert_eq!(parse(&["-u", "all"])?, DataUpdate::All);
     assert_eq!(
@@ -120,5 +122,15 @@ fn test_the_command_line_says_what_to_update() -> Result<()> {
     assert_eq!(parse(&["-u", "base", "-u", "all"])?, DataUpdate::All);
     assert!(parse(&["-u"]).is_err(), "a flag without a value");
     assert!(parse(&["--updat", "base"]).is_err(), "a mistyped flag");
+    Ok(())
+}
+
+#[test]
+fn test_the_command_line_says_what_to_install() -> Result<()> {
+    let parse = |args: &[&str]| LaunchArgs::from_args(args.iter().map(|arg| arg.to_string()));
+    let launch = parse(&["-i", "contacts", "--install=sales, stock", "-u", "base"])?;
+    assert_eq!(launch.install, vec!["contacts", "sales", "stock"]);
+    assert_eq!(launch.update, DataUpdate::Only(vec!["base".to_string()]));
+    assert!(parse(&["-i"]).is_err(), "a flag without a value");
     Ok(())
 }

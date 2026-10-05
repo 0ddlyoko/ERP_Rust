@@ -1,0 +1,9 @@
+<erp>
+    <menu id="menu_contacts" name="Contacts" sequence="5" groups="base.group_user">
+        <menu id="menu_contacts_all" name="Contacts" action="base.action_contacts"/>
+        <menu id="menu_contacts_configuration" name="Configuration">
+            <menu id="menu_contact_tags" name="Tags" action="base.action_contact_tags"/>
+            <menu id="menu_countries" name="Countries" action="base.action_countries"/>
+        </menu>
+    </menu>
+</erp>

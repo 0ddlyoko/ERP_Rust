@@ -1,0 +1,93 @@
+<erp>
+    <view id="view_contact_list" name="contact.list" model="contact">
+        <list>
+            <buttons>
+                <button name="archive" type="method" string="Archive"/>
+                <button name="unarchive" type="method" string="Unarchive"/>
+            </buttons>
+            <field name="complete_name"/>
+            <field name="function"/>
+            <field name="email" widget="email"/>
+            <field name="phone" widget="phone"/>
+            <field name="city"/>
+            <field name="country"/>
+            <field name="tags"/>
+        </list>
+    </view>
+    <view id="view_contact_form" name="contact.form" model="contact">
+        <form>
+            <block>
+                <field name="is_company"/>
+                <h1><field name="name"/></h1>
+                <field name="parent" widget="contact" invisible="is_company"/>
+                <field name="function" invisible="is_company"/>
+                <field name="tags"/>
+                <block string="Address">
+                    <field name="street"/>
+                    <field name="street2"/>
+                    <field name="zip"/>
+                    <field name="city"/>
+                    <field name="country"/>
+                </block>
+                <block string="Contact details">
+                    <field name="email" widget="email"/>
+                    <field name="phone" widget="phone"/>
+                    <field name="mobile" widget="phone"/>
+                    <field name="website" widget="url"/>
+                    <field name="lang"/>
+                </block>
+            </block>
+            <pages>
+                <page name="contacts" string="Contacts" invisible="!is_company">
+                    <field name="children" widget="list" nolabel="1"/>
+                </page>
+                <page name="notes" string="Notes">
+                    <field name="notes" widget="text" nolabel="1"/>
+                </page>
+                <page name="other" string="Other">
+                    <field name="vat"/>
+                    <field name="reference"/>
+                    <field name="active"/>
+                </page>
+            </pages>
+            <side>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_contact_search" name="contact.search" model="contact">
+        <search>
+            <field name="complete_name"/>
+            <field name="email"/>
+            <field name="phone"/>
+            <field name="parent"/>
+            <field name="tags"/>
+            <filter name="persons" string="Persons" domain='[["is_company", "=", false]]'/>
+            <filter name="companies" string="Companies" domain='[["is_company", "=", true]]'/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_contacts" name="Contacts" model="contact" views="list,form"/>
+
+    <view id="view_contact_tag_list" name="contact_tag.list" model="contact_tag">
+        <list>
+            <field name="name"/>
+        </list>
+    </view>
+    <action id="action_contact_tags" name="Contact tags" model="contact_tag" views="list,form"/>
+
+    <view id="view_country_list" name="country.list" model="country">
+        <list>
+            <field name="name"/>
+            <field name="code"/>
+        </list>
+    </view>
+    <view id="view_country_search" name="country.search" model="country">
+        <search>
+            <field name="name"/>
+            <field name="code"/>
+        </search>
+    </view>
+    <action id="action_countries" name="Countries" model="country" views="list,form"/>
+</erp>

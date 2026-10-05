@@ -1,0 +1,20 @@
+<templates>
+    <t t-name="web.LinkWidget">
+        <div t-if="editable" t-att-class="className + ' o_link_field'">
+            <input t-att-type="inputType" class="o_input" t-att-value="inputValue"
+                   t-on-input="(ev) => commit(ev.target.value)"/>
+            <a t-if="!isEmpty" class="o_link_open" t-att-href="href" t-att-title="label" t-att-aria-label="label"
+               t-att-target="external ? '_blank' : undefined" t-att-rel="external ? 'noopener noreferrer' : undefined">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path t-att-d="icon"/>
+                </svg>
+            </a>
+        </div>
+        <span t-elif="isEmpty" t-att-class="className"/>
+        <span t-else="" t-att-class="className">
+            <a class="o_link" t-att-href="href" t-att-target="external ? '_blank' : undefined"
+               t-att-rel="external ? 'noopener noreferrer' : undefined" t-on-click.stop="() => {}">{{ text }}</a>
+        </span>
+    </t>
+</templates>

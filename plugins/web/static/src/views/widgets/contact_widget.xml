@@ -1,0 +1,10 @@
+<templates>
+    <t t-name="web.ContactWidget">
+        <div class="o_contact">
+            <t t-call="web.Many2OneWidget"/>
+            <div t-if="lines.length" class="o_contact_details">
+                <span t-foreach="lines" t-as="line" t-key="line_index">{{ line }}</span>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,7 @@
+<templates>
+    <t t-name="web.TextWidget">
+        <textarea t-if="editable" t-att-class="className + ' o_input o_text'" rows="5"
+                  t-att-value="inputValue" t-on-input="(ev) => commit(ev.target.value)"/>
+        <span t-else="" t-att-class="className + ' o_text'">{{ text }}</span>
+    </t>
+</templates>

@@ -20,6 +20,7 @@ members = [
     "erp_server",
     "erp_search_code_gen",
     "plugins/base",
+    "plugins/contacts",
     "plugins/mail",
     "plugins/test_plugin",
     "plugins/web",

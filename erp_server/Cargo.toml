@@ -22,6 +22,7 @@ base = { path = "../plugins/base" }
 # Built with the server, so the plugin libraries it loads share its build of erp.
 web = { path = "../plugins/web" }
 mail = { path = "../plugins/mail" }
+contacts = { path = "../plugins/contacts" }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }
