@@ -116,11 +116,30 @@ impl<'mm> Environment<'mm> {
             }
             // We found ids to recompute, set them as to_recompute
             if !current_ids.is_empty() {
+                let already = self
+                    .cache
+                    .get_cache_models(&current_model.name)
+                    .to_recompute
+                    .get(&current_field.name)
+                    .cloned()
+                    .unwrap_or_default();
+                let newly: Vec<u32> = current_ids
+                    .iter()
+                    .copied()
+                    .filter(|id| !already.contains(id))
+                    .collect();
                 self.cache.add_ids_to_recompute(
                     &current_model.name,
                     &[&current_field.name],
                     &current_ids,
                 );
+                // What depends on a field about to change is about to change too: flagged now,
+                // it is worked out before being read, rather than read as it was.
+                if !newly.is_empty() {
+                    let (model_name, field_name) =
+                        (current_model.name.clone(), current_field.name.clone());
+                    self.check_compute_on_field(&model_name, &field_name, &newly)?;
+                }
             }
         }
         Ok(())
