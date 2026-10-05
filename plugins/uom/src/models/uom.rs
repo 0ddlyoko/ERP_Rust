@@ -123,21 +123,6 @@ impl Uom<MultipleIds> {
         Ok(())
     }
 
-    /// `quantity` of the unit, counted in `to_uom`, rounded half up to its precision.
-    #[erp(rpc)]
-    pub fn compute_quantity(
-        &self,
-        env: &mut Environment,
-        quantity: Decimal,
-        to_uom: u32,
-    ) -> Result<Decimal> {
-        let to: Uom<SingleId> = env.get_record(to_uom.into());
-        let Some(from) = self.into_iter().next() else {
-            return Ok(quantity);
-        };
-        from.convert_to(env, quantity, &to, Rounding::HalfUp)
-    }
-
     pub fn create(
         &self,
         env: &mut Environment,

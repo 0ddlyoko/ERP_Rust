@@ -7,11 +7,10 @@ use erp::Result;
 use erp::app::Application;
 use erp::data;
 use erp::environment::Environment;
-use erp::types::field::{Decimal, IdMode, SingleId};
+use erp::types::field::{IdMode, SingleId};
 use erp::types::model::MapOfFields;
 use erp_test_support::{admin_env, d};
 use serde_json::json;
-use std::str::FromStr;
 use uom::UomPlugin;
 use uom::conversion::Rounding;
 use uom::models::Uom;
@@ -126,25 +125,6 @@ fn test_units_of_different_categories_do_not_convert() -> Result<()> {
         .expect_err("not the same thing")
         .to_string();
     assert!(error.contains("kg") && error.contains("Units"), "{error}");
-    Ok(())
-}
-
-/// The conversion is offered to clients.
-#[test]
-fn test_conversion_over_rpc() -> Result<()> {
-    let app = new_app()?;
-    let mut env = admin_env(&app)?;
-    let dozen = uom(&mut env, "uom_dozen")?.get_id();
-    let unit = uom(&mut env, "uom_unit")?.get_id();
-    let answer = env.call_rpc(
-        "uom",
-        "compute_quantity",
-        &json!({"ids": [dozen], "args": {"quantity": "2", "to_uom": unit}}),
-    )?;
-    assert_eq!(
-        Decimal::from_str(answer.as_str().unwrap_or(&answer.to_string()))?,
-        d("24")
-    );
     Ok(())
 }
 
