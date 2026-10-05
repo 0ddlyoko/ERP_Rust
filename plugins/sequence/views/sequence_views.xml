@@ -1,0 +1,41 @@
+<erp>
+    <view id="view_sequence_list" name="sequence.list" model="sequence">
+        <list>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="prefix"/>
+            <field name="number_next"/>
+            <field name="reset"/>
+        </list>
+    </view>
+    <view id="view_sequence_form" name="sequence.form" model="sequence">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="code"/>
+                <block string="Number">
+                    <field name="prefix"/>
+                    <field name="padding"/>
+                    <field name="suffix"/>
+                </block>
+                <block string="Counting">
+                    <field name="number_next"/>
+                    <field name="number_increment"/>
+                    <field name="reset"/>
+                    <field name="active"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <view id="view_sequence_search" name="sequence.search" model="sequence">
+        <search>
+            <field name="name"/>
+            <field name="code"/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_sequences" name="Numbering" model="sequence" views="list,form"/>
+    <menu id="menu_sequences" name="Numbering" parent="base.menu_technical" sequence="40"
+          action="action_sequences"/>
+</erp>

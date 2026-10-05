@@ -1,0 +1,11 @@
+<erp>
+    <access_rule id="access_sequence_group_admin">
+        <name>sequence: group_admin</name>
+        <model>sequence</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>
