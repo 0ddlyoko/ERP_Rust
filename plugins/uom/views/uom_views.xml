@@ -1,0 +1,54 @@
+<erp>
+    <view id="view_uom_list" name="uom.list" model="uom">
+        <list>
+            <field name="name"/>
+            <field name="category"/>
+            <field name="uom_type"/>
+            <field name="ratio"/>
+            <field name="rounding"/>
+        </list>
+    </view>
+    <view id="view_uom_form" name="uom.form" model="uom">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Conversion">
+                    <field name="category" no_create="1"/>
+                    <field name="uom_type"/>
+                    <field name="ratio" readonly="uom_type === 'reference'"/>
+                    <field name="rounding"/>
+                </block>
+                <field name="active"/>
+            </block>
+        </form>
+    </view>
+    <view id="view_uom_search" name="uom.search" model="uom">
+        <search>
+            <field name="name"/>
+            <field name="category"/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_uoms" name="Units of measure" model="uom" views="list,form"/>
+
+    <view id="view_uom_category_list" name="uom_category.list" model="uom_category">
+        <list>
+            <field name="name"/>
+        </list>
+    </view>
+    <view id="view_uom_category_form" name="uom_category.form" model="uom_category">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+            </block>
+            <pages>
+                <page name="uoms" string="Units">
+                    <field name="uoms" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <action id="action_uom_categories" name="Unit categories" model="uom_category"
+            views="list,form"/>
+</erp>

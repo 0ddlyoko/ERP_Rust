@@ -1,0 +1,32 @@
+<erp>
+    <access_rule id="access_uom_category_user">
+        <name>uom_category: users</name>
+        <model>uom_category</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_uom_category_admin">
+        <name>uom_category: administrators</name>
+        <model>uom_category</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_uom_user">
+        <name>uom: users</name>
+        <model>uom</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_uom_admin">
+        <name>uom: administrators</name>
+        <model>uom</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>
