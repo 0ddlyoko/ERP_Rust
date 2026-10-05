@@ -201,3 +201,43 @@ fn test_views_and_menu() -> Result<()> {
     assert!(text.contains("\"Numbering\""), "{text}");
     Ok(())
 }
+
+/// Documents numbered at the same time each get their own number: the series waits for the
+/// transaction holding it. Only PostgreSQL runs transactions side by side; three at once, as many
+/// as the tests' pool of connections lends.
+#[test]
+fn test_numbers_taken_at_once_differ() -> Result<()> {
+    if !erp_test_support::on_postgres() {
+        eprintln!("skipping: needs PostgreSQL");
+        return Ok(());
+    }
+    let app = new_app()?;
+    {
+        let mut env = admin_env(&app)?;
+        new_series(&mut env, "busy", "B", "never")?;
+        env.close()?;
+    }
+    let start = std::sync::Barrier::new(3);
+    let mut names: Vec<String> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..3)
+            .map(|_| {
+                scope.spawn(|| -> Result<String> {
+                    let mut env = admin_env(&app)?;
+                    start.wait();
+                    let name = Sequence::next_by_code(&mut env, "busy", date("2026-01-01"))?;
+                    // Held a moment, as a document is written, before the work is committed.
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    env.close()?;
+                    Ok(name)
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|worker| worker.join().expect("a worker"))
+            .collect::<Result<Vec<_>>>()
+    })?;
+    names.sort();
+    assert_eq!(names, ["B00001", "B00002", "B00003"]);
+    Ok(())
+}

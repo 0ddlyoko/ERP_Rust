@@ -71,9 +71,13 @@ impl Sequence<SingleId> {
 
     /// The next name of this series for a document dated `date`, the series moved on.
     ///
+    /// The series is locked first, until the transaction ends: two documents numbered at once
+    /// wait for each other, rather than both take the same number.
+    ///
     /// As sudo: whoever may create the document may number it, without managing the series.
     pub fn next(&self, env: &mut Environment, date: NaiveDate) -> Result<String> {
         let env = &mut *env.sudo();
+        env.lock_records("sequence", &SingleId::from(self.get_id()))?;
         let reset = *self.get_reset(env)?;
         let period = format::period(
             date,
