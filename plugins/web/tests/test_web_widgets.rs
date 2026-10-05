@@ -59,3 +59,17 @@ fn test_amounts_of_money_have_their_widget() -> Result<()> {
     assert!(decimal.contains("digits"), "{decimal}");
     Ok(())
 }
+
+/// A record created from an action starts with what the action's domain says of its records:
+/// opened from customer invoices, a new entry is a customer invoice.
+#[test]
+fn test_a_new_record_takes_the_values_its_action_shows() -> Result<()> {
+    let app = new_app()?;
+    let form = script(&app, "/static/web/src/views/form/form_view.js");
+    assert!(form.contains("export function defaultsOfDomain"), "{form}");
+    assert!(
+        form.contains("defaultsOfDomain(this.props.domain, fields)"),
+        "{form}"
+    );
+    Ok(())
+}

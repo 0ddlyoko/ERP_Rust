@@ -84,7 +84,9 @@ export class FormView extends View {
             defaults: this.props.defaults,
         }),
         async ({ model, id, names, fields, defaults }) =>
-            id === undefined ? { ...defaultsOf(fields, names), ...defaults } : this.read(model, id, names),
+            id === undefined
+                ? { ...defaultsOf(fields, names), ...defaultsOfDomain(this.props.domain, fields), ...defaults }
+                : this.read(model, id, names),
     );
 
     private async read(model: string, id: number, names: string[]): Promise<Values> {
@@ -519,6 +521,29 @@ function asSent(value: unknown): unknown {
         return value.map((item) => (item as [number, unknown])[0]);
     }
     return value;
+}
+
+/**
+ * What the action's domain says of every record it shows, as values a new one starts with: the
+ * `["move_type", "=", "out_invoice"]` of the customer invoices. Nothing when the domain chooses
+ * between alternatives, `|` or `!`, since then no single value holds.
+ */
+export function defaultsOfDomain(domain: readonly unknown[], fields: Fields): Values {
+    if (domain.some((term) => term === "|" || term === "!")) {
+        return {};
+    }
+    const values: Values = {};
+    for (const term of domain) {
+        if (!Array.isArray(term) || term.length !== 3) {
+            continue;
+        }
+        const [name, operator, value] = term as [unknown, unknown, unknown];
+        const isPlain = ["string", "number", "boolean"].includes(typeof value);
+        if (typeof name === "string" && operator === "=" && isPlain && fields[name] !== undefined && !name.includes(".")) {
+            values[name] = value;
+        }
+    }
+    return values;
 }
 
 /** A new record's values: each field's default, for the fields the form shows. */
