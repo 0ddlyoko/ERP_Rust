@@ -102,6 +102,31 @@ impl Account<SingleId> {
 
 #[erp_methods]
 impl Account<MultipleIds> {
+    /// A code is unique; a receivable or payable account is reconciled.
+    pub fn check_accounts(&self, env: &mut Environment) -> Result<()> {
+        for account in self {
+            let code = account.get_code(env)?.trim().to_string();
+            if code.is_empty() {
+                return Err("An account needs a code".into());
+            }
+            let same = env
+                .sudo()
+                .count("account", &make_domain!([("code", "=", code.clone())]))?;
+            if same > 1 {
+                return Err(format!("The account code {code} is already used").into());
+            }
+            if account.get_account_type(env)?.is_receivable_or_payable()
+                && !*account.get_reconcile(env)?
+            {
+                return Err(format!(
+                    "The account {code} holds receivables or payables: it must allow reconciliation"
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+
     /// `400000 Customers`.
     pub fn compute_display_name(&self, env: &mut Environment) -> Result<()> {
         for account in self {
@@ -141,30 +166,5 @@ impl Account<MultipleIds> {
             sup.call_with(values, env)?;
             self.check_accounts(env)
         })
-    }
-
-    /// A code is unique; a receivable or payable account is reconciled.
-    pub fn check_accounts(&self, env: &mut Environment) -> Result<()> {
-        for account in self {
-            let code = account.get_code(env)?.trim().to_string();
-            if code.is_empty() {
-                return Err("An account needs a code".into());
-            }
-            let same = env
-                .sudo()
-                .count("account", &make_domain!([("code", "=", code.clone())]))?;
-            if same > 1 {
-                return Err(format!("The account code {code} is already used").into());
-            }
-            if account.get_account_type(env)?.is_receivable_or_payable()
-                && !*account.get_reconcile(env)?
-            {
-                return Err(format!(
-                    "The account {code} holds receivables or payables: it must allow reconciliation"
-                )
-                .into());
-            }
-        }
-        Ok(())
     }
 }

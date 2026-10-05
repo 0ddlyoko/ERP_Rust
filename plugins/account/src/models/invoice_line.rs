@@ -272,32 +272,6 @@ impl InvoiceLine<MultipleIds> {
         Ok(())
     }
 
-    /// The product's customer or vendor taxes, as the invoice's fiscal position maps them.
-    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
-        for line in self {
-            let product: Product<SingleId> = line.get_product(env)?;
-            if product.is_empty() {
-                continue;
-            }
-            let invoice = line.invoice(env)?;
-            let sale = invoice.is_sale_document(env)?;
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
-                if sale {
-                    product.get_taxes(env)?
-                } else {
-                    product.get_supplier_taxes(env)?
-                }
-            };
-            let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
-            line.set_taxes(&mapped, env)?;
-        }
-        Ok(())
-    }
-
     /// The untaxed amount, the tax and the total of each line.
     pub fn compute_amounts(&self, env: &mut Environment) -> Result<()> {
         for line in self {
@@ -360,6 +334,32 @@ impl InvoiceLine<MultipleIds> {
         sup.call_with(values, env)?;
         if retaxed {
             self.apply_product_taxes(env)?;
+        }
+        Ok(())
+    }
+
+    /// The product's customer or vendor taxes, as the invoice's fiscal position maps them.
+    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
+        for line in self {
+            let product: Product<SingleId> = line.get_product(env)?;
+            if product.is_empty() {
+                continue;
+            }
+            let invoice = line.invoice(env)?;
+            let sale = invoice.is_sale_document(env)?;
+            let taxes: Tax<MultipleIds> = {
+                let env = &mut *env.sudo();
+                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
+                if sale {
+                    product.get_taxes(env)?
+                } else {
+                    product.get_supplier_taxes(env)?
+                }
+            };
+            let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            line.set_taxes(&mapped, env)?;
         }
         Ok(())
     }

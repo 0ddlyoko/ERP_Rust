@@ -107,6 +107,22 @@ impl PaymentTerm<SingleId> {
 
 #[erp_methods]
 impl PaymentTerm<MultipleIds> {
+    /// A term with installments ends with its balance; one without falls due at once.
+    pub fn check_terms(&self, env: &mut Environment) -> Result<()> {
+        for term in self {
+            let installments = term.installments(env)?;
+            if !installments.is_empty() {
+                payment_terms::check(&installments).map_err(|error| {
+                    format!(
+                        "{}: {error}",
+                        term.get_name(env).map(String::as_str).unwrap_or("")
+                    )
+                })?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn create(
         &self,
         env: &mut Environment,
@@ -125,21 +141,5 @@ impl PaymentTerm<MultipleIds> {
             sup.call_with(values, env)?;
             self.check_terms(env)
         })
-    }
-
-    /// A term with installments ends with its balance; one without falls due at once.
-    pub fn check_terms(&self, env: &mut Environment) -> Result<()> {
-        for term in self {
-            let installments = term.installments(env)?;
-            if !installments.is_empty() {
-                payment_terms::check(&installments).map_err(|error| {
-                    format!(
-                        "{}: {error}",
-                        term.get_name(env).map(String::as_str).unwrap_or("")
-                    )
-                })?;
-            }
-        }
-        Ok(())
     }
 }

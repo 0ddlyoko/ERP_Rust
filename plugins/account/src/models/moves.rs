@@ -597,6 +597,18 @@ impl Move<MultipleIds> {
         Ok(())
     }
 
+    /// The payment reference of a posted invoice: its number. A localization may give it its
+    /// own form, a Belgian structured communication.
+    pub fn compute_payment_reference(&self, env: &mut Environment) -> Result<()> {
+        for entry in self {
+            if entry.get_payment_reference(env)?.is_none() {
+                let name = entry.get_name(env)?.clone();
+                entry.set_payment_reference(Some(name), env)?;
+            }
+        }
+        Ok(())
+    }
+
     /// What an entry is created with when nothing is said: today, the journal of its type, the
     /// company's currency.
     pub fn create(
@@ -686,18 +698,6 @@ impl Move<MultipleIds> {
             }
         }
         sup.call(env)
-    }
-
-    /// The payment reference of a posted invoice: its number. A localization may give it its
-    /// own form, a Belgian structured communication.
-    pub fn compute_payment_reference(&self, env: &mut Environment) -> Result<()> {
-        for entry in self {
-            if entry.get_payment_reference(env)?.is_none() {
-                let name = entry.get_name(env)?.clone();
-                entry.set_payment_reference(Some(name), env)?;
-            }
-        }
-        Ok(())
     }
 
     /// Post the entries: invoices get their journal items, every entry is checked to balance,
@@ -804,12 +804,6 @@ impl Move<MultipleIds> {
         Ok(json!({"type": "open", "action": action, "id": payment.get_id()}))
     }
 
-    /// Tie the credit note made from this invoice to what the invoice came from: nothing here;
-    /// sales link its lines to the order lines the invoice's lines invoiced.
-    pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
-        Ok(())
-    }
-
     /// Cancel posted invoices by a credit note settling them in full: posted, matched, and the
     /// invoice marked reversed.
     #[erp(rpc)]
@@ -834,6 +828,12 @@ impl Move<MultipleIds> {
             }
             Ok(true)
         })
+    }
+
+    /// Tie the credit note made from this invoice to what the invoice came from: nothing here;
+    /// sales link its lines to the order lines the invoice's lines invoiced.
+    pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
+        Ok(())
     }
 }
 

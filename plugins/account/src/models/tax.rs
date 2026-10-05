@@ -173,26 +173,6 @@ impl Tax<SingleId> {
 
 #[erp_methods]
 impl Tax<MultipleIds> {
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Tax::<MultipleIds>::from_ids(ids.clone(), env).check_taxes(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_taxes(env)
-        })
-    }
-
     /// A percentage is between -100 and 100; the shares of a document that add to the tax are
     /// 100 % in all, so the tax is collected once.
     pub fn check_taxes(&self, env: &mut Environment) -> Result<()> {
@@ -225,5 +205,25 @@ impl Tax<MultipleIds> {
             }
         }
         Ok(())
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            Tax::<MultipleIds>::from_ids(ids.clone(), env).check_taxes(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            self.check_taxes(env)
+        })
     }
 }
