@@ -804,6 +804,12 @@ impl Move<MultipleIds> {
         Ok(json!({"type": "open", "action": action, "id": payment.get_id()}))
     }
 
+    /// Tie the credit note made from this invoice to what the invoice came from: nothing here;
+    /// sales link its lines to the order lines the invoice's lines invoiced.
+    pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
+        Ok(())
+    }
+
     /// Cancel posted invoices by a credit note settling them in full: posted, matched, and the
     /// invoice marked reversed.
     #[erp(rpc)]
@@ -1063,6 +1069,8 @@ impl Move<SingleId> {
             );
         }
         let reversal: Move<SingleId> = env.create_new_record_from_map(values)?;
+        Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
+            .link_reversal(env, reversal.get_id())?;
         if !move_type.is_invoice() {
             Move::<MultipleIds>::from_ids(vec![reversal.get_id()], env).action_post(env)?;
         }
