@@ -5,7 +5,7 @@ import { Notifications } from "@web/core/notifications";
 import type { Domain, Values } from "@web/core/orm";
 import { SearchBar } from "@web/views/search/search_bar";
 import { defaultFacets, type Facet, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
-import { asksReload, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
+import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { listActions } from "./list_actions";
 
@@ -204,6 +204,11 @@ export class ListView extends View {
                 const answer = await this.orm.call(this.props.resModel, item.name, ids);
                 if (asksReload(answer)) {
                     window.location.reload();
+                    return;
+                }
+                const opened = opensRecord(answer);
+                if (opened !== null) {
+                    await this.router.go({ action: opened.action, view: "form", id: opened.id });
                     return;
                 }
             } else {

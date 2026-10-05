@@ -3,7 +3,7 @@ import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
-import { asksReload, View, viewKinds, viewProps } from "@web/views/view";
+import { asksReload, opensRecord, View, viewKinds, viewProps } from "@web/views/view";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
 
@@ -491,6 +491,11 @@ export class FormView extends View {
             const answer = await this.orm.call(this.props.resModel, button.name, [id]);
             if (asksReload(answer)) {
                 window.location.reload();
+                return;
+            }
+            const opened = opensRecord(answer);
+            if (opened !== null) {
+                await this.router.go({ action: opened.action, view: "form", id: opened.id });
                 return;
             }
             this.record = await this.read(this.props.resModel, id, Object.keys(this.record));

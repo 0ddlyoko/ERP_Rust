@@ -129,3 +129,24 @@ export function widgetFor(column: Column, byDefault = defaultWidget(column.field
 export function asksReload(answer: unknown): boolean {
     return typeof answer === "object" && answer !== null && (answer as { type?: unknown }).type === "reload";
 }
+
+/** A record a button's method answered with, to be shown: `{ type: "open", action, id }`. */
+export interface OpenedRecord {
+    action: string;
+    id: number;
+}
+
+/**
+ * The record a button's method asks to show, `{ type: "open", action: "account.action_x", id: 4 }`:
+ * what the method made, such as the credit note of an invoice. `null` for any other answer.
+ */
+export function opensRecord(answer: unknown): OpenedRecord | null {
+    if (typeof answer !== "object" || answer === null) {
+        return null;
+    }
+    const { type, action, id } = answer as { type?: unknown; action?: unknown; id?: unknown };
+    if (type !== "open" || typeof action !== "string" || typeof id !== "number") {
+        return null;
+    }
+    return { action, id };
+}

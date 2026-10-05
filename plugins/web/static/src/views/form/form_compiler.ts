@@ -287,7 +287,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             });
             const at = buttons.length - 1;
             return (
-                `<button type="button" class="o_button_secondary"${ifShown(shownUnless(button))} ` +
+                `<button type="button" class="${button.getAttribute("highlight") === "1" ? "o_button_primary" : "o_button_secondary"}"${ifShown(shownUnless(button))} ` +
                 `t-att-disabled="__form.saving" t-on-click="() => __form.press(__form.layout.buttons[${at}])">` +
                 `${text(button.getAttribute("string") ?? button.getAttribute("name") ?? "")}</button>`
             );
