@@ -1,0 +1,38 @@
+<erp>
+    <access_rule id="access_l10n_be_vat_return_accountant">
+        <name>l10n_be_vat_return: accountant</name>
+        <model>l10n_be_vat_return</model>
+        <group ref="account.group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_l10n_be_vat_return_admin">
+        <name>l10n_be_vat_return: admin</name>
+        <model>l10n_be_vat_return</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_l10n_be_vat_return_line_accountant">
+        <name>l10n_be_vat_return_line: accountant</name>
+        <model>l10n_be_vat_return_line</model>
+        <group ref="account.group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_l10n_be_vat_return_line_admin">
+        <name>l10n_be_vat_return_line: admin</name>
+        <model>l10n_be_vat_return_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

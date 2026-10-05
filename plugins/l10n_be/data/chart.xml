@@ -1,0 +1,322 @@
+<erp noupdate="1">
+    <account id="a100000" code="100000" name="Capital souscrit" account_type="equity"/>
+    <account id="a130000" code="130000" name="Réserve légale" account_type="equity"/>
+    <account id="a140000" code="140000" name="Bénéfice reporté" account_type="equity"/>
+    <account id="a141000" code="141000" name="Perte reportée" account_type="equity"/>
+    <account id="a170000" code="170000" name="Emprunts à plus d'un an" account_type="liability_non_current"/>
+    <account id="a200000" code="200000" name="Frais d'établissement" account_type="asset_non_current"/>
+    <account id="a210000" code="210000" name="Immobilisations incorporelles" account_type="asset_fixed"/>
+    <account id="a220000" code="220000" name="Terrains" account_type="asset_fixed"/>
+    <account id="a221000" code="221000" name="Constructions" account_type="asset_fixed"/>
+    <account id="a230000" code="230000" name="Installations, machines et outillage" account_type="asset_fixed"/>
+    <account id="a240000" code="240000" name="Mobilier" account_type="asset_fixed"/>
+    <account id="a241000" code="241000" name="Matériel de bureau et informatique" account_type="asset_fixed"/>
+    <account id="a242000" code="242000" name="Matériel roulant" account_type="asset_fixed"/>
+    <account id="a280000" code="280000" name="Participations" account_type="asset_non_current"/>
+    <account id="a288000" code="288000" name="Cautionnements versés" account_type="asset_non_current"/>
+    <account id="a300000" code="300000" name="Approvisionnements" account_type="asset_current"/>
+    <account id="a340000" code="340000" name="Marchandises" account_type="asset_current"/>
+    <account id="a400000" code="400000" name="Clients" account_type="asset_receivable"/>
+    <account id="a404000" code="404000" name="Produits à recevoir" account_type="asset_current"/>
+    <account id="a406000" code="406000" name="Acomptes versés" account_type="asset_current"/>
+    <account id="a411000" code="411000" name="TVA à récupérer" account_type="asset_current"/>
+    <account id="a416000" code="416000" name="Créances diverses" account_type="asset_current"/>
+    <account id="a440000" code="440000" name="Fournisseurs" account_type="liability_payable"/>
+    <account id="a444000" code="444000" name="Factures à recevoir" account_type="liability_current"/>
+    <account id="a460000" code="460000" name="Acomptes reçus" account_type="liability_current"/>
+    <account id="a451000" code="451000" name="TVA à payer" account_type="liability_current"/>
+    <account id="a452000" code="452000" name="Impôts et taxes à payer" account_type="liability_current"/>
+    <account id="a453000" code="453000" name="Précomptes retenus" account_type="liability_current"/>
+    <account id="a454000" code="454000" name="Office national de sécurité sociale" account_type="liability_current"/>
+    <account id="a455000" code="455000" name="Rémunérations" account_type="liability_current"/>
+    <account id="a456000" code="456000" name="Pécules de vacances" account_type="liability_current"/>
+    <account id="a489000" code="489000" name="Autres dettes diverses" account_type="liability_current"/>
+    <account id="a490000" code="490000" name="Charges à reporter" account_type="asset_current"/>
+    <account id="a492000" code="492000" name="Charges à imputer" account_type="liability_current"/>
+    <account id="a493000" code="493000" name="Produits à reporter" account_type="liability_current"/>
+    <account id="a499000" code="499000" name="Compte d'attente" account_type="asset_current"/>
+    <account id="a499001" code="499001" name="Paiements reçus en attente" account_type="asset_current" reconcile="true"/>
+    <account id="a499002" code="499002" name="Paiements émis en attente" account_type="asset_current" reconcile="true"/>
+    <account id="a550000" code="550000" name="Banque" account_type="asset_cash"/>
+    <account id="a570000" code="570000" name="Caisse" account_type="asset_cash"/>
+    <account id="a580000" code="580000" name="Virements internes" account_type="asset_current" reconcile="true"/>
+    <account id="a600000" code="600000" name="Achats d'approvisionnements" account_type="expense"/>
+    <account id="a604000" code="604000" name="Achats de marchandises" account_type="expense"/>
+    <account id="a609000" code="609000" name="Variation des stocks d'approvisionnements" account_type="expense"/>
+    <account id="a609400" code="609400" name="Variation des stocks de marchandises" account_type="expense"/>
+    <account id="a610000" code="610000" name="Loyers et charges locatives" account_type="expense"/>
+    <account id="a611000" code="611000" name="Entretien et réparations" account_type="expense"/>
+    <account id="a612000" code="612000" name="Fournitures et énergie" account_type="expense"/>
+    <account id="a613000" code="613000" name="Rétributions de tiers" account_type="expense"/>
+    <account id="a614000" code="614000" name="Publicité" account_type="expense"/>
+    <account id="a615000" code="615000" name="Sous-traitance" account_type="expense"/>
+    <account id="a616000" code="616000" name="Frais de déplacement" account_type="expense"/>
+    <account id="a617000" code="617000" name="Personnel intérimaire" account_type="expense"/>
+    <account id="a618000" code="618000" name="Rémunérations des administrateurs" account_type="expense"/>
+    <account id="a620000" code="620000" name="Rémunérations et avantages sociaux" account_type="expense"/>
+    <account id="a621000" code="621000" name="Cotisations patronales" account_type="expense"/>
+    <account id="a630000" code="630000" name="Dotations aux amortissements" account_type="expense_depreciation"/>
+    <account id="a640000" code="640000" name="Taxes d'exploitation" account_type="expense"/>
+    <account id="a650000" code="650000" name="Charges des dettes" account_type="expense"/>
+    <account id="a654000" code="654000" name="Différences de change (charges)" account_type="expense"/>
+    <account id="a657000" code="657000" name="Frais bancaires" account_type="expense"/>
+    <account id="a670000" code="670000" name="Impôts sur le résultat" account_type="expense"/>
+    <account id="a700000" code="700000" name="Ventes de marchandises" account_type="income"/>
+    <account id="a701000" code="701000" name="Ventes de produits finis" account_type="income"/>
+    <account id="a705000" code="705000" name="Prestations de services" account_type="income"/>
+    <account id="a708000" code="708000" name="Remises accordées" account_type="income"/>
+    <account id="a740000" code="740000" name="Autres produits d'exploitation" account_type="income_other"/>
+    <account id="a750000" code="750000" name="Produits des immobilisations financières" account_type="income_other"/>
+    <account id="a754000" code="754000" name="Différences de change (produits)" account_type="income_other"/>
+    <account id="a757000" code="757000" name="Produits financiers divers" account_type="income_other"/>
+
+    <account_tax_tag id="grid_00" grid="00" name="Grille 00 — Opérations soumises à un régime particulier" sign="-1"/>
+    <account_tax_tag id="grid_01" grid="01" name="Grille 01 — Opérations à 6 %" sign="-1"/>
+    <account_tax_tag id="grid_02" grid="02" name="Grille 02 — Opérations à 12 %" sign="-1"/>
+    <account_tax_tag id="grid_03" grid="03" name="Grille 03 — Opérations à 21 %" sign="-1"/>
+    <account_tax_tag id="grid_44" grid="44" name="Grille 44 — Services intracommunautaires" sign="-1"/>
+    <account_tax_tag id="grid_45" grid="45" name="Grille 45 — Opérations avec TVA due par le cocontractant" sign="-1"/>
+    <account_tax_tag id="grid_46" grid="46" name="Grille 46 — Livraisons intracommunautaires exemptées" sign="-1"/>
+    <account_tax_tag id="grid_47" grid="47" name="Grille 47 — Autres opérations exemptées et exportations" sign="-1"/>
+    <account_tax_tag id="grid_48" grid="48" name="Grille 48 — Notes de crédit sur 44 et 46" sign="1"/>
+    <account_tax_tag id="grid_49" grid="49" name="Grille 49 — Notes de crédit sur les autres opérations" sign="1"/>
+    <account_tax_tag id="grid_54" grid="54" name="Grille 54 — TVA due sur 01, 02 et 03" sign="-1"/>
+    <account_tax_tag id="grid_55" grid="55" name="Grille 55 — TVA due sur les acquisitions intracommunautaires (86, 88)" sign="-1"/>
+    <account_tax_tag id="grid_56" grid="56" name="Grille 56 — TVA due sur les opérations du cocontractant (87)" sign="-1"/>
+    <account_tax_tag id="grid_57" grid="57" name="Grille 57 — TVA due sur les importations" sign="-1"/>
+    <account_tax_tag id="grid_59" grid="59" name="Grille 59 — TVA déductible" sign="1"/>
+    <account_tax_tag id="grid_61" grid="61" name="Grille 61 — Régularisations en faveur de l'État" sign="-1"/>
+    <account_tax_tag id="grid_62" grid="62" name="Grille 62 — Régularisations en faveur du déclarant" sign="1"/>
+    <account_tax_tag id="grid_63" grid="63" name="Grille 63 — TVA à reverser sur notes de crédit reçues" sign="-1"/>
+    <account_tax_tag id="grid_64" grid="64" name="Grille 64 — TVA à récupérer sur notes de crédit délivrées" sign="1"/>
+    <account_tax_tag id="grid_81" grid="81" name="Grille 81 — Achats de marchandises et matières" sign="1"/>
+    <account_tax_tag id="grid_82" grid="82" name="Grille 82 — Achats de services et biens divers" sign="1"/>
+    <account_tax_tag id="grid_83" grid="83" name="Grille 83 — Achats de biens d'investissement" sign="1"/>
+    <account_tax_tag id="grid_84" grid="84" name="Grille 84 — Notes de crédit reçues sur 86 et 88" sign="-1"/>
+    <account_tax_tag id="grid_85" grid="85" name="Grille 85 — Notes de crédit reçues sur les autres achats" sign="-1"/>
+    <account_tax_tag id="grid_86" grid="86" name="Grille 86 — Acquisitions intracommunautaires de biens" sign="1"/>
+    <account_tax_tag id="grid_87" grid="87" name="Grille 87 — Autres achats avec TVA due par le cocontractant" sign="1"/>
+    <account_tax_tag id="grid_88" grid="88" name="Grille 88 — Services intracommunautaires reçus" sign="1"/>
+
+    <account_tax id="tax_sale_21" name="21% (ventes)" description="21%" type_tax_use="sale" amount="21" sequence="1">
+        <invoice_base_tags ref="grid_03"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax_repartition id="tax_sale_21_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_sale_21"/><account ref="a451000"/><tags ref="grid_54"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_21_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_sale_21"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+    <account_tax id="tax_sale_12" name="12% (ventes)" description="12%" type_tax_use="sale" amount="12" sequence="2">
+        <invoice_base_tags ref="grid_02"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax_repartition id="tax_sale_12_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_sale_12"/><account ref="a451000"/><tags ref="grid_54"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_12_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_sale_12"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+    <account_tax id="tax_sale_6" name="6% (ventes)" description="6%" type_tax_use="sale" amount="6" sequence="3">
+        <invoice_base_tags ref="grid_01"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax_repartition id="tax_sale_6_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_sale_6"/><account ref="a451000"/><tags ref="grid_54"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_6_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_sale_6"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+    <account_tax id="tax_sale_0" name="0% (ventes)" description="0%" type_tax_use="sale" amount="0" sequence="4">
+        <invoice_base_tags ref="grid_00"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax id="tax_sale_intracom_goods" name="0% EU livraisons" description="0% EU" type_tax_use="sale" amount="0" sequence="5">
+        <invoice_base_tags ref="grid_46"/>
+        <refund_base_tags ref="grid_48"/>
+    </account_tax>
+    <account_tax id="tax_sale_intracom_services" name="0% EU services" description="0% EU S" type_tax_use="sale" amount="0" sequence="6">
+        <invoice_base_tags ref="grid_44"/>
+        <refund_base_tags ref="grid_48"/>
+    </account_tax>
+    <account_tax id="tax_sale_export" name="0% exportations" description="0% EX" type_tax_use="sale" amount="0" sequence="7">
+        <invoice_base_tags ref="grid_47"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax id="tax_sale_cocontractant" name="0% cocontractant" description="0% CC" type_tax_use="sale" amount="0" sequence="8">
+        <invoice_base_tags ref="grid_45"/>
+        <refund_base_tags ref="grid_49"/>
+    </account_tax>
+    <account_tax id="tax_purchase_21_goods" name="21% achats marchandises" description="21%" type_tax_use="purchase" amount="21" sequence="9">
+        <invoice_base_tags ref="grid_81"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_goods_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_goods"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_goods_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_21_goods"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_12_goods" name="12% achats marchandises" description="12%" type_tax_use="purchase" amount="12" sequence="10">
+        <invoice_base_tags ref="grid_81"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_12_goods_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_12_goods"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_12_goods_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_12_goods"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_6_goods" name="6% achats marchandises" description="6%" type_tax_use="purchase" amount="6" sequence="11">
+        <invoice_base_tags ref="grid_81"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_6_goods_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_6_goods"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_6_goods_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_6_goods"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_0_goods" name="0% achats marchandises" description="0%" type_tax_use="purchase" amount="0" sequence="12">
+        <invoice_base_tags ref="grid_81"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax id="tax_purchase_21_services" name="21% achats services" description="21% S" type_tax_use="purchase" amount="21" sequence="13">
+        <invoice_base_tags ref="grid_82"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_services_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_services"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_services_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_21_services"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_12_services" name="12% achats services" description="12% S" type_tax_use="purchase" amount="12" sequence="14">
+        <invoice_base_tags ref="grid_82"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_12_services_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_12_services"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_12_services_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_12_services"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_6_services" name="6% achats services" description="6% S" type_tax_use="purchase" amount="6" sequence="15">
+        <invoice_base_tags ref="grid_82"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_6_services_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_6_services"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_6_services_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_6_services"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_21_investments" name="21% achats investissements" description="21% INV" type_tax_use="purchase" amount="21" sequence="16">
+        <invoice_base_tags ref="grid_83"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_investments_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_investments"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_investments_refund_2" document="refund" factor="100" sequence="2">
+        <tax ref="tax_purchase_21_investments"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_21_cocontractant" name="21% cocontractant (autoliquidation)" description="21% CC" type_tax_use="purchase" amount="21" sequence="17">
+        <invoice_base_tags ref="grid_87"/>
+        <refund_base_tags ref="grid_85"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_cocontractant_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_cocontractant"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_cocontractant_invoice_2" document="invoice" factor="-100" sequence="2">
+        <tax ref="tax_purchase_21_cocontractant"/><account ref="a451000"/><tags ref="grid_56"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_cocontractant_refund_3" document="refund" factor="100" sequence="3">
+        <tax ref="tax_purchase_21_cocontractant"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_cocontractant_refund_4" document="refund" factor="-100" sequence="4">
+        <tax ref="tax_purchase_21_cocontractant"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_21_intracom_goods" name="21% EU acquisitions de biens" description="21% EU" type_tax_use="purchase" amount="21" sequence="18">
+        <invoice_base_tags ref="grid_86"/>
+        <refund_base_tags ref="grid_84"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_intracom_goods_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_intracom_goods"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_goods_invoice_2" document="invoice" factor="-100" sequence="2">
+        <tax ref="tax_purchase_21_intracom_goods"/><account ref="a451000"/><tags ref="grid_55"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_goods_refund_3" document="refund" factor="100" sequence="3">
+        <tax ref="tax_purchase_21_intracom_goods"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_goods_refund_4" document="refund" factor="-100" sequence="4">
+        <tax ref="tax_purchase_21_intracom_goods"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+    <account_tax id="tax_purchase_21_intracom_services" name="21% EU services reçus" description="21% EU S" type_tax_use="purchase" amount="21" sequence="19">
+        <invoice_base_tags ref="grid_88"/>
+        <refund_base_tags ref="grid_84"/>
+    </account_tax>
+    <account_tax_repartition id="tax_purchase_21_intracom_services_invoice_1" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_intracom_services"/><account ref="a411000"/><tags ref="grid_59"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_services_invoice_2" document="invoice" factor="-100" sequence="2">
+        <tax ref="tax_purchase_21_intracom_services"/><account ref="a451000"/><tags ref="grid_55"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_services_refund_3" document="refund" factor="100" sequence="3">
+        <tax ref="tax_purchase_21_intracom_services"/><account ref="a411000"/><tags ref="grid_63"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_intracom_services_refund_4" document="refund" factor="-100" sequence="4">
+        <tax ref="tax_purchase_21_intracom_services"/><account ref="a451000"/><tags ref="grid_64"/>
+    </account_tax_repartition>
+
+    <account_journal id="journal_sale" name="Factures clients" code="INV" journal_type="sale">
+        <default_account ref="a700000"/>
+    </account_journal>
+    <account_journal id="journal_purchase" name="Factures fournisseurs" code="BILL" journal_type="purchase">
+        <default_account ref="a604000"/>
+    </account_journal>
+    <account_journal id="journal_bank" name="Banque" code="BNK1" journal_type="bank">
+        <default_account ref="a550000"/>
+        <outstanding_receipt_account ref="a499001"/>
+        <outstanding_payment_account ref="a499002"/>
+    </account_journal>
+    <account_journal id="journal_cash" name="Caisse" code="CSH1" journal_type="cash">
+        <default_account ref="a570000"/>
+        <outstanding_receipt_account ref="a499001"/>
+        <outstanding_payment_account ref="a499002"/>
+    </account_journal>
+    <account_journal id="journal_misc" name="Opérations diverses" code="MISC" journal_type="general"/>
+    <account_journal id="journal_exchange" name="Différences de change" code="EXCH" journal_type="general" sequence_order="20"/>
+
+    <account_payment_term id="term_immediate" name="Paiement immédiat"/>
+    <account_payment_term_line id="term_immediate_line" value="balance" days="0"><term ref="term_immediate"/></account_payment_term_line>
+    <account_payment_term id="term_15_days" name="15 jours"/>
+    <account_payment_term_line id="term_15_days_line" value="balance" days="15"><term ref="term_15_days"/></account_payment_term_line>
+    <account_payment_term id="term_30_days" name="30 jours"/>
+    <account_payment_term_line id="term_30_days_line" value="balance" days="30"><term ref="term_30_days"/></account_payment_term_line>
+    <account_payment_term id="term_30_days_end_of_month" name="30 jours fin de mois"/>
+    <account_payment_term_line id="term_30_days_end_of_month_line" value="balance" days="30" end_of_month="true"><term ref="term_30_days_end_of_month"/></account_payment_term_line>
+    <account_payment_term id="term_60_days" name="60 jours"/>
+    <account_payment_term_line id="term_60_days_line" value="balance" days="60"><term ref="term_60_days"/></account_payment_term_line>
+
+    <account_fiscal_position id="position_intra_eu" name="Intracommunautaire (B2B)"
+        note="Livraison intracommunautaire exemptée de TVA — article 39bis du Code de la TVA."/>
+    <account_fiscal_position_tax id="position_intra_eu_tax_sale_21"><position ref="position_intra_eu"/><tax_src ref="tax_sale_21"/><tax_dest ref="tax_sale_intracom_goods"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_intra_eu_tax_sale_12"><position ref="position_intra_eu"/><tax_src ref="tax_sale_12"/><tax_dest ref="tax_sale_intracom_goods"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_intra_eu_tax_sale_6"><position ref="position_intra_eu"/><tax_src ref="tax_sale_6"/><tax_dest ref="tax_sale_intracom_goods"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_intra_eu_tax_purchase_21_goods"><position ref="position_intra_eu"/><tax_src ref="tax_purchase_21_goods"/><tax_dest ref="tax_purchase_21_intracom_goods"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_intra_eu_tax_purchase_21_services"><position ref="position_intra_eu"/><tax_src ref="tax_purchase_21_services"/><tax_dest ref="tax_purchase_21_intracom_services"/></account_fiscal_position_tax>
+    <account_fiscal_position id="position_extra_eu" name="Hors Union européenne"
+        note="Exportation exemptée de TVA — article 39 du Code de la TVA."/>
+    <account_fiscal_position_tax id="position_extra_eu_tax_sale_21"><position ref="position_extra_eu"/><tax_src ref="tax_sale_21"/><tax_dest ref="tax_sale_export"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_extra_eu_tax_sale_12"><position ref="position_extra_eu"/><tax_src ref="tax_sale_12"/><tax_dest ref="tax_sale_export"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_extra_eu_tax_sale_6"><position ref="position_extra_eu"/><tax_src ref="tax_sale_6"/><tax_dest ref="tax_sale_export"/></account_fiscal_position_tax>
+    <account_fiscal_position id="position_cocontractant" name="Cocontractant (autoliquidation)"
+        note="Autoliquidation — article 20 de l'AR n° 1. TVA due par le cocontractant."/>
+    <account_fiscal_position_tax id="position_cocontractant_tax_sale_21"><position ref="position_cocontractant"/><tax_src ref="tax_sale_21"/><tax_dest ref="tax_sale_cocontractant"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_cocontractant_tax_sale_12"><position ref="position_cocontractant"/><tax_src ref="tax_sale_12"/><tax_dest ref="tax_sale_cocontractant"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_cocontractant_tax_sale_6"><position ref="position_cocontractant"/><tax_src ref="tax_sale_6"/><tax_dest ref="tax_sale_cocontractant"/></account_fiscal_position_tax>
+    <account_fiscal_position_tax id="position_cocontractant_purchase"><position ref="position_cocontractant"/><tax_src ref="tax_purchase_21_services"/><tax_dest ref="tax_purchase_21_cocontractant"/></account_fiscal_position_tax>
+</erp>

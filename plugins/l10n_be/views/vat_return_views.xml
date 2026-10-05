@@ -1,0 +1,47 @@
+<erp>
+    <view id="view_vat_return_list" name="l10n_be_vat_return.list" model="l10n_be_vat_return">
+        <list>
+            <field name="name"/>
+            <field name="date_from"/>
+            <field name="date_to"/>
+            <field name="amount_due" widget="monetary"/>
+            <field name="amount_refundable" widget="monetary"/>
+        </list>
+    </view>
+    <view id="view_vat_return_form" name="l10n_be_vat_return.form" model="l10n_be_vat_return">
+        <form>
+            <buttons>
+                <button name="action_compute" type="method" string="Compute" highlight="1"/>
+            </buttons>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Period">
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                </block>
+                <block string="Balance">
+                    <field name="amount_due" widget="monetary" readonly="1"/>
+                    <field name="amount_refundable" widget="monetary" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="grids" string="Grids">
+                    <field name="lines" widget="list" nolabel="1" readonly="1"/>
+                </page>
+                <page name="intervat" string="Intervat">
+                    <field name="xml" widget="text" nolabel="1" readonly="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_vat_return_line_list" name="l10n_be_vat_return_line.list" model="l10n_be_vat_return_line">
+        <list>
+            <field name="grid"/>
+            <field name="name"/>
+            <field name="amount" widget="monetary"/>
+        </list>
+    </view>
+    <action id="action_vat_returns" name="VAT returns" model="l10n_be_vat_return" views="list,form"/>
+    <menu id="menu_vat_returns" name="VAT returns" parent="account.menu_reporting" sequence="20"
+          action="action_vat_returns"/>
+</erp>

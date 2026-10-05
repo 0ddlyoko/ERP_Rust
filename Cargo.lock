@@ -1357,6 +1357,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "l10n_be"
+version = "0.1.0"
+dependencies = [
+ "account",
+ "base",
+ "chrono",
+ "code_gen",
+ "contacts",
+ "currency",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "product",
+ "roxmltree",
+ "sequence",
+ "serde_json",
+ "uom",
+ "web",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
