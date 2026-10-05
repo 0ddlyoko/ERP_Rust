@@ -1,0 +1,148 @@
+<erp>
+    <view id="view_purchase_order_list" name="purchase_order.list" model="purchase_order">
+        <list>
+            <buttons>
+                <button name="button_confirm" type="method" string="Confirm"/>
+                <button name="action_create_bill" type="method" string="Create bill"/>
+            </buttons>
+            <field name="name"/>
+            <field name="date_order"/>
+            <field name="partner"/>
+            <field name="partner_ref"/>
+            <field name="date_planned"/>
+            <field name="amount_untaxed" widget="monetary"/>
+            <field name="amount_total" widget="monetary"/>
+            <field name="state"/>
+            <field name="bill_status"/>
+        </list>
+    </view>
+    <view id="view_purchase_order_form" name="purchase_order.form" model="purchase_order">
+        <form>
+            <buttons>
+                <button name="button_confirm" type="method" string="Confirm order" highlight="1"
+                        invisible="state !== 'draft' &amp;&amp; state !== 'sent'"/>
+                <button name="action_create_bill" type="method" string="Create bill" highlight="1"
+                        invisible="bill_status !== 'to_bill'"/>
+                <button name="action_rfq_send" type="method" string="Mark as sent"
+                        invisible="state !== 'draft'"/>
+                <button name="button_cancel" type="method" string="Cancel"
+                        invisible="state === 'cancel'"/>
+                <button name="button_draft" type="method" string="Set to request"
+                        invisible="state !== 'cancel'"/>
+            </buttons>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <block string="Vendor">
+                    <field name="partner" widget="contact" readonly="state === 'purchase' || state === 'cancel'"/>
+                    <field name="partner_ref"/>
+                    <field name="user"/>
+                </block>
+                <block string="Terms">
+                    <field name="date_order" readonly="state === 'purchase' || state === 'cancel'"/>
+                    <field name="date_planned"/>
+                    <field name="payment_term" no_create="1"/>
+                    <field name="fiscal_position" no_create="1" readonly="state === 'purchase' || state === 'cancel'"/>
+                    <field name="currency" no_create="1" readonly="state === 'purchase' || state === 'cancel'"/>
+                </block>
+            </block>
+            <pages>
+                <page name="lines" string="Products">
+                    <field name="lines" widget="list" nolabel="1" readonly="state === 'cancel'"/>
+                </page>
+                <page name="bills" string="Bills" invisible="state !== 'purchase'">
+                    <field name="bills" nolabel="1" readonly="1"/>
+                </page>
+                <page name="notes" string="Notes">
+                    <field name="notes" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" visible="draft,sent,purchase" nolabel="1" readonly="1"/>
+                    <field name="bill_status" readonly="1" invisible="state !== 'purchase'"/>
+                </block>
+                <block string="Amounts">
+                    <field name="amount_untaxed" widget="monetary"/>
+                    <field name="amount_tax" widget="monetary"/>
+                    <field name="amount_total" widget="monetary"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_purchase_order_search" name="purchase_order.search" model="purchase_order">
+        <search>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="partner_ref"/>
+            <filter name="requests" string="Requests for quotation" domain='[["state", "in", ["draft", "sent"]]]'/>
+            <filter name="orders" string="Purchase orders" domain='[["state", "=", "purchase"]]'/>
+            <filter name="to_bill" string="Waiting bills" domain='[["bill_status", "=", "to_bill"]]'/>
+            <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+        </search>
+    </view>
+    <action id="action_requests" name="Requests for quotation" model="purchase_order" views="list,form"
+            domain='[["state", "in", ["draft", "sent"]]]'/>
+    <action id="action_orders" name="Purchase orders" model="purchase_order" views="list,form"
+            domain='[["state", "=", "purchase"]]'/>
+    <action id="action_orders_to_bill" name="Orders to bill" model="purchase_order" views="list,form"
+            domain='[["bill_status", "=", "to_bill"]]'/>
+
+    <view id="view_purchase_order_line_list" name="purchase_order_line.list" model="purchase_order_line">
+        <list>
+            <field name="product"/>
+            <field name="name"/>
+            <field name="product_qty"/>
+            <field name="uom"/>
+            <field name="price_unit"/>
+            <field name="discount"/>
+            <field name="taxes"/>
+            <field name="date_planned"/>
+            <field name="price_subtotal" widget="monetary"/>
+            <field name="qty_received"/>
+            <field name="qty_billed"/>
+        </list>
+    </view>
+    <view id="view_purchase_order_line_form" name="purchase_order_line.form" model="purchase_order_line">
+        <form>
+            <block>
+                <block string="Product">
+                    <field name="product"/>
+                    <field name="name" widget="text"/>
+                    <field name="date_planned"/>
+                </block>
+                <block string="Price">
+                    <field name="product_qty"/>
+                    <field name="uom" no_create="1"/>
+                    <field name="price_unit"/>
+                    <field name="discount"/>
+                    <field name="taxes" no_create="1"/>
+                </block>
+                <block string="Progress">
+                    <field name="qty_received"/>
+                    <field name="qty_billed" readonly="1"/>
+                    <field name="qty_to_bill" readonly="1"/>
+                </block>
+            </block>
+        </form>
+    </view>
+
+    <view id="view_supplierinfo_list" name="product_supplierinfo.list" model="product_supplierinfo">
+        <list>
+            <field name="partner"/>
+            <field name="product"/>
+            <field name="product_code"/>
+            <field name="min_quantity"/>
+            <field name="price" widget="monetary"/>
+            <field name="delay"/>
+        </list>
+    </view>
+    <action id="action_supplierinfo" name="Vendor prices" model="product_supplierinfo" views="list,form"/>
+
+    <view id="view_product_form_purchase" name="product.form.purchase" inherit="product.view_product_form">
+        <xpath expr="//field[@name='purchase_ok']" position="after">
+            <field name="purchase_method"/>
+            <field name="sellers" widget="list"/>
+        </xpath>
+    </view>
+</erp>

@@ -1,0 +1,10 @@
+<erp>
+    <group id="group_purchase_user">
+        <name>Purchases</name>
+        <users ref="base.user_admin"/>
+    </group>
+    <group id="group_purchase_manager">
+        <name>Purchase manager</name>
+        <users ref="base.user_admin"/>
+    </group>
+</erp>

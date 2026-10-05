@@ -1,0 +1,119 @@
+<erp>
+    <access_rule id="access_purchase_order_purchase_user">
+        <name>purchase_order: purchase_user</name>
+        <model>purchase_order</model>
+        <group ref="group_purchase_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_purchase_order_purchase_manager">
+        <name>purchase_order: purchase_manager</name>
+        <model>purchase_order</model>
+        <group ref="group_purchase_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_purchase_order_admin">
+        <name>purchase_order: admin</name>
+        <model>purchase_order</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_purchase_order_line_purchase_user">
+        <name>purchase_order_line: purchase_user</name>
+        <model>purchase_order_line</model>
+        <group ref="group_purchase_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_purchase_order_line_purchase_manager">
+        <name>purchase_order_line: purchase_manager</name>
+        <model>purchase_order_line</model>
+        <group ref="group_purchase_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_purchase_order_line_admin">
+        <name>purchase_order_line: admin</name>
+        <model>purchase_order_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_supplierinfo_purchase_user">
+        <name>product_supplierinfo: purchase_user</name>
+        <model>product_supplierinfo</model>
+        <group ref="group_purchase_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_product_supplierinfo_purchase_manager">
+        <name>product_supplierinfo: purchase_manager</name>
+        <model>product_supplierinfo</model>
+        <group ref="group_purchase_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_supplierinfo_admin">
+        <name>product_supplierinfo: admin</name>
+        <model>product_supplierinfo</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_purchase_user">
+        <name>account_move: purchase_user</name>
+        <model>account_move</model>
+        <group ref="group_purchase_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_move_purchase_manager">
+        <name>account_move: purchase_manager</name>
+        <model>account_move</model>
+        <group ref="group_purchase_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_purchase_user">
+        <name>account_invoice_line: purchase_user</name>
+        <model>account_invoice_line</model>
+        <group ref="group_purchase_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_purchase_manager">
+        <name>account_invoice_line: purchase_manager</name>
+        <model>account_invoice_line</model>
+        <group ref="group_purchase_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_product_supplierinfo_user">
+        <name>product_supplierinfo: user</name>
+        <model>product_supplierinfo</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+</erp>

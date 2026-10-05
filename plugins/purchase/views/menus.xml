@@ -1,0 +1,21 @@
+<erp>
+    <menu id="menu_purchase" name="Purchase" sequence="20" groups="group_purchase_user">
+        <menu id="menu_orders" name="Orders" sequence="10">
+            <menu id="menu_requests" name="Requests for quotation" sequence="10" action="action_requests"/>
+            <menu id="menu_purchase_orders" name="Purchase orders" sequence="20" action="action_orders"/>
+            <menu id="menu_vendors" name="Vendors" sequence="30" action="base.action_contacts"/>
+        </menu>
+        <menu id="menu_to_bill" name="To bill" sequence="20">
+            <menu id="menu_orders_to_bill" name="Orders to bill" sequence="10" action="action_orders_to_bill"/>
+        </menu>
+        <menu id="menu_products" name="Products" sequence="30">
+            <menu id="menu_purchase_products" name="Products" sequence="10" action="product.action_products"/>
+            <menu id="menu_vendor_prices" name="Vendor prices" sequence="20" action="action_supplierinfo"/>
+        </menu>
+        <menu id="menu_configuration" name="Configuration" sequence="90" groups="group_purchase_manager">
+            <menu id="menu_config_categories" name="Product categories" sequence="10" action="product.action_product_categories"/>
+            <menu id="menu_config_uom" name="Units of measure" sequence="20" action="uom.action_uoms"/>
+            <menu id="menu_config_terms" name="Payment terms" sequence="30" action="account.action_payment_terms"/>
+        </menu>
+    </menu>
+</erp>
