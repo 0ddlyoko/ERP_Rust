@@ -36,6 +36,25 @@ impl<'mm> Environment<'mm> {
         unsafe { &mut *(env as *mut dyn ErasedEnvironment as *mut Environment<'a>) }
     }
 
+    /// Lock these records until the transaction ends, and read them afresh from then on.
+    ///
+    /// What waits in the cache for them is written first. Another transaction locking them
+    /// waits for this one to end; once it gets them, it reads what this one committed rather
+    /// than what it had cached before. What a counter is for — the next number of a series —
+    /// is read after locking, or two transactions take the same one.
+    ///
+    /// Whatever the caller's rights: locking reads and changes nothing.
+    pub fn lock_records<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<()> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        self.model_manager.try_get_model(model_name)?;
+        self.save_model_to_db(model_name)?;
+        self.database.lock(model_name, ids.get_ids_ref())?;
+        self.cache.remove_records(model_name, ids);
+        Ok(())
+    }
+
     /// Create a new savepoint and commit if the given method doesn't return any error.
     /// If an error is returned, rollback the commit and put back the cache as it was
     pub fn savepoint<F, R>(&mut self, func: F) -> Result<R>

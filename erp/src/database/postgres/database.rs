@@ -545,6 +545,20 @@ impl Database for PostgresDatabase {
         Ok(self.client.execute(&sql, &[&ids])? as u32)
     }
 
+    /// `SELECT … FOR UPDATE`, in the order of the ids, so two transactions locking the same rows
+    /// take them in the same order rather than each waiting for the other.
+    fn lock(&mut self, model_name: &str, ids: &[u32]) -> Result<()> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        let table = self.qualified_table(model_name)?;
+        let ids: Vec<i32> = ids.iter().copied().map(id_to_sql).collect::<Result<_>>()?;
+        let id = quote_ident("id");
+        let sql = format!("SELECT {id} FROM {table} WHERE {id} = ANY($1) ORDER BY {id} FOR UPDATE");
+        self.client.query(&sql, &[&ids])?;
+        Ok(())
+    }
+
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
         let mut result = vec![];
         for row in self.client.query(

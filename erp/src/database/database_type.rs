@@ -147,6 +147,13 @@ impl Database for DatabaseType {
         }
     }
 
+    fn lock(&mut self, model_name: &str, ids: &[u32]) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.lock(model_name, ids),
+            DatabaseType::Postgres(postgres) => postgres.lock(model_name, ids),
+        }
+    }
+
     fn get_installed_plugins(&mut self) -> Result<Vec<String>> {
         match self {
             DatabaseType::Cache(cache) => cache.get_installed_plugins(),

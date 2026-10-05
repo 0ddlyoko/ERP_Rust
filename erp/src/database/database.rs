@@ -126,6 +126,14 @@ pub trait Database {
     /// Ids that are not present are skipped rather than reported, mirroring `update`.
     fn delete(&mut self, model_name: &str, ids: &[u32]) -> Result<u32>;
 
+    /// Lock the rows of these records until the transaction ends: another transaction locking
+    /// them waits for this one to commit or roll back.
+    ///
+    /// A database that runs one transaction at a time on a row, or none, has nothing to lock.
+    fn lock(&mut self, _model_name: &str, _ids: &[u32]) -> Result<()> {
+        Ok(())
+    }
+
     /// Retrieves installed plugins
     fn get_installed_plugins(&mut self) -> Result<Vec<String>>;
 
