@@ -1,0 +1,14 @@
+<erp noupdate="1">
+    <stock_location id="location_partners" name="Partners" usage="view"/>
+    <stock_location id="location_suppliers" name="Vendors" usage="supplier">
+        <parent ref="location_partners"/>
+    </stock_location>
+    <stock_location id="location_customers" name="Customers" usage="customer">
+        <parent ref="location_partners"/>
+    </stock_location>
+    <stock_location id="location_virtual" name="Virtual locations" usage="view"/>
+    <stock_location id="location_inventory" name="Inventory adjustment" usage="inventory">
+        <parent ref="location_virtual"/>
+    </stock_location>
+    <stock_warehouse id="warehouse_main" name="My warehouse" code="WH"/>
+</erp>

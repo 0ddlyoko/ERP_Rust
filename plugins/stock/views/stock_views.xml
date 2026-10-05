@@ -1,0 +1,240 @@
+<erp>
+    <view id="view_picking_list" name="stock_picking.list" model="stock_picking">
+        <list>
+            <buttons>
+                <button name="action_assign" type="method" string="Check availability"/>
+                <button name="button_validate" type="method" string="Validate"/>
+            </buttons>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="scheduled_date"/>
+            <field name="origin"/>
+            <field name="picking_type"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_picking_form" name="stock_picking.form" model="stock_picking">
+        <form>
+            <buttons>
+                <button name="action_confirm" type="method" string="Mark as to do" highlight="1"
+                        invisible="state !== 'draft'"/>
+                <button name="button_validate" type="method" string="Validate" highlight="1"
+                        invisible="state === 'draft' || state === 'done' || state === 'cancel'"/>
+                <button name="action_assign" type="method" string="Check availability"
+                        invisible="state !== 'confirmed'"/>
+                <button name="do_unreserve" type="method" string="Unreserve"
+                        invisible="state !== 'assigned'"/>
+                <button name="action_return" type="method" string="Return"
+                        invisible="state !== 'done'"/>
+                <button name="action_cancel" type="method" string="Cancel"
+                        invisible="state === 'done' || state === 'cancel'"/>
+            </buttons>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <block string="Transfer">
+                    <field name="partner" widget="contact"/>
+                    <field name="picking_type" no_create="1" readonly="state !== 'draft'"/>
+                    <field name="location" no_create="1" readonly="state === 'done' || state === 'cancel'"/>
+                    <field name="location_dest" no_create="1" readonly="state === 'done' || state === 'cancel'"/>
+                </block>
+                <block string="Dates">
+                    <field name="scheduled_date"/>
+                    <field name="date_done" readonly="1"/>
+                    <field name="origin"/>
+                    <field name="backorder" readonly="1"/>
+                    <field name="returned_picking" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="moves" string="Operations">
+                    <field name="moves" widget="list" nolabel="1" readonly="state === 'done' || state === 'cancel'"/>
+                </page>
+                <page name="note" string="Note">
+                    <field name="note" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" visible="draft,confirmed,assigned,done" nolabel="1" readonly="1"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_picking_search" name="stock_picking.search" model="stock_picking">
+        <search>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="origin"/>
+            <field name="picking_type"/>
+            <filter name="ready" string="Ready" domain='[["state", "=", "assigned"]]'/>
+            <filter name="waiting" string="Waiting" domain='[["state", "=", "confirmed"]]'/>
+            <filter name="done" string="Done" domain='[["state", "=", "done"]]'/>
+            <filter name="to_do" string="To do" domain='[["state", "in", ["draft", "confirmed", "assigned"]]]' default="1"/>
+        </search>
+    </view>
+    <action id="action_pickings" name="Transfers" model="stock_picking" views="list,form"/>
+    <action id="action_receipts" name="Receipts" model="stock_picking" views="list,form"
+            domain='[["picking_type.code", "=", "incoming"]]'/>
+    <action id="action_deliveries" name="Deliveries" model="stock_picking" views="list,form"
+            domain='[["picking_type.code", "=", "outgoing"]]'/>
+    <action id="action_internal" name="Internal transfers" model="stock_picking" views="list,form"
+            domain='[["picking_type.code", "=", "internal"]]'/>
+
+    <view id="view_move_list" name="stock_move.list" model="stock_move">
+        <list>
+            <field name="product"/>
+            <field name="name"/>
+            <field name="product_uom_qty"/>
+            <field name="quantity"/>
+            <field name="uom"/>
+            <field name="location"/>
+            <field name="location_dest"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_move_form" name="stock_move.form" model="stock_move">
+        <form>
+            <block>
+                <block string="Product">
+                    <field name="product"/>
+                    <field name="name"/>
+                    <field name="product_uom_qty"/>
+                    <field name="quantity"/>
+                    <field name="uom" no_create="1"/>
+                </block>
+                <block string="Locations">
+                    <field name="location" no_create="1"/>
+                    <field name="location_dest" no_create="1"/>
+                    <field name="price_unit"/>
+                    <field name="value" readonly="1"/>
+                    <field name="state" readonly="1"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <view id="view_move_search" name="stock_move.search" model="stock_move">
+        <search>
+            <field name="product"/>
+            <field name="origin"/>
+            <filter name="done" string="Done" domain='[["state", "=", "done"]]' default="1"/>
+        </search>
+    </view>
+    <action id="action_moves" name="Moves analysis" model="stock_move" views="list,form"/>
+
+    <view id="view_quant_list" name="stock_quant.list" model="stock_quant">
+        <list>
+            <buttons>
+                <button name="action_apply_inventory" type="method" string="Apply counts"/>
+            </buttons>
+            <field name="product"/>
+            <field name="location"/>
+            <field name="quantity"/>
+            <field name="reserved_quantity"/>
+            <field name="inventory_quantity"/>
+            <field name="inventory_diff"/>
+        </list>
+    </view>
+    <view id="view_quant_form" name="stock_quant.form" model="stock_quant">
+        <form>
+            <block>
+                <field name="product"/>
+                <field name="location" no_create="1"/>
+                <field name="quantity" readonly="1"/>
+                <field name="reserved_quantity" readonly="1"/>
+                <field name="inventory_quantity"/>
+                <field name="inventory_diff"/>
+            </block>
+        </form>
+    </view>
+    <view id="view_quant_search" name="stock_quant.search" model="stock_quant">
+        <search>
+            <field name="product"/>
+            <field name="location"/>
+            <filter name="internal" string="In stock" domain='[["location.usage", "=", "internal"]]' default="1"/>
+            <filter name="counted" string="Counted" domain='[["inventory_quantity", "!=", null]]'/>
+        </search>
+    </view>
+    <action id="action_quants" name="Stock" model="stock_quant" views="list,form"/>
+
+    <view id="view_valuation_layer_list" name="stock_valuation_layer.list" model="stock_valuation_layer">
+        <list>
+            <field name="create_date"/>
+            <field name="product"/>
+            <field name="stock_move"/>
+            <field name="quantity"/>
+            <field name="unit_cost"/>
+            <field name="value" widget="monetary"/>
+            <field name="remaining_quantity"/>
+            <field name="remaining_value" widget="monetary"/>
+        </list>
+    </view>
+    <action id="action_valuation" name="Valuation" model="stock_valuation_layer" views="list"/>
+
+    <view id="view_warehouse_list" name="stock_warehouse.list" model="stock_warehouse">
+        <list>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="lot_stock"/>
+        </list>
+    </view>
+    <view id="view_warehouse_form" name="stock_warehouse.form" model="stock_warehouse">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="code"/>
+                <block string="Locations and operations">
+                    <field name="view_location" readonly="1"/>
+                    <field name="lot_stock" readonly="1"/>
+                    <field name="in_type" readonly="1"/>
+                    <field name="out_type" readonly="1"/>
+                    <field name="int_type" readonly="1"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <action id="action_warehouses" name="Warehouses" model="stock_warehouse" views="list,form"/>
+
+    <view id="view_location_list" name="stock_location.list" model="stock_location">
+        <list>
+            <field name="complete_name"/>
+            <field name="usage"/>
+        </list>
+    </view>
+    <view id="view_location_form" name="stock_location.form" model="stock_location">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="parent" no_create="1"/>
+                <field name="usage"/>
+                <field name="active"/>
+            </block>
+        </form>
+    </view>
+    <action id="action_locations" name="Locations" model="stock_location" views="list,form"/>
+
+    <view id="view_picking_type_list" name="stock_picking_type.list" model="stock_picking_type">
+        <list>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="warehouse"/>
+            <field name="default_location_src"/>
+            <field name="default_location_dest"/>
+        </list>
+    </view>
+    <action id="action_picking_types" name="Operation types" model="stock_picking_type" views="list,form"/>
+
+    <view id="view_product_form_stock" name="product.form.stock" inherit="product.view_product_form">
+        <xpath expr="//field[@name='volume']" position="after">
+            <field name="qty_available" readonly="1"/>
+            <field name="free_qty" readonly="1"/>
+            <field name="stock_value" widget="monetary" readonly="1"/>
+        </xpath>
+    </view>
+    <view id="view_product_category_form_stock" name="product_category.form.stock"
+          inherit="product.view_product_category_form">
+        <xpath expr="//field[@name='parent']" position="after">
+            <field name="cost_method"/>
+        </xpath>
+    </view>
+</erp>

@@ -1,0 +1,25 @@
+<erp>
+    <menu id="menu_inventory" name="Inventory" sequence="25" groups="group_stock_user">
+        <menu id="menu_operations" name="Operations" sequence="10">
+            <menu id="menu_receipts" name="Receipts" sequence="10" action="action_receipts"/>
+            <menu id="menu_deliveries" name="Deliveries" sequence="20" action="action_deliveries"/>
+            <menu id="menu_internal" name="Internal transfers" sequence="30" action="action_internal"/>
+            <menu id="menu_all_transfers" name="All transfers" sequence="40" action="action_pickings"/>
+        </menu>
+        <menu id="menu_stock" name="Stock" sequence="20">
+            <menu id="menu_quants" name="Stock on hand and counts" sequence="10" action="action_quants"/>
+            <menu id="menu_stock_products" name="Products" sequence="20" action="product.action_products"/>
+        </menu>
+        <menu id="menu_reporting" name="Reporting" sequence="30">
+            <menu id="menu_moves" name="Moves analysis" sequence="10" action="action_moves"/>
+            <menu id="menu_valuation" name="Valuation" sequence="20" action="action_valuation"/>
+        </menu>
+        <menu id="menu_configuration" name="Configuration" sequence="90" groups="group_stock_manager">
+            <menu id="menu_warehouses" name="Warehouses" sequence="10" action="action_warehouses"/>
+            <menu id="menu_locations" name="Locations" sequence="20" action="action_locations"/>
+            <menu id="menu_picking_types" name="Operation types" sequence="30" action="action_picking_types"/>
+            <menu id="menu_categories" name="Product categories" sequence="40" action="product.action_product_categories"/>
+            <menu id="menu_uom" name="Units of measure" sequence="50" action="uom.action_uoms"/>
+        </menu>
+    </menu>
+</erp>

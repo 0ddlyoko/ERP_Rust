@@ -1,0 +1,199 @@
+<erp>
+    <access_rule id="access_stock_location_user">
+        <name>stock_location: user</name>
+        <model>stock_location</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_location_stock_user">
+        <name>stock_location: stock_user</name>
+        <model>stock_location</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_location_stock_manager">
+        <name>stock_location: stock_manager</name>
+        <model>stock_location</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_location_admin">
+        <name>stock_location: admin</name>
+        <model>stock_location</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_warehouse_user">
+        <name>stock_warehouse: user</name>
+        <model>stock_warehouse</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_warehouse_stock_user">
+        <name>stock_warehouse: stock_user</name>
+        <model>stock_warehouse</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_warehouse_stock_manager">
+        <name>stock_warehouse: stock_manager</name>
+        <model>stock_warehouse</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_warehouse_admin">
+        <name>stock_warehouse: admin</name>
+        <model>stock_warehouse</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_picking_type_user">
+        <name>stock_picking_type: user</name>
+        <model>stock_picking_type</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_picking_type_stock_user">
+        <name>stock_picking_type: stock_user</name>
+        <model>stock_picking_type</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_picking_type_stock_manager">
+        <name>stock_picking_type: stock_manager</name>
+        <model>stock_picking_type</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_picking_type_admin">
+        <name>stock_picking_type: admin</name>
+        <model>stock_picking_type</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_picking_stock_user">
+        <name>stock_picking: stock_user</name>
+        <model>stock_picking</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_picking_stock_manager">
+        <name>stock_picking: stock_manager</name>
+        <model>stock_picking</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_picking_admin">
+        <name>stock_picking: admin</name>
+        <model>stock_picking</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_move_stock_user">
+        <name>stock_move: stock_user</name>
+        <model>stock_move</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_move_stock_manager">
+        <name>stock_move: stock_manager</name>
+        <model>stock_move</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_move_admin">
+        <name>stock_move: admin</name>
+        <model>stock_move</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_quant_user">
+        <name>stock_quant: user</name>
+        <model>stock_quant</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_quant_stock_user">
+        <name>stock_quant: stock_user</name>
+        <model>stock_quant</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_stock_quant_stock_manager">
+        <name>stock_quant: stock_manager</name>
+        <model>stock_quant</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_quant_admin">
+        <name>stock_quant: admin</name>
+        <model>stock_quant</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_stock_valuation_layer_stock_user">
+        <name>stock_valuation_layer: stock_user</name>
+        <model>stock_valuation_layer</model>
+        <group ref="group_stock_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_valuation_layer_stock_manager">
+        <name>stock_valuation_layer: stock_manager</name>
+        <model>stock_valuation_layer</model>
+        <group ref="group_stock_manager"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_stock_valuation_layer_admin">
+        <name>stock_valuation_layer: admin</name>
+        <model>stock_valuation_layer</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>
