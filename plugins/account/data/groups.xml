@@ -1,0 +1,10 @@
+<erp>
+    <group id="group_account_invoice">
+        <name>Invoicing</name>
+        <users ref="base.user_admin"/>
+    </group>
+    <group id="group_account_manager">
+        <name>Accountant</name>
+        <users ref="base.user_admin"/>
+    </group>
+</erp>

@@ -1,0 +1,70 @@
+<erp>
+    <view id="view_tax_list" name="account_tax.list" model="account_tax">
+        <list>
+            <field name="name"/>
+            <field name="description"/>
+            <field name="type_tax_use"/>
+            <field name="amount_type"/>
+            <field name="amount"/>
+            <field name="price_include"/>
+        </list>
+    </view>
+    <view id="view_tax_form" name="account_tax.form" model="account_tax">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Computation">
+                    <field name="type_tax_use"/>
+                    <field name="amount_type"/>
+                    <field name="amount"/>
+                    <field name="price_include"/>
+                </block>
+                <block string="Documents">
+                    <field name="description"/>
+                    <field name="sequence"/>
+                    <field name="active"/>
+                </block>
+            </block>
+            <pages>
+                <page name="repartitions" string="Distribution">
+                    <field name="repartitions" widget="list" nolabel="1"/>
+                </page>
+                <page name="grids" string="Tax grids of the base">
+                    <field name="invoice_base_tags"/>
+                    <field name="refund_base_tags"/>
+                </page>
+            </pages>
+            <side>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_tax_search" name="account_tax.search" model="account_tax">
+        <search>
+            <field name="name"/>
+            <filter name="sale" string="Sales" domain='[["type_tax_use", "=", "sale"]]'/>
+            <filter name="purchase" string="Purchases" domain='[["type_tax_use", "=", "purchase"]]'/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_taxes" name="Taxes" model="account_tax" views="list,form"/>
+
+    <view id="view_tax_repartition_list" name="account_tax_repartition.list" model="account_tax_repartition">
+        <list>
+            <field name="document"/>
+            <field name="factor"/>
+            <field name="account"/>
+            <field name="tags"/>
+        </list>
+    </view>
+
+    <view id="view_tax_tag_list" name="account_tax_tag.list" model="account_tax_tag">
+        <list>
+            <field name="grid"/>
+            <field name="name"/>
+            <field name="sign"/>
+        </list>
+    </view>
+    <action id="action_tax_tags" name="Tax grids" model="account_tax_tag" views="list,form"/>
+</erp>

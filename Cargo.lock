@@ -3,6 +3,27 @@
 version = 4
 
 [[package]]
+name = "account"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "chrono",
+ "code_gen",
+ "contacts",
+ "currency",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "product",
+ "sequence",
+ "serde_json",
+ "uom",
+ "web",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

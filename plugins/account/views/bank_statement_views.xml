@@ -1,0 +1,86 @@
+<erp>
+    <view id="view_bank_statement_list" name="account_bank_statement.list" model="account_bank_statement">
+        <list>
+            <field name="date"/>
+            <field name="name"/>
+            <field name="journal"/>
+            <field name="balance_start" widget="monetary"/>
+            <field name="balance_end_real" widget="monetary"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_bank_statement_form" name="account_bank_statement.form" model="account_bank_statement">
+        <form>
+            <buttons>
+                <button name="action_validate" type="method" string="Match and validate" highlight="1"
+                        invisible="state !== 'open'"/>
+            </buttons>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Statement">
+                    <field name="journal" no_create="1"/>
+                    <field name="date"/>
+                </block>
+                <block string="Balances">
+                    <field name="balance_start" widget="monetary"/>
+                    <field name="balance_end_real" widget="monetary"/>
+                    <field name="balance_end" widget="monetary"/>
+                </block>
+            </block>
+            <pages>
+                <page name="lines" string="Transactions">
+                    <field name="lines" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" nolabel="1" readonly="1"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <action id="action_bank_statements" name="Bank statements" model="account_bank_statement" views="list,form"/>
+
+    <view id="view_bank_statement_line_list" name="account_bank_statement_line.list" model="account_bank_statement_line">
+        <list>
+            <buttons>
+                <button name="action_reconcile" type="method" string="Match"/>
+                <button name="action_undo_reconciliation" type="method" string="Undo matching"/>
+            </buttons>
+            <field name="date"/>
+            <field name="payment_ref"/>
+            <field name="partner"/>
+            <field name="amount" widget="monetary"/>
+            <field name="is_reconciled"/>
+        </list>
+    </view>
+    <view id="view_bank_statement_line_form" name="account_bank_statement_line.form" model="account_bank_statement_line">
+        <form>
+            <buttons>
+                <button name="action_reconcile" type="method" string="Match" highlight="1"
+                        invisible="is_reconciled"/>
+                <button name="action_undo_reconciliation" type="method" string="Undo matching"
+                        invisible="!is_reconciled"/>
+            </buttons>
+            <block>
+                <h1><field name="payment_ref"/></h1>
+                <block string="Transaction">
+                    <field name="date"/>
+                    <field name="amount" widget="monetary"/>
+                    <field name="partner" widget="contact"/>
+                </block>
+                <block string="Matching">
+                    <field name="is_reconciled" readonly="1"/>
+                    <field name="move_id" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="to_match" string="Items to match">
+                    <field name="to_match" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <action id="action_bank_statement_lines" name="Bank transactions" model="account_bank_statement_line" views="list,form"/>
+</erp>

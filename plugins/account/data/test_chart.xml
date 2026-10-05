@@ -1,0 +1,129 @@
+<erp>
+    <account id="a_capital" code="100000" name="Capital" account_type="equity"/>
+    <account id="a_stock" code="340000" name="Goods" account_type="asset_current"/>
+    <account id="a_receivable" code="400000" name="Customers" account_type="asset_receivable" reconcile="true"/>
+    <account id="a_vat_recoverable" code="411000" name="VAT recoverable" account_type="asset_current"/>
+    <account id="a_payable" code="440000" name="Suppliers" account_type="liability_payable" reconcile="true"/>
+    <account id="a_vat_due" code="451000" name="VAT payable" account_type="liability_current"/>
+    <account id="a_suspense" code="499000" name="Suspense" account_type="asset_current"/>
+    <account id="a_outstanding_receipts" code="499001" name="Outstanding receipts" account_type="asset_current" reconcile="true"/>
+    <account id="a_outstanding_payments" code="499002" name="Outstanding payments" account_type="asset_current" reconcile="true"/>
+    <account id="a_bank" code="550000" name="Bank" account_type="asset_cash"/>
+    <account id="a_cash" code="570000" name="Cash" account_type="asset_cash"/>
+    <account id="a_purchases" code="604000" name="Purchases of goods" account_type="expense"/>
+    <account id="a_services" code="610000" name="Services and goods" account_type="expense"/>
+    <account id="a_exchange_loss" code="654000" name="Exchange losses" account_type="expense"/>
+    <account id="a_sales" code="700000" name="Sales" account_type="income"/>
+    <account id="a_exchange_gain" code="754000" name="Exchange gains" account_type="income_other"/>
+
+    <account_tax_tag id="tag_base_sales" name="Sales base" grid="03" sign="-1"/>
+    <account_tax_tag id="tag_vat_sales" name="Sales VAT" grid="54" sign="-1"/>
+    <account_tax_tag id="tag_base_purchases" name="Purchases base" grid="81" sign="1"/>
+    <account_tax_tag id="tag_vat_deductible" name="Deductible VAT" grid="59" sign="1"/>
+    <account_tax_tag id="tag_vat_reverse_charge" name="Reverse charge VAT due" grid="56" sign="-1"/>
+
+    <account_tax id="tax_sale_21" name="21% S" description="21%" type_tax_use="sale" amount="21" sequence="1">
+        <invoice_base_tags ref="tag_base_sales"/>
+    </account_tax>
+    <account_tax_repartition id="tax_sale_21_invoice" document="invoice" factor="100">
+        <tax ref="tax_sale_21"/><account ref="a_vat_due"/><tags ref="tag_vat_sales"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_21_refund" document="refund" factor="100">
+        <tax ref="tax_sale_21"/><account ref="a_vat_due"/><tags ref="tag_vat_sales"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_sale_12" name="12% S" description="12%" type_tax_use="sale" amount="12" sequence="2"/>
+    <account_tax_repartition id="tax_sale_12_invoice" document="invoice" factor="100">
+        <tax ref="tax_sale_12"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_12_refund" document="refund" factor="100">
+        <tax ref="tax_sale_12"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_sale_6" name="6% S" description="6%" type_tax_use="sale" amount="6" sequence="3"/>
+    <account_tax_repartition id="tax_sale_6_invoice" document="invoice" factor="100">
+        <tax ref="tax_sale_6"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_6_refund" document="refund" factor="100">
+        <tax ref="tax_sale_6"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_sale_0" name="0% S" description="0%" type_tax_use="sale" amount="0" sequence="4"/>
+
+    <account_tax id="tax_sale_21_included" name="21% S incl." description="21% incl." type_tax_use="sale" amount="21" price_include="true" sequence="5"/>
+    <account_tax_repartition id="tax_sale_21_included_invoice" document="invoice" factor="100">
+        <tax ref="tax_sale_21_included"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_sale_21_included_refund" document="refund" factor="100">
+        <tax ref="tax_sale_21_included"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_purchase_21" name="21% P" description="21%" type_tax_use="purchase" amount="21" sequence="1"/>
+    <account_tax_repartition id="tax_purchase_21_invoice" document="invoice" factor="100">
+        <tax ref="tax_purchase_21"/><account ref="a_vat_recoverable"/><tags ref="tag_vat_deductible"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_refund" document="refund" factor="100">
+        <tax ref="tax_purchase_21"/><account ref="a_vat_recoverable"/><tags ref="tag_vat_deductible"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_purchase_6" name="6% P" description="6%" type_tax_use="purchase" amount="6" sequence="2"/>
+    <account_tax_repartition id="tax_purchase_6_invoice" document="invoice" factor="100">
+        <tax ref="tax_purchase_6"/><account ref="a_vat_recoverable"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_6_refund" document="refund" factor="100">
+        <tax ref="tax_purchase_6"/><account ref="a_vat_recoverable"/>
+    </account_tax_repartition>
+
+    <account_tax id="tax_purchase_21_reverse" name="21% P reverse charge" description="21% RC" type_tax_use="purchase" amount="21" sequence="3"/>
+    <account_tax_repartition id="tax_purchase_21_reverse_deductible" document="invoice" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_reverse"/><account ref="a_vat_recoverable"/><tags ref="tag_vat_deductible"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_reverse_due" document="invoice" factor="-100" sequence="2">
+        <tax ref="tax_purchase_21_reverse"/><account ref="a_vat_due"/><tags ref="tag_vat_reverse_charge"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_reverse_refund_deductible" document="refund" factor="100" sequence="1">
+        <tax ref="tax_purchase_21_reverse"/><account ref="a_vat_recoverable"/>
+    </account_tax_repartition>
+    <account_tax_repartition id="tax_purchase_21_reverse_refund_due" document="refund" factor="-100" sequence="2">
+        <tax ref="tax_purchase_21_reverse"/><account ref="a_vat_due"/>
+    </account_tax_repartition>
+
+    <account_journal id="journal_sale" name="Customer invoices" code="INV" journal_type="sale">
+        <default_account ref="a_sales"/>
+    </account_journal>
+    <account_journal id="journal_purchase" name="Vendor bills" code="BILL" journal_type="purchase">
+        <default_account ref="a_purchases"/>
+    </account_journal>
+    <account_journal id="journal_bank" name="Bank" code="BNK1" journal_type="bank">
+        <default_account ref="a_bank"/>
+        <outstanding_receipt_account ref="a_outstanding_receipts"/>
+        <outstanding_payment_account ref="a_outstanding_payments"/>
+    </account_journal>
+    <account_journal id="journal_cash" name="Cash" code="CSH1" journal_type="cash">
+        <default_account ref="a_cash"/>
+    </account_journal>
+    <account_journal id="journal_misc" name="Miscellaneous" code="MISC" journal_type="general"/>
+    <account_journal id="journal_exchange" name="Exchange differences" code="EXCH" journal_type="general" sequence_order="20"/>
+
+    <account_payment_term id="term_30_days" name="30 days"/>
+    <account_payment_term_line id="term_30_days_line" value="balance" days="30">
+        <term ref="term_30_days"/>
+    </account_payment_term_line>
+    <account_payment_term id="term_30_days_end_of_month" name="30 days end of month"/>
+    <account_payment_term_line id="term_30_days_end_of_month_line" value="balance" days="30" end_of_month="true">
+        <term ref="term_30_days_end_of_month"/>
+    </account_payment_term_line>
+    <account_payment_term id="term_advance" name="30% now, balance in 60 days"/>
+    <account_payment_term_line id="term_advance_now" value="percent" value_amount="30" days="0" sequence="1">
+        <term ref="term_advance"/>
+    </account_payment_term_line>
+    <account_payment_term_line id="term_advance_balance" value="balance" days="60" sequence="2">
+        <term ref="term_advance"/>
+    </account_payment_term_line>
+
+    <account_fiscal_position id="position_intra_eu" name="Intra-EU" note="Intra-community supply: VAT exempt"/>
+    <account_fiscal_position_tax id="position_intra_eu_sale_21">
+        <position ref="position_intra_eu"/><tax_src ref="tax_sale_21"/><tax_dest ref="tax_sale_0"/>
+    </account_fiscal_position_tax>
+
+</erp>

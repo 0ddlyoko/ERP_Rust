@@ -1,0 +1,177 @@
+<erp>
+    <view id="view_move_list" name="account_move.list" model="account_move">
+        <list>
+            <buttons>
+                <button name="action_post" type="method" string="Post"/>
+                <button name="action_register_payment" type="method" string="Register payment"/>
+            </buttons>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="invoice_date"/>
+            <field name="invoice_date_due"/>
+            <field name="reference"/>
+            <field name="amount_untaxed" widget="monetary"/>
+            <field name="amount_total" widget="monetary"/>
+            <field name="amount_residual" widget="monetary"/>
+            <field name="payment_state"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_move_form" name="account_move.form" model="account_move">
+        <form>
+            <buttons>
+                <button name="action_post" type="method" string="Confirm" highlight="1"
+                        invisible="state !== 'draft'"/>
+                <button name="action_register_payment" type="method" string="Register payment" highlight="1"
+                        invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
+                <button name="action_reverse" type="method" string="Credit note"
+                        invisible="state !== 'posted' || move_type === 'out_refund' || move_type === 'in_refund'"/>
+                <button name="action_reverse_and_reconcile" type="method" string="Cancel with a credit note"
+                        invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
+                <button name="button_draft" type="method" string="Reset to draft"
+                        invisible="state === 'draft'"/>
+                <button name="button_cancel" type="method" string="Cancel"
+                        invisible="state !== 'draft'"/>
+            </buttons>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <field name="move_type" readonly="1" invisible="1"/>
+                <block string="Partner">
+                    <field name="partner" widget="contact" readonly="state !== 'draft'"/>
+                    <field name="reference" readonly="state !== 'draft'"/>
+                    <field name="fiscal_position" no_create="1" readonly="state !== 'draft'"
+                           invisible="move_type === 'entry'"/>
+                </block>
+                <block string="Dates">
+                    <field name="invoice_date" readonly="state !== 'draft'" invisible="move_type === 'entry'"/>
+                    <field name="payment_term" no_create="1" readonly="state !== 'draft'"
+                           invisible="move_type === 'entry'"/>
+                    <field name="invoice_date_due" invisible="move_type === 'entry'"/>
+                    <field name="date" readonly="state !== 'draft'"/>
+                    <field name="journal" no_create="1" readonly="state !== 'draft'"/>
+                    <field name="currency" no_create="1" readonly="state !== 'draft'"/>
+                </block>
+            </block>
+            <pages>
+                <page name="invoice_lines" string="Invoice lines" invisible="move_type === 'entry'">
+                    <field name="invoice_lines" widget="list" nolabel="1" readonly="state !== 'draft'"/>
+                </page>
+                <page name="lines" string="Journal items">
+                    <field name="lines" widget="list" nolabel="1"
+                           readonly="state !== 'draft' || move_type !== 'entry'"/>
+                </page>
+                <page name="other" string="Other information">
+                    <field name="payment_reference" readonly="1"/>
+                    <field name="narration" widget="text"/>
+                    <field name="reversed_entry" readonly="1"/>
+                    <field name="reversal_reason"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" visible="draft,posted" nolabel="1" readonly="1"/>
+                    <field name="payment_state" readonly="1" invisible="move_type === 'entry'"/>
+                </block>
+                <block string="Amounts">
+                    <field name="amount_untaxed" widget="monetary"/>
+                    <field name="amount_tax" widget="monetary" invisible="move_type === 'entry'"/>
+                    <field name="amount_total" widget="monetary"/>
+                    <field name="amount_residual" widget="monetary" invisible="move_type === 'entry'"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_move_search" name="account_move.search" model="account_move">
+        <search>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="reference"/>
+            <field name="journal"/>
+            <filter name="draft" string="Draft" domain='[["state", "=", "draft"]]'/>
+            <filter name="posted" string="Posted" domain='[["state", "=", "posted"]]'/>
+            <filter name="to_pay" string="Not paid" domain='[["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]]]'/>
+            <filter name="paid" string="Paid" domain='[["payment_state", "=", "paid"]]'/>
+            <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+        </search>
+    </view>
+    <action id="action_move_out_invoice" name="Invoices" model="account_move" views="list,form"
+            domain='[["move_type", "=", "out_invoice"]]'/>
+    <action id="action_move_out_refund" name="Credit notes" model="account_move" views="list,form"
+            domain='[["move_type", "=", "out_refund"]]'/>
+    <action id="action_move_in_invoice" name="Bills" model="account_move" views="list,form"
+            domain='[["move_type", "=", "in_invoice"]]'/>
+    <action id="action_move_in_refund" name="Refunds" model="account_move" views="list,form"
+            domain='[["move_type", "=", "in_refund"]]'/>
+    <action id="action_move_journal_entries" name="Journal entries" model="account_move" views="list,form"
+            domain='[["move_type", "=", "entry"]]'/>
+
+    <view id="view_invoice_line_list" name="account_invoice_line.list" model="account_invoice_line">
+        <list>
+            <field name="product"/>
+            <field name="name"/>
+            <field name="account"/>
+            <field name="quantity"/>
+            <field name="uom"/>
+            <field name="price_unit"/>
+            <field name="discount"/>
+            <field name="taxes"/>
+            <field name="price_subtotal" widget="monetary"/>
+            <field name="price_total" widget="monetary"/>
+        </list>
+    </view>
+    <view id="view_invoice_line_form" name="account_invoice_line.form" model="account_invoice_line">
+        <form>
+            <block>
+                <block string="Product">
+                    <field name="product"/>
+                    <field name="name" widget="text"/>
+                    <field name="account" no_create="1"/>
+                </block>
+                <block string="Price">
+                    <field name="quantity"/>
+                    <field name="uom" no_create="1"/>
+                    <field name="price_unit"/>
+                    <field name="discount"/>
+                    <field name="taxes" no_create="1"/>
+                </block>
+                <block string="Amounts">
+                    <field name="price_subtotal" widget="monetary"/>
+                    <field name="price_tax" widget="monetary"/>
+                    <field name="price_total" widget="monetary"/>
+                </block>
+            </block>
+        </form>
+    </view>
+
+    <view id="view_move_line_list" name="account_move_line.list" model="account_move_line">
+        <list>
+            <buttons>
+                <button name="reconcile" type="method" string="Match"/>
+                <button name="remove_move_reconcile" type="method" string="Unmatch"/>
+            </buttons>
+            <field name="date"/>
+            <field name="move_id"/>
+            <field name="account"/>
+            <field name="partner"/>
+            <field name="name"/>
+            <field name="debit" widget="monetary"/>
+            <field name="credit" widget="monetary"/>
+            <field name="amount_residual" widget="monetary"/>
+            <field name="date_maturity"/>
+            <field name="tax_tags"/>
+            <field name="full_reconcile"/>
+        </list>
+    </view>
+    <view id="view_move_line_search" name="account_move_line.search" model="account_move_line">
+        <search>
+            <field name="account"/>
+            <field name="partner"/>
+            <field name="move_id"/>
+            <field name="name"/>
+            <filter name="posted" string="Posted" domain='[["parent_state", "=", "posted"]]' default="1"/>
+            <filter name="unreconciled" string="Not matched" domain='[["reconciled", "=", false], ["amount_residual", "!=", 0]]'/>
+        </search>
+    </view>
+    <action id="action_move_lines" name="Journal items" model="account_move_line" views="list,form"/>
+</erp>

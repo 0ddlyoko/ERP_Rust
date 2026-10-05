@@ -1,0 +1,42 @@
+<erp>
+    <view id="view_trial_balance_list" name="account_trial_balance.list" model="account_trial_balance">
+        <list>
+            <field name="date_from"/>
+            <field name="date_to"/>
+            <field name="total_debit" widget="monetary"/>
+            <field name="total_credit" widget="monetary"/>
+        </list>
+    </view>
+    <view id="view_trial_balance_form" name="account_trial_balance.form" model="account_trial_balance">
+        <form>
+            <buttons>
+                <button name="action_compute" type="method" string="Compute" highlight="1"/>
+            </buttons>
+            <block>
+                <block string="Period">
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                </block>
+                <block string="Totals">
+                    <field name="total_debit" widget="monetary" readonly="1"/>
+                    <field name="total_credit" widget="monetary" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="lines" string="Accounts">
+                    <field name="lines" widget="list" nolabel="1" readonly="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_trial_balance_line_list" name="account_trial_balance_line.list" model="account_trial_balance_line">
+        <list>
+            <field name="account"/>
+            <field name="initial_balance" widget="monetary"/>
+            <field name="debit" widget="monetary"/>
+            <field name="credit" widget="monetary"/>
+            <field name="ending_balance" widget="monetary"/>
+        </list>
+    </view>
+    <action id="action_trial_balance" name="Trial balance" model="account_trial_balance" views="list,form"/>
+</erp>

@@ -1,0 +1,106 @@
+<erp>
+    <view id="view_journal_list" name="account_journal.list" model="account_journal">
+        <list>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="journal_type"/>
+            <field name="default_account"/>
+        </list>
+    </view>
+    <view id="view_journal_form" name="account_journal.form" model="account_journal">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <block string="Journal">
+                    <field name="journal_type"/>
+                    <field name="code"/>
+                    <field name="currency" no_create="1"/>
+                </block>
+                <block string="Accounts">
+                    <field name="default_account" no_create="1"/>
+                    <field name="outstanding_receipt_account" no_create="1"
+                           invisible="journal_type !== 'bank' &amp;&amp; journal_type !== 'cash'"/>
+                    <field name="outstanding_payment_account" no_create="1"
+                           invisible="journal_type !== 'bank' &amp;&amp; journal_type !== 'cash'"/>
+                </block>
+            </block>
+            <pages>
+                <page name="numbering" string="Numbering">
+                    <field name="sequence"/>
+                    <field name="refund_sequence"/>
+                    <field name="sequence_order"/>
+                    <field name="active"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <action id="action_journals" name="Journals" model="account_journal" views="list,form"/>
+
+    <view id="view_payment_term_list" name="account_payment_term.list" model="account_payment_term">
+        <list>
+            <field name="name"/>
+            <field name="note"/>
+        </list>
+    </view>
+    <view id="view_payment_term_form" name="account_payment_term.form" model="account_payment_term">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="note" widget="text"/>
+                <field name="active"/>
+            </block>
+            <pages>
+                <page name="lines" string="Installments">
+                    <field name="lines" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_payment_term_line_list" name="account_payment_term_line.list" model="account_payment_term_line">
+        <list>
+            <field name="value"/>
+            <field name="value_amount"/>
+            <field name="days"/>
+            <field name="end_of_month"/>
+            <field name="days_after_end_of_month"/>
+        </list>
+    </view>
+    <action id="action_payment_terms" name="Payment terms" model="account_payment_term" views="list,form"/>
+
+    <view id="view_fiscal_position_list" name="account_fiscal_position.list" model="account_fiscal_position">
+        <list>
+            <field name="name"/>
+            <field name="note"/>
+        </list>
+    </view>
+    <view id="view_fiscal_position_form" name="account_fiscal_position.form" model="account_fiscal_position">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="note" widget="text"/>
+                <field name="active"/>
+            </block>
+            <pages>
+                <page name="taxes" string="Tax mapping">
+                    <field name="tax_mappings" widget="list" nolabel="1"/>
+                </page>
+                <page name="accounts" string="Account mapping">
+                    <field name="account_mappings" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_fiscal_position_tax_list" name="account_fiscal_position_tax.list" model="account_fiscal_position_tax">
+        <list>
+            <field name="tax_src"/>
+            <field name="tax_dest"/>
+        </list>
+    </view>
+    <view id="view_fiscal_position_account_list" name="account_fiscal_position_account.list" model="account_fiscal_position_account">
+        <list>
+            <field name="account_src"/>
+            <field name="account_dest"/>
+        </list>
+    </view>
+    <action id="action_fiscal_positions" name="Fiscal positions" model="account_fiscal_position" views="list,form"/>
+</erp>

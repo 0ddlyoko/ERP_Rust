@@ -1,0 +1,582 @@
+<erp>
+    <access_rule id="access_account_user">
+        <name>account: user</name>
+        <model>account</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_invoicing">
+        <name>account: invoicing</name>
+        <model>account</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_accountant">
+        <name>account: accountant</name>
+        <model>account</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_admin">
+        <name>account: admin</name>
+        <model>account</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_tag_user">
+        <name>account_tax_tag: user</name>
+        <model>account_tax_tag</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_tag_invoicing">
+        <name>account_tax_tag: invoicing</name>
+        <model>account_tax_tag</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_tag_accountant">
+        <name>account_tax_tag: accountant</name>
+        <model>account_tax_tag</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_tag_admin">
+        <name>account_tax_tag: admin</name>
+        <model>account_tax_tag</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_user">
+        <name>account_tax: user</name>
+        <model>account_tax</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_invoicing">
+        <name>account_tax: invoicing</name>
+        <model>account_tax</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_accountant">
+        <name>account_tax: accountant</name>
+        <model>account_tax</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_admin">
+        <name>account_tax: admin</name>
+        <model>account_tax</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_repartition_user">
+        <name>account_tax_repartition: user</name>
+        <model>account_tax_repartition</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_repartition_invoicing">
+        <name>account_tax_repartition: invoicing</name>
+        <model>account_tax_repartition</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_tax_repartition_accountant">
+        <name>account_tax_repartition: accountant</name>
+        <model>account_tax_repartition</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_tax_repartition_admin">
+        <name>account_tax_repartition: admin</name>
+        <model>account_tax_repartition</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_journal_user">
+        <name>account_journal: user</name>
+        <model>account_journal</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_journal_invoicing">
+        <name>account_journal: invoicing</name>
+        <model>account_journal</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_journal_accountant">
+        <name>account_journal: accountant</name>
+        <model>account_journal</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_journal_admin">
+        <name>account_journal: admin</name>
+        <model>account_journal</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_term_user">
+        <name>account_payment_term: user</name>
+        <model>account_payment_term</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_payment_term_invoicing">
+        <name>account_payment_term: invoicing</name>
+        <model>account_payment_term</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_payment_term_accountant">
+        <name>account_payment_term: accountant</name>
+        <model>account_payment_term</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_term_admin">
+        <name>account_payment_term: admin</name>
+        <model>account_payment_term</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_term_line_user">
+        <name>account_payment_term_line: user</name>
+        <model>account_payment_term_line</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_payment_term_line_invoicing">
+        <name>account_payment_term_line: invoicing</name>
+        <model>account_payment_term_line</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_payment_term_line_accountant">
+        <name>account_payment_term_line: accountant</name>
+        <model>account_payment_term_line</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_term_line_admin">
+        <name>account_payment_term_line: admin</name>
+        <model>account_payment_term_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_user">
+        <name>account_fiscal_position: user</name>
+        <model>account_fiscal_position</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_invoicing">
+        <name>account_fiscal_position: invoicing</name>
+        <model>account_fiscal_position</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_accountant">
+        <name>account_fiscal_position: accountant</name>
+        <model>account_fiscal_position</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_admin">
+        <name>account_fiscal_position: admin</name>
+        <model>account_fiscal_position</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_tax_user">
+        <name>account_fiscal_position_tax: user</name>
+        <model>account_fiscal_position_tax</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_tax_invoicing">
+        <name>account_fiscal_position_tax: invoicing</name>
+        <model>account_fiscal_position_tax</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_tax_accountant">
+        <name>account_fiscal_position_tax: accountant</name>
+        <model>account_fiscal_position_tax</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_tax_admin">
+        <name>account_fiscal_position_tax: admin</name>
+        <model>account_fiscal_position_tax</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_account_user">
+        <name>account_fiscal_position_account: user</name>
+        <model>account_fiscal_position_account</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_account_invoicing">
+        <name>account_fiscal_position_account: invoicing</name>
+        <model>account_fiscal_position_account</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_account_accountant">
+        <name>account_fiscal_position_account: accountant</name>
+        <model>account_fiscal_position_account</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_fiscal_position_account_admin">
+        <name>account_fiscal_position_account: admin</name>
+        <model>account_fiscal_position_account</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_contact_bank_user">
+        <name>contact_bank: user</name>
+        <model>contact_bank</model>
+        <group ref="base.group_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_contact_bank_invoicing">
+        <name>contact_bank: invoicing</name>
+        <model>contact_bank</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_contact_bank_accountant">
+        <name>contact_bank: accountant</name>
+        <model>contact_bank</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_contact_bank_admin">
+        <name>contact_bank: admin</name>
+        <model>contact_bank</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_invoicing">
+        <name>account_move: invoicing</name>
+        <model>account_move</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_accountant">
+        <name>account_move: accountant</name>
+        <model>account_move</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_admin">
+        <name>account_move: admin</name>
+        <model>account_move</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_invoicing">
+        <name>account_invoice_line: invoicing</name>
+        <model>account_invoice_line</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_accountant">
+        <name>account_invoice_line: accountant</name>
+        <model>account_invoice_line</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_admin">
+        <name>account_invoice_line: admin</name>
+        <model>account_invoice_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_line_invoicing">
+        <name>account_move_line: invoicing</name>
+        <model>account_move_line</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_move_line_accountant">
+        <name>account_move_line: accountant</name>
+        <model>account_move_line</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_line_admin">
+        <name>account_move_line: admin</name>
+        <model>account_move_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_partial_reconcile_invoicing">
+        <name>account_partial_reconcile: invoicing</name>
+        <model>account_partial_reconcile</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_partial_reconcile_accountant">
+        <name>account_partial_reconcile: accountant</name>
+        <model>account_partial_reconcile</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_partial_reconcile_admin">
+        <name>account_partial_reconcile: admin</name>
+        <model>account_partial_reconcile</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_full_reconcile_invoicing">
+        <name>account_full_reconcile: invoicing</name>
+        <model>account_full_reconcile</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_account_full_reconcile_accountant">
+        <name>account_full_reconcile: accountant</name>
+        <model>account_full_reconcile</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_full_reconcile_admin">
+        <name>account_full_reconcile: admin</name>
+        <model>account_full_reconcile</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_invoicing">
+        <name>account_payment: invoicing</name>
+        <model>account_payment</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_accountant">
+        <name>account_payment: accountant</name>
+        <model>account_payment</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_payment_admin">
+        <name>account_payment: admin</name>
+        <model>account_payment</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_invoicing">
+        <name>account_bank_statement: invoicing</name>
+        <model>account_bank_statement</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_accountant">
+        <name>account_bank_statement: accountant</name>
+        <model>account_bank_statement</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_admin">
+        <name>account_bank_statement: admin</name>
+        <model>account_bank_statement</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_line_invoicing">
+        <name>account_bank_statement_line: invoicing</name>
+        <model>account_bank_statement_line</model>
+        <group ref="group_account_invoice"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_line_accountant">
+        <name>account_bank_statement_line: accountant</name>
+        <model>account_bank_statement_line</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_bank_statement_line_admin">
+        <name>account_bank_statement_line: admin</name>
+        <model>account_bank_statement_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_trial_balance_accountant">
+        <name>account_trial_balance: accountant</name>
+        <model>account_trial_balance</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_trial_balance_admin">
+        <name>account_trial_balance: admin</name>
+        <model>account_trial_balance</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_trial_balance_line_accountant">
+        <name>account_trial_balance_line: accountant</name>
+        <model>account_trial_balance_line</model>
+        <group ref="group_account_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_trial_balance_line_admin">
+        <name>account_trial_balance_line: admin</name>
+        <model>account_trial_balance_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

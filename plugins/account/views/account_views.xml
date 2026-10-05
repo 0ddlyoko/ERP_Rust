@@ -1,0 +1,43 @@
+<erp>
+    <view id="view_account_list" name="account.list" model="account">
+        <list>
+            <field name="code"/>
+            <field name="name"/>
+            <field name="account_type"/>
+            <field name="reconcile"/>
+        </list>
+    </view>
+    <view id="view_account_form" name="account.form" model="account">
+        <form>
+            <block>
+                <h1><field name="code"/> <field name="name"/></h1>
+                <block string="Accounting">
+                    <field name="account_type"/>
+                    <field name="reconcile"/>
+                    <field name="active"/>
+                </block>
+            </block>
+            <pages>
+                <page name="notes" string="Notes">
+                    <field name="note" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_account_search" name="account.search" model="account">
+        <search>
+            <field name="display_name"/>
+            <field name="code"/>
+            <filter name="receivable_payable" string="Receivable and payable"
+                    domain='["|", ["account_type", "=", "asset_receivable"], ["account_type", "=", "liability_payable"]]'/>
+            <filter name="income" string="Income" domain='[["account_type", "in", ["income", "income_other"]]]'/>
+            <filter name="expense" string="Expenses" domain='[["account_type", "in", ["expense", "expense_depreciation"]]]'/>
+            <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+        </search>
+    </view>
+    <action id="action_accounts" name="Chart of accounts" model="account" views="list,form"/>
+</erp>

@@ -1,0 +1,68 @@
+<erp>
+    <view id="view_payment_list" name="account_payment.list" model="account_payment">
+        <list>
+            <buttons>
+                <button name="action_post" type="method" string="Confirm"/>
+            </buttons>
+            <field name="name"/>
+            <field name="date"/>
+            <field name="partner"/>
+            <field name="journal"/>
+            <field name="memo"/>
+            <field name="amount" widget="monetary"/>
+            <field name="state"/>
+        </list>
+    </view>
+    <view id="view_payment_form" name="account_payment.form" model="account_payment">
+        <form>
+            <buttons>
+                <button name="action_post" type="method" string="Confirm" highlight="1"
+                        invisible="state !== 'draft'"/>
+                <button name="action_cancel" type="method" string="Cancel"
+                        invisible="state !== 'posted'"/>
+                <button name="action_draft" type="method" string="Reset to draft"
+                        invisible="state !== 'cancel'"/>
+            </buttons>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <block string="Payment">
+                    <field name="partner_type" readonly="state !== 'draft'"/>
+                    <field name="payment_type" readonly="state !== 'draft'"/>
+                    <field name="partner" widget="contact" readonly="state !== 'draft'"/>
+                    <field name="amount" widget="monetary" readonly="state !== 'draft'"/>
+                    <field name="currency" no_create="1" readonly="state !== 'draft'"/>
+                </block>
+                <block string="Bank">
+                    <field name="date" readonly="state !== 'draft'"/>
+                    <field name="journal" no_create="1" readonly="state !== 'draft'"/>
+                    <field name="memo"/>
+                    <field name="move_id" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="invoices" string="Invoices paid">
+                    <field name="invoices" nolabel="1" readonly="state !== 'draft'"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" visible="draft,posted" nolabel="1" readonly="1"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_payment_search" name="account_payment.search" model="account_payment">
+        <search>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="memo"/>
+            <filter name="draft" string="Draft" domain='[["state", "=", "draft"]]'/>
+            <filter name="posted" string="Confirmed" domain='[["state", "=", "posted"]]'/>
+        </search>
+    </view>
+    <action id="action_payments_received" name="Payments received" model="account_payment" views="list,form"
+            domain='[["partner_type", "=", "customer"]]'/>
+    <action id="action_payments_sent" name="Payments sent" model="account_payment" views="list,form"
+            domain='[["partner_type", "=", "supplier"]]'/>
+</erp>

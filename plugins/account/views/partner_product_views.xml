@@ -1,0 +1,58 @@
+<erp>
+    <view id="view_contact_form_accounting" name="contact.form.accounting" inherit="base.view_contact_form">
+        <xpath expr="//page[@name='other']" position="before">
+            <page name="accounting" string="Invoicing">
+                <field name="customer_payment_term" no_create="1"/>
+                <field name="supplier_payment_term" no_create="1"/>
+                <field name="fiscal_position" no_create="1"/>
+                <field name="account_receivable" no_create="1"/>
+                <field name="account_payable" no_create="1"/>
+                <field name="bank_accounts" widget="list"/>
+            </page>
+        </xpath>
+    </view>
+    <view id="view_contact_bank_list" name="contact_bank.list" model="contact_bank">
+        <list>
+            <field name="iban"/>
+            <field name="bic"/>
+            <field name="bank_name"/>
+        </list>
+    </view>
+
+    <view id="view_product_form_accounting" name="product.form.accounting" inherit="product.view_product_form">
+        <xpath expr="//page[@name='notes']" position="before">
+            <page name="accounting" string="Invoicing">
+                <field name="taxes" no_create="1"/>
+                <field name="supplier_taxes" no_create="1"/>
+                <field name="income_account" no_create="1"/>
+                <field name="expense_account" no_create="1"/>
+            </page>
+        </xpath>
+    </view>
+    <view id="view_product_category_form_accounting" name="product_category.form.accounting"
+          inherit="product.view_product_category_form">
+        <xpath expr="//field[@name='parent']" position="after">
+            <field name="income_account" no_create="1"/>
+            <field name="expense_account" no_create="1"/>
+        </xpath>
+    </view>
+
+    <view id="view_company_form_accounting" name="company.form.accounting" inherit="base.view_company_form">
+        <xpath expr="//block" position="after">
+            <pages>
+                <page name="accounting" string="Accounting">
+                    <field name="account_receivable" no_create="1"/>
+                    <field name="account_payable" no_create="1"/>
+                    <field name="account_income" no_create="1"/>
+                    <field name="account_expense" no_create="1"/>
+                    <field name="sale_tax" no_create="1"/>
+                    <field name="purchase_tax" no_create="1"/>
+                    <field name="account_exchange_gain" no_create="1"/>
+                    <field name="account_exchange_loss" no_create="1"/>
+                    <field name="journal_exchange" no_create="1"/>
+                    <field name="lock_date"/>
+                </page>
+            </pages>
+        </xpath>
+    </view>
+</erp>
