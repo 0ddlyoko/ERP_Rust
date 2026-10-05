@@ -1,0 +1,4 @@
+<erp noupdate="1">
+    <sequence id="sequence_sale_order" name="Sales orders" code="sale.order" prefix="S" padding="5" reset="never"/>
+    <product_pricelist id="pricelist_public" name="Public pricelist" sequence="1"/>
+</erp>

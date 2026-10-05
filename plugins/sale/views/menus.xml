@@ -1,0 +1,22 @@
+<erp>
+    <menu id="menu_sales" name="Sales" sequence="10" groups="group_sale_salesman">
+        <menu id="menu_orders" name="Orders" sequence="10">
+            <menu id="menu_quotations" name="Quotations" sequence="10" action="action_quotations"/>
+            <menu id="menu_sale_orders" name="Sales orders" sequence="20" action="action_orders"/>
+            <menu id="menu_customers" name="Customers" sequence="30" action="base.action_contacts"/>
+        </menu>
+        <menu id="menu_to_invoice" name="To invoice" sequence="20">
+            <menu id="menu_orders_to_invoice" name="Orders to invoice" sequence="10" action="action_orders_to_invoice"/>
+        </menu>
+        <menu id="menu_products" name="Products" sequence="30">
+            <menu id="menu_sale_products" name="Products" sequence="10" action="product.action_products"/>
+            <menu id="menu_sale_pricelists" name="Pricelists" sequence="20" action="action_pricelists"/>
+        </menu>
+        <menu id="menu_configuration" name="Configuration" sequence="90" groups="group_sale_manager">
+            <menu id="menu_config_pricelists" name="Pricelists" sequence="10" action="action_pricelists"/>
+            <menu id="menu_config_categories" name="Product categories" sequence="20" action="product.action_product_categories"/>
+            <menu id="menu_config_uom" name="Units of measure" sequence="30" action="uom.action_uoms"/>
+            <menu id="menu_config_terms" name="Payment terms" sequence="40" action="account.action_payment_terms"/>
+        </menu>
+    </menu>
+</erp>

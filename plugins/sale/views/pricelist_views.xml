@@ -1,0 +1,68 @@
+<erp>
+    <view id="view_pricelist_list" name="product_pricelist.list" model="product_pricelist">
+        <list>
+            <field name="name"/>
+            <field name="currency"/>
+        </list>
+    </view>
+    <view id="view_pricelist_form" name="product_pricelist.form" model="product_pricelist">
+        <form>
+            <block>
+                <h1><field name="name"/></h1>
+                <field name="currency" no_create="1"/>
+                <field name="active"/>
+            </block>
+            <pages>
+                <page name="items" string="Price rules">
+                    <field name="items" widget="list" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_pricelist_item_list" name="product_pricelist_item.list" model="product_pricelist_item">
+        <list>
+            <field name="applied_on"/>
+            <field name="product"/>
+            <field name="category"/>
+            <field name="min_quantity"/>
+            <field name="compute_price"/>
+            <field name="fixed_price" widget="monetary"/>
+            <field name="percent_price"/>
+            <field name="date_start"/>
+            <field name="date_end"/>
+        </list>
+    </view>
+    <view id="view_pricelist_item_form" name="product_pricelist_item.form" model="product_pricelist_item">
+        <form>
+            <block>
+                <block string="Applies to">
+                    <field name="applied_on"/>
+                    <field name="product" invisible="applied_on !== 'product'" required="applied_on === 'product'"/>
+                    <field name="category" invisible="applied_on !== 'category'" required="applied_on === 'category'"/>
+                    <field name="min_quantity"/>
+                </block>
+                <block string="Price">
+                    <field name="compute_price"/>
+                    <field name="fixed_price" widget="monetary" invisible="compute_price !== 'fixed'"/>
+                    <field name="percent_price" invisible="compute_price !== 'discount'"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <action id="action_pricelists" name="Pricelists" model="product_pricelist" views="list,form"/>
+
+    <view id="view_contact_form_sale" name="contact.form.sale" inherit="base.view_contact_form">
+        <xpath expr="//page[@name='notes']" position="before">
+            <page name="sales" string="Sales">
+                <field name="pricelist" no_create="1"/>
+            </page>
+        </xpath>
+    </view>
+    <view id="view_product_form_sale" name="product.form.sale" inherit="product.view_product_form">
+        <xpath expr="//field[@name='sale_ok']" position="after">
+            <field name="invoice_policy"/>
+        </xpath>
+    </view>
+</erp>

@@ -1,0 +1,135 @@
+<erp>
+    <access_rule id="access_sale_order_salesman">
+        <name>sale_order: salesman</name>
+        <model>sale_order</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_sale_order_sale_manager">
+        <name>sale_order: sale_manager</name>
+        <model>sale_order</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_sale_order_admin">
+        <name>sale_order: admin</name>
+        <model>sale_order</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_sale_order_line_salesman">
+        <name>sale_order_line: salesman</name>
+        <model>sale_order_line</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_sale_order_line_sale_manager">
+        <name>sale_order_line: sale_manager</name>
+        <model>sale_order_line</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_sale_order_line_admin">
+        <name>sale_order_line: admin</name>
+        <model>sale_order_line</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_pricelist_salesman">
+        <name>product_pricelist: salesman</name>
+        <model>product_pricelist</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_product_pricelist_sale_manager">
+        <name>product_pricelist: sale_manager</name>
+        <model>product_pricelist</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_pricelist_admin">
+        <name>product_pricelist: admin</name>
+        <model>product_pricelist</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_pricelist_item_salesman">
+        <name>product_pricelist_item: salesman</name>
+        <model>product_pricelist_item</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_product_pricelist_item_sale_manager">
+        <name>product_pricelist_item: sale_manager</name>
+        <model>product_pricelist_item</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_product_pricelist_item_admin">
+        <name>product_pricelist_item: admin</name>
+        <model>product_pricelist_item</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_account_move_salesman">
+        <name>account_move: salesman</name>
+        <model>account_move</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_move_sale_manager">
+        <name>account_move: sale_manager</name>
+        <model>account_move</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_salesman">
+        <name>account_invoice_line: salesman</name>
+        <model>account_invoice_line</model>
+        <group ref="group_sale_salesman"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+    <access_rule id="access_account_invoice_line_sale_manager">
+        <name>account_invoice_line: sale_manager</name>
+        <model>account_invoice_line</model>
+        <group ref="group_sale_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+    </access_rule>
+</erp>

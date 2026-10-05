@@ -1,0 +1,10 @@
+<erp>
+    <group id="group_sale_salesman">
+        <name>Sales</name>
+        <users ref="base.user_admin"/>
+    </group>
+    <group id="group_sale_manager">
+        <name>Sales manager</name>
+        <users ref="base.user_admin"/>
+    </group>
+</erp>

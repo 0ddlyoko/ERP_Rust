@@ -1,0 +1,133 @@
+<erp>
+    <view id="view_sale_order_list" name="sale_order.list" model="sale_order">
+        <list>
+            <buttons>
+                <button name="action_confirm" type="method" string="Confirm"/>
+                <button name="action_create_invoice" type="method" string="Create invoice"/>
+            </buttons>
+            <field name="name"/>
+            <field name="date_order"/>
+            <field name="partner"/>
+            <field name="user"/>
+            <field name="amount_untaxed" widget="monetary"/>
+            <field name="amount_total" widget="monetary"/>
+            <field name="state"/>
+            <field name="invoice_status"/>
+        </list>
+    </view>
+    <view id="view_sale_order_form" name="sale_order.form" model="sale_order">
+        <form>
+            <buttons>
+                <button name="action_confirm" type="method" string="Confirm" highlight="1"
+                        invisible="state !== 'draft' &amp;&amp; state !== 'sent'"/>
+                <button name="action_create_invoice" type="method" string="Create invoice" highlight="1"
+                        invisible="invoice_status !== 'to_invoice'"/>
+                <button name="action_quotation_send" type="method" string="Mark as sent"
+                        invisible="state !== 'draft'"/>
+                <button name="action_cancel" type="method" string="Cancel"
+                        invisible="state === 'cancel'"/>
+                <button name="action_draft" type="method" string="Set to quotation"
+                        invisible="state !== 'cancel'"/>
+            </buttons>
+            <block>
+                <h1><field name="name" readonly="1"/></h1>
+                <block string="Customer">
+                    <field name="partner" widget="contact" readonly="state === 'sale' || state === 'cancel'"/>
+                    <field name="client_order_ref"/>
+                    <field name="user"/>
+                </block>
+                <block string="Terms">
+                    <field name="date_order" readonly="state === 'sale' || state === 'cancel'"/>
+                    <field name="validity_date" invisible="state === 'sale'"/>
+                    <field name="pricelist" no_create="1" readonly="state === 'sale' || state === 'cancel'"/>
+                    <field name="payment_term" no_create="1"/>
+                    <field name="fiscal_position" no_create="1" readonly="state === 'sale' || state === 'cancel'"/>
+                    <field name="currency" readonly="1"/>
+                </block>
+            </block>
+            <pages>
+                <page name="lines" string="Order lines">
+                    <field name="lines" widget="list" nolabel="1" readonly="state === 'cancel'"/>
+                </page>
+                <page name="invoices" string="Invoices" invisible="state !== 'sale'">
+                    <field name="invoices" nolabel="1" readonly="1"/>
+                </page>
+                <page name="notes" string="Terms and conditions">
+                    <field name="note" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Status">
+                    <field name="state" widget="statusbar" visible="draft,sent,sale" nolabel="1" readonly="1"/>
+                    <field name="invoice_status" readonly="1" invisible="state !== 'sale'"/>
+                </block>
+                <block string="Amounts">
+                    <field name="amount_untaxed" widget="monetary"/>
+                    <field name="amount_tax" widget="monetary"/>
+                    <field name="amount_total" widget="monetary"/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_sale_order_search" name="sale_order.search" model="sale_order">
+        <search>
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="client_order_ref"/>
+            <field name="user"/>
+            <filter name="quotations" string="Quotations" domain='[["state", "in", ["draft", "sent"]]]'/>
+            <filter name="orders" string="Sales orders" domain='[["state", "=", "sale"]]'/>
+            <filter name="to_invoice" string="To invoice" domain='[["invoice_status", "=", "to_invoice"]]'/>
+            <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+        </search>
+    </view>
+    <action id="action_quotations" name="Quotations" model="sale_order" views="list,form"
+            domain='[["state", "in", ["draft", "sent"]]]'/>
+    <action id="action_orders" name="Sales orders" model="sale_order" views="list,form"
+            domain='[["state", "=", "sale"]]'/>
+    <action id="action_orders_to_invoice" name="Orders to invoice" model="sale_order" views="list,form"
+            domain='[["invoice_status", "=", "to_invoice"]]'/>
+    <action id="action_all_orders" name="All orders" model="sale_order" views="list,form"/>
+
+    <view id="view_sale_order_line_list" name="sale_order_line.list" model="sale_order_line">
+        <list>
+            <field name="product"/>
+            <field name="name"/>
+            <field name="product_uom_qty"/>
+            <field name="uom"/>
+            <field name="price_unit"/>
+            <field name="discount"/>
+            <field name="taxes"/>
+            <field name="price_subtotal" widget="monetary"/>
+            <field name="qty_delivered"/>
+            <field name="qty_invoiced"/>
+        </list>
+    </view>
+    <view id="view_sale_order_line_form" name="sale_order_line.form" model="sale_order_line">
+        <form>
+            <block>
+                <block string="Product">
+                    <field name="product"/>
+                    <field name="name" widget="text"/>
+                </block>
+                <block string="Price">
+                    <field name="product_uom_qty"/>
+                    <field name="uom" no_create="1"/>
+                    <field name="price_unit"/>
+                    <field name="discount"/>
+                    <field name="taxes" no_create="1"/>
+                </block>
+                <block string="Progress">
+                    <field name="qty_delivered"/>
+                    <field name="qty_invoiced" readonly="1"/>
+                    <field name="qty_to_invoice" readonly="1"/>
+                </block>
+                <block string="Amounts">
+                    <field name="price_subtotal" widget="monetary"/>
+                    <field name="price_total" widget="monetary"/>
+                </block>
+            </block>
+        </form>
+    </view>
+</erp>
