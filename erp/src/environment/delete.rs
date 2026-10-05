@@ -107,7 +107,7 @@ impl<'mm> Environment<'mm> {
             .filter(|(_, field)| !field.automatic)
             .filter_map(|(field_name, field)| field.inverse.as_ref().map(|_| field_name.as_str()))
             .collect();
-        for field_name in relational_fields {
+        for field_name in &relational_fields {
             self.save_field_to_cache(
                 model_name,
                 field_name,
@@ -117,8 +117,31 @@ impl<'mm> Environment<'mm> {
                 &Update::UpdateIfExists,
             )?;
         }
-        // Flush the mirrors that were just detached, before the rows disappear.
+        // Emptying a many2one was for the mirrors: written to rows about to go, it would break
+        // the NOT NULL of a required one.
+        let many2one_fields: Vec<&str> = relational_fields
+            .iter()
+            .copied()
+            .filter(|field_name| {
+                matches!(
+                    model
+                        .fields
+                        .get(*field_name)
+                        .and_then(|field| field.inverse.as_ref()),
+                    Some(FieldReference {
+                        inverse_field: FieldReferenceType::M2O { .. },
+                        ..
+                    })
+                )
+            })
+            .collect();
+        self.cache
+            .clear_dirty_fields(model_name, &many2one_fields, &ids);
+        // Flush the mirrors that were just detached, before the rows disappear. What they may
+        // have emptied is judged once the rows are gone, which the rows still there would hide.
+        let maybe_emptied = std::mem::take(&mut self.maybe_emptied);
         self.save_all_to_db()?;
+        self.maybe_emptied.extend(maybe_emptied);
 
         let number_of_deletions = self.database.delete(model_name, ids.get_ids_ref())?;
         self.cache.remove_records(model_name, &ids);
