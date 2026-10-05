@@ -86,6 +86,43 @@ impl Product<SingleId> {
 
 #[erp_methods]
 impl Product<MultipleIds> {
+    /// Prices are not negative; the purchase unit measures what the unit does; a barcode
+    /// belongs to one product.
+    pub fn check_product(&self, env: &mut Environment) -> Result<()> {
+        for product in self {
+            let name = product.get_name(env)?.clone();
+            if *product.get_list_price(env)? < Decimal::ZERO
+                || *product.get_standard_price(env)? < Decimal::ZERO
+            {
+                return Err(format!("The prices of {name} cannot be negative").into());
+            }
+            let uom: Uom<SingleId> = product.get_uom(env)?;
+            let purchase_uom: Uom<SingleId> = product.get_purchase_uom(env)?;
+            let uom_category: UomCategory<SingleId> = uom.get_category(env)?;
+            let purchase_category: UomCategory<SingleId> = purchase_uom.get_category(env)?;
+            if uom_category.get_id() != purchase_category.get_id() {
+                return Err(format!(
+                    "The purchase unit of {name} must measure the same thing as its unit"
+                )
+                .into());
+            }
+            if let Some(barcode) = product.get_barcode(env)?.cloned() {
+                let env = &mut *env.sudo();
+                let same = env.count(
+                    "product",
+                    &make_domain!([("barcode", "=", barcode.clone())]),
+                )?;
+                if same > 1 {
+                    return Err(format!(
+                        "The barcode {barcode} is already used by another product"
+                    )
+                    .into());
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// `[REF] Name` when the product has a reference, its name otherwise.
     pub fn compute_display_name(&self, env: &mut Environment) -> Result<()> {
         for product in self {
@@ -142,43 +179,6 @@ impl Product<MultipleIds> {
             sup.call_with(values, env)?;
             self.check_product(env)
         })
-    }
-
-    /// Prices are not negative; the purchase unit measures what the unit does; a barcode
-    /// belongs to one product.
-    pub fn check_product(&self, env: &mut Environment) -> Result<()> {
-        for product in self {
-            let name = product.get_name(env)?.clone();
-            if *product.get_list_price(env)? < Decimal::ZERO
-                || *product.get_standard_price(env)? < Decimal::ZERO
-            {
-                return Err(format!("The prices of {name} cannot be negative").into());
-            }
-            let uom: Uom<SingleId> = product.get_uom(env)?;
-            let purchase_uom: Uom<SingleId> = product.get_purchase_uom(env)?;
-            let uom_category: UomCategory<SingleId> = uom.get_category(env)?;
-            let purchase_category: UomCategory<SingleId> = purchase_uom.get_category(env)?;
-            if uom_category.get_id() != purchase_category.get_id() {
-                return Err(format!(
-                    "The purchase unit of {name} must measure the same thing as its unit"
-                )
-                .into());
-            }
-            if let Some(barcode) = product.get_barcode(env)?.cloned() {
-                let env = &mut *env.sudo();
-                let same = env.count(
-                    "product",
-                    &make_domain!([("barcode", "=", barcode.clone())]),
-                )?;
-                if same > 1 {
-                    return Err(format!(
-                        "The barcode {barcode} is already used by another product"
-                    )
-                    .into());
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Archive the products: they are no longer offered, and stay where they are used.

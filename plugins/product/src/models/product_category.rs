@@ -26,6 +26,23 @@ pub struct ProductCategory<Mode: IdMode> {
 
 #[erp_methods]
 impl ProductCategory<MultipleIds> {
+    /// A category is never its own ancestor.
+    pub fn check_no_cycle(&self, env: &mut Environment) -> Result<()> {
+        for category in self {
+            let mut seen = vec![category.get_id()];
+            let mut parent: ProductCategory<SingleId> = category.get_parent(env)?;
+            while !parent.is_empty() {
+                if seen.contains(&parent.get_id()) {
+                    let name = category.get_name(env)?.clone();
+                    return Err(format!("The category {name} cannot be placed under itself").into());
+                }
+                seen.push(parent.get_id());
+                parent = parent.get_parent(env)?;
+            }
+        }
+        Ok(())
+    }
+
     /// The names from the top family down, `All / Saleable`.
     pub fn compute_complete_name(&self, env: &mut Environment) -> Result<()> {
         for category in self {
@@ -67,23 +84,6 @@ impl ProductCategory<MultipleIds> {
             ProductCategory::<MultipleIds>::from_ids(next.clone(), env)
                 .compute_complete_name(env)?;
             level = next;
-        }
-        Ok(())
-    }
-
-    /// A category is never its own ancestor.
-    pub fn check_no_cycle(&self, env: &mut Environment) -> Result<()> {
-        for category in self {
-            let mut seen = vec![category.get_id()];
-            let mut parent: ProductCategory<SingleId> = category.get_parent(env)?;
-            while !parent.is_empty() {
-                if seen.contains(&parent.get_id()) {
-                    let name = category.get_name(env)?.clone();
-                    return Err(format!("The category {name} cannot be placed under itself").into());
-                }
-                seen.push(parent.get_id());
-                parent = parent.get_parent(env)?;
-            }
         }
         Ok(())
     }
