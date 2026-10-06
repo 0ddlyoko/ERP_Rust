@@ -62,6 +62,16 @@
             </side>
         </form>
     </view>
+    <view id="view_picking_kanban" name="stock_picking.kanban" model="stock_picking">
+        <kanban default_group_by="state">
+            <field name="name"/>
+            <field name="partner"/>
+            <field name="scheduled_date"/>
+            <field name="origin"/>
+            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
+                   decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+        </kanban>
+    </view>
     <view id="view_picking_search" name="stock_picking.search" model="stock_picking">
         <search>
             <field name="name"/>
@@ -78,12 +88,12 @@
             <filter name="by_day" string="Scheduled date" group_by="scheduled_date:day"/>
         </search>
     </view>
-    <action id="action_pickings" name="Transfers" model="stock_picking" views="list,form"/>
-    <action id="action_receipts" name="Receipts" model="stock_picking" views="list,form"
+    <action id="action_pickings" name="Transfers" model="stock_picking" views="list,kanban,form"/>
+    <action id="action_receipts" name="Receipts" model="stock_picking" views="list,kanban,form"
             domain='[["picking_type.code", "=", "incoming"]]'/>
-    <action id="action_deliveries" name="Deliveries" model="stock_picking" views="list,form"
+    <action id="action_deliveries" name="Deliveries" model="stock_picking" views="list,kanban,form"
             domain='[["picking_type.code", "=", "outgoing"]]'/>
-    <action id="action_internal" name="Internal transfers" model="stock_picking" views="list,form"
+    <action id="action_internal" name="Internal transfers" model="stock_picking" views="list,kanban,form"
             domain='[["picking_type.code", "=", "internal"]]'/>
 
     <view id="view_move_list" name="stock_move.list" model="stock_move">

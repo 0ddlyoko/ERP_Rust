@@ -55,6 +55,15 @@
             </side>
         </form>
     </view>
+    <view id="view_contact_kanban" name="contact.kanban" model="contact">
+        <kanban>
+            <field name="complete_name"/>
+            <field name="function"/>
+            <field name="email"/>
+            <field name="phone"/>
+            <field name="city"/>
+        </kanban>
+    </view>
     <view id="view_contact_search" name="contact.search" model="contact">
         <search>
             <field name="complete_name"/>
@@ -70,7 +79,7 @@
             <filter name="by_kind" string="Company" group_by="is_company"/>
         </search>
     </view>
-    <action id="action_contacts" name="Contacts" model="contact" views="list,form"/>
+    <action id="action_contacts" name="Contacts" model="contact" views="kanban,list,form"/>
 
     <view id="view_contact_tag_list" name="contact_tag.list" model="contact_tag">
         <list>
