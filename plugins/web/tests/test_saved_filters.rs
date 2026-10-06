@@ -82,7 +82,10 @@ fn test_searches_stay_their_users() -> Result<()> {
     let mut values = MapOfFields::default();
     values.insert("login", "clerk");
     values.insert("name", "Clerk");
-    let clerk = env.sudo().create_records("users", vec![values])?.get_ids_ref()[0];
+    let clerk = env
+        .sudo()
+        .create_records("users", vec![values])?
+        .get_ids_ref()[0];
     let saved = call(
         &mut env.as_user(admin),
         "save",

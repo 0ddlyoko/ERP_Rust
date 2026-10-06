@@ -1,0 +1,59 @@
+<templates>
+    <t t-name="web.KanbanView">
+        <div class="o_kanban_view">
+            <div class="o_control_panel">
+                <button type="button" class="o_button_primary" t-on-click="create">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    New
+                </button>
+                <Suspense>
+                    <t t-set-slot="fallback">
+                        <label class="o_search"><input type="search" aria-label="Search" placeholder="Search…" disabled=""/></label>
+                    </t>
+                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets"/>
+                </Suspense>
+            </div>
+            <Suspense>
+                <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
+                <div t-if="grouped" class="o_kanban_lanes">
+                    <section t-foreach="lanes" t-as="lane" t-key="lane.key" class="o_kanban_lane">
+                        <header class="o_kanban_lane_header">
+                            <span class="o_kanban_lane_title">{{ lane.label }}</span>
+                            <span class="o_list_group_count">{{ lane.count }}</span>
+                        </header>
+                        <t t-foreach="lane.records" t-as="record" t-key="record.id">
+                            <KanbanCard record="record" model="props.resModel" title="title" details="details"
+                                    widgetFor="cardWidget" onOpen="open"/>
+                        </t>
+                        <p t-if="lane.count > lane.records.length" class="o_kanban_more">
+                            {{ lane.count - lane.records.length }} more in the list
+                        </p>
+                    </section>
+                    <p t-if="lanes.length === 0" class="o_kanban_empty">No records.</p>
+                </div>
+                <div t-else="" class="o_kanban_grid">
+                    <t t-foreach="records" t-as="record" t-key="record.id">
+                        <KanbanCard record="record" model="props.resModel" title="title" details="details"
+                                    widgetFor="cardWidget" onOpen="open"/>
+                    </t>
+                    <p t-if="records.length === 0" class="o_kanban_empty">No records.</p>
+                </div>
+            </Suspense>
+        </div>
+    </t>
+
+    <t t-name="web.KanbanCard">
+        <article class="o_kanban_card" tabindex="0" t-on-click="() => props.onOpen(props.record)"
+                 t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; props.onOpen(props.record)">
+            <div t-if="props.title" class="o_kanban_card_title">
+                <t t-component="props.widgetFor(props.title)" record="props.record" model="props.model"
+                   name="props.title.name" field="props.title.field" attrs="props.title.attrs"/>
+            </div>
+            <div t-foreach="props.details" t-as="column" t-key="column.name" t-att-class="fieldClass(column)">
+                <t t-component="props.widgetFor(column)" record="props.record" model="props.model" name="column.name"
+                   field="column.field" attrs="column.attrs"/>
+            </div>
+        </article>
+    </t>
+</templates>

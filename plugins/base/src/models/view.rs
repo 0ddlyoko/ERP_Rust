@@ -156,8 +156,14 @@ impl Arch<'_> {
         if root.name == "list" {
             self.decorations(root)?;
         }
+        if root.name == "kanban"
+            && let Some(field) = root.attribute("default_group_by")
+        {
+            self.known(field)?;
+        }
         let allowed: &[&str] = match root.name.as_str() {
             "list" => &["field", "buttons"],
+            "kanban" => &["field"],
             "search" => &["field", "filter"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",

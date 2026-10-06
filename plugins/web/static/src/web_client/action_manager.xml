@@ -15,7 +15,25 @@
                     </t>
                     <span t-else="" class="o_breadcrumb_current">{{ props.action.name }}</span>
                 </nav>
-                <h1 t-if="!isRecord" class="o_action_title">{{ props.action.name }}</h1>
+                <div t-if="!isRecord" class="o_action_title_row">
+                    <h1 class="o_action_title">{{ props.action.name }}</h1>
+                    <div t-if="switchable.length > 1" class="o_view_switcher" role="group" aria-label="Views">
+                        <button t-foreach="switchable" t-as="option" t-key="option" type="button"
+                                t-att-class="{ o_view_switch: true, active: option === kind }"
+                                t-att-aria-pressed="option === kind ? 'true' : 'false'"
+                                t-att-title="option === 'kanban' ? 'Kanban' : 'List'" t-on-click="() => switchTo(option)">
+                            <svg t-if="option === 'kanban'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/>
+                                <rect x="17" y="4" width="4" height="13" rx="1"/>
+                            </svg>
+                            <svg t-else="" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </header>
             <t t-if="view">
                 <t t-component="view" t-key="viewKey" resModel="props.action.model"

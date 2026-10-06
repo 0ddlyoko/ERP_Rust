@@ -59,6 +59,15 @@ export class ActionManager extends Component {
         return asked !== null && offered.includes(asked) ? asked : (offered[0] ?? null);
     }
 
+    /** The views of several records the action offers, to switch between: list, kanban. */
+    get switchable(): string[] {
+        return this.props.action.views.filter((kind) => kind !== "form" && viewKinds.has(kind));
+    }
+
+    switchTo(kind: string): void {
+        this.router.go({ ...this.router.route, view: kind, id: null });
+    }
+
     @computed get view(): ComponentClass | null {
         return this.kind === null ? null : viewKinds.get(this.kind);
     }

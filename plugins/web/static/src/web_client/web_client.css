@@ -748,3 +748,41 @@ button {
     background: color-mix(in oklch, var(--o-accent) 12%, white);
     color: var(--o-accent-strong);
 }
+
+/* Switching between the views of several records */
+
+.o_action_title_row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.o_view_switcher {
+    display: flex;
+    border: 1px solid var(--o-input-border);
+    border-radius: var(--o-radius-control);
+    background: var(--o-surface);
+    overflow: hidden;
+}
+
+.o_view_switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--o-muted);
+}
+
+.o_view_switch + .o_view_switch {
+    border-left: 1px solid var(--o-input-border);
+}
+
+.o_view_switch.active {
+    background: color-mix(in oklch, var(--o-accent) 12%, white);
+    color: var(--o-accent-strong);
+}

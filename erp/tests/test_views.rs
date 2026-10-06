@@ -350,7 +350,8 @@ fn test_what_a_search_may_not_hold_is_refused() -> Result<()> {
     Ok(())
 }
 
-/// A decoration names a colour the client knows, and reads fields of the model.
+/// A decoration names a colour the client knows, and reads fields of the model; a kanban holds
+/// fields, gathered by one the model has.
 #[test]
 fn test_what_a_list_may_not_decorate_is_refused() -> Result<()> {
     for (list, expected) in [
@@ -365,6 +366,14 @@ fn test_what_a_list_may_not_decorate_is_refused() -> Result<()> {
         (
             r#"<list><field name="name" decoration-danger="logn === 'x'"/></list>"#,
             "reads \"logn\"",
+        ),
+        (
+            r#"<kanban default_group_by="stat"><field name="name"/></kanban>"#,
+            "\"stat\"",
+        ),
+        (
+            r#"<kanban><block/></kanban>"#,
+            "<block> cannot stand in <kanban>",
         ),
     ] {
         let data: &'static str = Box::leak(
