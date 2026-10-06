@@ -46,6 +46,13 @@ impl Database for DatabaseType {
         }
     }
 
+    fn sync_indexes(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.sync_indexes(model),
+            DatabaseType::Postgres(postgres) => postgres.sync_indexes(model),
+        }
+    }
+
     fn find_ids(
         &mut self,
         model_name: &str,

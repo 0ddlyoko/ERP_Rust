@@ -6,7 +6,7 @@ use crate::database::{Database, ErrorType, FieldType, SearchedRow};
 use crate::model::ModelManager;
 use erp_internal_types::{FinalInternalField, FinalInternalModel};
 use erp_search::{SearchOptions, SearchType};
-use erp_types::field::{FieldReference, FieldReferenceType};
+use erp_types::field::{FieldIndex, FieldKind, FieldReference, FieldReferenceType};
 use erp_types::model::MapOfFields;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -157,6 +157,44 @@ impl PostgresDatabase {
                 Err(error.into())
             }
         }
+    }
+
+    /// Index `column` of `table`, unless it already is.
+    fn create_index(&mut self, table: &str, column: &str, index: FieldIndex) -> Result<()> {
+        let name = constraint_name(&format!("{table}_{column}_index"));
+        let qualified = self.qualified_relation(table);
+        let plain = format!(
+            "CREATE INDEX IF NOT EXISTS {} ON {qualified} ({})",
+            quote_ident(&name),
+            quote_ident(column)
+        );
+        if index == FieldIndex::Btree {
+            return Ok(self.client.batch_execute(&plain)?);
+        }
+        if let Err(error) = self.create_trigram_index(&name, &qualified, column) {
+            tracing::warn!(%error, table, column, "No trigram index: a plain one instead");
+            self.client.batch_execute(&plain)?;
+        }
+        Ok(())
+    }
+
+    /// The trigram index, with `pg_trgm` installed first if it is not — in `public`, so that no
+    /// schema of ours holds it and dropping one cannot take it, and every trigram index, away.
+    /// Its operator class is named in the schema it lives in, which `search_path` leaves out.
+    fn create_trigram_index(&mut self, name: &str, qualified: &str, column: &str) -> Result<()> {
+        self.execute_or_undo("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")?;
+        let row = self.client.query_one(
+            "SELECT \"nspname\" FROM \"pg_extension\" JOIN \"pg_namespace\" \
+             ON \"pg_namespace\".\"oid\" = \"extnamespace\" WHERE \"extname\" = 'pg_trgm'",
+            &[],
+        )?;
+        let extension_schema: String = row.try_get(0)?;
+        self.execute_or_undo(&format!(
+            "CREATE INDEX IF NOT EXISTS {} ON {qualified} USING gin ({} {}.gin_trgm_ops)",
+            quote_ident(name),
+            quote_ident(column),
+            quote_ident(&extension_schema)
+        ))
     }
 
     fn existing_columns(&mut self, table_name: &str) -> Result<HashSet<String>> {
@@ -320,6 +358,43 @@ impl Database for PostgresDatabase {
                 );
                 self.client.batch_execute(&statement)?;
             }
+        }
+        Ok(())
+    }
+
+    /// Index the columns asked for, every many2one but the automatic ones, and the far side of
+    /// each many2many — its near side leads the table's primary key already.
+    ///
+    /// A trigram index needs `pg_trgm`; without the right to install it, a plain one is made and
+    /// the search stays correct, only slower.
+    fn sync_indexes(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        for (field_name, field) in &model.fields {
+            if !field.stored {
+                continue;
+            }
+            if let Some(FieldReference {
+                inverse_field:
+                    FieldReferenceType::M2M {
+                        relation,
+                        target_column,
+                        ..
+                    },
+                ..
+            }) = &field.inverse
+            {
+                self.create_index(relation, target_column, FieldIndex::Btree)?;
+                continue;
+            }
+            let index = match field.index {
+                Some(index) => index,
+                None if field.kind == FieldKind::Ref && !field.automatic => FieldIndex::Btree,
+                None => continue,
+            };
+            let index = match field.kind {
+                FieldKind::String => index,
+                _ => FieldIndex::Btree,
+            };
+            self.create_index(&model.table_name, field_name, index)?;
         }
         Ok(())
     }

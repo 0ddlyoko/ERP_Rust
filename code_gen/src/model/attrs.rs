@@ -116,6 +116,8 @@ pub enum AllowedFieldAttrs {
     Domain(Ident, LitStr),
     /// Says a many2one always points to a record.
     Required(Ident),
+    /// Says the column is indexed: `index`, or `index = "trigram"` for a text searched anywhere.
+    Index(Ident, Option<LitStr>),
 }
 
 static VALID_FIELD_STRINGS: &[&str] = &[
@@ -134,6 +136,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "ondelete",
     "domain",
     "required",
+    "index",
 ];
 
 impl Parse for AllowedFieldAttrs {
@@ -193,6 +196,14 @@ impl Parse for AllowedFieldAttrs {
                 parse_eq(input, r#"domain = "[[\"active\", \"=\", true]]""#)?,
             )),
             "required" => Ok(AllowedFieldAttrs::Required(name)),
+            "index" => {
+                let kind = if input.peek(Eq) {
+                    Some(parse_eq(input, "index = \"trigram\"")?)
+                } else {
+                    None
+                };
+                Ok(AllowedFieldAttrs::Index(name, kind))
+            }
             _ => Err(gen_unknown_key_error(
                 name.span(),
                 &name_str,
@@ -220,6 +231,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::OnDelete(ident, _) => ident.span(),
             AllowedFieldAttrs::Domain(ident, _) => ident.span(),
             AllowedFieldAttrs::Required(ident) => ident.span(),
+            AllowedFieldAttrs::Index(ident, _) => ident.span(),
         }
     }
 }

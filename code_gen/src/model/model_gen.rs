@@ -421,6 +421,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             is_owned,
             on_delete,
             domain,
+            index,
             ..
         } = f;
 
@@ -596,6 +597,11 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             None => quote! { None },
         };
 
+        let index = match index.as_deref() {
+            Some(key) => quote! { erp::types::field::FieldIndex::from_key(#key) },
+            None => quote! { None },
+        };
+
         quote! {
             {
                 // Yep, I don't know how to call _get_model_name() without this line
@@ -614,6 +620,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     owned: #is_owned,
                     on_delete: #on_delete,
                     domain: #domain,
+                    index: #index,
                     compute: #compute,
                     field_ref: #field_reference,
                     selection: #selection,

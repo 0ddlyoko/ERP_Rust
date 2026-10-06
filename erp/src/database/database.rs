@@ -121,6 +121,12 @@ pub trait Database {
         Ok(())
     }
 
+    /// Index what a model's records are looked up by: what its fields ask for, its many2ones,
+    /// and the far side of its many2manys.
+    fn sync_indexes(&mut self, _model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        Ok(())
+    }
+
     /// Delete the given records, and return how many rows were actually removed.
     ///
     /// Ids that are not present are skipped rather than reported, mirroring `update`.

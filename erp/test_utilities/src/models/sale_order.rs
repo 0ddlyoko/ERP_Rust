@@ -18,8 +18,9 @@ pub enum SaleOrderState {
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     pub id: Mode,
-    #[erp(default = "0ddlyoko")]
+    #[erp(default = "0ddlyoko", index = "trigram")]
     name: String,
+    #[erp(index)]
     state: SaleOrderState,
     #[erp(compute = "compute_total_price", depends = ["lines.total_price"], stored)]
     total_price: i32,

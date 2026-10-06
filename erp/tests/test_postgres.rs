@@ -84,6 +84,7 @@ fn postgres_app(schema: &str) -> Option<Application> {
     for name in names {
         let model = app.model_manager.get_model(name);
         database.sync_constraints(model).ok()?;
+        database.sync_indexes(model).ok()?;
     }
     drop(database);
     Some(app)
@@ -130,6 +131,47 @@ fn test_schema_is_generated_from_the_models() -> Result<()> {
     assert_eq!(by_name.get("amount_untaxed"), Some(&"numeric"));
     assert_eq!(by_name.get("due_date"), Some(&"date"));
     assert_eq!(by_name.get("created_at"), Some(&"timestamp with time zone"));
+    Ok(())
+}
+
+/// What records are looked up by is indexed: a name searched anywhere in it by trigrams, a state
+/// plainly, a many2one, and the far side of a many2many; the automatic many2ones are not.
+#[test]
+fn test_lookups_are_indexed() -> Result<()> {
+    let app = app_or_skip!("t_indexes");
+    let mut database = app.create_new_database()?;
+    let DatabaseType::Postgres(connection) = &mut database else {
+        unreachable!()
+    };
+    let indexes: HashMap<String, String> = connection
+        .client
+        .query(
+            "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 't_indexes'",
+            &[],
+        )?
+        .iter()
+        .map(|row| (row.get(0), row.get(1)))
+        .collect();
+    let definition = |name: &str| {
+        indexes
+            .get(name)
+            .unwrap_or_else(|| panic!("{name} in {indexes:?}"))
+            .clone()
+    };
+    let name = definition("sale_order_name_index");
+    assert!(
+        name.contains("gin") && name.contains("gin_trgm_ops") || name.contains("btree"),
+        "{name}"
+    );
+    assert!(definition("sale_order_state_index").contains("btree"));
+    assert!(definition("sale_order_line_order_index").contains("(\"order\")"));
+    assert!(definition("sale_order_tag_rel_tag_id_index").contains("tag_id"));
+    assert!(!indexes.contains_key("sale_order_create_uid_index"));
+
+    drop(database);
+    let mut again = Application::new(config_for("t_indexes"));
+    again.register_plugin(Box::new(test_utilities::TestLibPlugin {}))?;
+    again.load_plugin("test_lib_plugin")?;
     Ok(())
 }
 

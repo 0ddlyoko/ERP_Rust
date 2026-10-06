@@ -1,4 +1,6 @@
-use crate::field::{FieldCompute, FieldKind, FieldReference, FieldType, OnDelete, SelectionFamily};
+use crate::field::{
+    FieldCompute, FieldIndex, FieldKind, FieldReference, FieldType, OnDelete, SelectionFamily,
+};
 
 #[derive(Default)]
 pub struct FieldDescriptor {
@@ -38,4 +40,6 @@ pub struct FieldDescriptor {
     /// Which records a relation offers to point to, as a JSON domain; `None` leaves it as another
     /// struct said, or every record when none did.
     pub domain: Option<&'static str>,
+    /// How the column is indexed; `None` leaves it as another struct said, or unindexed.
+    pub index: Option<FieldIndex>,
 }

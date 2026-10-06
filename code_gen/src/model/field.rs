@@ -4,12 +4,12 @@ use crate::model::util::{
     gen_multiple_ids_without_source, gen_option_not_one_generic, gen_password_has_no_default,
     gen_reference_not_two_generic, gen_wrong_default_value,
 };
-use erp_types::field::{FieldType, OnDelete};
+use erp_types::field::{FieldIndex, FieldType, OnDelete};
 use proc_macro2::{Ident, Span};
 use syn::spanned::Spanned;
 use syn::{
-    AngleBracketedGenericArguments, Field, GenericArgument, Lit, Path, PathArguments, PathSegment,
-    Result, Type, TypePath,
+    AngleBracketedGenericArguments, Field, GenericArgument, Lit, LitStr, Path, PathArguments,
+    PathSegment, Result, Type, TypePath,
 };
 
 #[allow(dead_code)]
@@ -40,6 +40,7 @@ pub struct FieldGen {
     pub is_owned: bool,
     pub on_delete: Option<String>,
     pub domain: Option<String>,
+    pub index: Option<String>,
 }
 
 impl FieldGen {
@@ -73,6 +74,7 @@ impl FieldGen {
         let mut on_delete = None;
         let mut domain = None;
         let mut required = None;
+        let mut index = None;
 
         for attr in parse_attributes(attrs)? {
             match attr.item {
@@ -202,6 +204,19 @@ impl FieldGen {
                         ));
                     }
                     on_delete = Some((ident, key));
+                }
+                AllowedFieldAttrs::Index(_, kind) => {
+                    let key = kind.as_ref().map_or("btree".to_string(), LitStr::value);
+                    if FieldIndex::from_key(&key).is_none() {
+                        return Err(syn::Error::new(
+                            kind.as_ref().map_or(Span::call_site(), LitStr::span),
+                            format!(
+                                "\"{key}\" is not a kind of index: {}",
+                                FieldIndex::KEYS.join(", ")
+                            ),
+                        ));
+                    }
+                    index = Some(key);
                 }
                 AllowedFieldAttrs::Domain(ident, value) => {
                     let text = value.value();
@@ -380,6 +395,7 @@ impl FieldGen {
             is_owned: owned.is_some(),
             on_delete: on_delete.map(|(_, key)| key),
             domain: domain.map(|(_, text)| text),
+            index,
         })
     }
 }

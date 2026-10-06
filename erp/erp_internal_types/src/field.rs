@@ -1,5 +1,6 @@
 use erp_types::field::{
-    FieldCompute, FieldDepend, FieldKind, FieldReference, FieldType, OnDelete, SelectionFamily,
+    FieldCompute, FieldDepend, FieldIndex, FieldKind, FieldReference, FieldType, OnDelete,
+    SelectionFamily,
 };
 use std::collections::HashSet;
 
@@ -63,6 +64,8 @@ pub struct FinalInternalField {
     /// Which records a relation offers to point to, as a JSON domain: as the last struct saying
     /// so asked. Only what a client offers; nothing checks what is written against it.
     pub domain: Option<&'static str>,
+    /// How the column is indexed: as the last struct saying so asked.
+    pub index: Option<FieldIndex>,
     pub automatic: bool,
     is_init: bool,
 }
@@ -88,6 +91,7 @@ impl FinalInternalField {
             owned: false,
             on_delete: OnDelete::default(),
             domain: None,
+            index: None,
             automatic: false,
             is_init: false,
         }

@@ -483,6 +483,7 @@ impl Application {
         for model_name in &model_names {
             let model = self.model_manager.try_get_model(model_name)?;
             database.sync_constraints(model)?;
+            database.sync_indexes(model)?;
         }
 
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the

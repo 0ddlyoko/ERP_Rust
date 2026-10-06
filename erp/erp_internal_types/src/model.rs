@@ -98,10 +98,11 @@ impl FinalInternalModel {
                 domain: field.domain,
             };
             self.register_internal_field(&internal_field);
-            if field.editable
-                && let Some(final_field) = self.fields.get_mut(&field_name)
-            {
-                final_field.editable = true;
+            if let Some(final_field) = self.fields.get_mut(&field_name) {
+                final_field.editable |= field.editable;
+                if field.index.is_some() {
+                    final_field.index = field.index;
+                }
             }
             final_fields.insert(field_name, internal_field);
         }
