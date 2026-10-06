@@ -14,7 +14,7 @@ use erp_types::field::FieldCompute;
 use erp_types::field::MultipleIds;
 use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use erp_types::field::{FieldKind, FieldKinds, FieldType, Selection};
-use erp_types::method::MethodFn;
+use erp_types::method::{MethodFn, Receiver};
 use std::collections::{HashMap, HashSet};
 
 /// Work a plugin asks to do once any plugin has loaded its data, given that plugin's name.
@@ -164,6 +164,7 @@ impl ModelManager {
         model_name: &str,
         method_name: &str,
         link: MethodFn<A, R>,
+        receiver: Receiver,
         plugin_name: &str,
     ) where
         A: 'static,
@@ -173,7 +174,7 @@ impl ModelManager {
             .entry(model_name.to_string())
             .or_insert_with(|| FinalInternalModel::new(model_name))
             .methods
-            .register(model_name, method_name, link, plugin_name);
+            .register(model_name, method_name, link, receiver, plugin_name);
     }
 
     /// Execute some final modification when models are registered, like:

@@ -18,7 +18,12 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// Declares the overridable methods an `impl` block contributes.
 ///
 /// Needed because a derive macro sees only the struct: the methods live in an `impl` block it
-/// never gets to look at. Methods without an `#[erp(...)]` attribute pass through untouched.
+/// never gets to look at. Every method of the block is overridable by name, by any plugin.
+///
+/// On `Model<MultipleIds>`, a method taking `&self` works on records; on `Model<SingleId>`, on
+/// exactly one. A method without `self` works on the model itself — Odoo's `@api.model` — and is
+/// called as `Model::<MultipleIds>::name(env, …)`. A model may have a block of each kind; an
+/// override declares its method on what the one it overrides works on.
 #[proc_macro_attribute]
 pub fn erp_methods(_attr: TokenStream, item: TokenStream) -> TokenStream {
     methods::expand(parse_macro_input!(item as ItemImpl))

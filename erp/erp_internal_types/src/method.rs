@@ -1,4 +1,4 @@
-use erp_types::method::MethodFn;
+use erp_types::method::{MethodFn, Receiver};
 use std::any::{Any, TypeId, type_name};
 use std::collections::HashMap;
 use std::fmt;
@@ -40,15 +40,23 @@ pub struct MethodChain {
     signature: Signature,
     /// Plugins that contributed, in registration order, to name them in that error.
     contributors: Vec<String>,
+    /// What the method works on, which a contributor cannot change either.
+    receiver: Receiver,
 }
 
 impl MethodChain {
-    fn new<A: 'static, R: 'static>() -> Self {
+    fn new<A: 'static, R: 'static>(receiver: Receiver) -> Self {
         Self {
             links: Box::new(Vec::<MethodFn<A, R>>::new()),
             signature: Signature::of::<A, R>(),
             contributors: Vec::new(),
+            receiver,
         }
+    }
+
+    /// What the method works on.
+    pub fn receiver(&self) -> Receiver {
+        self.receiver
     }
 
     fn holds<A: 'static, R: 'static>(&self) -> bool {
@@ -79,19 +87,30 @@ pub struct MethodRegistry {
 impl MethodRegistry {
     /// Add one implementation, ahead of the ones registered before it.
     ///
-    /// Panics when a contributor disagrees on the signature. It happens at startup, with both
-    /// plugin names in hand, rather than at the first call.
+    /// Panics when a contributor disagrees on the signature, or on what the method works on —
+    /// records, one record, the model. It happens at startup, with both plugin names in hand,
+    /// rather than at the first call.
     pub fn register<A: 'static, R: 'static>(
         &mut self,
         model_name: &str,
         method_name: &str,
         link: MethodFn<A, R>,
+        receiver: Receiver,
         plugin_name: &str,
     ) {
         let chain = self
             .chains
             .entry(method_name.to_string())
-            .or_insert_with(MethodChain::new::<A, R>);
+            .or_insert_with(|| MethodChain::new::<A, R>(receiver));
+        if chain.receiver != receiver {
+            panic!(
+                "Method \"{model_name}\".\"{method_name}\" is declared on two different receivers.\n  \
+                 {} declared it on {}\n  {plugin_name} declares it on {receiver}\n\
+                 Overriding a method means declaring it on what the one already declared works on.",
+                chain.contributors.join(", "),
+                chain.receiver,
+            );
+        }
 
         let Some(links) = chain.links.downcast_mut::<Vec<MethodFn<A, R>>>() else {
             panic!(

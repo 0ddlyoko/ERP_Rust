@@ -1,7 +1,7 @@
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds};
+use erp::types::field::{IdMode, MultipleIds, SingleId};
 
 /// Extends `machine` from another crate, and overrides its rate.
 #[derive(Model)]
@@ -15,7 +15,22 @@ pub struct MachineDiscounted<Mode: IdMode> {
 }
 
 #[erp_methods]
+impl MachineDiscounted<SingleId> {
+    /// Overrides a method of one record: says the machine is discounted, after what the one
+    /// below said.
+    pub fn label(&self, env: &mut Environment, sup: Super) -> Result<String> {
+        let label = sup.call(env)?;
+        Ok(format!("{label} (discounted)"))
+    }
+}
+
+#[erp_methods]
 impl MachineDiscounted<MultipleIds> {
+    /// Overrides a method of the model: new machines start 10 lower.
+    pub fn standard_rate(env: &mut Environment, sup: Super) -> Result<i32> {
+        Ok(sup.call(env)? - 10)
+    }
+
     /// Same name, same signature, same model: that alone puts it ahead of the one
     /// `test_lib_plugin` declared, which `sup` then reaches.
     pub fn daily_rate(&self, env: &mut Environment, sup: Super) -> Result<i32> {

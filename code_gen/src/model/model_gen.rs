@@ -691,13 +691,19 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         }
     };
 
-    // Always emitted, so that registering a model is enough to register its methods too. The
-    // body delegates to `#[erp_methods]` when the struct declares any, which is also what makes
-    // the two attributes have to agree: `methods` without the block fails to resolve the
-    // function, and the block without `methods` fails its own assertion.
+    // Always emitted, so that registering a model is enough to register its methods too: those of
+    // its `#[erp_methods]` blocks on `MultipleIds` and on `SingleId`, whichever it has. A block
+    // without `methods` on the struct fails its own assertion.
     let (register_methods, declares_methods) = if has_methods {
         (
-            quote! { Self::__erp_register_methods(model_manager, plugin_name) },
+            quote! {
+                #[allow(unused_imports)]
+                use erp::model::{NoBlock as _, RegisterBlock as _};
+                (&erp::model::MethodsProbe::<#struct_name_ident<erp::types::field::MultipleIds>>::new())
+                    .register(model_manager, plugin_name);
+                (&erp::model::MethodsProbe::<#struct_name_ident<erp::types::field::SingleId>>::new())
+                    .register(model_manager, plugin_name);
+            },
             quote! {
                 impl erp::model::DeclaresMethods
                     for #struct_name_ident<erp::types::field::MultipleIds> {}

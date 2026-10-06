@@ -1,7 +1,7 @@
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, Password};
+use erp::types::field::{IdMode, MultipleIds, Password, SingleId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static RUNNING: AtomicUsize = AtomicUsize::new(0);
@@ -26,7 +26,25 @@ pub struct Machine<Mode: IdMode> {
 }
 
 #[erp_methods]
+impl Machine<SingleId> {
+    /// How one machine is named in a list: its name and its rate. On one record, overridable as
+    /// any other.
+    #[erp(rpc)]
+    pub fn label(&self, env: &mut Environment) -> Result<String> {
+        let name = self.get_name(env)?.cloned().unwrap_or_default();
+        Ok(format!("{name} at {}", self.get_base_rate(env)?))
+    }
+}
+
+#[erp_methods]
 impl Machine<MultipleIds> {
+    /// The rate a new machine starts at: a method of the model, called without records.
+    #[erp(rpc)]
+    pub fn standard_rate(env: &mut Environment) -> Result<i32> {
+        let _ = env;
+        Ok(100)
+    }
+
     /// What one day of this machine costs.
     ///
     /// Declares no cursor: it ends the chain and has nothing to call down to. An override still

@@ -1,8 +1,18 @@
 use syn::spanned::Spanned;
 use syn::{Error, FnArg, ImplItemFn, Pat, PatType, Result, ReturnType, Type};
 
+/// What a method works on: the records of a `Model<MultipleIds>` block, the one record of a
+/// `Model<SingleId>` block, or — taking no `self` — the model itself.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MethodReceiver {
+    Records,
+    Record,
+    Model,
+}
+
 pub struct ParsedMethod {
     pub name: syn::Ident,
+    pub receiver: MethodReceiver,
     /// Arguments between the environment and the `super` cursor.
     pub args: Vec<(syn::Ident, Type)>,
     /// Type the method yields, unwrapped from its `Result`.
@@ -54,19 +64,24 @@ pub fn read_rpc_attribute(item: &ImplItemFn) -> Result<bool> {
 
 /// Split a method into the pieces the generator needs.
 ///
-/// The shape is positional — `&self`, the environment, the declared arguments, and optionally a
-/// `sup: Super` cursor last — because every contributor to a chain has to agree on it, and
-/// position is what lets the macro tell the arguments from the rest.
-pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
+/// The shape is positional — `&self` if the method works on records, the environment, the
+/// declared arguments, and optionally a `sup: Super` cursor last — because every contributor to a
+/// chain has to agree on it, and position is what lets the macro tell the arguments from the rest.
+/// `&self` works on the records of the block — several on `Model<MultipleIds>`, one on
+/// `Model<SingleId>` — and a method without it works on the model.
+pub fn parse_method(item: ImplItemFn, block: MethodReceiver) -> Result<ParsedMethod> {
     let is_rpc = read_rpc_attribute(&item)?;
-    let signature_help = "A method of an #[erp_methods] block takes &self, an &mut Environment, \
-                          its own arguments, and may end with a `sup: Super` cursor";
+    let signature_help = "A method of an #[erp_methods] block takes &self — or nothing, to work \
+                          on the model — an &mut Environment, its own arguments, and may end with \
+                          a `sup: Super` cursor";
     let inputs: Vec<&FnArg> = item.sig.inputs.iter().collect();
 
-    let Some(FnArg::Receiver(_)) = inputs.first() else {
-        return Err(Error::new(item.sig.span(), signature_help));
+    let (receiver, env_at) = match inputs.first() {
+        Some(FnArg::Receiver(_)) => (block, 1),
+        Some(FnArg::Typed(_)) => (MethodReceiver::Model, 0),
+        None => return Err(Error::new(item.sig.span(), signature_help)),
     };
-    if inputs.len() < 2 {
+    if inputs.len() < env_at + 1 {
         return Err(Error::new(item.sig.span(), signature_help));
     }
 
@@ -78,7 +93,7 @@ pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
     };
 
     let mut args = Vec::new();
-    for input in &inputs[2..last_arg] {
+    for input in &inputs[env_at + 1..last_arg] {
         let FnArg::Typed(PatType { pat, ty, .. }) = input else {
             return Err(Error::new(input.span(), signature_help));
         };
@@ -95,6 +110,7 @@ pub fn parse_method(item: ImplItemFn) -> Result<ParsedMethod> {
     let ret = unwrap_result(&item.sig.output)?;
     Ok(ParsedMethod {
         name: item.sig.ident.clone(),
+        receiver,
         args,
         ret,
         is_rpc,

@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::http::{Request, Response};
 use erp_internal_types::MethodRegistry;
-use erp_types::method::MethodFn;
+use erp_types::method::{MethodFn, Receiver};
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -176,7 +176,7 @@ impl ControllerRegistry {
         self.methods
             .entry(controller.to_string())
             .or_default()
-            .register(controller, method, link, &plugin);
+            .register(controller, method, link, Receiver::Model, &plugin);
     }
 
     /// Say which URL a controller method answers.

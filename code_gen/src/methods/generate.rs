@@ -1,4 +1,4 @@
-use crate::methods::parse::{ParsedMethod, parse_method};
+use crate::methods::parse::{MethodReceiver, ParsedMethod, parse_method};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -7,6 +7,8 @@ use syn::{Error, ImplItem, ItemImpl, Result, Type};
 pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     let struct_ident = self_struct_ident(&item.self_ty)?;
     let self_ty = item.self_ty.clone();
+    let block = block_receiver(&item.self_ty)?;
+    let many: Type = syn::parse_quote! { #struct_ident<erp::types::field::MultipleIds> };
 
     let mut parsed = Vec::new();
     let mut kept = Vec::new();
@@ -15,7 +17,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             kept.push(entry);
             continue;
         };
-        parsed.push(parse_method(func)?);
+        parsed.push(parse_method(func, block)?);
     }
 
     let mut in_impl = Vec::new();
@@ -23,30 +25,36 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     let mut registrations = Vec::new();
 
     for method in &parsed {
-        let names = Names::of(&struct_ident, method);
+        let names = Names::of(&struct_ident, block, method);
         in_impl.push(renamed_body(method, &names));
-        in_impl.push(dispatcher(method));
+        in_impl.push(dispatcher(method, &many));
         links.push(link(method, &names, &self_ty));
 
         let link_ident = &names.link;
         let name = method.name.to_string();
+        let receiver = match method.receiver {
+            MethodReceiver::Records => quote! { erp::types::method::Receiver::Records },
+            MethodReceiver::Record => quote! { erp::types::method::Receiver::Record },
+            MethodReceiver::Model => quote! { erp::types::method::Receiver::Model },
+        };
         registrations.push(quote! {
             model_manager.register_method(
-                <Self as erp::types::model::CommonModel<
+                <#many as erp::types::model::CommonModel<
                     erp::types::field::MultipleIds,
                 >>::_get_model_name(),
                 #name,
                 #link_ident,
+                #receiver,
                 plugin_name,
             );
         });
 
         if method.is_rpc {
             let rpc_ident = &names.rpc;
-            links.push(rpc_wrapper(method, &names, &self_ty));
+            links.push(rpc_wrapper(method, &names, &self_ty, &many));
             registrations.push(quote! {
                 model_manager.register_rpc(
-                    <Self as erp::types::model::CommonModel<
+                    <#many as erp::types::model::CommonModel<
                         erp::types::field::MultipleIds,
                     >>::_get_model_name(),
                     #name,
@@ -63,9 +71,8 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     // compile and quietly register nothing.
     let registration = (!parsed.is_empty()).then(|| {
         quote! {
-            impl #self_ty {
-                #[doc(hidden)]
-                fn __erp_register_methods(
+            impl erp::model::MethodBlock for #self_ty {
+                fn register_block(
                     model_manager: &mut erp::model::ModelManager,
                     plugin_name: &str,
                 ) {
@@ -78,7 +85,7 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
                 fn declares_methods<T: erp::model::DeclaresMethods>() {}
                 fn assert() {
                     // Fails when the struct is missing `#[erp(methods)]`.
-                    declares_methods::<#self_ty>();
+                    declares_methods::<#many>();
                 }
             };
         }
@@ -105,16 +112,22 @@ struct Names {
 }
 
 impl Names {
-    fn of(struct_ident: &Ident, method: &ParsedMethod) -> Self {
+    /// Named after the block's mode too, as a model's two blocks may share their module.
+    fn of(struct_ident: &Ident, block: MethodReceiver, method: &ParsedMethod) -> Self {
         let method_name = method.name.to_string();
+        let mode = if block == MethodReceiver::Record {
+            "one"
+        } else {
+            "many"
+        };
         Self {
             body: Ident::new(&format!("__erp_impl_{method_name}"), Span::call_site()),
             link: Ident::new(
-                &format!("__erp_link_{struct_ident}_{method_name}"),
+                &format!("__erp_link_{struct_ident}_{mode}_{method_name}"),
                 Span::call_site(),
             ),
             rpc: Ident::new(
-                &format!("__erp_rpc_{struct_ident}_{method_name}"),
+                &format!("__erp_rpc_{struct_ident}_{mode}_{method_name}"),
                 Span::call_site(),
             ),
         }
@@ -159,8 +172,9 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
     }
 }
 
-/// The name the author wrote, now resolving to the top of the chain.
-fn dispatcher(method: &ParsedMethod) -> TokenStream {
+/// The name the author wrote, now resolving to the top of the chain: on the records, the record,
+/// or — for a method without `self` — no record at all.
+fn dispatcher(method: &ParsedMethod, many: &Type) -> TokenStream {
     let name = &method.name;
     let output = &method.item.sig.output;
     let vis = &method.item.vis;
@@ -173,6 +187,17 @@ fn dispatcher(method: &ParsedMethod) -> TokenStream {
         .iter()
         .filter(|a| a.meta.path().is_ident("doc"))
         .collect();
+    let (receiver, ids) = match method.receiver {
+        MethodReceiver::Records => (
+            quote! { &self, },
+            quote! { erp::types::model::CommonModel::get_id_mode(self).clone() },
+        ),
+        MethodReceiver::Record => (
+            quote! { &self, },
+            quote! { erp::types::model::CommonModel::get_id_mode(self).into() },
+        ),
+        MethodReceiver::Model => (quote! {}, quote! { ::core::default::Default::default() }),
+    };
 
     quote! {
         #(#docs)*
@@ -180,16 +205,15 @@ fn dispatcher(method: &ParsedMethod) -> TokenStream {
         /// Dispatched from the most derived implementation, which is why calling it from another
         /// method of this model reaches an override rather than the implementation next to it.
         #vis fn #name(
-            &self,
+            #receiver
             env: &mut erp::environment::Environment,
             #(#params,)*
         ) #output {
             use erp::types::model::BaseModel;
-            let ids: erp::types::field::MultipleIds =
-                erp::types::model::CommonModel::get_id_mode(self).clone();
+            let ids: erp::types::field::MultipleIds = #ids;
             let args = (#(#values,)*);
             env.call_method(
-                <Self as erp::types::model::CommonModel<
+                <#many as erp::types::model::CommonModel<
                     erp::types::field::MultipleIds,
                 >>::_get_model_name(),
                 #method_name,
@@ -214,15 +238,20 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
         let index = syn::Index::from(index);
         quote! { ::core::clone::Clone::clone(&args.#index) }
     });
+    let target = match method.receiver {
+        MethodReceiver::Model => quote! { <#self_ty>:: },
+        _ => quote! { record. },
+    };
     // A method that never calls the one it overrides does not have to declare the cursor.
     let call = if method.has_sup {
-        quote! { record.#body(env, #(#forwarded,)* sup) }
+        quote! { #target #body(env, #(#forwarded,)* sup) }
     } else {
         quote! {
             let _ = sup;
-            record.#body(env, #(#forwarded,)*)
+            #target #body(env, #(#forwarded,)*)
         }
     };
+    let record = record_of(method, self_ty, quote! { ids });
 
     quote! {
         #[doc(hidden)]
@@ -237,11 +266,60 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
             ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
         > {
             let env = erp::environment::Environment::from_erased(env);
-            let record = <#self_ty as erp::types::model::CommonModel<
-                erp::types::field::MultipleIds,
-            >>::create_instance(ids);
+            #record
             #call
         }
+    }
+}
+
+/// `Model<MultipleIds>` or `Model<SingleId>`, from the type the block is on.
+fn block_receiver(self_ty: &Type) -> Result<MethodReceiver> {
+    let Type::Path(path) = self_ty else {
+        return Err(Error::new(self_ty.span(), "Expected a struct"));
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return Err(Error::new(self_ty.span(), "Expected a struct"));
+    };
+    let mode = match &segment.arguments {
+        syn::PathArguments::AngleBracketed(arguments) => arguments.args.first(),
+        _ => None,
+    };
+    let mode = mode.map(|mode| quote! { #mode }.to_string());
+    match mode
+        .as_deref()
+        .map(|mode| mode.rsplit("::").next().unwrap_or(mode).trim())
+    {
+        Some("MultipleIds") => Ok(MethodReceiver::Records),
+        Some("SingleId") => Ok(MethodReceiver::Record),
+        _ => Err(Error::new(
+            self_ty.span(),
+            "An #[erp_methods] block is on Model<MultipleIds>, for records, or on Model<SingleId>, \
+             for one record",
+        )),
+    }
+}
+
+/// Rebuild what a method works on from the ids the chain carries: the records, the one record —
+/// refusing any other number — or nothing, for a method of the model.
+fn record_of(method: &ParsedMethod, self_ty: &Type, ids: TokenStream) -> TokenStream {
+    let name = method.name.to_string();
+    match method.receiver {
+        MethodReceiver::Records => quote! {
+            let record = <#self_ty as erp::types::model::CommonModel<
+                erp::types::field::MultipleIds,
+            >>::create_instance(#ids);
+        },
+        MethodReceiver::Record => quote! {
+            let record = match erp::types::field::IdMode::get_ids_ref(&#ids).as_slice() {
+                [id] => <#self_ty as erp::types::model::CommonModel<
+                    erp::types::field::SingleId,
+                >>::create_instance(erp::types::field::SingleId::from(*id)),
+                ids => {
+                    return Err(format!("{} works on one record, not {}", #name, ids.len()).into());
+                }
+            };
+        },
+        MethodReceiver::Model => quote! { let _ = #ids; },
     }
 }
 
@@ -267,12 +345,17 @@ fn self_struct_ident(self_ty: &Type) -> Result<Ident> {
 /// Arguments arrive named rather than positional: a caller that sends `{"days": 3}` keeps
 /// working when a second argument is added, one that sends `[3]` does not. The structs are local
 /// to the wrapper, so nothing outside ever names them.
-fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
+fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type, many: &Type) -> TokenStream {
     let call = &method.name;
     let rpc = &names.rpc;
     let ret = &method.ret;
     let fields = method.args.iter().map(|(ident, ty)| quote! { #ident: #ty });
     let values = method.args.iter().map(|(ident, _)| quote! { args.#ident });
+    let record = record_of(method, self_ty, quote! { ids });
+    let target = match method.receiver {
+        MethodReceiver::Model => quote! { <#self_ty>:: },
+        _ => quote! { record. },
+    };
 
     // A method taking nothing is called without saying so; one taking something is not, because
     // a missing argument is a mistake rather than a default.
@@ -336,13 +419,11 @@ fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStr
             let call: Call = erp::serde_json::from_value(params.clone())?;
             let args = call.args;
             let ids = env.existing(
-                <#self_ty as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::_get_model_name(),
+                <#many as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::_get_model_name(),
                 call.ids,
             )?;
-            let record = <#self_ty as erp::types::model::CommonModel<
-                erp::types::field::MultipleIds,
-            >>::create_instance(ids);
-            let out = record.#call(env, #(#values,)*)?;
+            #record
+            let out = #target #call(env, #(#values,)*)?;
             Ok(erp::serde_json::to_value(out)?)
         }
     }

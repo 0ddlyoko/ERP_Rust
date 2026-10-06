@@ -8,7 +8,7 @@ use super::{Model, ModelManager};
 use crate::environment::Environment;
 use erp_types::environment::ErasedEnvironment;
 use erp_types::field::MultipleIds;
-use erp_types::method::Super;
+use erp_types::method::{Receiver, Super};
 use erp_types::model::MapOfFields;
 use std::error::Error;
 
@@ -41,10 +41,23 @@ where
         model_name,
         CREATE,
         base_create::<M>,
+        Receiver::Records,
         "erp",
     );
-    model_manager.register_method::<WriteArgs, ()>(model_name, WRITE, base_write::<M>, "erp");
-    model_manager.register_method::<DeleteArgs, u32>(model_name, DELETE, base_delete::<M>, "erp");
+    model_manager.register_method::<WriteArgs, ()>(
+        model_name,
+        WRITE,
+        base_write::<M>,
+        Receiver::Records,
+        "erp",
+    );
+    model_manager.register_method::<DeleteArgs, u32>(
+        model_name,
+        DELETE,
+        base_delete::<M>,
+        Receiver::Records,
+        "erp",
+    );
 }
 
 fn base_create<M>(

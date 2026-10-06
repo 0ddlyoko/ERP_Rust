@@ -1,5 +1,5 @@
 use erp::app::Application;
-use erp_types::field::{IdMode, MultipleIds};
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
 use std::error::Error;
@@ -341,4 +341,105 @@ fn test_nesting_that_terminates_still_works() -> Result<()> {
         "the call stack must unwind even when a call fails"
     );
     Ok(())
+}
+
+fn named_machine(env: &mut erp::environment::Environment, name: &str) -> Result<u32> {
+    let mut map: MapOfFields = MapOfFields::new(HashMap::new());
+    map.insert("name", name);
+    map.insert("base_rate", 100);
+    Ok(env.create_records("machine", vec![map])?.get_ids_ref()[0])
+}
+
+/// A method of one record — on `Model<SingleId>` — is overridden like any other: the override
+/// runs, and reaches the one below through `super`.
+#[test]
+fn test_a_method_of_one_record_is_overridden() -> Result<()> {
+    let app = base_only()?;
+    let mut env = app.new_env()?;
+    let id = named_machine(&mut env, "Drill")?;
+    let record: Machine<SingleId> = env.get_record(SingleId::from(id));
+    assert_eq!(record.label(&mut env)?, "Drill at 100");
+
+    let app = with_override()?;
+    let mut env = app.new_env()?;
+    let id = named_machine(&mut env, "Drill")?;
+    let record: Machine<SingleId> = env.get_record(SingleId::from(id));
+    assert_eq!(record.label(&mut env)?, "Drill at 100 (discounted)");
+    let answer = env.call_rpc("machine", "label", &serde_json::json!({ "ids": [id] }))?;
+    assert_eq!(answer, "Drill at 100 (discounted)");
+    Ok(())
+}
+
+/// Called remotely on several records, a method of one record is refused rather than run on
+/// the first.
+#[test]
+fn test_a_method_of_one_record_refuses_several() -> Result<()> {
+    let app = with_override()?;
+    let mut env = app.new_env()?;
+    let first = named_machine(&mut env, "Drill")?;
+    let second = named_machine(&mut env, "Saw")?;
+    let error = env
+        .call_rpc(
+            "machine",
+            "label",
+            &serde_json::json!({ "ids": [first, second] }),
+        )
+        .expect_err("refused")
+        .to_string();
+    assert!(
+        error.contains("label works on one record, not 2"),
+        "{error}"
+    );
+    Ok(())
+}
+
+/// A method of the model — without `self` — is overridden too, and called remotely without
+/// records.
+#[test]
+fn test_a_method_of_the_model_is_overridden() -> Result<()> {
+    let app = base_only()?;
+    let mut env = app.new_env()?;
+    assert_eq!(Machine::<MultipleIds>::standard_rate(&mut env)?, 100);
+
+    let app = with_override()?;
+    let mut env = app.new_env()?;
+    assert_eq!(Machine::<MultipleIds>::standard_rate(&mut env)?, 90);
+    assert_eq!(
+        MachineDiscounted::<MultipleIds>::standard_rate(&mut env)?,
+        90
+    );
+    let answer = env.call_rpc("machine", "standard_rate", &serde_json::json!({}))?;
+    assert_eq!(answer, 90);
+    Ok(())
+}
+
+fn one_link(
+    _ids: MultipleIds,
+    _env: &mut dyn erp_types::environment::ErasedEnvironment,
+    _args: &(),
+    _sup: erp_types::method::Super<'_, (), i32>,
+) -> Result<i32> {
+    Ok(1)
+}
+
+/// Overriding a method declared on one record with one on records — or the other way round — is
+/// refused when the plugin loads, naming both.
+#[test]
+#[should_panic(expected = "declared on two different receivers")]
+fn test_an_override_on_another_receiver_is_refused() {
+    let mut registry = erp::internal_types::method::MethodRegistry::default();
+    registry.register(
+        "machine",
+        "label",
+        one_link,
+        erp_types::method::Receiver::Record,
+        "test_lib_plugin",
+    );
+    registry.register(
+        "machine",
+        "label",
+        one_link,
+        erp_types::method::Receiver::Records,
+        "test_plugin",
+    );
 }
