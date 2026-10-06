@@ -287,8 +287,9 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             });
             const at = buttons.length - 1;
             return (
-                `<button type="button" class="${button.getAttribute("highlight") === "1" ? "o_button_primary" : "o_button_secondary"}"${ifShown(shownUnless(button))} ` +
-                `t-att-disabled="__form.saving" t-on-click="() => __form.press(__form.layout.buttons[${at}])">` +
+                `<button type="button"${ifShown(shownUnless(button))} ` +
+                `t-att-class="{ ${button.getAttribute("highlight") === "1" ? "o_button_primary" : "o_button_secondary"}: true, o_button_busy: __form.pressing === ${at} }" ` +
+                `t-att-disabled="__form.busy" t-on-click="() => __form.press(__form.layout.buttons[${at}], ${at})">` +
                 `${text(button.getAttribute("string") ?? button.getAttribute("name") ?? "")}</button>`
             );
         })
@@ -320,17 +321,19 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         `<div t-if="__form.pager" class="o_pager"><span class="o_pager_value">` +
         `{{ __form.pager.position }} / {{ __form.pager.total }}</span>` +
         `<button type="button" class="o_pager_button" aria-label="Previous record" ` +
-        `t-att-disabled="__form.pager.previous === null" t-on-click="() => __form.step(__form.pager.previous)">` +
+        `t-att-disabled="__form.busy || __form.pager.previous === null" t-on-click="() => __form.step(__form.pager.previous)">` +
         `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ` +
         `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>` +
         `<button type="button" class="o_pager_button" aria-label="Next record" ` +
-        `t-att-disabled="__form.pager.next === null" t-on-click="() => __form.step(__form.pager.next)">` +
+        `t-att-disabled="__form.busy || __form.pager.next === null" t-on-click="() => __form.step(__form.pager.next)">` +
         `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ` +
         `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>` +
-        `<button t-if="__form.isDirty" type="button" class="o_button_secondary" t-att-disabled="__form.saving" ` +
+        `<span t-if="__form.isDirty" class="o_form_dirty" role="status">Unsaved changes</span>` +
+        `<button t-if="__form.isDirty" type="button" class="o_button_secondary" t-att-disabled="__form.busy" ` +
         `t-on-click="() => __form.discard()">Discard</button>` +
-        `<button type="button" class="o_button_primary" t-att-disabled="!__form.canSave" ` +
-        `t-on-click="() => __form.save()">Save</button></div>` +
+        `<button t-if="__form.isDirty || __form.isNew" type="button" ` +
+        `t-att-class="{ o_button_primary: true, o_button_busy: __form.saving }" t-att-disabled="!__form.canSave" ` +
+        `t-on-click="() => __form.save()">{{ __form.saving ? "Saving…" : "Save" }}</button></div>` +
         `<p t-if="__form.failure" class="o_form_failure" role="alert">{{ __form.failure }}</p>` +
         `${body}</div>`;
     return { source, columns, texts, buttons, conditionNames };

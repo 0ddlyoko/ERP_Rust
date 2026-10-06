@@ -699,3 +699,47 @@ button.o_statusbar_label:hover {
     float: right;
     margin: 0 0 0 6px;
 }
+
+/* Unsaved changes, and what runs */
+
+.o_form_dirty {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff4e5;
+    color: #8a4b08;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_form_dirty::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #e08a1e;
+}
+
+.o_button_busy {
+    position: relative;
+    color: transparent !important;
+}
+
+.o_button_busy::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 14px;
+    height: 14px;
+    margin: auto;
+    border: 2px solid currentColor;
+    border-color: var(--o-muted) var(--o-muted) transparent transparent;
+    border-radius: 50%;
+    animation: o_spin 0.7s linear infinite;
+}
+
+.o_button_primary.o_button_busy::after {
+    border-color: #fff #fff transparent transparent;
+}

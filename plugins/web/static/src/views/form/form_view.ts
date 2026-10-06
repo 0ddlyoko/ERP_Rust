@@ -49,6 +49,8 @@ export class FormView extends View {
 
     @state accessor changes: Values = {};
     @state accessor saving = false;
+    /** The button whose method runs, by its position in the bar, until it is done. */
+    @state accessor pressing: number | null = null;
     @state accessor failure: string | null = null;
     @state accessor openPages = new Map<number, number>();
     /** Whether a save was tried: required fields left empty are shown from then on. */
@@ -131,9 +133,14 @@ export class FormView extends View {
         return Object.keys(this.changes).length > 0;
     }
 
-    /** Something to save, and no save under way. */
+    /** Saving, or running a button: what the user could press meanwhile waits. */
+    get busy(): boolean {
+        return this.saving || this.pressing !== null;
+    }
+
+    /** Something to save, and nothing under way. */
     get canSave(): boolean {
-        return !this.saving && (this.isDirty || this.isNew);
+        return !this.busy && (this.isDirty || this.isNew);
     }
 
     /** A label as written, each `{{ field }}` replaced by the field's value; `\{{` is a brace. */
@@ -182,6 +189,16 @@ export class FormView extends View {
         return () => {
             this.breadcrumb.record = null;
         };
+    }
+
+    /** While changes are not saved, closing or reloading the page asks the browser to confirm. */
+    @effect guardUnload(): (() => void) | void {
+        if (!this.isDirty || this.props.embedded) {
+            return;
+        }
+        const ask = (event: BeforeUnloadEvent): void => event.preventDefault();
+        window.addEventListener("beforeunload", ask);
+        return () => window.removeEventListener("beforeunload", ask);
     }
 
     /** While changes are not saved, leaving saves them first; failing to, the user stays. */
@@ -480,11 +497,23 @@ export class FormView extends View {
      *
      * A record not created yet is created first, and shown; its button is pressed from there.
      */
-    async press(button: FormButton): Promise<void> {
+    async press(button: FormButton, at: number): Promise<void> {
         if (button.type === "action") {
             this.router.go({ action: button.name, view: null, id: null });
             return;
         }
+        if (this.busy) {
+            return;
+        }
+        this.pressing = at;
+        try {
+            await this.run(button);
+        } finally {
+            this.pressing = null;
+        }
+    }
+
+    private async run(button: FormButton): Promise<void> {
         const id = this.props.resId;
         if (!(await this.save()) || id === undefined) {
             return;
