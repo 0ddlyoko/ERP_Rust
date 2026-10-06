@@ -42,6 +42,25 @@ export function leadsTo(entry: MenuEntry, actionId: number): boolean {
     return entry.action?.id === actionId || entry.children.some((child) => leadsTo(child, actionId));
 }
 
+/** Whether an entry is this one, or holds it. */
+export function holds(entry: MenuEntry, menuId: number): boolean {
+    return entry.id === menuId || entry.children.some((child) => holds(child, menuId));
+}
+
+/** The first entry of a module opening an action, depth first. */
+export function firstEntryOf(module: MenuEntry): MenuEntry | null {
+    for (const child of module.children) {
+        if (child.action !== null) {
+            return child;
+        }
+        const below = firstEntryOf(child);
+        if (below !== null) {
+            return below;
+        }
+    }
+    return null;
+}
+
 /** The top entry — the module — under which an action is opened. */
 export function moduleOf(entries: readonly MenuEntry[], actionId: number): MenuEntry | null {
     return entries.find((entry) => leadsTo(entry, actionId)) ?? null;

@@ -1,5 +1,5 @@
 import { Component, computed, inject, load, resource, state } from "trame";
-import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf, moduleOfModel } from "@web/core/menus";
+import { type ActionDescription, actionsOf, firstEntryOf, holds, type MenuEntry, Menus, moduleOf, moduleOfModel } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
 import { type Route, Router } from "@web/core/router";
 import { ActionManager } from "./action_manager";
@@ -55,11 +55,17 @@ export class WebClient extends Component {
         return null;
     }
 
+    /**
+     * The module shown: the one holding the entry the action was opened from; else the one the
+     * user switched to; else the first holding the action, or an action on its model.
+     */
     @computed get module(): MenuEntry | null {
         const action = this.action;
         const tree = this.tree ?? [];
+        const menu = this.route.menu ?? null;
+        const opened = menu === null ? null : (tree.find((module) => holds(module, menu)) ?? null);
         const under = action ? (moduleOf(tree, action.id) ?? moduleOfModel(tree, action.model)) : null;
-        return this.switched ?? under ?? tree[0] ?? null;
+        return opened ?? this.switched ?? under ?? tree[0] ?? null;
     }
 
     /** Back to the home page. */
@@ -68,24 +74,20 @@ export class WebClient extends Component {
         this.router.go({ action: null, view: null, id: null });
     };
 
-    /** Show a module's menus, and open its first action. */
+    /** Show a module's menus, and open its first entry. */
     switchTo = (module: MenuEntry): void => {
         this.switched = module;
-        const first = actionsOf([module])[0];
-        if (first !== undefined) {
-            this.show(first);
+        const first = firstEntryOf(module);
+        if (first !== null) {
+            this.open(first);
         }
     };
 
-    /** Open an entry's action, from the module it is under. */
+    /** Open an entry's action, under the module the entry is in. */
     open = (entry: MenuEntry): void => {
         if (entry.action !== null) {
-            this.switched = moduleOf(this.tree ?? [], entry.action.id);
-            this.show(entry.action);
+            const action = entry.action;
+            this.router.go({ action: action.xml_id ?? String(action.id), view: null, id: null, menu: entry.id });
         }
     };
-
-    private show(action: ActionDescription): void {
-        this.router.go({ action: action.xml_id ?? String(action.id), view: null, id: null });
-    }
 }

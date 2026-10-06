@@ -1,7 +1,7 @@
 <templates>
     <t t-name="web.WebClient">
         <div class="o_web_client">
-            <Sidebar modules="tree ?? []" module="module" action="action"
+            <Sidebar modules="tree ?? []" module="module" action="action" menu="route.menu ?? null"
                      onModule="switchTo" onOpen="open" onHome="goHome"/>
             <main class="o_content">
                 <ErrorBoundary>

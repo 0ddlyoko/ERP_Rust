@@ -1,20 +1,26 @@
 import { state } from "trame";
 
-/** Where the user is: the action open, the kind of its view shown, and the record, if one. */
+/**
+ * Where the user is: the action open, the kind of its view shown, the record, if one, and the
+ * entry of the menu it was opened from — an action two modules share shows under the one chosen.
+ */
 export interface Route {
     action: string | null;
     view: string | null;
     id: number | null;
+    menu?: number | null;
 }
 
 /** A route as the address writes it: `#action=base.action_users&view=form&id=3`. */
 export function readRoute(hash: string): Route {
     const params = new URLSearchParams(hash.replace(/^#/, ""));
     const id = Number(params.get("id"));
+    const menu = Number(params.get("menu"));
     return {
         action: params.get("action"),
         view: params.get("view"),
         id: Number.isInteger(id) && id > 0 ? id : null,
+        menu: Number.isInteger(menu) && menu > 0 ? menu : null,
     };
 }
 
@@ -28,6 +34,9 @@ export function writeRoute(route: Route): string {
     }
     if (route.id !== null) {
         params.set("id", String(route.id));
+    }
+    if (route.menu !== null && route.menu !== undefined) {
+        params.set("menu", String(route.menu));
     }
     return `#${params.toString()}`;
 }

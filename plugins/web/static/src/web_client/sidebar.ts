@@ -1,5 +1,5 @@
 import { Component, computed, inject, props, state, t } from "trame";
-import { type ActionDescription, leadsTo, type MenuEntry, pathsOf } from "@web/core/menus";
+import { type ActionDescription, holds, leadsTo, type MenuEntry, pathsOf } from "@web/core/menus";
 import { Session } from "@web/core/session";
 
 /**
@@ -30,6 +30,8 @@ export class Sidebar extends Component {
         modules: t.array(t.any<MenuEntry>()),
         module: t.any<MenuEntry | null>(),
         action: t.any<ActionDescription | null>(),
+        /** The entry the action was opened from, when it was. */
+        menu: t.number().orNull().default(null),
         onModule: t.func<(module: MenuEntry) => void>(),
         onOpen: t.func<(entry: MenuEntry) => void>(),
         /** Called when the user asks for the home page. */
@@ -72,14 +74,20 @@ export class Sidebar extends Component {
 
     isOpen(group: MenuEntry): boolean {
         const action = this.props.action;
-        return this.folding.get(group.id) ?? (action !== null && leadsTo(group, action.id));
+        const menu = this.props.menu;
+        const leading = menu !== null ? holds(group, menu) : action !== null && leadsTo(group, action.id);
+        return this.folding.get(group.id) ?? leading;
     }
 
     toggle(group: MenuEntry): void {
         this.folding.set(group.id, !this.isOpen(group));
     }
 
+    /** The entry the action was opened from; failing that, every entry opening it. */
     isActive(entry: MenuEntry): boolean {
+        if (this.props.menu !== null) {
+            return entry.id === this.props.menu;
+        }
         return entry.action !== null && entry.action.id === this.props.action?.id;
     }
 
