@@ -98,7 +98,7 @@ impl PluginManager {
         plugin: Box<dyn Plugin>,
     ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
         let plugin_name = plugin.name();
-        tracing::info!(plugin = %plugin_name, "Registering plugin");
+        tracing::debug!(plugin = %plugin_name, "Registering plugin");
         if self.plugins.contains_key(&plugin_name) {
             return Err(PluginAlreadyRegisteredError {
                 plugin_name: plugin_name.to_string(),
@@ -135,7 +135,7 @@ impl PluginManager {
             })?;
 
         let plugin_name = internal_plugin.plugin.name();
-        tracing::info!(plugin = %plugin_name, "Registering plugin");
+        tracing::debug!(plugin = %plugin_name, "Registering plugin");
         if self.plugins.contains_key(&plugin_name) {
             let InternalPlugin {
                 plugin,

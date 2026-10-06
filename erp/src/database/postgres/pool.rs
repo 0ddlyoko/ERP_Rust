@@ -86,6 +86,10 @@ impl ConnectionPool {
         // Named so `pg_stat_activity` says which application a backend belongs to, and so a
         // tool — or a test — can act on this pool's connections without touching anyone else's.
         settings.application_name(&format!("erp:{}", config.schema));
+        // What the server only notes in passing — a table that already exists — is for debugging.
+        settings.notice_callback(|notice| {
+            tracing::debug!(target: "postgres", severity = notice.severity(), "{}", notice.message());
+        });
 
         Self {
             inner: Arc::new(Shared {
