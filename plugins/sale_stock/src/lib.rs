@@ -37,6 +37,10 @@ impl Plugin for SaleStockPlugin {
         vec![include_str!("../views/sale_stock_views.xml")]
     }
 
+    fn demo(&self) -> Vec<&'static str> {
+        vec![include_str!("../demo/sale_stock.xml")]
+    }
+
     fn get_depends(&self) -> Vec<String> {
         vec!["sale".to_string(), "stock".to_string()]
     }

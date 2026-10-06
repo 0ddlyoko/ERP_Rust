@@ -452,7 +452,7 @@ fn test_the_server_answers_the_calls_of_the_orm_service() -> Result<()> {
         rows.as_array().map(|rows| rows.len() as u64)
     );
     let menus = call("menu.tree", json!({"ids": [], "args": {}}));
-    let users = &menus[0]["children"][0]["children"][0]["action"];
+    let users = &menus[0]["children"][1]["children"][0]["action"];
     assert_eq!(users["xml_id"], "base.action_users", "{menus}");
     assert_eq!(users["views"], json!(["list", "form"]));
     let found = call("users.name_search", json!({"text": "admin", "limit": 8}));

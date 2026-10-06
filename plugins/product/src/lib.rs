@@ -37,6 +37,10 @@ impl Plugin for ProductPlugin {
         ]
     }
 
+    fn demo(&self) -> Vec<&'static str> {
+        vec![include_str!("../demo/products.xml")]
+    }
+
     fn get_depends(&self) -> Vec<String> {
         vec![
             "base".to_string(),

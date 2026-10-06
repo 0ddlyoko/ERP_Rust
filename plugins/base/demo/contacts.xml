@@ -1,0 +1,43 @@
+<erp>
+    <contact_tag id="demo_tag_customer" name="Customer"/>
+    <contact_tag id="demo_tag_vendor" name="Vendor"/>
+
+    <contact id="demo_brasserie" name="Brasserie du Val SRL" is_company="true" vat="BE0712345630"
+             street="Rue de la Station 12" zip="4000" city="Liège" country="country_be"
+             email="contact@brasserieduval.be" phone="+32 4 223 45 67" website="https://brasserieduval.be"
+             tags="demo_tag_customer"/>
+    <contact id="demo_brasserie_claire" name="Claire Moreau" parent="demo_brasserie" function="Purchasing manager"
+             email="claire.moreau@brasserieduval.be" phone="+32 4 223 45 68" country="country_be"/>
+    <contact id="demo_menuiserie" name="Menuiserie Lambert" is_company="true" vat="BE0723456781"
+             street="Chaussée de Namur 88" zip="5030" city="Gembloux" country="country_be"
+             email="info@menuiserie-lambert.be" phone="+32 81 61 22 33" tags="demo_tag_customer"/>
+    <contact id="demo_atelier" name="Atelier Dumont &amp; Fils" is_company="true" vat="BE0734567835"
+             street="Rue du Moulin 4" zip="4500" city="Huy" country="country_be"
+             email="atelier@dumont-fils.be" phone="+32 85 21 43 65" tags="demo_tag_customer"/>
+    <contact id="demo_atelier_marc" name="Marc Dumont" parent="demo_atelier" function="Manager"
+             email="marc@dumont-fils.be" country="country_be"/>
+    <contact id="demo_clinique" name="Clinique vétérinaire de Hesbaye" is_company="true" vat="BE0745678986"
+             street="Route d'Oleye 21" zip="4300" city="Waremme" country="country_be"
+             email="accueil@clinique-hesbaye.be" phone="+32 19 32 54 76" tags="demo_tag_customer"/>
+    <contact id="demo_transports" name="Transports Renard" is_company="true" vat="BE0756789050"
+             street="Zoning des Hauts-Sarts 3" zip="4040" city="Herstal" country="country_be"
+             email="dispatch@transports-renard.be" phone="+32 4 248 11 22" tags="demo_tag_customer"/>
+    <contact id="demo_fromagerie" name="Fromagerie des Fagnes" is_company="true" vat="BE0767890107"
+             street="Rue de la Fagne 9" zip="4950" city="Waimes" country="country_be"
+             email="bonjour@fromagerie-fagnes.be" phone="+32 80 67 98 76" tags="demo_tag_customer"/>
+    <contact id="demo_garage" name="Garage Pirotte" is_company="true" vat="BE0778901288"
+             street="Avenue de la Gare 15" zip="4800" city="Verviers" country="country_be"
+             email="garage@pirotte.be" phone="+32 87 33 44 55" tags="demo_tag_customer"/>
+    <contact id="demo_imprimerie" name="Imprimerie Lemaire" is_company="true" vat="BE0789012351"
+             street="Rue Saint-Gilles 140" zip="4000" city="Liège" country="country_be"
+             email="devis@imprimerie-lemaire.be" phone="+32 4 222 33 44" tags="demo_tag_customer"/>
+
+    <contact id="demo_bureau_design" name="Bureau Design Wallonie" is_company="true" vat="BE0790123495"
+             street="Boulevard d'Avroy 210" zip="4000" city="Liège" country="country_be"
+             email="sales@bureaudesign.be" phone="+32 4 230 50 50" tags="demo_tag_vendor"/>
+    <contact id="demo_techno" name="Techno Distribution SA" is_company="true" vat="BE0801234549"
+             street="Avenue Louise 480" zip="1050" city="Bruxelles" country="country_be"
+             email="orders@techno-distribution.be" phone="+32 2 640 12 34" tags="demo_tag_vendor"/>
+    <contact id="demo_techno_sophie" name="Sophie Janssens" parent="demo_techno" function="Account manager"
+             email="sophie.janssens@techno-distribution.be" country="country_be"/>
+</erp>

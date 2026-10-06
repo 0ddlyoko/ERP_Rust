@@ -1,0 +1,26 @@
+<erp>
+    <product_category id="demo_category_furniture" name="Furniture" parent="category_saleable"/>
+    <product_category id="demo_category_hardware" name="Hardware" parent="category_saleable"/>
+
+    <product id="demo_desk" name="Office desk" default_code="DESK-01" category="demo_category_furniture"
+             list_price="349" standard_price="180" weight="32"/>
+    <product id="demo_standing_desk" name="Standing desk" default_code="DESK-02" category="demo_category_furniture"
+             list_price="689" standard_price="410" weight="41"/>
+    <product id="demo_chair" name="Ergonomic chair" default_code="CHAIR-02" category="demo_category_furniture"
+             list_price="229" standard_price="120" weight="14"/>
+    <product id="demo_cabinet" name="Storage cabinet" default_code="CAB-03" category="demo_category_furniture"
+             list_price="189" standard_price="95" weight="26"/>
+    <product id="demo_monitor" name="Monitor 27&quot;" default_code="MON-27" category="demo_category_hardware"
+             list_price="289" standard_price="190" weight="6"/>
+    <product id="demo_laptop" name="Laptop 14&quot;" default_code="LAP-14" category="demo_category_hardware"
+             list_price="1149" standard_price="860" weight="1.4"/>
+    <product id="demo_dock" name="Docking station" default_code="DOCK-01" category="demo_category_hardware"
+             list_price="179" standard_price="105" weight="0.6"/>
+    <product id="demo_lamp" name="Desk lamp" default_code="LAMP-05" category="demo_category_furniture"
+             list_price="39.9" standard_price="14" weight="1.2"/>
+    <product id="demo_installation" name="Installation" default_code="SRV-INST" category="category_services"
+             product_type="service" list_price="65" standard_price="0" uom="uom.uom_hour" purchase_uom="uom.uom_hour"
+             purchase_ok="false"/>
+    <product id="demo_training" name="Training session" default_code="SRV-TRAIN" category="category_services"
+             product_type="service" list_price="380" standard_price="0" purchase_ok="false"/>
+</erp>

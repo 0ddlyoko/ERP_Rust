@@ -81,6 +81,24 @@
         <domain_write>[]</domain_write>
         <domain_delete>[]</domain_delete>
     </access_rule>
+    <access_rule id="access_parameter_admin">
+        <name>parameter: administrators</name>
+        <model>parameter</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_settings_admin">
+        <name>settings: administrators</name>
+        <model>settings</model>
+        <group ref="group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
     <access_rule id="access_session_admin">
         <name>session: administrators</name>
         <model>session</model>

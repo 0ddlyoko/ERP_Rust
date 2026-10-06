@@ -51,8 +51,42 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     let root_noupdate = read_noupdate(root);
 
     for node in root.children().filter(roxmltree::Node::is_element) {
-        load_record(env, module, node, root_noupdate, None)?;
+        if node.has_tag_name("function") {
+            call_function(env, module, node)?;
+        } else {
+            load_record(env, module, node, root_noupdate, None)?;
+        }
     }
+    Ok(())
+}
+
+/// Run a method of a model on records the file names:
+/// `<function model="sale_order" name="action_confirm" ref="order_1,order_2"/>`.
+///
+/// As a caller would run it, through the methods a model offers callers, so the records end up
+/// as they would by hand — an order confirmed, its delivery made. It runs each time the document
+/// is loaded: for documents loaded once, such as demo data.
+fn call_function(env: &mut Environment, module: &str, node: roxmltree::Node) -> Result<()> {
+    let attribute = |name: &str| {
+        node.attribute(name)
+            .ok_or_else(|| DataError::MissingAttribute {
+                module: module.to_string(),
+                attribute: name.to_string(),
+            })
+    };
+    let model_name = attribute("model")?;
+    let method = attribute("name")?;
+    let mut ids = Vec::new();
+    for reference in attribute("ref")?.split(',').map(str::trim) {
+        let reference = qualify(module, reference);
+        ids.push(
+            resolve(env, &reference)?.ok_or_else(|| DataError::UnknownReference {
+                reference: reference.clone(),
+                record: format!("<function name=\"{method}\">"),
+            })?,
+        );
+    }
+    env.call_rpc(model_name, method, &serde_json::json!({ "ids": ids }))?;
     Ok(())
 }
 
@@ -62,9 +96,9 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
 /// long form, and the two only meet on `<record>`: with a `model`, it is the long form; without
 /// one, it is the short form for a model actually called `record`.
 ///
-/// Unlike the field rule, whose reserved set is permanently `{record}`, this one's will grow as
-/// the loader gains directives — `<delete>`, `<function>`, `<menuitem>`. Each will make one more
-/// model name reachable only through the long form.
+/// Unlike the field rule, whose reserved set is permanently `{record}`, this one's grows as the
+/// loader gains directives — `<function>` already, `<delete>` and `<menuitem>` to come. Each makes
+/// one more model name reachable only through the long form.
 fn model_of<'a>(node: roxmltree::Node<'a, 'a>) -> &'a str {
     match node.attribute("model") {
         Some(model) if node.has_tag_name("record") => model,

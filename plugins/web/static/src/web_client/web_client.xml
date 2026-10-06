@@ -9,7 +9,7 @@
                         <p class="o_view_error">{{ failed.error.message }}</p>
                     </t>
                     <ActionManager t-if="action" action="action" module="module?.name ?? ''"
-                                   view="route.view" resId="route.id"/>
+                                   view="route.view" resId="route.id ?? action.res_id ?? null"/>
                     <Home t-elif="route.action === null" modules="tree ?? []" onOpen="open"/>
                     <p t-else="" class="o_no_action">Nothing to open.</p>
                 </ErrorBoundary>

@@ -102,7 +102,7 @@ fn test_companies_are_in_the_settings() -> Result<()> {
         .iter()
         .find(|entry| entry["name"] == "Settings")
         .expect("the settings");
-    let users_companies = &settings["children"][0];
+    let users_companies = &settings["children"][1];
     assert_eq!(
         names(&users_companies["children"]),
         vec!["Users", "Groups", "Companies"]

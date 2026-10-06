@@ -489,6 +489,9 @@ impl Application {
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the
         // time its code runs.
         let data = plugin.data();
+        self.model_manager
+            .demo
+            .insert(plugin_name.to_string(), plugin.demo());
         let info = plugin.info();
         let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
         env.savepoint(|env| {
@@ -507,7 +510,8 @@ impl Application {
             for hook in env.model_manager.load_hooks.clone() {
                 hook(env, plugin_name)?;
             }
-            crate::plugin::record_plugin(env, plugin_name, &info, true)
+            crate::plugin::record_plugin(env, plugin_name, &info, true)?;
+            crate::plugin::demo::load_for(env, plugin_name)
         })?;
         env.close()?;
 

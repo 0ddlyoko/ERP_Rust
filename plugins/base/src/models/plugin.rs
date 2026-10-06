@@ -28,6 +28,8 @@ pub struct Plugin<Mode: IdMode> {
     installed_version: Option<String>,
     latest_version: Option<String>,
     color: Option<String>,
+    #[erp(label = "Demo data loaded", default = false)]
+    demo_loaded: bool,
 }
 
 #[erp_methods]

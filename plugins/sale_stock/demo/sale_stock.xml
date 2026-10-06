@@ -1,0 +1,4 @@
+<erp>
+    <!-- Orders of goods confirmed once deliveries exist, so that each has its delivery. -->
+    <function model="sale_order" name="action_confirm" ref="sale.demo_order_1,sale.demo_order_2,sale.demo_order_3,sale.demo_order_5,sale.demo_order_6,sale.demo_order_8"/>
+</erp>

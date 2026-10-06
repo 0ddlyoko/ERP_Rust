@@ -69,6 +69,7 @@ fn settings() -> Value {
     json!([[
         "Settings",
         [
+            ["General settings", []],
             ["Users & Companies", [["Users", []], ["Groups", []]]],
             [
                 "Technical",
@@ -78,7 +79,8 @@ fn settings() -> Value {
                         [["Views", []], ["Menus", []], ["Actions", []]]
                     ],
                     ["Security", [["Access rules", []]]],
-                    ["Plugins", []]
+                    ["Plugins", []],
+                    ["Parameters", []]
                 ]
             ]
         ]
@@ -107,7 +109,7 @@ fn test_the_administrator_sees_the_settings() -> Result<()> {
     let tree = tree(&app, Some(admin(&app)?))?;
     assert_eq!(names(&tree), settings());
     assert_eq!(tree[0]["action"], Value::Null, "a title");
-    let users = &tree[0]["children"][0]["children"][0]["action"];
+    let users = &tree[0]["children"][1]["children"][0]["action"];
     assert_eq!(
         users,
         &json!({
@@ -117,6 +119,7 @@ fn test_the_administrator_sees_the_settings() -> Result<()> {
             "model": "users",
             "views": ["list", "form"],
             "domain": [],
+            "res_id": null,
         })
     );
     Ok(())

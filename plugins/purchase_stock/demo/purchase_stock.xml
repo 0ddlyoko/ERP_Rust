@@ -1,0 +1,4 @@
+<erp>
+    <!-- Orders confirmed once receipts exist, so that each has its receipt. -->
+    <function model="purchase_order" name="button_confirm" ref="purchase.demo_purchase_1,purchase.demo_purchase_2,purchase.demo_purchase_3"/>
+</erp>

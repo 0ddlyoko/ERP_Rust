@@ -14,7 +14,8 @@ import { Sidebar } from "./sidebar";
  * The action open is the route's: one of the menus', or, for one no menu leads to — a button
  * opening it — loaded by its identifier. With none, the home page. The module
  * shown is the one the action is under — for one no menu leads to, the one with an action on the
- * same model — unless the user switched to another. The page takes the module's colour as its
+ * same model — unless the user switched to another. An action on one record, such as the
+ * settings, opens it when the route names none. The page takes the module's colour as its
  * accent.
  */
 export class WebClient extends Component {

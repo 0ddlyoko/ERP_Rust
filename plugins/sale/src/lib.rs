@@ -49,6 +49,10 @@ impl Plugin for SalePlugin {
         ]
     }
 
+    fn demo(&self) -> Vec<&'static str> {
+        vec![include_str!("../demo/sale.xml")]
+    }
+
     fn get_depends(&self) -> Vec<String> {
         vec!["account".to_string()]
     }

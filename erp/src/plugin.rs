@@ -1,3 +1,4 @@
+pub mod demo;
 pub mod errors;
 mod install_request;
 mod internal_plugin;
@@ -101,6 +102,12 @@ pub trait Plugin: Any + Send + Sync {
     /// library with no reliable base directory at runtime, so embedding removes the problem
     /// instead of working around it.
     fn data(&self) -> Vec<&'static str> {
+        Vec::new()
+    }
+
+    /// XML documents showing what this plugin does — customers, products, orders — loaded only
+    /// in a database asking for demo data, once ([`demo`]).
+    fn demo(&self) -> Vec<&'static str> {
         Vec::new()
     }
 

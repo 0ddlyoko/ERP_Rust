@@ -1,0 +1,40 @@
+<erp>
+    <sale_order id="demo_order_1" partner="base.demo_brasserie" date_order="2026-09-02" user="base.user_admin"/>
+    <sale_order_line id="demo_order_1_line_1" order="demo_order_1" sequence="10" product="product.demo_desk" product_uom_qty="4"/>
+    <sale_order_line id="demo_order_1_line_2" order="demo_order_1" sequence="20" product="product.demo_chair" product_uom_qty="4"/>
+    <sale_order_line id="demo_order_1_line_3" order="demo_order_1" sequence="30" product="product.demo_installation" product_uom_qty="3"/>
+    <sale_order id="demo_order_2" partner="base.demo_menuiserie" date_order="2026-09-05" user="base.user_admin"/>
+    <sale_order_line id="demo_order_2_line_1" order="demo_order_2" sequence="10" product="product.demo_laptop" product_uom_qty="2"/>
+    <sale_order_line id="demo_order_2_line_2" order="demo_order_2" sequence="20" product="product.demo_dock" product_uom_qty="2"/>
+    <sale_order_line id="demo_order_2_line_3" order="demo_order_2" sequence="30" product="product.demo_monitor" product_uom_qty="4"/>
+    <sale_order id="demo_order_3" partner="base.demo_atelier" date_order="2026-09-09" user="base.user_admin"/>
+    <sale_order_line id="demo_order_3_line_1" order="demo_order_3" sequence="10" product="product.demo_standing_desk" product_uom_qty="2"/>
+    <sale_order_line id="demo_order_3_line_2" order="demo_order_3" sequence="20" product="product.demo_lamp" product_uom_qty="6"/>
+    <sale_order id="demo_order_4" partner="base.demo_clinique" date_order="2026-09-12" user="base.user_admin"/>
+    <sale_order_line id="demo_order_4_line_1" order="demo_order_4" sequence="10" product="product.demo_training" product_uom_qty="2"/>
+    <sale_order_line id="demo_order_4_line_2" order="demo_order_4" sequence="20" product="product.demo_installation" product_uom_qty="1"/>
+    <sale_order id="demo_order_5" partner="base.demo_transports" date_order="2026-09-16" user="base.user_admin"/>
+    <sale_order_line id="demo_order_5_line_1" order="demo_order_5" sequence="10" product="product.demo_cabinet" product_uom_qty="5"/>
+    <sale_order_line id="demo_order_5_line_2" order="demo_order_5" sequence="20" product="product.demo_chair" product_uom_qty="10"/>
+    <sale_order_line id="demo_order_5_line_3" order="demo_order_5" sequence="30" product="product.demo_installation" product_uom_qty="6"/>
+    <sale_order id="demo_order_6" partner="base.demo_fromagerie" date_order="2026-09-20" user="base.user_admin"/>
+    <sale_order_line id="demo_order_6_line_1" order="demo_order_6" sequence="10" product="product.demo_laptop" product_uom_qty="1"/>
+    <sale_order_line id="demo_order_6_line_2" order="demo_order_6" sequence="20" product="product.demo_training" product_uom_qty="2"/>
+    <sale_order id="demo_order_7" partner="base.demo_garage" date_order="2026-09-24" user="base.user_admin"/>
+    <sale_order_line id="demo_order_7_line_1" order="demo_order_7" sequence="10" product="product.demo_desk" product_uom_qty="2"/>
+    <sale_order_line id="demo_order_7_line_2" order="demo_order_7" sequence="20" product="product.demo_lamp" product_uom_qty="2"/>
+    <sale_order id="demo_order_8" partner="base.demo_imprimerie" date_order="2026-09-28" user="base.user_admin"/>
+    <sale_order_line id="demo_order_8_line_1" order="demo_order_8" sequence="10" product="product.demo_monitor" product_uom_qty="6"/>
+    <sale_order_line id="demo_order_8_line_2" order="demo_order_8" sequence="20" product="product.demo_dock" product_uom_qty="6"/>
+    <sale_order_line id="demo_order_8_line_3" order="demo_order_8" sequence="30" product="product.demo_installation" product_uom_qty="4"/>
+    <sale_order id="demo_order_9" partner="base.demo_brasserie" date_order="2026-10-01" user="base.user_admin"/>
+    <sale_order_line id="demo_order_9_line_1" order="demo_order_9" sequence="10" product="product.demo_standing_desk" product_uom_qty="1"/>
+    <sale_order_line id="demo_order_9_line_2" order="demo_order_9" sequence="20" product="product.demo_chair" product_uom_qty="1"/>
+    <sale_order id="demo_order_10" partner="base.demo_atelier" date_order="2026-10-03" user="base.user_admin"/>
+    <sale_order_line id="demo_order_10_line_1" order="demo_order_10" sequence="10" product="product.demo_cabinet" product_uom_qty="2"/>
+
+    <function model="sale_order" name="action_quotation_send" ref="demo_order_7,demo_order_9"/>
+    <!-- Services only: confirmed here, as no delivery waits for them. -->
+    <function model="sale_order" name="action_confirm" ref="demo_order_4"/>
+    <function model="sale_order" name="action_cancel" ref="demo_order_10"/>
+</erp>

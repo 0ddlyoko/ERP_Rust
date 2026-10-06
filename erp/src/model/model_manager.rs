@@ -117,6 +117,8 @@ pub struct ModelManager {
     data_children: HashMap<String, String>,
     pub(crate) loaded_plugins: Vec<String>,
     pub(crate) current_plugin_loading: Option<String>,
+    /// The demo documents of each plugin loaded, by its name.
+    pub(crate) demo: HashMap<String, Vec<&'static str>>,
 }
 
 impl ModelManager {

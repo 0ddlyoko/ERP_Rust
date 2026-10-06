@@ -26,6 +26,7 @@
                 <block string="Versions">
                     <field name="installed_version" readonly="1"/>
                     <field name="latest_version" readonly="1"/>
+                    <field name="demo_loaded" readonly="1"/>
                 </block>
             </block>
             <side>
@@ -37,6 +38,35 @@
         </form>
     </view>
     <action id="action_plugins" name="Plugins" model="plugin" views="list,form"/>
+
+    <view id="view_parameter_list" name="parameter.list" model="parameter">
+        <list>
+            <field name="key"/>
+            <field name="value"/>
+        </list>
+    </view>
+    <view id="view_parameter_form" name="parameter.form" model="parameter">
+        <form>
+            <block>
+                <field name="key"/>
+                <field name="value"/>
+            </block>
+        </form>
+    </view>
+    <action id="action_parameters" name="Parameters" model="parameter" views="list,form"/>
+
+    <view id="view_settings_form" name="settings.form" model="settings">
+        <form>
+            <block>
+                <h1>Settings</h1>
+                <field name="name" invisible="1"/>
+                <block string="Demo data">
+                    <field name="demo_data"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <action id="action_settings" name="General settings" model="settings" views="form" record="base.settings"/>
 
     <view id="view_view_list" name="view.list" model="view">
         <list>

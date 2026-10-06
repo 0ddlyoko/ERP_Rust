@@ -1,5 +1,7 @@
 <erp>
     <menu id="menu_settings" icon="settings" name="Settings" groups="group_admin">
+        <menu id="menu_general_settings" icon="sliders-horizontal" name="General settings" sequence="1"
+              action="action_settings"/>
         <menu id="menu_users_companies" icon="users" name="Users &amp; Companies">
             <menu id="menu_users" name="Users" action="action_users"/>
             <menu id="menu_groups" name="Groups" action="action_groups"/>
@@ -14,6 +16,7 @@
                 <menu id="menu_access_rules" name="Access rules" action="action_access_rules"/>
             </menu>
             <menu id="menu_plugins" name="Plugins" action="action_plugins"/>
+            <menu id="menu_parameters" name="Parameters" action="action_parameters"/>
         </menu>
     </menu>
 </erp>

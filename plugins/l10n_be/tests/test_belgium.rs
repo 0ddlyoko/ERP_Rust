@@ -434,3 +434,25 @@ fn test_intra_community_supplies() -> Result<()> {
     assert_eq!(grids["03"], Decimal::ZERO);
     l10n_be::invariants::check_books(&mut env)
 }
+
+/// Belgian VAT numbers are checked, those of the demo contacts too: turning demo data on in a
+/// Belgian database loads them.
+#[test]
+fn test_demo_contacts_have_belgian_vat_numbers() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let settings = xml_id(&mut env, "base.settings");
+    env.call_rpc(
+        "settings",
+        "write",
+        &json!({ "ids": [settings], "values": { "demo_data": true } }),
+    )?;
+    let brasserie = xml_id(&mut env, "base.demo_brasserie");
+    let read = env.call_rpc(
+        "contact",
+        "read",
+        &json!({ "ids": [brasserie], "fields": ["vat"] }),
+    )?;
+    assert_eq!(read[0]["vat"], "BE0712345630");
+    Ok(())
+}

@@ -10,6 +10,8 @@ export interface ActionDescription {
     readonly model: string;
     readonly views: readonly string[];
     readonly domain: readonly unknown[];
+    /** The one record it opens, such as the settings; `null` for an action on several. */
+    readonly res_id: number | null;
 }
 
 /** An entry of the menu, as the server shows it to this user. */

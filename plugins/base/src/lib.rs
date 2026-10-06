@@ -50,6 +50,8 @@ impl Plugin for BasePlugin {
         model_manager.register_model::<models::View<_>>();
         model_manager.register_model::<models::Action<_>>();
         model_manager.register_model::<models::Menu<_>>();
+        model_manager.register_model::<models::Parameter<_>>();
+        model_manager.register_model::<models::Settings<_>>();
         model_manager.set_data_children("menu", "parent");
         model_manager.set_data_body("view", "arch");
         model_manager
@@ -91,12 +93,17 @@ impl Plugin for BasePlugin {
             include_str!("../data/access.xml"),
             include_str!("../data/countries.xml"),
             include_str!("../data/company.xml"),
+            include_str!("../data/settings.xml"),
             include_str!("../views/users_views.xml"),
             include_str!("../views/contact_views.xml"),
             include_str!("../views/company_views.xml"),
             include_str!("../views/technical_views.xml"),
             include_str!("../views/menus.xml"),
         ]
+    }
+
+    fn demo(&self) -> Vec<&'static str> {
+        vec![include_str!("../demo/contacts.xml")]
     }
 
     /// Finish the seeded accounts, and say which two of them the framework needs by name.

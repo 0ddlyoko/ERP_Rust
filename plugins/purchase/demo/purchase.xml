@@ -1,0 +1,17 @@
+<erp>
+    <purchase_order id="demo_purchase_1" partner="base.demo_bureau_design" date_order="2026-09-01" user="base.user_admin"/>
+    <purchase_order_line id="demo_purchase_1_line_1" order="demo_purchase_1" sequence="10" product="product.demo_desk" product_qty="10" price_unit="180"/>
+    <purchase_order_line id="demo_purchase_1_line_2" order="demo_purchase_1" sequence="20" product="product.demo_chair" product_qty="15" price_unit="120"/>
+    <purchase_order id="demo_purchase_2" partner="base.demo_techno" date_order="2026-09-08" user="base.user_admin"/>
+    <purchase_order_line id="demo_purchase_2_line_1" order="demo_purchase_2" sequence="10" product="product.demo_laptop" product_qty="5" price_unit="860"/>
+    <purchase_order_line id="demo_purchase_2_line_2" order="demo_purchase_2" sequence="20" product="product.demo_dock" product_qty="8" price_unit="105"/>
+    <purchase_order_line id="demo_purchase_2_line_3" order="demo_purchase_2" sequence="30" product="product.demo_monitor" product_qty="12" price_unit="190"/>
+    <purchase_order id="demo_purchase_3" partner="base.demo_bureau_design" date_order="2026-09-22" user="base.user_admin"/>
+    <purchase_order_line id="demo_purchase_3_line_1" order="demo_purchase_3" sequence="10" product="product.demo_standing_desk" product_qty="4" price_unit="410"/>
+    <purchase_order_line id="demo_purchase_3_line_2" order="demo_purchase_3" sequence="20" product="product.demo_cabinet" product_qty="6" price_unit="95"/>
+    <purchase_order_line id="demo_purchase_3_line_3" order="demo_purchase_3" sequence="30" product="product.demo_lamp" product_qty="20" price_unit="14"/>
+    <purchase_order id="demo_purchase_4" partner="base.demo_techno" date_order="2026-10-02" user="base.user_admin"/>
+    <purchase_order_line id="demo_purchase_4_line_1" order="demo_purchase_4" sequence="10" product="product.demo_monitor" product_qty="6" price_unit="185"/>
+
+    <function model="purchase_order" name="action_rfq_send" ref="demo_purchase_4"/>
+</erp>
