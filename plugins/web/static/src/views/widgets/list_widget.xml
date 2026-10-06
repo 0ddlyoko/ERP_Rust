@@ -17,7 +17,7 @@
                     <tbody>
                         <tr t-foreach="rows" t-as="row" t-key="row.key"
                             t-att-class="{ o_list_row: true, o_x2many_openable: editable || (openAction !== null &amp;&amp; row.id !== null), o_x2many_editing: editing === row.key }"
-                            t-on-click="() => choose(row)">
+                            t-on-click="() => choose(row)" t-on-keydown="(ev) => key(ev, row)">
                             <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
                                 <span t-if="computeError(row, column)" class="o_compute_error" role="img" aria-label="Could not be computed"
                                       t-att-title="computeError(row, column)">!</span>

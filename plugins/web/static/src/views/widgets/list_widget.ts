@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, props, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state } from "trame";
 import { type Fields, Models } from "@web/core/models";
 import { Orm, type Values } from "@web/core/orm";
 import { Views } from "@web/core/views";
@@ -23,6 +23,10 @@ interface Row {
  * Where a view edits it, a row is edited in place once clicked, and removed with its bin; a
  * one2many adds a line to fill in, a many2many a record found by searching. What is changed is
  * kept until the record holding them is saved. Elsewhere, choosing a row opens its record.
+ *
+ * Typed through like a sheet: Tab past a row's last field, or Enter, edits the next row — a new
+ * line past the last one of a one2many — and Shift+Tab before its first field the previous one;
+ * Escape stops editing.
  */
 export class ListWidget extends X2ManyWidget {
     static override template = "web.ListWidget";
@@ -175,6 +179,66 @@ export class ListWidget extends X2ManyWidget {
         }
     }
 
+    /**
+     * Keys while a row is edited. What a field does with a key itself — a drop-down choosing
+     * with Enter — comes first.
+     */
+    key(event: KeyboardEvent, row: Row): void {
+        if (event.defaultPrevented || this.editing !== row.key) {
+            return;
+        }
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (event.key === "Escape") {
+            this.editing = null;
+        } else if (event.key === "Enter" && target?.tagName !== "TEXTAREA") {
+            event.preventDefault();
+            this.step(row, 1);
+        } else if (event.key === "Tab") {
+            const fields = this.fieldsEdited();
+            const at = target === null ? -1 : fields.indexOf(target);
+            if (!event.shiftKey && at === fields.length - 1) {
+                event.preventDefault();
+                this.step(row, 1);
+            } else if (event.shiftKey && at === 0) {
+                event.preventDefault();
+                this.step(row, -1);
+            }
+        }
+    }
+
+    /** The inputs of the row edited, in their order. */
+    private fieldsEdited(): HTMLElement[] {
+        const inputs = this.element?.querySelectorAll<HTMLInputElement>(
+            ".o_x2many_editing input, .o_x2many_editing select, .o_x2many_editing textarea",
+        );
+        return Array.from(inputs ?? []).filter((input) => !input.disabled);
+    }
+
+    /** Edit the row after this one, or a new line past the last; or the one before, its last field. */
+    private step(row: Row, by: 1 | -1): void {
+        const rows = this.rows;
+        const next = rows[rows.findIndex((candidate) => candidate.key === row.key) + by];
+        if (next !== undefined) {
+            this.editing = next.key;
+        } else if (by === 1 && this.isOne2Many) {
+            this.addLine();
+            return;
+        } else {
+            return;
+        }
+        this.focusEdited(by === 1 ? "first" : "last");
+    }
+
+    /** Put the cursor in the row edited once it shows its inputs. */
+    private focusEdited(which: "first" | "last"): void {
+        void nextTick().then(() =>
+            requestAnimationFrame(() => {
+                const fields = this.fieldsEdited();
+                (which === "first" ? fields[0] : fields[fields.length - 1])?.focus();
+            }),
+        );
+    }
+
     /** A new line, its fields' defaults filled in, edited at once. */
     addLine(): void {
         const fields = this.fields ?? {};
@@ -185,6 +249,7 @@ export class ListWidget extends X2ManyWidget {
                 .map((name) => [name, fields[name].default]),
         );
         this.editing = this.addDraft(defaults);
+        this.focusEdited("first");
     }
 }
 
