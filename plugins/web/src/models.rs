@@ -1,5 +1,5 @@
 pub mod saved_filter;
 pub mod template;
 
-pub use saved_filter::SavedFilter;
-pub use template::Template;
+pub use saved_filter::{BaseSavedFilter, SavedFilter};
+pub use template::{BUNDLES_CACHE, BaseTemplate, RESOLVED_CACHE, Template};
