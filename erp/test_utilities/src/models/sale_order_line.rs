@@ -1,5 +1,5 @@
 use crate::models::sale_order::BaseSaleOrder;
-use crate::models::{SaleOrder, Tag};
+use crate::models::{BaseTag, SaleOrder, Tag};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -23,6 +23,15 @@ pub struct SaleOrderLine<Mode: IdMode> {
     /// Three segments, crossing a many2one then a many2many.
     #[erp(compute = "compute_order_tags", depends = ["order.tags.name"])]
     order_tags: String,
+    /// A many2many worked out from the order's, kept in its table of pairs, and set by hand.
+    #[erp(
+        compute = "compute_tags",
+        depends = ["order.tags"],
+        stored,
+        editable,
+        relation = "sale_order_line_tag_rel"
+    )]
+    tags: Reference<BaseTag, MultipleIds>,
 }
 
 #[erp_methods]
@@ -54,6 +63,15 @@ impl SaleOrderLine<MultipleIds> {
             let mut names: Vec<String> = tags.get_name(env)?.into_iter().cloned().collect();
             names.sort();
             line.set_order_tags(names.join(","), env)?;
+        }
+        Ok(())
+    }
+
+    pub fn compute_tags(&self, env: &mut Environment) -> Result<()> {
+        for line in self {
+            let order = line.get_order::<SaleOrder<SingleId>>(env)?;
+            let tags: Tag<MultipleIds> = order.get_tags(env)?;
+            line.set_tags(&tags, env)?;
         }
         Ok(())
     }

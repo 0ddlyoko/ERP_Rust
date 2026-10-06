@@ -50,7 +50,7 @@ impl<'mm> Environment<'mm> {
                     continue;
                 }
                 let final_field = current_model.try_get_internal_field(elem)?;
-                let is_stored = final_field.is_stored();
+                let is_stored = final_field.is_kept();
                 if is_stored {
                     // If stored field, we need to save it to the database
                     fields_to_save
@@ -165,7 +165,7 @@ impl<'mm> Environment<'mm> {
                     .get_cache_models(model_name)
                     .to_recompute
                     .iter()
-                    .any(|(field, ids)| !ids.is_empty() && model.is_stored(field))
+                    .any(|(field, ids)| !ids.is_empty() && model.is_kept(field))
             })
             .map(|(model_name, _)| model_name.clone())
     }
@@ -256,8 +256,15 @@ impl<'mm> Environment<'mm> {
     ///
     /// A one2many has no column of its own: saving it saves the many2one it is found through.
     pub fn save_fields_to_db(&mut self, model_name: &str, fields: &[&str]) -> Result<()> {
-        self.save_relations_to_db(model_name, fields)?;
         let model = self.model_manager.get_model(model_name);
+        // A many2many worked out and kept has its pairs worked out before they are written.
+        let kept: Vec<&str> = fields
+            .iter()
+            .copied()
+            .filter(|field| model.is_kept(field))
+            .collect();
+        self.call_computed_method_on_fields(model_name, &kept)?;
+        self.save_relations_to_db(model_name, fields)?;
         for field in fields {
             if let Some(FieldReference {
                 target_model,

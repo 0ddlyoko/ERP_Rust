@@ -749,7 +749,7 @@ fn test_a_computed_list_cannot_be_searched() -> Result<()> {
 mod stored_list {
     use code_gen::{Model, erp_methods};
     use erp::environment::Environment;
-    use erp::types::field::{IdMode, MultipleIds, Reference};
+    use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
     use std::error::Error;
 
     #[derive(Model)]
@@ -757,7 +757,8 @@ mod stored_list {
     #[allow(dead_code)]
     pub struct Fleet<Mode: IdMode> {
         pub id: Mode,
-        #[erp(compute = "compute_ships", depends = [], stored)]
+        flagship: Reference<BaseFleet, SingleId>,
+        #[erp(compute = "compute_ships", depends = [], stored, inverse = "flagship")]
         ships: Reference<BaseFleet, MultipleIds>,
         #[erp(compute = "compute_size", depends = ["ships.ships"])]
         size: i32,
@@ -783,9 +784,10 @@ mod stored_list {
     }
 }
 
-/// A list of references has no column, so asking to keep it is refused rather than ignored.
+/// A one2many has nothing of its own to keep — it is found through the many2one pointing back —
+/// so asking to keep it is refused rather than ignored. A many2many is kept in its table of pairs.
 #[test]
-#[should_panic(expected = "no column to keep it in")]
+#[should_panic(expected = "a one2many has nothing of its own to keep")]
 fn test_a_computed_list_cannot_be_stored() {
     let mut app = Application::new_test();
     app.model_manager.register_model::<stored_list::Fleet<_>>();

@@ -222,6 +222,12 @@ impl FinalInternalModel {
         self.fields.get(field_name).is_some_and(|f| f.is_stored())
     }
 
+    /// Whether given field's value is kept in the database — a column, or a many2many's table of
+    /// pairs — rather than worked out on each read. False for a field the model does not have.
+    pub fn is_kept(&self, field_name: &str) -> bool {
+        self.fields.get(field_name).is_some_and(|f| f.is_kept())
+    }
+
     /// Look a field up by name.
     ///
     /// This is the entry point for any name that did not come from the framework itself, such as

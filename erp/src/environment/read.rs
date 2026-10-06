@@ -610,7 +610,7 @@ impl<'mm> Environment<'mm> {
                 continue;
             };
             let mut needed = self.cache.get_ids_to_recompute(model_name, field, ids_ref);
-            if !model.is_stored(field) {
+            if !model.is_kept(field) {
                 needed.extend(self.cache.get_ids_not_in_cache(model_name, field, ids_ref));
             }
             if needed.is_empty() {
@@ -682,7 +682,7 @@ impl<'mm> Environment<'mm> {
                 //  multiple database calls
                 let fields_to_load = model_info.get_stored_fields();
                 self.load_records_fields_from_db(model_name, &ids_not_in_cache, &fields_to_load)?;
-            } else if is_computed_method {
+            } else if is_computed_method && !model_info.is_kept(field_name) {
                 // This could be a computed one. Call it
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {

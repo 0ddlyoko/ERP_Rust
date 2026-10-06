@@ -187,9 +187,10 @@ fn test_depends() -> Result<()> {
         depends_of(sale_order, "lines").is_empty(),
         "O2M shouldn't have any dependencies"
     );
-    assert!(
-        depends_of(sale_order, "tags").is_empty(),
-        "a M2M carries its edges on the mirror side, and a write touches both"
+    assert_eq!(
+        depends_of(sale_order, "tags"),
+        vec![vec![hop("sale_order_line", "order"), same("tags")]],
+        "a line's tags follow its order's; going through a M2M lands on the mirror side instead"
     );
 
     // SOL
@@ -199,6 +200,7 @@ fn test_depends() -> Result<()> {
             vec![through("sale_order", "order"), same("total_price")],
             vec![same("order_tags")],
             vec![same("siblings_total")],
+            vec![same("tags")],
             vec![
                 through("sale_order", "order"),
                 hop("sale_order_line", "order"),

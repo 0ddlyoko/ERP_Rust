@@ -1,6 +1,6 @@
 use erp_types::field::{
-    FieldCompute, FieldDepend, FieldIndex, FieldKind, FieldReference, FieldType, OnDelete,
-    SelectionFamily,
+    FieldCompute, FieldDepend, FieldIndex, FieldKind, FieldReference, FieldReferenceType,
+    FieldType, OnDelete, SelectionFamily,
 };
 use std::collections::HashSet;
 
@@ -114,15 +114,33 @@ impl FinalInternalField {
                 self.name
             ));
         }
-        if self.asked_for_storage && !self.kind.is_stored() {
+        if self.asked_for_storage && !self.kind.is_stored() && !self.is_many2many() {
             return Err(format!(
-                "Field {} is asked to be stored, but a list of references has no column to keep \
-                 it in: it is worked out on each read.",
+                "Field {} is asked to be stored, but a one2many has nothing of its own to keep: \
+                 it is found through the many2one pointing back.",
                 self.name
             ));
         }
         self.stored = self.asked_for_storage || self.compute.is_none();
         Ok(())
+    }
+
+    /// Whether the field's value is kept in the database rather than worked out on each read: in
+    /// a column, or — a many2many — in its table of pairs. A computed field kept so is worked
+    /// out when what it depends on changes, and read back like any other.
+    pub fn is_kept(&self) -> bool {
+        self.stored && (self.kind.is_stored() || self.is_many2many())
+    }
+
+    /// Whether the field is a many2many, its pairs in a table of their own.
+    pub fn is_many2many(&self) -> bool {
+        matches!(
+            self.inverse,
+            Some(FieldReference {
+                inverse_field: FieldReferenceType::M2M { .. },
+                ..
+            })
+        )
     }
 
     /// Whether the field lives in a column of its own.

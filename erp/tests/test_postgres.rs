@@ -236,6 +236,66 @@ fn test_records_are_grouped_by_the_database() -> Result<()> {
     Ok(())
 }
 
+/// A many2many worked out and kept lives in its table of pairs: written there once worked out,
+/// read back from there by the next transaction, rewritten when what it depends on changes.
+#[test]
+fn test_a_kept_computed_many2many_lives_in_its_table() -> Result<()> {
+    let app = app_or_skip!("t_kept_m2m");
+    let pairs = |app: &Application| -> Result<Vec<(i32, i32)>> {
+        let mut database = app.create_new_database()?;
+        let DatabaseType::Postgres(connection) = &mut database else {
+            unreachable!()
+        };
+        Ok(connection
+            .client
+            .query(
+                "SELECT sale_order_line_id, tag_id FROM t_kept_m2m.sale_order_line_tag_rel ORDER BY 2",
+                &[],
+            )?
+            .iter()
+            .map(|row| (row.get(0), row.get(1)))
+            .collect())
+    };
+    let mut env = app.new_env()?;
+    let mut tag_ids = Vec::new();
+    for name in ["urgent", "export"] {
+        let mut values = MapOfFields::new(HashMap::new());
+        values.insert("name", name);
+        tag_ids.push(env.create_records("tag", vec![values])?.get_ids_ref()[0]);
+    }
+    let mut values = MapOfFields::new(HashMap::new());
+    values.insert_field_type("tags", erp_types::field::FieldType::Refs(vec![tag_ids[0]]));
+    let order = env
+        .create_records("sale_order", vec![values])?
+        .get_ids_ref()[0];
+    let mut values = MapOfFields::new(HashMap::new());
+    values.insert_field_type("order", erp_types::field::FieldType::Ref(order));
+    let line = env
+        .create_records("sale_order_line", vec![values])?
+        .get_ids_ref()[0];
+    env.close()?;
+    assert_eq!(pairs(&app)?, vec![(line as i32, tag_ids[0] as i32)]);
+
+    let mut env = app.new_env()?;
+    let rows = env.read("sale_order_line", &SingleId::from(line), &["tags"])?;
+    assert_eq!(
+        rows[0].get_option::<&Vec<u32>>("tags"),
+        Some(&vec![tag_ids[0]])
+    );
+    let mut values = MapOfFields::new(HashMap::new());
+    values.insert_field_type("tags", erp_types::field::FieldType::Refs(tag_ids.clone()));
+    env.write("sale_order", &SingleId::from(order), values)?;
+    env.close()?;
+    assert_eq!(
+        pairs(&app)?,
+        vec![
+            (line as i32, tag_ids[0] as i32),
+            (line as i32, tag_ids[1] as i32)
+        ]
+    );
+    Ok(())
+}
+
 /// A one2many has no column of its own.
 #[test]
 fn test_one2many_has_no_column() -> Result<()> {

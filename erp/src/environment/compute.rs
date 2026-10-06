@@ -153,7 +153,7 @@ impl<'mm> Environment<'mm> {
             if let Some((key, value)) = cache_models
                 .to_recompute
                 .iter()
-                .find(|(key, _value)| model.is_stored(key))
+                .find(|(key, _value)| model.is_kept(key))
             {
                 let ids: MultipleIds = MultipleIds {
                     ids: value.iter().copied().collect(),
@@ -165,7 +165,7 @@ impl<'mm> Environment<'mm> {
             if !cache_models
                 .to_recompute
                 .iter()
-                .any(|(key, value)| !value.is_empty() && model.is_stored(key))
+                .any(|(key, value)| !value.is_empty() && model.is_kept(key))
             {
                 break;
             }
@@ -242,7 +242,7 @@ impl<'mm> Environment<'mm> {
             let cache_models = self.cache.get_cache_models(model_name);
             if let Some((field, value)) =
                 cache_models.to_recompute.iter().find_map(|(field, value)| {
-                    if model.is_stored(field) {
+                    if model.is_kept(field) {
                         let result = value
                             .iter()
                             .filter(|id| ids.contains(id))
@@ -264,7 +264,7 @@ impl<'mm> Environment<'mm> {
             }
             let cache_models = self.cache.get_cache_models(model_name);
             if !cache_models.to_recompute.iter().any(|(field, value)| {
-                model.is_stored(field) && value.iter().any(|id| ids.contains(id))
+                model.is_kept(field) && value.iter().any(|id| ids.contains(id))
             }) {
                 break;
             }
@@ -330,7 +330,7 @@ impl<'mm> Environment<'mm> {
         let final_internal_model = self.model_manager.get_model(model_name);
         let depth = self.computing.len();
         for (field_name, field) in &final_internal_model.fields {
-            if field.is_stored()
+            if field.is_kept()
                 && let Some(method) = final_internal_model.compute_method(field_name)
                 && plan.iter().any(|(planned, _)| *planned == method)
             {

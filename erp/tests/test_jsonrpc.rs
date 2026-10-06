@@ -367,6 +367,7 @@ fn test_fields_get_describes_every_field() -> Result<()> {
             "order_tags",
             "price",
             "siblings_total",
+            "tags",
             "total_price",
             "write_date"
         ]
@@ -396,6 +397,11 @@ fn test_fields_get_describes_every_field() -> Result<()> {
     assert_eq!(fields["total_price"]["readonly"], true, "computed");
     assert_eq!(fields["total_price"]["stored"], true);
     assert_eq!(fields["siblings_total"]["stored"], false);
+    assert_eq!(fields["tags"]["relation_kind"], "many2many");
+    assert_eq!(
+        fields["tags"]["readonly"], false,
+        "computed, and set by hand"
+    );
 
     let lines = result(&app, "sale_order.fields_get", json!({"fields": ["lines"]}));
     assert_eq!(lines["lines"]["relation_kind"], "one2many");
