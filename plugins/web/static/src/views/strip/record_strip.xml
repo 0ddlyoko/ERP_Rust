@@ -3,67 +3,52 @@
         <div t-att-class="{ o_strip_slot: true, o_strip_slot_folded: folded }" t-att-style="folded ? '' : panelStyle">
             <section t-att-class="{ o_strip: true, o_strip_narrow: narrow, o_strip_peek: peeking }" t-att-style="panelStyle"
                      t-ref="element" t-att-aria-label="props.action.name"
-                     t-on-mouseleave="() => leave()">
-                <t t-if="narrow">
-                    <div class="o_strip_top" t-on-mouseenter="() => peek()">
-                        <button type="button" class="o_strip_unfold" title="Open the list" aria-label="Open the list"
-                                t-on-click="unfold">
-                            {{ count }}
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-                        </button>
-                        <span class="o_strip_caption">{{ props.action.name }}</span>
-                    </div>
-                    <div class="o_strip_list">
-                        <div t-foreach="groups" t-as="group" t-key="group.key" class="o_strip_group">
-                            <span t-if="group.label" t-att-class="'o_strip_group_label o_strip_tone_' + (group.decoration ?? 'none')">
-                                <span class="o_strip_dot"/>{{ group.label }} · {{ group.records.length }}
-                            </span>
-                            <t t-if="foldedCard">
-                                <button t-foreach="group.records" t-as="record" t-key="record.id" type="button"
-                                        t-att-class="edgeClass(record)" t-att-aria-current="isSelected(record) ? 'true' : null"
-                                        t-on-click="() => open(record)" t-on-mouseenter="(ev) => hover(record, ev)"
-                                        t-on-mouseleave="() => hidePreview()">
-                                    <t t-component="foldedCard.body" strip="this" record="record" card="foldedCard"/>
-                                </button>
+                     t-on-mouseenter="() => peek()" t-on-mouseleave="() => leave()">
+                <div t-if="narrow" class="o_strip_top">
+                    <button type="button" class="o_strip_unfold" title="Keep the list open" aria-label="Keep the list open"
+                            t-on-click="unfold">
+                        {{ count }}
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                    <span class="o_strip_caption">{{ props.action.name }}</span>
+                </div>
+                <header t-else="" class="o_strip_head">
+                    <h2 class="o_strip_title">{{ props.action.name }}<span class="o_strip_count">{{ count }}</span></h2>
+                    <button t-if="folded &amp;&amp; !narrowScreen" type="button" class="o_strip_button" title="Keep the list open"
+                            aria-label="Keep the list open" t-on-click="unfold">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                    <button t-elif="!folded" type="button" class="o_strip_button" title="Fold the list" aria-label="Fold the list"
+                            t-on-click="fold">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                    </button>
+                    <button type="button" class="o_strip_button o_strip_new" title="New" aria-label="New" t-on-click="create">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                             stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </header>
+                <div class="o_strip_list">
+                    <div t-foreach="groups" t-as="group" t-key="group.key" class="o_strip_group">
+                        <span t-if="group.label" t-att-class="'o_strip_group_label o_strip_tone_' + (group.decoration ?? 'none')">
+                            <span class="o_strip_dot"/>{{ group.label }} · {{ group.records.length }}
+                        </span>
+                        <button t-foreach="group.records" t-as="record" t-key="record.id" type="button"
+                                t-att-class="edgeClass(record)" t-att-aria-current="isSelected(record) ? 'true' : null"
+                                t-on-click="() => open(record)" t-on-mouseenter="(ev) => hover(record, ev)"
+                                t-on-mouseleave="() => hidePreview()">
+                            <t t-if="narrow">
+                                <t t-if="foldedCard" t-component="foldedCard.body" strip="this" record="record" card="foldedCard"/>
                             </t>
-                        </div>
-                    </div>
-                </t>
-                <t t-else="">
-                    <header class="o_strip_head">
-                        <h2 class="o_strip_title">{{ props.action.name }}<span class="o_strip_count">{{ count }}</span></h2>
-                        <button t-if="folded &amp;&amp; !narrowScreen" type="button" class="o_strip_button" title="Keep the list open"
-                                aria-label="Keep the list open" t-on-click="unfold">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-                        </button>
-                        <button t-elif="!folded" type="button" class="o_strip_button" title="Fold the list" aria-label="Fold the list"
-                                t-on-click="fold">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
-                        </button>
-                        <button type="button" class="o_strip_button o_strip_new" title="New" aria-label="New" t-on-click="create">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                                 stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                        </button>
-                    </header>
-                    <div class="o_strip_list">
-                        <div t-foreach="groups" t-as="group" t-key="group.key" class="o_strip_group">
-                            <span t-if="group.label" t-att-class="'o_strip_group_label o_strip_tone_' + (group.decoration ?? 'none')">
-                                <span class="o_strip_dot"/>{{ group.label }} · {{ group.records.length }}
-                            </span>
-                            <t t-if="compact">
-                                <button t-foreach="group.records" t-as="record" t-key="record.id" type="button"
-                                        t-att-class="edgeClass(record)" t-att-aria-current="isSelected(record) ? 'true' : null"
-                                        t-on-click="() => open(record)">
-                                    <t t-component="compact.body" strip="this" record="record" card="compact"/>
-                                </button>
+                            <t t-else="">
+                                <t t-if="compact" t-component="compact.body" strip="this" record="record" card="compact"/>
                             </t>
-                        </div>
-                        <p t-if="count === 0" class="o_strip_empty">No records.</p>
+                        </button>
                     </div>
-                </t>
+                    <p t-if="count === 0 &amp;&amp; !narrow" class="o_strip_empty">No records.</p>
+                </div>
             </section>
             <div t-if="!folded" class="o_strip_resize" role="separator" aria-orientation="vertical"
                  aria-label="Resize the list" t-on-pointerdown="(ev) => resize(ev)"/>

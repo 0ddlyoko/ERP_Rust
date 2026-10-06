@@ -12,6 +12,8 @@ import { type CompiledCard, compileCard } from "./card_compiler";
 const LIMIT = 80;
 /** How long the pointer rests on a record before its preview shows, in milliseconds. */
 const PREVIEW_AFTER = 300;
+/** How long it rests on the folded strip before the strip opens over the form. */
+const PEEK_AFTER = 150;
 /** How wide the open strip may be made, in pixels. */
 const WIDTH_MIN = 260;
 const WIDTH_MAX = 560;
@@ -70,8 +72,9 @@ function periodStart(day: string, period: string): string {
  * with the records: resting on one asks the server nothing.
  *
  * Folded or open, and how wide, is kept per action by the browser; on a narrow screen it keeps
- * folded. Folded, it opens over the form while the pointer rests on its top, offering to stay
- * open rather than to fold again.
+ * folded. Folded, it opens over the form while the pointer rests on it, offering to stay open
+ * rather than to fold again. Folded or open, one list holds the records, each as tall either way:
+ * a record stays where it was as the strip opens, and so does the scroll.
  */
 export class RecordStrip extends View {
     static template = "web.RecordStrip";
@@ -97,6 +100,7 @@ export class RecordStrip extends View {
     @state accessor preview: { record: Values; top: number; left: number; above: boolean } | null = null;
 
     private previewTimer: ReturnType<typeof setTimeout> | undefined;
+    private peekTimer: ReturnType<typeof setTimeout> | undefined;
 
     /** The strip's element, set by its template. */
     element: HTMLElement | null = null;
@@ -138,15 +142,20 @@ export class RecordStrip extends View {
         this.keep({ ...this.layout, folded: true });
     }
 
-    /** Open the folded strip over the form, the pointer resting on its top. */
+    /** Open the folded strip over the form once the pointer rested on it. */
     peek(): void {
-        if (!this.justFolded) {
-            this.peeking = true;
+        clearTimeout(this.peekTimer);
+        if (!this.folded || this.justFolded) {
+            return;
         }
+        this.peekTimer = setTimeout(() => {
+            this.peeking = true;
+        }, PEEK_AFTER);
     }
 
     /** The pointer left the strip: it closes, and opens again the next time it comes. */
     leave(): void {
+        clearTimeout(this.peekTimer);
         this.justFolded = false;
         this.peeking = false;
         this.hidePreview();
