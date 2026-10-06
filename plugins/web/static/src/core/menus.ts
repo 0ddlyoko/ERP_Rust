@@ -47,6 +47,11 @@ export function moduleOf(entries: readonly MenuEntry[], actionId: number): MenuE
     return entries.find((entry) => leadsTo(entry, actionId)) ?? null;
 }
 
+/** The module holding an action on `model`, for an action no menu leads to. */
+export function moduleOfModel(entries: readonly MenuEntry[], model: string): MenuEntry | null {
+    return entries.find((entry) => actionsOf([entry]).some((action) => action.model === model)) ?? null;
+}
+
 /** Every entry opening an action, with the names leading to it: `Settings / Technical / Views`. */
 export function pathsOf(entries: readonly MenuEntry[], above: string[] = []): { entry: MenuEntry; path: string }[] {
     return entries.flatMap((entry) => {

@@ -1,5 +1,5 @@
 import { Component, computed, inject, load, resource, state } from "trame";
-import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf } from "@web/core/menus";
+import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf, moduleOfModel } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
 import { type Route, Router } from "@web/core/router";
 import { ActionManager } from "./action_manager";
@@ -12,7 +12,8 @@ import { Sidebar } from "./sidebar";
  *
  * The action open is the route's: one of the menus', or, for one no menu leads to — a button
  * opening it — loaded by its identifier. With none, the first action of the menus. The module
- * shown is the one the action is under, unless the user switched to another.
+ * shown is the one the action is under — for one no menu leads to, the one with an action on the
+ * same model — unless the user switched to another.
  */
 export class WebClient extends Component {
     static template = "web.WebClient";
@@ -55,7 +56,9 @@ export class WebClient extends Component {
 
     @computed get module(): MenuEntry | null {
         const action = this.action;
-        return this.switched ?? (action ? moduleOf(this.tree ?? [], action.id) : null) ?? this.tree?.[0] ?? null;
+        const tree = this.tree ?? [];
+        const under = action ? (moduleOf(tree, action.id) ?? moduleOfModel(tree, action.model)) : null;
+        return this.switched ?? under ?? tree[0] ?? null;
     }
 
     /** Show a module's menus, and open its first action. */
