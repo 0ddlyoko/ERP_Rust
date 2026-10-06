@@ -1,6 +1,6 @@
 use crate::database::cache::CacheConnection;
 use crate::database::postgres::PostgresDatabase;
-use crate::database::{Database, SearchedRow};
+use crate::database::{Database, Group, GroupBy, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
@@ -66,6 +66,24 @@ impl Database for DatabaseType {
             }
             DatabaseType::Postgres(postgres) => {
                 postgres.find_ids(model_name, domain, model_manager, options)
+            }
+        }
+    }
+
+    fn read_group(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        group_by: Option<&GroupBy>,
+        sums: &[&str],
+        model_manager: &ModelManager,
+    ) -> Result<Vec<Group>> {
+        match self {
+            DatabaseType::Cache(cache) => {
+                cache.read_group(model_name, domain, group_by, sums, model_manager)
+            }
+            DatabaseType::Postgres(postgres) => {
+                postgres.read_group(model_name, domain, group_by, sums, model_manager)
             }
         }
     }

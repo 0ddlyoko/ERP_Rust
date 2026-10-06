@@ -4,6 +4,7 @@
 //! refused when it is registered rather than discovered when a call goes somewhere unexpected.
 
 use crate::access::Operation;
+use crate::database::{FieldType as StoredValue, Group, GroupBy};
 use crate::environment::{Environment, LineKey, Onchange};
 use crate::model::{RegisteredKinds, RpcFn, Selections};
 use erp_internal_types::FinalInternalField;
@@ -31,6 +32,7 @@ pub enum Verb {
     Read,
     ReadMatching,
     Count,
+    ReadGroup,
     Create,
     Write,
     Delete,
@@ -49,6 +51,7 @@ impl Verb {
         Verb::Read,
         Verb::ReadMatching,
         Verb::Count,
+        Verb::ReadGroup,
         Verb::Create,
         Verb::Write,
         Verb::Delete,
@@ -66,6 +69,7 @@ impl Verb {
             Verb::Read => "read",
             Verb::ReadMatching => "read_matching",
             Verb::Count => "count",
+            Verb::ReadGroup => "read_group",
             Verb::Create => "create",
             Verb::Write => "write",
             Verb::Delete => "delete",
@@ -94,6 +98,7 @@ impl Verb {
                 |env, model, params| dispatch(env, model, Verb::ReadMatching, params)
             }
             Verb::Count => |env, model, params| dispatch(env, model, Verb::Count, params),
+            Verb::ReadGroup => |env, model, params| dispatch(env, model, Verb::ReadGroup, params),
             Verb::Create => |env, model, params| dispatch(env, model, Verb::Create, params),
             Verb::Write => |env, model, params| dispatch(env, model, Verb::Write, params),
             Verb::Delete => |env, model, params| dispatch(env, model, Verb::Delete, params),
@@ -210,9 +215,65 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
                 }
             }
             refuse_unknown_keys(env, model_name, tuple)?;
-            SearchType::Tuple(by_name(env, model_name, tuple)?)
+            let tuple = by_name(env, model_name, tuple)?;
+            SearchType::Tuple(typed_dates(env, model_name, tuple)?)
         }
     })
+}
+
+/// A date or a moment compared with text, as JSON has to write it, compared with the date or
+/// moment the text writes: `"2026-01-31"`, `"2026-01-31T08:00:00Z"`, `"2026-01-31 08:00:00"`.
+fn typed_dates(env: &Environment, model_name: &str, mut tuple: SearchTuple) -> Result<SearchTuple> {
+    let mut model = env.model_manager.try_get_model(model_name)?;
+    let mut kind = None;
+    for segment in &tuple.left.path {
+        if segment == "id" {
+            return Ok(tuple);
+        }
+        let field = model.try_get_internal_field(segment)?;
+        kind = Some(field.kind);
+        if let Some(reference) = &field.inverse {
+            model = env.model_manager.try_get_model(reference.target_model)?;
+        }
+    }
+    let typed = |right: &RightTuple| -> Result<RightTuple> {
+        let RightTuple::String(text) = right else {
+            return Ok(right.clone());
+        };
+        let path = tuple.left.path.join(".");
+        Ok(match kind {
+            Some(FieldKind::Date) => RightTuple::Date(
+                chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d")
+                    .map_err(|_| format!("{path}: \"{text}\" is not a date, YYYY-MM-DD"))?,
+            ),
+            Some(FieldKind::DateTime) => RightTuple::DateTime(moment(text).ok_or_else(|| {
+                format!("{path}: \"{text}\" is not a moment, YYYY-MM-DDTHH:MM:SSZ")
+            })?),
+            _ => right.clone(),
+        })
+    };
+    tuple.right = match &tuple.right {
+        RightTuple::Array(items) => {
+            RightTuple::Array(items.iter().map(typed).collect::<Result<Vec<_>>>()?)
+        }
+        right => typed(right)?,
+    };
+    Ok(tuple)
+}
+
+/// A moment written in RFC 3339, or as a date and a time of UTC, or as a day starting at midnight
+/// UTC.
+fn moment(text: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    if let Ok(moment) = chrono::DateTime::parse_from_rfc3339(text) {
+        return Some(moment.with_timezone(&chrono::Utc));
+    }
+    if let Ok(moment) = chrono::NaiveDateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S") {
+        return Some(moment.and_utc());
+    }
+    chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d")
+        .ok()
+        .and_then(|day| day.and_hms_opt(0, 0, 0))
+        .map(|start| start.and_utc())
 }
 
 /// A pattern on a relation matches the names of the records it points to: `("groups", "ilike",
@@ -389,6 +450,17 @@ struct CountParams {
 }
 
 #[derive(Debug, Deserialize)]
+struct ReadGroupParams {
+    #[serde(default = "everything")]
+    domain: SearchType,
+    /// `state`, or `date_order:month`; all of them in one group when left out.
+    #[serde(default)]
+    group_by: Option<String>,
+    #[serde(default)]
+    sums: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
 struct FieldsGetParams {
     #[serde(default)]
     fields: Vec<String>,
@@ -444,6 +516,24 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             let CountParams { domain } = parse(params)?;
             let domain = blind_domain(env, model_name, &domain)?;
             Ok(json!(env.count(model_name, &domain)?))
+        }
+        Verb::ReadGroup => {
+            let ReadGroupParams {
+                domain,
+                group_by,
+                sums,
+            } = parse(params)?;
+            let domain = blind_domain(env, model_name, &domain)?;
+            let group_by = group_by.as_deref().map(GroupBy::parse).transpose()?;
+            let asked = group_by.iter().map(|group_by| &group_by.field).chain(&sums);
+            for name in asked {
+                if is_private(env, model_name, name)? {
+                    return Err(format!("Field {model_name}.{name} is private").into());
+                }
+            }
+            let sums: Vec<&str> = sums.iter().map(String::as_str).collect();
+            let groups = env.read_group(model_name, &domain, group_by.as_ref(), &sums)?;
+            groups_as_json(env, model_name, group_by.as_ref(), groups)
         }
         Verb::Read => {
             let ReadParams {
@@ -623,6 +713,84 @@ fn take_drafts(values: &mut Value) -> HashMap<String, Vec<Option<u32>>> {
 }
 
 /// What an onchange answers: the record's fields computed again, and those of its lines, by id
+/// Groups as a client reads them: the value — a record as `[id, name]`, a period by its first
+/// day — how many records, their sums, and the domain finding them, to open the group with.
+fn groups_as_json(
+    env: &mut Environment,
+    model_name: &str,
+    group_by: Option<&GroupBy>,
+    groups: Vec<Group>,
+) -> Result<Value> {
+    let target = match group_by {
+        Some(group_by) => {
+            let model = env.model_manager.try_get_model(model_name)?;
+            let field = model.try_get_internal_field(&group_by.field)?;
+            match (&field.kind, &field.inverse) {
+                (FieldKind::Ref, Some(reference)) => Some(reference.target_model),
+                _ => None,
+            }
+        }
+        None => None,
+    };
+    let names = match target {
+        Some(target) => {
+            let ids: Vec<u32> = groups
+                .iter()
+                .filter_map(|group| match group.key {
+                    Some(StoredValue::UInteger(id)) => Some(id),
+                    _ => None,
+                })
+                .collect();
+            env.names(target, &ids)?
+        }
+        None => HashMap::new(),
+    };
+    let answer = groups
+        .into_iter()
+        .map(|group| {
+            let raw = group.key.as_ref().map_or(Value::Null, stored_as_json);
+            let value = match (&group.key, target) {
+                (Some(StoredValue::UInteger(id)), Some(_)) => json!([id, names.get(id)]),
+                _ => raw.clone(),
+            };
+            let domain = match group_by {
+                None => json!([]),
+                Some(GroupBy {
+                    field,
+                    period: Some(period),
+                }) => match group.key {
+                    Some(StoredValue::Date(start)) => json!([
+                        [field, ">=", start.to_string()],
+                        [field, "<", period.next(start).to_string()]
+                    ]),
+                    _ => json!([[field, "=", null]]),
+                },
+                Some(GroupBy { field, .. }) => json!([[field, "=", raw]]),
+            };
+            let sums: serde_json::Map<String, Value> = group
+                .sums
+                .into_iter()
+                .map(|(name, total)| (name, json!(total.to_string())))
+                .collect();
+            json!({"value": value, "count": group.count, "sums": sums, "domain": domain})
+        })
+        .collect();
+    Ok(Value::Array(answer))
+}
+
+/// A value of a column as the protocol writes it: a decimal as text, to keep every digit.
+fn stored_as_json(value: &StoredValue) -> Value {
+    match value {
+        StoredValue::String(text) | StoredValue::Password(text) => json!(text),
+        StoredValue::Integer(number) => json!(number),
+        StoredValue::UInteger(number) => json!(number),
+        StoredValue::Decimal(number) => json!(number.to_string()),
+        StoredValue::Boolean(flag) => json!(flag),
+        StoredValue::Date(date) => json!(date.to_string()),
+        StoredValue::DateTime(moment) => json!(moment.to_rfc3339()),
+    }
+}
+
 /// for a line that exists and by draft number for one being created; references with names.
 fn onchange_answer(env: &mut Environment, model_name: &str, onchange: Onchange) -> Result<Value> {
     let named = |env: &mut Environment, model: &str, values: MapOfFields| -> Result<Value> {

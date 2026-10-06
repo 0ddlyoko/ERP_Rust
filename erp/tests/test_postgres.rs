@@ -175,6 +175,67 @@ fn test_lookups_are_indexed() -> Result<()> {
     Ok(())
 }
 
+/// Records are gathered by the database: by value, by month with those of no date last, and
+/// as one group without grouping; a group's domain finds its records.
+#[test]
+fn test_records_are_grouped_by_the_database() -> Result<()> {
+    let app = app_or_skip!("t_read_group");
+    let mut env = app.new_env()?;
+    for (name, amount, due) in [
+        ("a", "10.5", Some("2026-01-15")),
+        ("a", "4.5", Some("2026-01-31")),
+        ("b", "7", Some("2026-02-03")),
+        ("c", "1", None),
+    ] {
+        let mut values = MapOfFields::new(HashMap::new());
+        values.insert("name", name);
+        values.insert("amount_untaxed", Decimal::from_str(amount)?);
+        if let Some(due) = due {
+            values.insert("due_date", NaiveDate::parse_from_str(due, "%Y-%m-%d")?);
+        }
+        env.create_records("invoice", vec![values])?;
+    }
+    let answer = env.call_rpc(
+        "invoice",
+        "read_group",
+        &serde_json::json!({"group_by": "due_date:month", "sums": ["amount_untaxed"]}),
+    )?;
+    assert_eq!(
+        answer,
+        serde_json::json!([
+            {"value": "2026-01-01", "count": 2, "sums": {"amount_untaxed": "15.0"},
+             "domain": [["due_date", ">=", "2026-01-01"], ["due_date", "<", "2026-02-01"]]},
+            {"value": "2026-02-01", "count": 1, "sums": {"amount_untaxed": "7"},
+             "domain": [["due_date", ">=", "2026-02-01"], ["due_date", "<", "2026-03-01"]]},
+            {"value": null, "count": 1, "sums": {"amount_untaxed": "1"},
+             "domain": [["due_date", "=", null]]}
+        ])
+    );
+    let january = env.call_rpc(
+        "invoice",
+        "search",
+        &serde_json::json!({ "domain": answer[0]["domain"] }),
+    )?;
+    assert_eq!(january.as_array().map(Vec::len), Some(2));
+    let names = env.call_rpc(
+        "invoice",
+        "read_group",
+        &serde_json::json!({"group_by": "name", "sums": ["amount_untaxed"]}),
+    )?;
+    assert_eq!(names[0]["value"], "a");
+    assert_eq!(names[0]["count"], 2);
+    let all = env.call_rpc(
+        "invoice",
+        "read_group",
+        &serde_json::json!({"sums": ["amount_untaxed"]}),
+    )?;
+    assert_eq!(
+        all,
+        serde_json::json!([{"value": null, "count": 4, "sums": {"amount_untaxed": "23.0"}, "domain": []}])
+    );
+    Ok(())
+}
+
 /// A one2many has no column of its own.
 #[test]
 fn test_one2many_has_no_column() -> Result<()> {

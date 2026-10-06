@@ -1,8 +1,10 @@
 //! Reading records: browsing, searching and filling the cache on demand.
 use super::*;
 use crate::access::{Access, AccessDenied, Operation};
+use crate::database::{Group, GroupBy};
 use crate::errors::MissingRecords;
 use crate::model::CREATE_DATE;
+use erp_types::field::FieldKind;
 
 impl<'mm> Environment<'mm> {
     pub fn get_empty_record<M>(&self) -> M
@@ -343,6 +345,59 @@ impl<'mm> Environment<'mm> {
         self.refuse_unstored_in_domain(model_name, &domain)?;
         self.save_domain_fields_to_db(model_name, &domain)?;
         self.database.count(model_name, &domain, self.model_manager)
+    }
+
+    /// The records matching a domain, as the caller may read them, gathered as `group_by` says —
+    /// by a field's value, or by the period a date falls in — with how many each group holds and
+    /// what their `sums` add up to; without `group_by`, all of them in one group.
+    ///
+    /// What is gathered and summed is kept in a column, and a sum is of numbers: anything else is
+    /// refused, as searching on it would be.
+    pub fn read_group(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        group_by: Option<&GroupBy>,
+        sums: &[&str],
+    ) -> Result<Vec<Group>> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        if let Some(group_by) = group_by {
+            let kind = model.try_get_internal_field(&group_by.field)?.kind;
+            if kind == FieldKind::Refs {
+                return Err(format!(
+                    "Field {model_name}.{} holds records: nothing can be grouped by it",
+                    group_by.field
+                )
+                .into());
+            }
+            if group_by.period.is_some() && !matches!(kind, FieldKind::Date | FieldKind::DateTime) {
+                return Err(format!(
+                    "Field {model_name}.{} is no date: it has no period to group by",
+                    group_by.field
+                )
+                .into());
+            }
+            self.refuse_unstored(
+                model_name,
+                std::slice::from_ref(&group_by.field),
+                "group by",
+            )?;
+        }
+        for sum in sums {
+            let kind = model.try_get_internal_field(sum)?.kind;
+            if !matches!(kind, FieldKind::Integer | FieldKind::Decimal) {
+                return Err(format!("Field {model_name}.{sum} is no number: it has no sum").into());
+            }
+            self.refuse_unstored(model_name, &[sum.to_string()], "sum")?;
+        }
+        let domain = self.readable_domain(model_name, domain)?;
+        self.refuse_unstored_in_domain(model_name, &domain)?;
+        self.save_domain_fields_to_db(model_name, &domain)?;
+        let mut fields: Vec<&str> = sums.to_vec();
+        fields.extend(group_by.map(|group_by| group_by.field.as_str()));
+        self.save_fields_to_db(model_name, &fields)?;
+        self.database
+            .read_group(model_name, &domain, group_by, sums, self.model_manager)
     }
 
     /// Read fields of records, addressing the model and its fields by name.

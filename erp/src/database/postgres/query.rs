@@ -111,6 +111,33 @@ impl QueryBuilder {
         ))
     }
 
+    /// Statement gathering the records matching a domain by `key` — a column, or an expression of
+    /// one — counting them and summing `sums`; without a key, all of them in one row.
+    pub(crate) fn select_group(
+        &mut self,
+        model_name: &str,
+        key: Option<&str>,
+        sums: &[&str],
+        domain: &SearchType,
+        model_manager: &ModelManager,
+    ) -> Result<String> {
+        let model = model_manager.try_get_model(model_name)?;
+        let inner = self.domain_ids(model_name, domain, model_manager)?;
+        let mut columns: Vec<String> = key.map(str::to_string).into_iter().collect();
+        columns.push("COUNT(*)".to_string());
+        columns.extend(sums.iter().map(|sum| format!("SUM({})", quote_ident(sum))));
+        let mut sql = format!(
+            "SELECT {} FROM {} WHERE {} IN ({inner})",
+            columns.join(", "),
+            quote_ident(&model.table_name),
+            quote_ident("id")
+        );
+        if key.is_some() {
+            sql.push_str(" GROUP BY 1 ORDER BY 1 NULLS LAST");
+        }
+        Ok(sql)
+    }
+
     /// Resolve a domain into a statement yielding one column of ids.
     ///
     /// Set operations are nested subqueries rather than joins, because a domain like

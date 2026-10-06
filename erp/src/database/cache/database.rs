@@ -1,5 +1,5 @@
 use crate::database::cache::{CacheDatabaseError, Row, Table};
-use crate::database::{Database, FieldType, SearchedRow};
+use crate::database::{Database, FieldType, Group, GroupBy, SearchedRow};
 use crate::model::ModelManager;
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
@@ -480,6 +480,61 @@ impl Database for CacheConnection {
         Ok(self.get_rows(model_name, domain, model_manager)?.len() as u32)
     }
 
+    /// Gathered row by row: a date by period is moved back to the first day of it.
+    fn read_group(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        group_by: Option<&GroupBy>,
+        sums: &[&str],
+        model_manager: &ModelManager,
+    ) -> Result<Vec<Group>> {
+        let ids = self.get_rows(model_name, domain, model_manager)?;
+        let empty = Table::default();
+        let table = self.tables.get(model_name).unwrap_or(&empty);
+        let mut groups: Vec<Group> = Vec::new();
+        if group_by.is_none() {
+            groups.push(group_of(None, sums));
+        }
+        for id in ids {
+            let Some(row) = table.get_row(&id) else {
+                continue;
+            };
+            let key = group_by.and_then(|group_by| {
+                let cell = row.get_cell(&group_by.field).clone();
+                match (group_by.period, cell) {
+                    (Some(period), Some(FieldType::Date(date))) => {
+                        Some(FieldType::Date(period.start(date)))
+                    }
+                    (Some(period), Some(FieldType::DateTime(moment))) => {
+                        Some(FieldType::Date(period.start(moment.date_naive())))
+                    }
+                    (Some(_), _) => None,
+                    (None, cell) => cell,
+                }
+            });
+            let at = match groups.iter().position(|group| group.key == key) {
+                Some(at) => at,
+                None => {
+                    groups.push(group_of(key, sums));
+                    groups.len() - 1
+                }
+            };
+            let group = &mut groups[at];
+            group.count += 1;
+            for sum in sums {
+                let value = match row.get_cell(sum) {
+                    Some(FieldType::Integer(value)) => rust_decimal::Decimal::from(*value),
+                    Some(FieldType::Decimal(value)) => *value,
+                    _ => rust_decimal::Decimal::ZERO,
+                };
+                *group.sums.entry(sum.to_string()).or_default() += value;
+            }
+        }
+        groups.sort_by(|left, right| key_order(&left.key, &right.key));
+        Ok(groups)
+    }
+
     /// Make a search request to a specific model, and return ids and fields that match this search request
     fn search<'a>(
         &mut self,
@@ -773,5 +828,37 @@ fn as_ids(right: &RightTuple) -> HashSet<u32> {
         RightTuple::UInteger(id) => HashSet::from([*id]),
         RightTuple::Integer(id) => u32::try_from(*id).ok().into_iter().collect(),
         _ => HashSet::new(),
+    }
+}
+
+/// A group of no record yet, its sums at nought.
+fn group_of(key: Option<FieldType>, sums: &[&str]) -> Group {
+    Group {
+        key,
+        count: 0,
+        sums: sums
+            .iter()
+            .map(|sum| (sum.to_string(), rust_decimal::Decimal::ZERO))
+            .collect(),
+    }
+}
+
+/// Groups in the order of their value, as PostgreSQL sorts them: the one of no value last.
+fn key_order(left: &Option<FieldType>, right: &Option<FieldType>) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (left, right) {
+        (None, None) => Ordering::Equal,
+        (None, Some(_)) => Ordering::Greater,
+        (Some(_), None) => Ordering::Less,
+        (Some(left), Some(right)) => match (left, right) {
+            (FieldType::String(left), FieldType::String(right)) => left.cmp(right),
+            (FieldType::Integer(left), FieldType::Integer(right)) => left.cmp(right),
+            (FieldType::UInteger(left), FieldType::UInteger(right)) => left.cmp(right),
+            (FieldType::Decimal(left), FieldType::Decimal(right)) => left.cmp(right),
+            (FieldType::Boolean(left), FieldType::Boolean(right)) => left.cmp(right),
+            (FieldType::Date(left), FieldType::Date(right)) => left.cmp(right),
+            (FieldType::DateTime(left), FieldType::DateTime(right)) => left.cmp(right),
+            _ => Ordering::Equal,
+        },
     }
 }

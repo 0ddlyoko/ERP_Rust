@@ -1,4 +1,4 @@
-use crate::database::FieldType;
+use crate::database::{FieldType, Group, GroupBy};
 use crate::model::ModelManager;
 use erp_search::{SearchOptions, SearchType};
 use erp_types::model::MapOfFields;
@@ -68,6 +68,18 @@ pub trait Database {
         domain: &SearchType,
         model_manager: &ModelManager,
     ) -> Result<u32>;
+
+    /// The records matching a domain gathered as `group_by` says, each group with how many records
+    /// it holds and what their `sums` add up to; without `group_by`, all of them in one group.
+    /// Groups come in the order of their value, the one of records with none last.
+    fn read_group(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        group_by: Option<&GroupBy>,
+        sums: &[&str],
+        model_manager: &ModelManager,
+    ) -> Result<Vec<Group>>;
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
     ///

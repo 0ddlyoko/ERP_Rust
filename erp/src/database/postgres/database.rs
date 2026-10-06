@@ -2,7 +2,7 @@ use super::pool::{ConnectionPool, PooledConnection};
 use super::{
     QueryBuilder, column_type, from_row, id_from_sql, id_to_sql, quote_ident, to_sql_param,
 };
-use crate::database::{Database, ErrorType, FieldType, SearchedRow};
+use crate::database::{Database, ErrorType, FieldType, Group, GroupBy, SearchedRow};
 use crate::model::ModelManager;
 use erp_internal_types::{FinalInternalField, FinalInternalModel};
 use erp_search::{SearchOptions, SearchType};
@@ -425,6 +425,62 @@ impl Database for PostgresDatabase {
         let sql = builder.select_count(model_name, domain, model_manager)?;
         let row = self.client.query_one(&sql, &builder.params())?;
         Ok(row.try_get::<_, i64>(0)? as u32)
+    }
+
+    /// Gathered by the database itself: a date by period is truncated to the first day of it.
+    fn read_group(
+        &mut self,
+        model_name: &str,
+        domain: &SearchType,
+        group_by: Option<&GroupBy>,
+        sums: &[&str],
+        model_manager: &ModelManager,
+    ) -> Result<Vec<Group>> {
+        let model = model_manager.try_get_model(model_name)?;
+        let key = group_by.map(|group_by| match group_by.period {
+            Some(period) => format!(
+                "(date_trunc('{}', {}))::date",
+                period.key(),
+                quote_ident(&group_by.field)
+            ),
+            None => quote_ident(&group_by.field),
+        });
+        let mut builder = QueryBuilder::new();
+        let sql = builder.select_group(model_name, key.as_deref(), sums, domain, model_manager)?;
+        let rows = self.client.query(&sql, &builder.params())?;
+        let first = usize::from(group_by.is_some());
+        let mut groups = Vec::with_capacity(rows.len());
+        for row in rows {
+            let key = match group_by {
+                None => None,
+                Some(GroupBy {
+                    period: Some(_), ..
+                }) => row
+                    .try_get::<_, Option<chrono::NaiveDate>>(0)?
+                    .map(FieldType::Date),
+                Some(GroupBy { field, .. }) => {
+                    from_row(&row, 0, model.try_get_internal_field(field)?.kind)?
+                }
+            };
+            let count = row.try_get::<_, i64>(first)? as u32;
+            let mut totals = HashMap::with_capacity(sums.len());
+            for (index, sum) in sums.iter().enumerate() {
+                let at = first + 1 + index;
+                let total = match model.try_get_internal_field(sum)?.kind {
+                    FieldKind::Integer => row
+                        .try_get::<_, Option<i64>>(at)?
+                        .map(rust_decimal::Decimal::from),
+                    _ => row.try_get::<_, Option<rust_decimal::Decimal>>(at)?,
+                };
+                totals.insert(sum.to_string(), total.unwrap_or_default());
+            }
+            groups.push(Group {
+                key,
+                count,
+                sums: totals,
+            });
+        }
+        Ok(groups)
     }
 
     /// Make a search request to a specific model, and return ids and fields that match this search request
