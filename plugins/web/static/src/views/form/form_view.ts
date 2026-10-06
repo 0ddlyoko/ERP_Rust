@@ -1,4 +1,5 @@
 import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state, t } from "trame";
+import { avatarStyleOf, initialsOf } from "@web/core/avatar";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
@@ -10,6 +11,10 @@ import { type CompiledForm, compileForm, type FormButton } from "./form_compiler
 
 /** How long changing has to pause before the fields computed from it are asked for, in milliseconds. */
 const ONCHANGE_AFTER = 250;
+
+/** How far down the page is scrolled when the leader shrinks, and how far up when it grows again. */
+const LEADER_SHRINKS_PAST = 160;
+const LEADER_GROWS_BEFORE = 40;
 
 /**
  * Parts of a form other plugins provide: `chatter`, the record's thread, takes `model`, `record`
@@ -64,6 +69,10 @@ export class FormView extends View {
     @state accessor computeErrors: Record<string, string> = {};
     /** The same for its lines: by one2many or many2many, then line key, then field. */
     @state accessor lineErrors: Record<string, Record<string, Record<string, string>>> = {};
+    /** Whether the leader shows one line: the page is scrolled past it. */
+    @state accessor leaderCompact = false;
+    /** The related link whose records are listed to choose from, by position. */
+    @state accessor openLink: number | null = null;
     /** What the user was told could not be computed, so as to tell it once. */
     private told = new Set<string>();
     private onchanges = 0;
@@ -227,6 +236,122 @@ export class FormView extends View {
             previous: memory.ids[at - 1] ?? null,
             next: memory.ids[at + 1] ?? null,
         };
+    }
+
+    /**
+     * Once the page is scrolled past the leader, it keeps to one line, and grows back near the
+     * top. The two points are apart, so that its change of height cannot flip it back.
+     */
+    @effect shrinkLeader(): (() => void) | void {
+        if (!this.layout?.hasLeader || this.props.embedded) {
+            return;
+        }
+        const follow = (): void => {
+            if (window.scrollY > LEADER_SHRINKS_PAST) {
+                this.leaderCompact = true;
+            } else if (window.scrollY < LEADER_GROWS_BEFORE) {
+                this.leaderCompact = false;
+            }
+        };
+        follow();
+        window.addEventListener("scroll", follow, { passive: true });
+        return () => window.removeEventListener("scroll", follow);
+    }
+
+    /** The initials of a field's value, as its avatar shows them. */
+    initials(name: string): string {
+        return initialsOf(this.display(name));
+    }
+
+    avatarStyle(name: string): string {
+        return avatarStyleOf(this.display(name));
+    }
+
+    /**
+     * The names of the records its related links show, by field then id; read with the record.
+     * A list computed from nothing it mirrors does not say what it holds: its link's action does.
+     */
+    @resource accessor relatedNames: Record<string, Record<number, string | null>> = load(
+        () => {
+            const asked: { name: string; model: string | undefined; action: string; ids: number[] }[] = [];
+            if (loading(() => this.record) || loading(() => this.fields)) {
+                return asked;
+            }
+            for (const { name, action } of this.layout?.relatedFields ?? []) {
+                const ids = this.idsOf(name, this.record?.[name]);
+                if (Array.isArray(ids) && ids.length > 0) {
+                    asked.push({ name, model: this.fields?.[name]?.relation, action, ids: ids as number[] });
+                }
+            }
+            return asked;
+        },
+        async (asked) => {
+            const named = await Promise.all(
+                asked.map(async ({ model, action, ids }) => {
+                    const holding =
+                        model ?? (await this.orm.call<{ model: string }>("action", "load", [], { xml_id: action })).model;
+                    return this.orm.names(holding, ids);
+                }),
+            );
+            return Object.fromEntries(asked.map(({ name }, at) => [name, Object.fromEntries(named[at])]));
+        },
+    );
+
+    /** The records a one2many or many2many holds, with their names. */
+    relatedRecords(name: string): { id: number; name: string }[] {
+        const value = this.current[name];
+        if (!Array.isArray(value)) {
+            return [];
+        }
+        const names = loading(() => this.relatedNames) ? {} : (this.relatedNames?.[name] ?? {});
+        return value.flatMap((item): { id: number; name: string }[] => {
+            if (typeof item === "number") {
+                return [{ id: item, name: names[item] ?? `#${item}` }];
+            }
+            if (Array.isArray(item) && typeof item[0] === "number") {
+                return [{ id: item[0], name: (item[1] as string | null) ?? `#${item[0]}` }];
+            }
+            return [];
+        });
+    }
+
+    /** Under a related link: the record's name, the first one's and how many more, or none. */
+    relatedSummary(name: string): string {
+        const records = this.relatedRecords(name);
+        if (records.length === 0) {
+            return "None yet";
+        }
+        return records.length === 1 ? records[0].name : `${records[0].name} and ${records.length - 1} more`;
+    }
+
+    /** Follow a related link: its one record opens; several are listed to choose from. */
+    followLink(at: number, action: string, name: string): void {
+        const records = this.relatedRecords(name);
+        if (records.length === 1) {
+            this.openRelated(action, records[0].id);
+        } else if (records.length > 1) {
+            this.openLink = this.openLink === at ? null : at;
+        }
+    }
+
+    /** Open a related record under its action, this one left in the breadcrumb. */
+    openRelated(action: string, id: number): void {
+        this.openLink = null;
+        void this.breadcrumb.open(action, id);
+    }
+
+    /** The records of a related link listed, a press anywhere else puts them away. */
+    @effect closeLinkOutside(): (() => void) | void {
+        if (this.openLink === null) {
+            return;
+        }
+        const close = (event: PointerEvent): void => {
+            if (!(event.target as Element | null)?.closest(".o_related_item")) {
+                this.openLink = null;
+            }
+        };
+        document.addEventListener("pointerdown", close);
+        return () => document.removeEventListener("pointerdown", close);
     }
 
     /** Show another record of the list. */

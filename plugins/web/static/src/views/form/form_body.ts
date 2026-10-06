@@ -1,4 +1,5 @@
 import { Component, type ComponentClass, props, registerTemplate, t } from "trame";
+import { Icon } from "@web/core/icons";
 import type { FormView } from "@web/views/form/form_view";
 
 /**
@@ -7,6 +8,8 @@ import type { FormView } from "@web/views/form/form_view";
  * The form itself rather than a read-only view of it: the body is its own layout, and edits it.
  */
 export class FormBody extends Component {
+    static components = { Icon };
+
     props = props({ form: t.any<FormView>() });
 
     get __form(): FormView {

@@ -244,10 +244,61 @@ fn test_what_a_form_may_not_hold_is_refused() -> Result<()> {
             "<block> cannot stand in <totals>",
         ),
         ("<totals><field name=\"logn\"/></totals>", "\"logn\""),
+        (
+            "<leader><field name=\"login\" role=\"hero\"/></leader>",
+            "role \"hero\"",
+        ),
+        (
+            "<leader><block/></leader>",
+            "<block> cannot stand in <leader>",
+        ),
+        (
+            "<leader><actions><button name=\"me\" type=\"url\"/></actions></leader>",
+            "method or action",
+        ),
+        (
+            "<related><field name=\"groups\"/></related>",
+            "<field> cannot stand in <related>",
+        ),
+        (
+            "<related><link name=\"groups\"/></related>",
+            "<link> has no action",
+        ),
+        (
+            "<related><link name=\"grups\" action=\"base.action_groups\"/></related>",
+            "\"grups\"",
+        ),
     ] {
         let error = refused_form(form);
         assert!(error.contains(expected), "{form}: {error}");
     }
+    Ok(())
+}
+
+/// A form's leader — its actions, fields standing for the record, tiles — and the links to the
+/// records it holds are shown as written.
+#[test]
+fn test_a_form_leader_and_its_links_are_shown_as_written() -> Result<()> {
+    let app = with_data(
+        "leading",
+        &[
+            r#"<erp><view id="leading" name="leading" model="users" priority="1"><form>
+            <leader>
+                <actions><button name="me" type="method" string="Who am I"/></actions>
+                <field name="active" role="status"/>
+                <field name="name" role="avatar"/>
+                <field name="name" role="title"/>
+                <field name="login" role="subtitle"/>
+                <field name="login" invisible="!active"/>
+            </leader>
+            <related invisible="!active"><link name="groups" action="base.action_groups" icon="users"/></related>
+            <block><field name="login"/></block>
+        </form></view></erp>"#,
+        ],
+    )?;
+    let arch = view_of(&app, "users", "form")?;
+    assert!(arch.contains("role=\"title\""), "{arch}");
+    assert!(arch.contains("<link name=\"groups\""), "{arch}");
     Ok(())
 }
 

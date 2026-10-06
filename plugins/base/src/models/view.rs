@@ -148,6 +148,8 @@ const CONTENTS: &[&str] = &[
     "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "totals",
 ];
 const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
+/// What a field of a form's `<leader>` may stand for; one with none is a tile.
+const LEADER_ROLES: &[&str] = &["status", "avatar", "title", "subtitle", "figure", "note"];
 /// The colours a `decoration-*` attribute may name.
 const DECORATIONS: &[&str] = &["success", "info", "warning", "danger", "muted"];
 
@@ -167,7 +169,7 @@ impl Arch<'_> {
             "search" => &["field", "filter"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
-                "chatter", "totals",
+                "chatter", "totals", "leader", "related",
             ],
             _ => return Ok(()),
         };
@@ -208,7 +210,7 @@ impl Arch<'_> {
         }
         let conditions: &[&str] = match element.name.as_str() {
             "field" => &["invisible", "readonly", "required"],
-            "block" | "page" | "pages" | "button" | "totals" => &["invisible"],
+            "block" | "page" | "pages" | "button" | "totals" | "related" | "link" => &["invisible"],
             heading if HEADINGS.contains(&heading) => &["invisible"],
             _ => &[],
         };
@@ -245,7 +247,26 @@ impl Arch<'_> {
                 }
                 self.children(element, &["page"])
             }
-            "buttons" => {
+            "leader" => {
+                for field in element.children.iter().filter_map(as_element) {
+                    if let Some(role) = field.attribute("role")
+                        && !LEADER_ROLES.contains(&role)
+                    {
+                        return Err(self.error(format!(
+                            "role \"{role}\" is none a leader knows: {}",
+                            LEADER_ROLES.join(", ")
+                        )));
+                    }
+                }
+                self.children(element, &["actions", "field"])
+            }
+            "related" => self.children(element, &["link"]),
+            "link" => {
+                self.required(element, "action")?;
+                self.field(element)?;
+                self.children(element, &[])
+            }
+            "buttons" | "actions" => {
                 for button in element.children.iter().filter_map(as_element) {
                     self.required(button, "name")?;
                     let kind = button.attribute("type").unwrap_or_default();

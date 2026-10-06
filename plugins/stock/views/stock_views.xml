@@ -16,22 +16,32 @@
     </view>
     <view id="view_picking_form" name="stock_picking.form" model="stock_picking">
         <form>
-            <buttons>
-                <button name="action_confirm" type="method" string="Mark as to do" highlight="1"
-                        invisible="state !== 'draft'"/>
-                <button name="button_validate" type="method" string="Validate" highlight="1"
-                        invisible="state === 'draft' || state === 'done' || state === 'cancel'"/>
-                <button name="action_assign" type="method" string="Check availability"
-                        invisible="state !== 'confirmed'"/>
-                <button name="do_unreserve" type="method" string="Unreserve"
-                        invisible="state !== 'assigned'"/>
-                <button name="action_return" type="method" string="Return"
-                        invisible="state !== 'done'"/>
-                <button name="action_cancel" type="method" string="Cancel"
-                        invisible="state === 'done' || state === 'cancel'"/>
-            </buttons>
+            <leader>
+                <actions>
+                    <button name="action_confirm" type="method" string="Mark as to do" highlight="1"
+                            invisible="state !== 'draft'"/>
+                    <button name="button_validate" type="method" string="Validate" highlight="1"
+                            invisible="state === 'draft' || state === 'done' || state === 'cancel'"/>
+                    <button name="action_assign" type="method" string="Check availability"
+                            invisible="state !== 'confirmed'"/>
+                    <button name="do_unreserve" type="method" string="Unreserve"
+                            invisible="state !== 'assigned'"/>
+                    <button name="action_return" type="method" string="Return"
+                            invisible="state !== 'done'"/>
+                    <button name="action_cancel" type="method" string="Cancel"
+                            invisible="state === 'done' || state === 'cancel'"/>
+                </actions>
+                <field name="state" role="status"/>
+                <field name="partner" role="avatar"/>
+                <field name="partner" role="title"/>
+                <field name="name" role="subtitle"/>
+                <field name="picking_type"/>
+                <field name="scheduled_date"/>
+                <field name="origin"/>
+                <field name="location"/>
+                <field name="location_dest"/>
+            </leader>
             <block>
-                <h1><field name="name" readonly="1"/></h1>
                 <block string="Transfer">
                     <field name="partner" widget="contact"/>
                     <field name="picking_type" no_create="1" readonly="state !== 'draft'"/>

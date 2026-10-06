@@ -1,4 +1,9 @@
 <erp>
+    <view id="view_purchase_order_form_stock_links" name="purchase_order.form.stock.links" inherit="purchase.view_purchase_order_form">
+        <xpath expr="//related" position="inside">
+            <link name="pickings" string="Receipts" action="stock.action_pickings" icon="truck"/>
+        </xpath>
+    </view>
     <view id="view_purchase_order_form_stock" name="purchase_order.form.stock" inherit="purchase.view_purchase_order_form">
         <xpath expr="//page[@name='bills']" position="before">
             <page name="receipts" string="Receipts" invisible="state !== 'purchase'">

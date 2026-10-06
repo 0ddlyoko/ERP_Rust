@@ -19,20 +19,35 @@
     </view>
     <view id="view_sale_order_form" name="sale_order.form" model="sale_order">
         <form>
-            <buttons>
-                <button name="action_confirm" type="method" string="Confirm" highlight="1"
-                        invisible="state !== 'draft' &amp;&amp; state !== 'sent'"/>
-                <button name="action_create_invoice" type="method" string="Create invoice" highlight="1"
-                        invisible="invoice_status !== 'to_invoice'"/>
-                <button name="action_quotation_send" type="method" string="Mark as sent"
-                        invisible="state !== 'draft'"/>
-                <button name="action_cancel" type="method" string="Cancel"
-                        invisible="state === 'cancel'"/>
-                <button name="action_draft" type="method" string="Set to quotation"
-                        invisible="state !== 'cancel'"/>
-            </buttons>
+            <leader>
+                <actions>
+                    <button name="action_confirm" type="method" string="Confirm" highlight="1"
+                            invisible="state !== 'draft' &amp;&amp; state !== 'sent'"/>
+                    <button name="action_create_invoice" type="method" string="Create invoice" highlight="1"
+                            invisible="invoice_status !== 'to_invoice'"/>
+                    <button name="action_quotation_send" type="method" string="Mark as sent"
+                            invisible="state !== 'draft'"/>
+                    <button name="action_cancel" type="method" string="Cancel"
+                            invisible="state === 'cancel'"/>
+                    <button name="action_draft" type="method" string="Set to quotation"
+                            invisible="state !== 'cancel'"/>
+                </actions>
+                <field name="state" role="status"/>
+                <field name="partner" role="avatar"/>
+                <field name="partner" role="title"/>
+                <field name="name" role="subtitle"/>
+                <field name="amount_total" role="figure" widget="monetary"/>
+                <field name="amount_untaxed" role="note" widget="monetary"/>
+                <field name="amount_tax" role="note" widget="monetary"/>
+                <field name="date_order"/>
+                <field name="validity_date" invisible="state === 'sale' || state === 'cancel'"/>
+                <field name="payment_term"/>
+                <field name="user"/>
+            </leader>
+            <related>
+                <link name="invoices" action="account.action_move_out_invoice" icon="receipt"/>
+            </related>
             <block>
-                <h1><field name="name" readonly="1"/></h1>
                 <block string="Customer">
                     <field name="partner" widget="contact" readonly="state === 'sale' || state === 'cancel'"/>
                     <field name="client_order_ref"/>

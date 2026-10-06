@@ -9,6 +9,10 @@ export interface CompiledForm {
     buttons: FormButton[];
     /** The fields its conditions read, which the form reads with the record. */
     conditionNames: string[];
+    /** Whether it has a `<leader>`, which shrinks once the page is scrolled down. */
+    hasLeader: boolean;
+    /** The one2many and many2many its related links show, whose records it names, with their action. */
+    relatedFields: { name: string; action: string }[];
 }
 
 export interface FormButton {
@@ -56,8 +60,16 @@ interface Piece {
  * with nothing shown in them are hidden; the first page shown is open unless the user opened
  * another. What `<side>` and `<chatter/>` hold goes in a column beside the rest; without them, or
  * with nothing shown in them, the rest takes the whole width.
+ *
+ * A `<leader>` makes a dark band at the top, the record at a glance: its `<actions>` — buttons —
+ * and the form's own beside its `role="status"` fields as pills; an `avatar`, a `title` and a
+ * `subtitle`; a `figure` — a big amount — with `note`s under it; any other field as a tile. All
+ * are shown, not edited: the form below edits them. With a leader, a statusbar stays where the view
+ * put it. `<related>` follows: a `<link>` per one2many or many2many, with how many records it
+ * holds, opening them under its `action` — once the record exists.
  */
 export function compileForm(root: Element, columnOf: (element: Element) => Column): CompiledForm {
+    const leader = Array.from(root.children).find((element) => element.tagName === "leader") ?? null;
     const columns: Column[] = [];
     const texts: string[] = [];
     const buttons: FormButton[] = [];
@@ -110,7 +122,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     const statusbars: string[] = [];
 
     const field = (element: Element): Piece => {
-        if (element.getAttribute("widget") === "statusbar") {
+        if (element.getAttribute("widget") === "statusbar" && leader === null) {
             condition(element, "invisible");
             const readonly = condition(element, "readonly");
             statusbars.push(`<div class="o_form_status"${ifShown(shownUnless(element))}>${widget(element, readonly)}</div>`);
@@ -279,24 +291,162 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             return [{ xml: `<t${ifShown(shown)}>${inner.map((piece) => piece.xml).join("")}</t>`, shown }];
         });
 
-    const bar = Array.from(root.children)
-        .filter((element) => element.tagName === "buttons")
-        .flatMap((element) => Array.from(element.children))
-        .map((button) => {
-            condition(button, "invisible");
-            buttons.push({
-                name: button.getAttribute("name") ?? "",
-                type: button.getAttribute("type") === "action" ? "action" : "method",
+    /** Buttons running a method of the record or opening an action, by their place in the form. */
+    const buttonsOf = (holders: Element[]): string =>
+        holders
+            .flatMap((element) => Array.from(element.children))
+            .map((button) => {
+                condition(button, "invisible");
+                buttons.push({
+                    name: button.getAttribute("name") ?? "",
+                    type: button.getAttribute("type") === "action" ? "action" : "method",
+                });
+                const at = buttons.length - 1;
+                return (
+                    `<button type="button"${ifShown(shownUnless(button))} ` +
+                    `t-att-class="{ ${button.getAttribute("highlight") === "1" ? "o_button_primary" : "o_button_secondary"}: true, o_button_busy: __form.pressing === ${at} }" ` +
+                    `t-att-disabled="__form.busy" t-on-click="() => __form.press(__form.layout.buttons[${at}], ${at})">` +
+                    `${text(button.getAttribute("string") ?? button.getAttribute("name") ?? "")}</button>`
+                );
+            })
+            .join("");
+
+    /** A field shown and not edited: its column read with the record, by its position. */
+    const shownColumn = (element: Element): string => {
+        columns.push(columnOf(element));
+        return `__form.layout.columns[${columns.length - 1}]`;
+    };
+    const fieldName = (element: Element): string => escape(JSON.stringify(element.getAttribute("name") ?? ""));
+    const rolesIn = (element: Element | null, role: string | null): Element[] =>
+        Array.from(element?.children ?? []).filter(
+            (child) => child.tagName === "field" && child.getAttribute("role") === role,
+        );
+
+    const leaderXml = (controls: string): string => {
+        if (leader === null) {
+            return "";
+        }
+        const shownIf = (element: Element): string => {
+            condition(element, "invisible");
+            return ifShown(shownUnless(element));
+        };
+        const actions = buttonsOf(Array.from(leader.children).filter((element) => element.tagName === "actions"));
+        const pills = rolesIn(leader, "status")
+            .map((element) => {
+                shownColumn(element);
+                return `<span class="o_leader_status"${shownIf(element)}>{{ __form.display(${fieldName(element)}) }}</span>`;
+            })
+            .join("");
+        const avatar = rolesIn(leader, "avatar")
+            .slice(0, 1)
+            .map((element) => {
+                shownColumn(element);
+                const name = fieldName(element);
+                return (
+                    `<t t-if="__form.initials(${name})"><span class="o_leader_avatar" aria-hidden="true" ` +
+                    `t-att-style="__form.avatarStyle(${name})"${shownIf(element)}>{{ __form.initials(${name}) }}</span></t>`
+                );
+            })
+            .join("");
+        const title = rolesIn(leader, "title")
+            .slice(0, 1)
+            .map((element) => {
+                shownColumn(element);
+                return `<h2 class="o_leader_title">{{ __form.display(${fieldName(element)}) || __form.title }}</h2>`;
+            })
+            .join("");
+        const subtitles = rolesIn(leader, "subtitle")
+            .map((element) => {
+                shownColumn(element);
+                return `<span class="o_leader_subtitle"${shownIf(element)}>{{ __form.display(${fieldName(element)}) }}</span>`;
+            })
+            .join("");
+        const figure = rolesIn(leader, "figure")
+            .slice(0, 1)
+            .map((element) => {
+                const label = `{{ __form.label(__form.layout.columns[${columns.length}].label) }}`;
+                return (
+                    `<span class="o_leader_figure_label">${label}</span>` +
+                    `<span class="o_leader_figure_value">${widget(element, "true")}</span>`
+                );
+            })
+            .join("");
+        const notes = rolesIn(leader, "note")
+            .map((element) => {
+                const shown = shownIf(element);
+                const label = `{{ __form.label(__form.layout.columns[${columns.length}].label) }}`;
+                return `<span class="o_leader_note"${shown}>${label} ${widget(element, "true")}</span>`;
+            })
+            .join("");
+        const tiles = rolesIn(leader, null)
+            .map((element) => {
+                const shown = shownIf(element);
+                const label = `{{ __form.label(__form.layout.columns[${columns.length}].label) }}`;
+                return (
+                    `<div class="o_leader_tile"${shown}><span class="o_leader_tile_label">${label}</span>` +
+                    `<span class="o_leader_tile_value">${widget(element, "true")}</span></div>`
+                );
+            })
+            .join("");
+        return (
+            `<header t-att-class="{ o_leader: true, o_leader_compact: __form.leaderCompact }">` +
+            `<div class="o_leader_top">${actions}${pills}<span class="o_form_bar_gap"/>${controls}</div>` +
+            `<div class="o_leader_identity">${avatar}<div class="o_leader_names">${title}${subtitles}</div>` +
+            (figure || notes ? `<div class="o_leader_figure">${figure}${notes}</div>` : "") +
+            `</div>` +
+            (tiles ? `<div class="o_leader_tiles">${tiles}</div>` : "") +
+            `</header>`
+        );
+    };
+
+    /** The records the form's one2many and many2many hold, each a link opening them. */
+    const relatedFields: { name: string; action: string }[] = [];
+    const relatedXml = (): string => {
+        const links = Array.from(root.children)
+            .filter((element) => element.tagName === "related")
+            .flatMap((element) => {
+                condition(element, "invisible");
+                return Array.from(element.children).filter((child) => child.tagName === "link");
             });
-            const at = buttons.length - 1;
-            return (
-                `<button type="button"${ifShown(shownUnless(button))} ` +
-                `t-att-class="{ ${button.getAttribute("highlight") === "1" ? "o_button_primary" : "o_button_secondary"}: true, o_button_busy: __form.pressing === ${at} }" ` +
-                `t-att-disabled="__form.busy" t-on-click="() => __form.press(__form.layout.buttons[${at}], ${at})">` +
-                `${text(button.getAttribute("string") ?? button.getAttribute("name") ?? "")}</button>`
-            );
-        })
-        .join("");
+        if (links.length === 0) {
+            return "";
+        }
+        const items = links
+            .map((link, at) => {
+                condition(link, "invisible");
+                const column = shownColumn(link);
+                relatedFields.push({ name: link.getAttribute("name") ?? "", action: link.getAttribute("action") ?? "" });
+                const name = fieldName(link);
+                const action = escape(JSON.stringify(link.getAttribute("action") ?? ""));
+                const label = link.getAttribute("string");
+                const caption = label === null ? `{{ __form.label(${column}.label) }}` : text(label);
+                const icon = escape(JSON.stringify(link.getAttribute("icon") ?? ""));
+                return (
+                    `<div class="o_related_item"${ifShown(shownUnless(link))}>` +
+                    `<button type="button" t-att-class="{ o_related_link: true, o_related_none: !__form.relatedRecords(${name}).length }" ` +
+                    `t-att-aria-expanded="__form.openLink === ${at} ? 'true' : 'false'" ` +
+                    `t-on-click="() => __form.followLink(${at}, ${action}, ${name})">` +
+                    `<span class="o_related_icon"><Icon name="${icon}"/></span>` +
+                    `<span class="o_related_text"><span class="o_related_head">` +
+                    `<span class="o_related_count">{{ __form.relatedRecords(${name}).length }}</span>` +
+                    `<span class="o_related_label">${caption}</span></span>` +
+                    `<span class="o_related_sub">{{ __form.relatedSummary(${name}) }}</span></span></button>` +
+                    `<ul t-if="__form.openLink === ${at}" class="o_related_menu">` +
+                    `<li t-foreach="__form.relatedRecords(${name})" t-as="linked" t-key="linked.id">` +
+                    `<button type="button" t-on-click="() => __form.openRelated(${action}, linked.id)">{{ linked.name }}</button>` +
+                    `</li></ul></div>`
+                );
+            })
+            .join("");
+        const shown = anyOf(
+            Array.from(root.children)
+                .filter((element) => element.tagName === "related")
+                .map(shownUnless),
+        );
+        return `<nav class="o_related" aria-label="Related documents"${ifShown(`!__form.isNew && (${shown})`)}>${items}</nav>`;
+    };
+
+    const bar = buttonsOf(Array.from(root.children).filter((element) => element.tagName === "buttons"));
     const main = contents(
         root,
         true,
@@ -314,13 +464,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             : `<aside class="o_form_side"${ifShown(sideShown)}>${aside.map((piece) => piece.xml).join("")}</aside>`) +
         `</div>`;
 
-    const conditionNames = [...new Set(conditions.flatMap(namesRead))];
-    const values = conditionNames
-        .map((name) => `<t t-set="${name}" t-value="${escape(`__form.conditionValue(${JSON.stringify(name)})`)}"/>`)
-        .join("");
-    const source =
-        `<div class="o_form_body" t-ref="__form.element">${values}` +
-        `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>${statusbars.join("")}` +
+    const controls =
         `<div t-if="__form.pager" class="o_pager"><span class="o_pager_value">` +
         `{{ __form.pager.position }} / {{ __form.pager.total }}</span>` +
         `<button type="button" class="o_pager_button" aria-label="Previous record" ` +
@@ -336,8 +480,20 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         `t-on-click="() => __form.discard()">Discard</button>` +
         `<button t-if="__form.isDirty || __form.isNew" type="button" ` +
         `t-att-class="{ o_button_primary: true, o_button_busy: __form.saving }" t-att-disabled="!__form.canSave" ` +
-        `t-on-click="() => __form.save()">{{ __form.saving ? "Saving…" : "Save" }}</button></div>` +
+        `t-on-click="() => __form.save()">{{ __form.saving ? "Saving…" : "Save" }}</button>`;
+    const top =
+        leader === null
+            ? `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>${statusbars.join("")}${controls}</div>`
+            : leaderXml(controls);
+    const related = relatedXml();
+
+    const conditionNames = [...new Set(conditions.flatMap(namesRead))];
+    const values = conditionNames
+        .map((name) => `<t t-set="${name}" t-value="${escape(`__form.conditionValue(${JSON.stringify(name)})`)}"/>`)
+        .join("");
+    const source =
+        `<div class="o_form_body" t-ref="__form.element">${values}${top}` +
         `<p t-if="__form.failure" class="o_form_failure" role="alert">{{ __form.failure }}</p>` +
-        `${body}</div>`;
-    return { source, columns, texts, buttons, conditionNames };
+        `${related}${body}</div>`;
+    return { source, columns, texts, buttons, conditionNames, hasLeader: leader !== null, relatedFields };
 }

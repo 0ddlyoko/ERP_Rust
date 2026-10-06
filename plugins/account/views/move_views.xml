@@ -20,22 +20,38 @@
     </view>
     <view id="view_move_form" name="account_move.form" model="account_move">
         <form>
-            <buttons>
-                <button name="action_post" type="method" string="Confirm" highlight="1"
-                        invisible="state !== 'draft'"/>
-                <button name="action_register_payment" type="method" string="Register payment" highlight="1"
-                        invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
-                <button name="action_reverse" type="method" string="Credit note"
-                        invisible="state !== 'posted' || move_type === 'out_refund' || move_type === 'in_refund'"/>
-                <button name="action_reverse_and_reconcile" type="method" string="Cancel with a credit note"
-                        invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
-                <button name="button_draft" type="method" string="Reset to draft"
-                        invisible="state === 'draft'"/>
-                <button name="button_cancel" type="method" string="Cancel"
-                        invisible="state !== 'draft'"/>
-            </buttons>
+            <leader>
+                <actions>
+                    <button name="action_post" type="method" string="Confirm" highlight="1"
+                            invisible="state !== 'draft'"/>
+                    <button name="action_register_payment" type="method" string="Register payment" highlight="1"
+                            invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
+                    <button name="action_reverse" type="method" string="Credit note"
+                            invisible="state !== 'posted' || move_type === 'out_refund' || move_type === 'in_refund'"/>
+                    <button name="action_reverse_and_reconcile" type="method" string="Cancel with a credit note"
+                            invisible="state !== 'posted' || move_type === 'entry' || payment_state === 'paid' || payment_state === 'reversed'"/>
+                    <button name="button_draft" type="method" string="Reset to draft"
+                            invisible="state === 'draft'"/>
+                    <button name="button_cancel" type="method" string="Cancel"
+                            invisible="state !== 'draft'"/>
+                </actions>
+                <field name="state" role="status"/>
+                <field name="payment_state" role="status" invisible="move_type === 'entry' || state !== 'posted'"/>
+                <field name="partner" role="avatar"/>
+                <field name="partner" role="title"/>
+                <field name="name" role="subtitle"/>
+                <field name="amount_total" role="figure" widget="monetary"/>
+                <field name="amount_untaxed" role="note" widget="monetary"/>
+                <field name="amount_residual" role="note" widget="monetary" invisible="state !== 'posted'"/>
+                <field name="invoice_date" invisible="move_type === 'entry'"/>
+                <field name="invoice_date_due" invisible="move_type === 'entry'"/>
+                <field name="payment_term" invisible="move_type === 'entry'"/>
+                <field name="journal"/>
+            </leader>
+            <related>
+                <link name="reversals" string="Credit notes" action="account.action_move_journal_entries" icon="receipt"/>
+            </related>
             <block>
-                <h1><field name="name" readonly="1"/></h1>
                 <field name="move_type" readonly="1" invisible="1"/>
                 <block string="Partner">
                     <field name="partner" widget="contact" readonly="state !== 'draft'"/>

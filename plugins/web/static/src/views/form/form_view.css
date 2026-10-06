@@ -916,3 +916,334 @@ button.o_statusbar_label:hover {
 .o_form_total_main .o_form_total_label {
     color: var(--o-ink);
 }
+
+/* The leader: the record at a glance, in a dark band that keeps to one line once scrolled past */
+
+.o_leader {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 18px 24px 20px;
+    border-radius: var(--o-radius-card);
+    background: var(--o-side);
+    color: #ffffff;
+    transition: padding 0.15s, gap 0.15s;
+}
+
+.o_leader_top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.o_leader .o_button_secondary {
+    background: rgb(255 255 255 / 0.1);
+    box-shadow: none;
+    color: #ffffff;
+}
+
+.o_leader .o_button_secondary:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.18);
+}
+
+.o_leader .o_button_primary:hover:not(:disabled) {
+    border-color: color-mix(in oklch, var(--o-accent) 85%, white);
+    background: color-mix(in oklch, var(--o-accent) 85%, white);
+}
+
+.o_leader .o_pager {
+    color: #b9b7da;
+}
+
+.o_leader .o_pager_button {
+    background: rgb(255 255 255 / 0.1);
+    color: #ffffff;
+}
+
+.o_leader .o_form_dirty {
+    background: rgb(255 178 122 / 0.18);
+    color: #ffd2b0;
+}
+
+.o_leader_status {
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.14);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.o_leader_identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.o_leader_avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    font-family: var(--o-font-display);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.o_leader_names {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: 4px;
+    min-width: 220px;
+}
+
+.o_leader_title {
+    margin: 0;
+    font-family: var(--o-font-display);
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+}
+
+.o_leader_subtitle {
+    color: #c9c7e6;
+    font-size: 13px;
+}
+
+.o_leader_figure {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.o_leader_figure_label,
+.o_leader_note {
+    color: #b9b7da;
+    font-size: 12px;
+}
+
+.o_leader_note .o_widget {
+    display: inline;
+    min-height: 0;
+}
+
+.o_leader_figure_value {
+    font-family: var(--o-font-display);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.o_leader_figure_value .o_widget,
+.o_leader_tile_value .o_widget {
+    display: block;
+    min-height: 0;
+}
+
+.o_leader_tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.o_leader_tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 0.08);
+}
+
+.o_leader_tile_label {
+    color: #b9b7da;
+    font-size: 11px;
+}
+
+.o_leader_tile_value {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_leader a,
+.o_leader .o_link {
+    color: #ffffff;
+}
+
+.o_leader_compact {
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 0 0 var(--o-radius-card) var(--o-radius-card);
+    box-shadow: 0 12px 28px rgb(26 24 56 / 0.25);
+}
+
+.o_leader_compact .o_leader_tiles,
+.o_leader_compact .o_leader_subtitle,
+.o_leader_compact .o_leader_note,
+.o_leader_compact .o_leader_figure_label {
+    display: none;
+}
+
+.o_leader_compact .o_leader_identity {
+    align-items: center;
+    gap: 12px;
+}
+
+.o_leader_compact .o_leader_avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.o_leader_compact .o_leader_title {
+    font-size: 19px;
+}
+
+.o_leader_compact .o_leader_figure_value {
+    font-size: 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_leader {
+        transition: none;
+    }
+}
+
+/* Records the form's one2many and many2many hold, a link each */
+
+.o_related {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+}
+
+.o_related_item {
+    position: relative;
+}
+
+.o_related_link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 16px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    text-align: left;
+}
+
+.o_related_link:hover {
+    box-shadow: 0 0 0 2px var(--o-accent);
+}
+
+.o_related_none {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--o-border);
+    cursor: default;
+}
+
+.o_related_none:hover {
+    box-shadow: inset 0 0 0 1.5px var(--o-border);
+}
+
+.o_related_icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--o-accent) 12%, white);
+    color: var(--o-accent-strong);
+}
+
+.o_related_none .o_related_icon {
+    background: var(--o-head);
+    color: var(--o-muted);
+}
+
+.o_related_text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.o_related_head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.o_related_count {
+    font-family: var(--o-font-display);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.o_related_label {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_related_sub {
+    overflow: hidden;
+    color: var(--o-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_related_menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border-radius: var(--o-radius-row);
+    background: var(--o-surface);
+    box-shadow: var(--o-shadow-pop);
+}
+
+.o_related_menu button {
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--o-ink);
+    font-size: 13px;
+    text-align: left;
+}
+
+.o_related_menu button:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+}

@@ -7,6 +7,11 @@
             </page>
         </xpath>
     </view>
+    <view id="view_sale_order_form_stock_links" name="sale_order.form.stock.links" inherit="sale.view_sale_order_form">
+        <xpath expr="//related" position="inside">
+            <link name="pickings" string="Deliveries" action="stock.action_pickings" icon="truck"/>
+        </xpath>
+    </view>
     <view id="view_sale_order_list_stock" name="sale_order.list.stock" inherit="sale.view_sale_order_list">
         <xpath expr="//field[@name='invoice_status']" position="before">
             <field name="delivery_status" widget="badge" decoration-warning="delivery_status === 'pending' || delivery_status === 'partial'"
