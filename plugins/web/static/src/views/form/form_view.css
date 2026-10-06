@@ -20,18 +20,24 @@
     display: inline-flex;
     align-items: center;
     height: var(--o-control-height);
-    padding: 0 12px;
-    border: 1px solid var(--o-input-border);
+    padding: 0 14px;
+    border: 0;
     border-radius: var(--o-radius-control);
     background: var(--o-surface);
     color: var(--o-ink);
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     white-space: nowrap;
 }
 
 .o_button_secondary:hover:not(:disabled) {
     background: var(--o-head);
+}
+
+.o_form_card .o_button_secondary,
+.o_form_pages .o_button_secondary,
+.o_dialog .o_button_secondary {
+    box-shadow: inset 0 0 0 1px var(--o-input-border);
 }
 
 .o_button_secondary:disabled {
@@ -42,7 +48,7 @@
 .o_form_failure {
     margin: 0;
     padding: 12px 16px;
-    border-radius: 10px;
+    border-radius: var(--o-radius-row);
     background: #fdecea;
     color: #8a1c12;
     font-size: 13px;
@@ -96,11 +102,9 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: 18px 20px;
-    border: 1px solid var(--o-border);
+    padding: 20px 22px;
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
-    box-shadow: var(--o-shadow-card);
 }
 
 .o_form_section {
@@ -112,13 +116,11 @@
 
 .o_form_block_title {
     margin: 0;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--o-row-line);
-    color: var(--o-muted);
-    font-size: 11.5px;
+    padding-bottom: 4px;
+    color: var(--o-ink);
+    font-family: var(--o-font-display);
+    font-size: 17px;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
 }
 
 .o_form_grid {
@@ -203,7 +205,8 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    font-weight: 700;
+    font-family: var(--o-font-display);
+    font-weight: 800;
     letter-spacing: -0.02em;
 }
 
@@ -214,7 +217,7 @@
     border: 0;
     border-bottom: 1px solid transparent;
     border-radius: 0;
-    font-weight: 700;
+    font-weight: 800;
 }
 
 .o_form_heading .o_input:hover {
@@ -226,8 +229,8 @@
     outline: none;
 }
 
-.o_form_h1 { font-size: 24px; }
-.o_form_h2 { font-size: 20px; }
+.o_form_h1 { font-size: 30px; }
+.o_form_h2 { font-size: 22px; }
 .o_form_h3 { font-size: 18px; }
 .o_form_h4 { font-size: 16px; }
 .o_form_h5 { font-size: 14px; }
@@ -236,37 +239,41 @@
 .o_form_pages {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--o-border);
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
-    box-shadow: var(--o-shadow-card);
 }
 
 .o_form_tabs {
     display: flex;
-    gap: 22px;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--o-border);
+    flex-wrap: wrap;
+    align-self: flex-start;
+    gap: 4px;
+    margin: 18px 22px 0;
+    padding: 4px;
+    border-radius: var(--o-radius-control);
+    background: var(--o-head);
 }
 
 .o_form_tab {
-    padding: 11px 0 9px;
+    height: 32px;
+    padding: 0 14px;
     border: 0;
-    border-bottom: 2px solid transparent;
+    border-radius: 9px;
     background: transparent;
     color: var(--o-muted);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .o_form_tab.active {
-    border-bottom-color: var(--o-accent);
+    background: var(--o-surface);
     color: var(--o-ink);
     font-weight: 700;
+    box-shadow: 0 1px 3px rgb(26 24 56 / 0.12);
 }
 
 .o_form_page {
-    padding: 16px 20px;
+    padding: 16px 22px 20px;
 }
 
 @media (max-width: 820px) {
@@ -390,17 +397,17 @@ span.o_text {
     max-height: 280px;
     overflow-y: auto;
     margin: 0;
-    padding: 4px;
+    padding: 6px;
     list-style: none;
-    border: 1px solid var(--o-border);
-    border-radius: 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
     background: var(--o-surface);
-    box-shadow: 0 12px 28px rgba(23, 32, 46, 0.14);
+    box-shadow: var(--o-shadow-pop);
 }
 
 .o_record_search_result {
     padding: 8px 10px;
-    border-radius: 7px;
+    border-radius: 9px;
     cursor: pointer;
 }
 
@@ -430,9 +437,9 @@ span.o_text {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 4px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
     background: color-mix(in oklch, var(--o-accent) 12%, white);
     color: color-mix(in oklch, var(--o-accent) 70%, black);
     font-size: 12px;
@@ -472,12 +479,21 @@ span.o_text {
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
-    border: 1px solid var(--o-border);
-    border-radius: var(--o-radius-control);
 }
 
+/* Lines are lighter than records of a list: the form's card is already white. */
 .o_x2many_list .o_list_table {
+    margin-top: -4px;
+    border-spacing: 0 4px;
     table-layout: fixed;
+}
+
+.o_x2many_list .o_list_table td {
+    background: #f7f7fc;
+}
+
+.o_x2many_list .o_list_row:hover td {
+    background: var(--o-head);
 }
 
 .o_x2many_list > .o_record_search {
@@ -486,7 +502,7 @@ span.o_text {
 }
 
 .o_x2many_list .o_list_table td {
-    height: 36px;
+    height: 44px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -561,7 +577,7 @@ span.o_text {
     display: flex;
     padding: 6px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 8px;
     background: transparent;
     color: var(--o-muted);
     cursor: pointer;
@@ -660,11 +676,12 @@ button.o_statusbar_label:hover {
 }
 
 .o_x2many_list .o_list_row.o_x2many_editing td {
-    background: color-mix(in oklch, var(--o-accent) 6%, white);
+    background: color-mix(in oklch, var(--o-accent) 7%, white);
 }
 
 .o_x2many_list .o_list_row.o_x2many_editing .o_input {
-    height: 34px;
+    height: 36px;
+    border-radius: 10px;
 }
 
 .o_x2many_actions {
@@ -686,12 +703,24 @@ button.o_statusbar_label:hover {
     color: var(--o-accent-strong);
 }
 
-.o_x2many_add {
+.o_x2many_list .o_x2many_add {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    align-self: flex-start;
-    height: 36px;
+    align-self: stretch;
+    height: 46px;
+    padding: 0 14px;
+    border: 1.5px dashed #c9c8e0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    box-shadow: none;
+    color: var(--o-accent);
+    font-weight: 700;
+}
+
+.o_x2many_list .o_x2many_add:hover:not(:disabled) {
+    border-color: var(--o-accent);
+    background: color-mix(in oklch, var(--o-accent) 5%, white);
 }
 
 .o_dialog.o_form_dialog {
@@ -710,9 +739,11 @@ button.o_statusbar_label:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--o-border);
-    font-weight: 600;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--o-row-line);
+    font-family: var(--o-font-display);
+    font-size: 17px;
+    font-weight: 700;
 }
 
 .o_form_dialog_close {
@@ -809,36 +840,20 @@ button.o_statusbar_label:hover {
 .o_form_status .o_widget.o_statusbar {
     flex-direction: row;
     align-items: stretch;
-    height: 30px;
-    border: 1px solid var(--o-input-border);
+    gap: 4px;
+    height: 34px;
+    padding: 4px;
+    box-sizing: border-box;
     border-radius: var(--o-radius-control);
-    background: var(--o-input-border);
-    overflow: hidden;
+    background: var(--o-surface);
 }
 
 .o_form_status .o_statusbar_step {
     min-height: 0;
     gap: 0;
-    padding: 0 12px 0 18px;
+    padding: 0 12px;
+    border-radius: 9px;
     font-size: 12.5px;
-    background: var(--o-surface);
-    clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%, 9px 50%);
-    margin-left: -7px;
-}
-
-.o_form_status .o_statusbar_step:first-child {
-    margin-left: 0;
-    padding-left: 12px;
-    clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);
-}
-
-.o_form_status .o_statusbar_step:last-child {
-    padding-right: 12px;
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 9px 50%);
-}
-
-.o_form_status .o_statusbar_step:only-child {
-    clip-path: none;
 }
 
 .o_form_status .o_statusbar_step::after,
@@ -892,9 +907,10 @@ button.o_statusbar_label:hover {
 .o_form_total_main {
     margin-top: 4px;
     padding-top: 8px;
-    border-top: 1px solid var(--o-border);
-    font-size: 15px;
-    font-weight: 700;
+    border-top: 1px solid var(--o-row-line);
+    font-family: var(--o-font-display);
+    font-size: 18px;
+    font-weight: 800;
 }
 
 .o_form_total_main .o_form_total_label {

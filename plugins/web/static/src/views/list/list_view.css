@@ -16,13 +16,13 @@
     align-items: center;
     gap: 6px;
     height: var(--o-control-height);
-    padding: 0 14px;
+    padding: 0 16px;
     border: 1px solid var(--o-accent);
     border-radius: var(--o-radius-control);
     background: var(--o-accent);
     color: #ffffff;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 13.5px;
+    font-weight: 700;
     white-space: nowrap;
 }
 
@@ -43,12 +43,16 @@
     gap: 8px;
     min-width: 240px;
     height: var(--o-control-height);
-    padding: 0 10px;
+    padding: 0 14px;
     box-sizing: border-box;
-    border: 1px solid var(--o-input-border);
+    border: 1px solid transparent;
     border-radius: var(--o-radius-control);
     background: var(--o-surface);
     color: var(--o-muted);
+}
+
+.o_search:focus-within {
+    border-color: var(--o-accent);
 }
 
 .o_search input {
@@ -84,12 +88,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--o-input-border);
-    border-radius: var(--o-radius-control);
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 10px;
     background: var(--o-surface);
-    color: var(--o-label);
+    color: var(--o-ink);
 }
 
 .o_pager_button:disabled {
@@ -99,22 +103,20 @@
 
 .o_list_card {
     overflow-x: auto;
-    border: 1px solid var(--o-border);
-    border-radius: var(--o-radius-card);
-    background: var(--o-surface);
-    box-shadow: var(--o-shadow-card);
 }
 
+/* Each row a card of its own, apart from the next. */
 .o_list_table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
+    margin-top: -6px;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    font-size: 13.5px;
 }
 
 .o_list_table th {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--o-border);
-    background: var(--o-head);
+    padding: 4px 12px;
+    background: transparent;
     color: var(--o-muted);
     font-size: 12px;
     font-weight: 600;
@@ -123,14 +125,22 @@
 }
 
 .o_list_table td {
-    height: 38px;
+    height: 52px;
     padding: 0 12px;
-    border-bottom: 1px solid var(--o-row-line);
+    background: var(--o-surface);
     white-space: nowrap;
 }
 
-.o_list_table tbody tr:last-child td {
-    border-bottom: 0;
+.o_list_table td:first-child {
+    border-radius: var(--o-radius-row) 0 0 var(--o-radius-row);
+}
+
+.o_list_table td:last-child {
+    border-radius: 0 var(--o-radius-row) var(--o-radius-row) 0;
+}
+
+.o_list_table td:only-child {
+    border-radius: var(--o-radius-row);
 }
 
 .o_list_row {
@@ -138,11 +148,11 @@
 }
 
 .o_list_row:hover td {
-    background: #f9fafb;
+    background: #f9f9fe;
 }
 
 .o_list_row.selected td {
-    background: color-mix(in oklch, var(--o-accent) 7%, white);
+    background: color-mix(in oklch, var(--o-accent) 8%, white);
 }
 
 .o_list_table .o_list_select {
@@ -170,6 +180,7 @@
 
 .o_list_empty td {
     height: 96px;
+    border-radius: var(--o-radius-row);
     color: var(--o-muted);
     text-align: center;
 }
@@ -194,9 +205,9 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 22px;
-    padding: 0 4px 0 8px;
-    border-radius: 4px;
+    height: 24px;
+    padding: 0 4px 0 10px;
+    border-radius: 999px;
     background: color-mix(in oklch, var(--o-accent) 14%, white);
     color: color-mix(in oklch, var(--o-accent) 70%, black);
     font-size: 12px;
@@ -248,18 +259,18 @@
     margin: 0;
     padding: 6px;
     list-style: none;
-    border: 1px solid var(--o-border);
-    border-radius: 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
     background: var(--o-surface);
-    box-shadow: 0 12px 28px rgba(23, 32, 46, 0.14);
+    box-shadow: var(--o-shadow-pop);
 }
 
 .o_search_filters_menu label {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 8px;
-    border-radius: 7px;
+    padding: 8px 10px;
+    border-radius: 9px;
     font-size: 13px;
     cursor: pointer;
 }
@@ -288,7 +299,7 @@
     width: 100%;
     padding: 8px 10px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 9px;
     background: transparent;
     color: var(--o-ink);
     font: inherit;
@@ -319,7 +330,7 @@
     align-items: center;
     justify-content: center;
     padding: 16px;
-    background: rgba(23, 32, 46, 0.35);
+    background: rgb(26 24 56 / 0.4);
 }
 
 .o_dialog {
@@ -327,10 +338,10 @@
     flex-direction: column;
     gap: 18px;
     width: min(420px, 100%);
-    padding: 22px;
+    padding: 24px;
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
-    box-shadow: 0 20px 48px rgba(23, 32, 46, 0.25);
+    box-shadow: var(--o-shadow-pop);
 }
 
 .o_dialog_message {
@@ -400,13 +411,14 @@ body.o_resizing * {
 }
 
 .o_list_group td {
-    background: var(--o-head);
+    height: 40px;
+    background: var(--o-panel);
     color: var(--o-ink);
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .o_list_group:hover td {
-    background: #f2f4f7;
+    background: var(--o-head);
 }
 
 .o_list_group_chevron {
@@ -421,9 +433,9 @@ body.o_resizing * {
 
 .o_list_group_count {
     margin-left: 8px;
-    padding: 1px 7px;
+    padding: 1px 8px;
     border-radius: 999px;
-    background: var(--o-border);
+    background: var(--o-surface);
     color: var(--o-label);
     font-size: 11.5px;
     font-weight: 600;
@@ -434,10 +446,10 @@ body.o_resizing * {
 }
 
 .o_list_totals td {
-    height: 38px;
-    border-top: 1px solid var(--o-border);
-    background: var(--o-head);
-    font-weight: 700;
+    height: 44px;
+    background: var(--o-surface);
+    font-family: var(--o-font-display);
+    font-weight: 800;
     text-align: right;
     white-space: nowrap;
 }
@@ -474,8 +486,8 @@ body.o_resizing * {
 .o_badge {
     display: inline-flex;
     align-items: center;
-    height: 20px;
-    padding: 0 8px;
+    height: 22px;
+    padding: 0 9px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
@@ -483,37 +495,37 @@ body.o_resizing * {
 }
 
 .o_badge_default {
-    background: #f2f4f7;
-    color: #344054;
+    background: #ededf5;
+    color: #4a4866;
 }
 
 .o_badge_success {
-    background: #ecfdf3;
-    color: #067647;
+    background: #ddf3ec;
+    color: #0e6b52;
 }
 
 .o_badge_info {
-    background: #eff8ff;
-    color: #175cd3;
+    background: #e7e5ff;
+    color: #3428b0;
 }
 
 .o_badge_warning {
-    background: #fffaeb;
-    color: #b54708;
+    background: #ffebd9;
+    color: #8a3f0c;
 }
 
 .o_badge_danger {
-    background: #fef3f2;
+    background: #fde4e1;
     color: #b42318;
 }
 
 .o_badge_muted {
-    background: #f9fafb;
-    color: #98a2b3;
+    background: #f1f1f8;
+    color: #8a88a8;
 }
 
 .o_list_decoration_muted td {
-    color: #98a2b3;
+    color: #8a88a8;
 }
 
 .o_list_decoration_danger td {
@@ -521,15 +533,15 @@ body.o_resizing * {
 }
 
 .o_list_decoration_warning td {
-    color: #b54708;
+    color: #8a3f0c;
 }
 
 .o_list_decoration_success td {
-    color: #067647;
+    color: #0e6b52;
 }
 
 .o_list_decoration_info td {
-    color: #175cd3;
+    color: #3428b0;
 }
 
 /* Searches saved by the user */
@@ -545,9 +557,9 @@ body.o_resizing * {
     flex-grow: 1;
     align-items: center;
     gap: 6px;
-    padding: 7px 8px;
+    padding: 8px 10px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 9px;
     background: transparent;
     color: var(--o-ink);
     font-size: 13px;

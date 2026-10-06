@@ -18,9 +18,9 @@
     flex-direction: column;
     gap: 8px;
     min-height: 120px;
-    padding: 10px;
+    padding: 12px;
     border-radius: var(--o-radius-card);
-    background: #eceef2;
+    background: var(--o-panel);
 }
 
 .o_kanban_lane_header {
@@ -31,7 +31,8 @@
 }
 
 .o_kanban_lane_title {
-    font-size: 13px;
+    font-family: var(--o-font-display);
+    font-size: 15px;
     font-weight: 700;
 }
 
@@ -45,18 +46,17 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 10px 12px;
-    border: 1px solid var(--o-border);
-    border-radius: var(--o-radius-card);
+    padding: 12px 14px;
+    border: 0;
+    border-radius: var(--o-radius-row);
     background: var(--o-surface);
-    box-shadow: var(--o-shadow-card);
     font-size: 13px;
     cursor: pointer;
 }
 
 .o_kanban_card:hover,
 .o_kanban_card:focus-visible {
-    border-color: color-mix(in oklch, var(--o-accent) 45%, white);
+    box-shadow: 0 0 0 2px var(--o-accent), 0 4px 14px rgb(26 24 56 / 0.08);
     outline: none;
 }
 
