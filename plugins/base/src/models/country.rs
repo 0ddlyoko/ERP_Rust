@@ -7,5 +7,6 @@ use erp::types::field::IdMode;
 pub struct Country<Mode: IdMode> {
     id: Mode,
     name: String,
+    #[erp(index)]
     code: String,
 }

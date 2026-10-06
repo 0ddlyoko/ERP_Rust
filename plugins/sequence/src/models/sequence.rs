@@ -24,7 +24,10 @@ pub enum SequenceReset {
 pub struct Sequence<Mode: IdMode> {
     id: Mode,
     name: String,
-    #[erp(description = "What the code asking for a number names the series by")]
+    #[erp(
+        description = "What the code asking for a number names the series by",
+        index
+    )]
     code: String,
     #[erp(description = "Placeholders: {year}, {y}, {month}, {day}")]
     prefix: Option<String>,

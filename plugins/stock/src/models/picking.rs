@@ -36,7 +36,7 @@ pub enum PickingState {
 #[allow(dead_code)]
 pub struct Picking<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Reference", default = "/")]
+    #[erp(label = "Reference", default = "/", index = "trigram")]
     name: String,
     #[erp(label = "Operation type", required, ondelete = "restrict")]
     picking_type: Reference<BaseStockPickingType, SingleId>,
@@ -46,13 +46,13 @@ pub struct Picking<Mode: IdMode> {
     location: Reference<BaseStockLocation, SingleId>,
     #[erp(label = "Destination location", ondelete = "restrict", compute = "compute_location_dest", depends = ["picking_type"], stored, editable)]
     location_dest: Reference<BaseStockLocation, SingleId>,
-    #[erp(label = "Scheduled date")]
+    #[erp(label = "Scheduled date", index)]
     scheduled_date: Option<NaiveDate>,
     #[erp(label = "Date done")]
     date_done: Option<Timestamp>,
-    #[erp(label = "Source document")]
+    #[erp(label = "Source document", index = "trigram")]
     origin: Option<String>,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, index)]
     state: PickingState,
     #[erp(label = "Operations", inverse = "picking", owned)]
     moves: Reference<BaseStockMove, MultipleIds>,

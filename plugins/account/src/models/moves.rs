@@ -102,15 +102,15 @@ pub enum PaymentState {
 #[allow(dead_code)]
 pub struct Move<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Number", default = "/", tracking)]
+    #[erp(label = "Number", default = "/", tracking, index = "trigram")]
     name: String,
-    #[erp(label = "Type")]
+    #[erp(label = "Type", index)]
     move_type: MoveType,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, index)]
     state: MoveState,
     #[erp(required, ondelete = "restrict", tracking)]
     journal: Reference<BaseAccountJournal, SingleId>,
-    #[erp(label = "Accounting date", tracking)]
+    #[erp(label = "Accounting date", tracking, index)]
     date: NaiveDate,
     #[erp(label = "Invoice date", tracking)]
     invoice_date: Option<NaiveDate>,
@@ -145,10 +145,11 @@ pub struct Move<Mode: IdMode> {
     fiscal_position: Reference<BaseAccountFiscalPosition, SingleId>,
     #[erp(
         label = "Reference",
-        description = "The supplier's number, or the customer's order"
+        description = "The supplier's number, or the customer's order",
+        index = "trigram"
     )]
     reference: Option<String>,
-    #[erp(label = "Payment reference")]
+    #[erp(label = "Payment reference", index = "trigram")]
     payment_reference: Option<String>,
     #[erp(label = "Terms and conditions")]
     narration: Option<String>,

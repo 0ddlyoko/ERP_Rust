@@ -32,10 +32,12 @@ pub enum MessageKind {
 #[allow(dead_code)]
 pub struct Message<Mode: IdMode> {
     pub id: Mode,
+    #[erp(index)]
     model: String,
-    #[erp(default = 0)]
+    #[erp(default = 0, index)]
     record: i32,
     author: Reference<BaseUsers, SingleId>,
+    #[erp(index)]
     date: Timestamp,
     kind: MessageKind,
     body: Option<String>,

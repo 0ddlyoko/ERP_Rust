@@ -74,7 +74,7 @@ pub struct StockMove<Mode: IdMode> {
         editable
     )]
     location_dest: Reference<BaseStockLocation, SingleId>,
-    #[erp(label = "Status")]
+    #[erp(label = "Status", index)]
     state: MoveStatus,
     #[erp(label = "Reserved", default = 0.0)]
     reserved_quantity: Decimal,
@@ -90,7 +90,7 @@ pub struct StockMove<Mode: IdMode> {
         description = "What the move added to the stock's value, or took from it"
     )]
     value: Decimal,
-    #[erp(label = "Source document")]
+    #[erp(label = "Source document", index = "trigram")]
     origin: Option<String>,
     #[erp(label = "Date done")]
     date_done: Option<Timestamp>,

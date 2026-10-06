@@ -55,11 +55,11 @@ pub struct MoveLine<Mode: IdMode> {
     amount_currency: Decimal,
     #[erp(ondelete = "restrict")]
     currency: Reference<BaseCurrency, SingleId>,
-    #[erp(compute = "compute_date", depends = ["move_id.date"], stored)]
+    #[erp(compute = "compute_date", depends = ["move_id.date"], stored, index)]
     date: Option<NaiveDate>,
-    #[erp(label = "Due date")]
+    #[erp(label = "Due date", index)]
     date_maturity: Option<NaiveDate>,
-    #[erp(label = "Status", compute = "compute_parent_state", depends = ["move_id.state"], stored)]
+    #[erp(label = "Status", compute = "compute_parent_state", depends = ["move_id.state"], stored, index)]
     parent_state: MoveState,
     #[erp(label = "Kind")]
     display_type: LineKind,
@@ -79,6 +79,7 @@ pub struct MoveLine<Mode: IdMode> {
     amount_residual: Decimal,
     #[erp(label = "Open amount in currency", default = 0.0)]
     amount_residual_currency: Decimal,
+    #[erp(index)]
     reconciled: bool,
     #[erp(label = "Matching", ondelete = "set_null")]
     full_reconcile: Reference<BaseAccountFullReconcile, SingleId>,

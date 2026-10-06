@@ -36,17 +36,17 @@ pub enum PurchaseState {
 #[allow(dead_code)]
 pub struct PurchaseOrder<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Number", default = "New")]
+    #[erp(label = "Number", default = "New", index = "trigram")]
     name: String,
     #[erp(label = "Vendor", required, ondelete = "restrict", tracking)]
     partner: Reference<BaseContact, SingleId>,
-    #[erp(label = "Vendor reference")]
+    #[erp(label = "Vendor reference", index = "trigram")]
     partner_ref: Option<String>,
-    #[erp(label = "Order date", tracking)]
+    #[erp(label = "Order date", tracking, index)]
     date_order: NaiveDate,
     #[erp(label = "Expected arrival")]
     date_planned: Option<NaiveDate>,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, index)]
     state: PurchaseState,
     #[erp(
         label = "Payment terms",

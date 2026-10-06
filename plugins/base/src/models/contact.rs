@@ -14,13 +14,14 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 #[allow(dead_code)]
 pub struct Contact<Mode: IdMode> {
     id: Mode,
-    #[erp(tracking)]
+    #[erp(tracking, index = "trigram")]
     name: String,
     #[erp(
         label = "Full name",
         compute = "compute_complete_name",
         depends = ["name", "is_company", "parent.name"],
-        stored
+        stored,
+        index = "trigram",
     )]
     complete_name: String,
     #[erp(label = "Is a company", tracking)]
@@ -31,9 +32,9 @@ pub struct Contact<Mode: IdMode> {
     children: Reference<BaseContact, MultipleIds>,
     #[erp(label = "Job position")]
     function: Option<String>,
-    #[erp(label = "Tax ID", tracking)]
+    #[erp(label = "Tax ID", tracking, index)]
     vat: Option<String>,
-    #[erp(label = "Reference")]
+    #[erp(label = "Reference", index)]
     reference: Option<String>,
     street: Option<String>,
     #[erp(label = "Street 2")]
@@ -49,7 +50,7 @@ pub struct Contact<Mode: IdMode> {
         depends = ["street", "street2", "zip", "city", "country.name"]
     )]
     address: Option<String>,
-    #[erp(tracking)]
+    #[erp(tracking, index = "trigram")]
     email: Option<String>,
     #[erp(tracking)]
     phone: Option<String>,

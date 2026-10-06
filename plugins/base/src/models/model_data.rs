@@ -16,13 +16,16 @@ use std::collections::HashSet;
 pub struct ModelData<Mode: IdMode> {
     id: Mode,
     /// Plugin the identifier belongs to.
+    #[erp(index)]
     module: String,
     /// Identifier within that plugin.
+    #[erp(index)]
     name: String,
     /// Model of the record designated.
+    #[erp(index)]
     model: String,
     /// Technical id of that record.
-    #[erp(default = 0)]
+    #[erp(default = 0, index)]
     res_id: i32,
     /// When set, later loads leave the record alone — it belongs to the user now.
     #[erp(default = false)]

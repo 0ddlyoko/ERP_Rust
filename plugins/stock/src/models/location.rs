@@ -37,7 +37,8 @@ pub struct Location<Mode: IdMode> {
         label = "Full name",
         compute = "compute_complete_name",
         depends = ["name", "parent.complete_name"],
-        stored
+        stored,
+        index = "trigram",
     )]
     complete_name: String,
     #[erp(label = "Type")]

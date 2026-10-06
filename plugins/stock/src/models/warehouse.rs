@@ -15,7 +15,8 @@ pub struct Warehouse<Mode: IdMode> {
     name: String,
     #[erp(
         label = "Short name",
-        description = "Starts the names of its locations and transfers, e.g. WH"
+        description = "Starts the names of its locations and transfers, e.g. WH",
+        index
     )]
     code: String,
     #[erp(label = "View location", ondelete = "restrict")]

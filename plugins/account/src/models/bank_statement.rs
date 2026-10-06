@@ -29,7 +29,7 @@ pub enum StatementState {
 #[allow(dead_code)]
 pub struct BankStatement<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Reference")]
+    #[erp(label = "Reference", index = "trigram")]
     name: String,
     #[erp(
         required,
@@ -37,6 +37,7 @@ pub struct BankStatement<Mode: IdMode> {
         domain = r#"[["journal_type", "=", "bank"]]"#
     )]
     journal: Reference<BaseAccountJournal, SingleId>,
+    #[erp(index)]
     date: NaiveDate,
     #[erp(label = "Starting balance", default = 0.0)]
     balance_start: Decimal,

@@ -24,6 +24,7 @@ use std::sync::Arc;
 #[allow(dead_code)]
 pub struct Template<Mode: IdMode> {
     pub id: Mode,
+    #[erp(index)]
     key: Option<String>,
     arch: String,
     file: Option<String>,

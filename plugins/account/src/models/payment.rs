@@ -50,7 +50,7 @@ pub enum PaymentStatus {
 #[allow(dead_code)]
 pub struct Payment<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Number", default = "/")]
+    #[erp(label = "Number", default = "/", index = "trigram")]
     name: String,
     #[erp(label = "Payment type", tracking)]
     payment_type: PaymentType,
@@ -62,7 +62,7 @@ pub struct Payment<Mode: IdMode> {
     amount: Decimal,
     #[erp(ondelete = "restrict")]
     currency: Reference<BaseCurrency, SingleId>,
-    #[erp(tracking)]
+    #[erp(tracking, index)]
     date: NaiveDate,
     #[erp(
         required,
@@ -72,7 +72,7 @@ pub struct Payment<Mode: IdMode> {
     journal: Reference<BaseAccountJournal, SingleId>,
     #[erp(label = "Memo")]
     memo: Option<String>,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, index)]
     state: PaymentStatus,
     #[erp(label = "Journal entry", ondelete = "restrict")]
     move_id: Reference<BaseAccountMove, SingleId>,

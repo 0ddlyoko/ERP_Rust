@@ -56,13 +56,15 @@ impl AccountType {
 #[allow(dead_code)]
 pub struct Account<Mode: IdMode> {
     id: Mode,
+    #[erp(index)]
     code: String,
     name: String,
     #[erp(
         label = "Account",
         compute = "compute_display_name",
         depends = ["code", "name"],
-        stored
+        stored,
+        index = "trigram",
     )]
     display_name: String,
     #[erp(label = "Type", tracking)]

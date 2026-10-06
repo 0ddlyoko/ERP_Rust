@@ -18,6 +18,7 @@ use erp_search_code_gen::make_domain;
 pub struct AccessRule<Mode: IdMode> {
     pub id: Mode,
     name: String,
+    #[erp(index)]
     model: String,
     #[erp(ondelete = "cascade")]
     group: Reference<BaseGroup, SingleId>,

@@ -39,15 +39,15 @@ pub enum SaleState {
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     id: Mode,
-    #[erp(label = "Number", default = "New")]
+    #[erp(label = "Number", default = "New", index = "trigram")]
     name: String,
     #[erp(label = "Customer", required, ondelete = "restrict", tracking)]
     partner: Reference<BaseContact, SingleId>,
-    #[erp(label = "Order date", tracking)]
+    #[erp(label = "Order date", tracking, index)]
     date_order: NaiveDate,
     #[erp(label = "Valid until")]
     validity_date: Option<NaiveDate>,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, index)]
     state: SaleState,
     #[erp(
         ondelete = "restrict",
@@ -77,7 +77,7 @@ pub struct SaleOrder<Mode: IdMode> {
     fiscal_position: Reference<BaseAccountFiscalPosition, SingleId>,
     #[erp(ondelete = "restrict", compute = "compute_currency", depends = ["pricelist"], stored)]
     currency: Reference<BaseCurrency, SingleId>,
-    #[erp(label = "Customer reference")]
+    #[erp(label = "Customer reference", index = "trigram")]
     client_order_ref: Option<String>,
     #[erp(label = "Terms and conditions")]
     note: Option<String>,

@@ -13,6 +13,7 @@ pub struct CurrencyRate<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     currency: Reference<BaseCurrency, SingleId>,
+    #[erp(index)]
     date: NaiveDate,
     #[erp(
         default = 1.0,

@@ -22,6 +22,7 @@ use std::collections::{HashMap, HashSet};
 pub struct View<Mode: IdMode> {
     pub id: Mode,
     name: Option<String>,
+    #[erp(index)]
     model: Option<String>,
     arch: String,
     #[erp(ondelete = "cascade")]

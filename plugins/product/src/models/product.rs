@@ -25,16 +25,18 @@ pub enum ProductType {
 #[allow(dead_code)]
 pub struct Product<Mode: IdMode> {
     id: Mode,
-    #[erp(tracking)]
+    #[erp(tracking, index = "trigram")]
     name: String,
-    #[erp(label = "Internal reference", tracking)]
+    #[erp(label = "Internal reference", tracking, index)]
     default_code: Option<String>,
+    #[erp(index)]
     barcode: Option<String>,
     #[erp(
         label = "Name",
         compute = "compute_display_name",
         depends = ["name", "default_code"],
-        stored
+        stored,
+        index = "trigram",
     )]
     display_name: String,
     #[erp(label = "Product type", tracking)]

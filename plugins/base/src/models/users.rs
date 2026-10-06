@@ -14,7 +14,7 @@ use erp_search_code_gen::make_domain;
 #[allow(dead_code)]
 pub struct Users<Mode: IdMode> {
     pub id: Mode,
-    #[erp(tracking)]
+    #[erp(tracking, index)]
     login: String,
     password: Password,
     name: String,
