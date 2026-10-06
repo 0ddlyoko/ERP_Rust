@@ -578,3 +578,75 @@ button {
     border-radius: 50%;
     animation: o_spin 0.7s linear infinite;
 }
+
+/* The menu folded into a strip */
+
+.o_sidebar_fold {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--o-side-muted);
+}
+
+.o_sidebar_fold:hover {
+    background: var(--o-side-raised);
+    color: #ffffff;
+}
+
+.o_web_client:has(.o_sidebar_folded) {
+    grid-template-columns: 60px minmax(0, 1fr);
+}
+
+.o_sidebar_folded {
+    align-items: center;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.o_sidebar_folded .o_sidebar_brand {
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px 0;
+}
+
+.o_sidebar_folded .o_sidebar_fold {
+    margin-left: 0;
+}
+
+.o_sidebar_folded .o_brand_name,
+.o_sidebar_folded .o_module_name,
+.o_sidebar_folded .o_module_button > svg,
+.o_sidebar_folded .o_menu_search,
+.o_sidebar_folded .o_menu_tree,
+.o_sidebar_folded .o_menu_results,
+.o_sidebar_folded .o_user_who,
+.o_sidebar_folded .o_user_logout {
+    display: none;
+}
+
+.o_sidebar_folded .o_module_switcher {
+    width: 100%;
+}
+
+.o_sidebar_folded .o_module_button {
+    justify-content: center;
+    padding: 0;
+}
+
+.o_sidebar_folded .o_module_list {
+    right: auto;
+    width: 220px;
+}
+
+.o_sidebar_folded .o_sidebar_user {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}

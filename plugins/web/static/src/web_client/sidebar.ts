@@ -8,7 +8,21 @@ import { Session } from "@web/core/session";
  *
  * Under a module come groups the user opens and folds — the one leading to the action open starts
  * unfolded. In a group, an entry with entries of its own is a section heading over them.
+ *
+ * The whole menu folds into a narrow strip, to give the page its width; the browser remembers
+ * it folded.
  */
+/** Where the browser remembers the menu folded. */
+const FOLDED_KEY = "o_sidebar_folded";
+
+function readFolded(): boolean {
+    try {
+        return localStorage.getItem(FOLDED_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
 export class Sidebar extends Component {
     static template = "web.Sidebar";
 
@@ -42,6 +56,17 @@ export class Sidebar extends Component {
     @state accessor switching = false;
     @state accessor query = "";
     @state accessor folding = new Map<number, boolean>();
+    @state accessor folded = readFolded();
+
+    /** Fold the menu into a strip, or unfold it, and remember it so. */
+    fold(): void {
+        this.folded = !this.folded;
+        try {
+            localStorage.setItem(FOLDED_KEY, this.folded ? "1" : "0");
+        } catch {
+            // Kept for this page only when the browser keeps nothing.
+        }
+    }
 
     isOpen(group: MenuEntry): boolean {
         const action = this.props.action;
