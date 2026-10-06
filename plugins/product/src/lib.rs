@@ -26,6 +26,7 @@ impl Plugin for ProductPlugin {
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::ProductCategory<_>>();
         model_manager.register_model::<models::Product<_>>();
+        model_manager.register_model::<models::UomProduct<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

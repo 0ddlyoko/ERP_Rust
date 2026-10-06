@@ -74,16 +74,12 @@ pub struct Product<Mode: IdMode> {
 
 #[erp_methods]
 impl Product<MultipleIds> {
-    /// Prices are not negative; the purchase unit measures what the unit does; a barcode
-    /// belongs to one product.
+    /// The purchase unit measures what the unit does; a barcode belongs to one product.
+    ///
+    /// Prices may be negative: a discount or a deposit given back is a product too.
     pub fn check_product(&self, env: &mut Environment) -> Result<()> {
         for product in self {
             let name = product.get_name(env)?.clone();
-            if *product.get_list_price(env)? < Decimal::ZERO
-                || *product.get_standard_price(env)? < Decimal::ZERO
-            {
-                return Err(format!("The prices of {name} cannot be negative").into());
-            }
             let uom: Uom<SingleId> = product.get_uom(env)?;
             let purchase_uom: Uom<SingleId> = product.get_purchase_uom(env)?;
             let uom_category: UomCategory<SingleId> = uom.get_category(env)?;

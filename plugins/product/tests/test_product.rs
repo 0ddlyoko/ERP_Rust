@@ -111,20 +111,17 @@ fn test_categories_nest() -> Result<()> {
     Ok(())
 }
 
-/// Prices are not negative; the purchase unit measures what the unit measures; a barcode is
+/// Prices may be negative; the purchase unit measures what the unit measures; a barcode is
 /// unique.
 #[test]
 fn test_products_follow_their_rules() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
-    assert!(new_product(&mut env, json!({"name": "Negative", "list_price": "-1"})).is_err());
-    assert!(
-        new_product(
-            &mut env,
-            json!({"name": "Negative cost", "standard_price": "-0.01"})
-        )
-        .is_err()
-    );
+    let discount = new_product(
+        &mut env,
+        json!({"name": "Loyalty discount", "product_type": "service", "list_price": "-5"}),
+    )?;
+    assert_eq!(*discount.get_list_price(&mut env)?, d("-5"));
     let kg = xml_id(&mut env, "uom.uom_kg");
     let dozen = xml_id(&mut env, "uom.uom_dozen");
     let error = new_product(&mut env, json!({"name": "Flour", "purchase_uom": kg}))
@@ -153,9 +150,36 @@ fn test_products_follow_their_rules() -> Result<()> {
     assert!(error.contains("5410000000001"), "{error}");
     let count = env.count(
         "product",
-        &erp_search_code_gen::make_domain!([("name", "in", vec!["Negative", "Copy"])]),
+        &erp_search_code_gen::make_domain!([("name", "=", "Copy")]),
     )?;
     assert_eq!(count, 0, "refused products are not kept");
+    Ok(())
+}
+
+/// A unit products are counted or bought in keeps its category; an unused one may move.
+#[test]
+fn test_a_used_unit_keeps_its_category() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let dozen = xml_id(&mut env, "uom.uom_dozen");
+    let weight = xml_id(&mut env, "uom.category_weight");
+    let unit_category = xml_id(&mut env, "uom.category_unit");
+    new_product(&mut env, json!({"name": "Eggs", "purchase_uom": dozen}))?;
+    let error = env
+        .call_rpc(
+            "uom",
+            "write",
+            &json!({"ids": [dozen], "values": {"category": weight, "uom_type": "bigger"}}),
+        )
+        .expect_err("eggs are bought by the dozen")
+        .to_string();
+    assert!(error.contains("bought in Dozens"), "{error}");
+    let ton = xml_id(&mut env, "uom.uom_ton");
+    env.call_rpc(
+        "uom",
+        "write",
+        &json!({"ids": [ton], "values": {"category": unit_category}}),
+    )?;
     Ok(())
 }
 
