@@ -4,6 +4,7 @@ import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
 import { asksReload, opensRecord, View, viewKinds, viewProps } from "@web/views/view";
+import { companionFields } from "@web/views/widgets/decimal_widget";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
 
@@ -117,7 +118,8 @@ export class FormView extends View {
     @computed get readNames(): string[] {
         const fields = this.fields ?? {};
         const conditions = (this.layout?.conditionNames ?? []).filter((name) => name in fields);
-        return [...new Set([...this.columns.map((column) => column.name), ...conditions])];
+        const companions = companionFields(this.columns, fields);
+        return [...new Set([...this.columns.map((column) => column.name), ...conditions, ...companions])];
     }
 
     /** The record as the user sees it: what was read, what the server computed, what they changed. */

@@ -4,6 +4,7 @@ import { Orm, type Values } from "@web/core/orm";
 import { Views } from "@web/core/views";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "@web/views/list/column_widths";
 import { type Column, columnOf, widgetFor } from "@web/views/view";
+import { companionFields } from "./decimal_widget";
 import { RecordSearch } from "./record_search";
 import { widgetProps, widgets } from "./widget";
 import { X2ManyWidget } from "./x2many_widget";
@@ -118,7 +119,11 @@ export class ListWidget extends X2ManyWidget {
 
     /** The rows as read, of every record held that exists; one added is read when it is. */
     @resource accessor read: Values[] = load(
-        () => ({ model: this.model, ids: this.ids, fields: this.columns.map((column) => column.name) }),
+        () => ({
+            model: this.model,
+            ids: this.ids,
+            fields: [...this.columns.map((column) => column.name), ...companionFields(this.columns, this.fields ?? {})],
+        }),
         ({ model, ids, fields }) =>
             ids.length === 0 || fields.length === 0 ? Promise.resolve([]) : this.orm.read(model, ids, fields, { names: true }),
     );

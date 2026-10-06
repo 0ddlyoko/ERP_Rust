@@ -6,7 +6,8 @@ import { widgetProps, widgets } from "./widget";
  * A selection as the steps it goes through, in its values' order: those passed, the one it is
  * at, those to come.
  *
- * `visible="draft,sent,paid"` shows only those steps, and the current one whatever it is.
+ * `visible="draft,sent,paid"` shows only those steps, and the current one whatever it is; at a
+ * value outside them — cancelled — none of them is passed.
  * `clickable="1"` lets the user move to a step, where the view edits the field.
  */
 export class StatusbarWidget extends SelectionWidget {
@@ -24,12 +25,18 @@ export class StatusbarWidget extends SelectionWidget {
         return this.choices.findIndex(([key]) => key === this.value);
     }
 
+    /** Whether the field is at one of the steps `visible` lists: a cancelled order is not. */
+    get onTheWay(): boolean {
+        const visible = (this.props.attrs as Record<string, string>).visible?.split(",").map((key) => key.trim());
+        return visible === undefined || visible.includes(this.value as string);
+    }
+
     stateOf(step: Choice): "passed" | "current" | "coming" {
         const at = this.choices.findIndex(([key]) => key === step[0]);
         if (at === this.position) {
             return "current";
         }
-        return this.position >= 0 && at < this.position ? "passed" : "coming";
+        return this.onTheWay && this.position >= 0 && at < this.position ? "passed" : "coming";
     }
 
     get clickable(): boolean {

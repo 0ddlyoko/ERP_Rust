@@ -7,6 +7,7 @@ import { SearchBar } from "@web/views/search/search_bar";
 import { defaultFacets, type Facet, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
 import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
+import { companionFields } from "@web/views/widgets/decimal_widget";
 import { listActions } from "./list_actions";
 
 /** Something the actions menu offers on the selection: a button of the view, or a list action. */
@@ -127,7 +128,7 @@ export class ListView extends View {
     @resource accessor records: Values[] = load(
         () => ({
             model: this.props.resModel,
-            fields: this.columns.map((column) => column.name),
+            fields: [...this.columns.map((column) => column.name), ...companionFields(this.columns, this.fields ?? {})],
             domain: this.domain,
             order: this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`],
             limit: this.props.limit,

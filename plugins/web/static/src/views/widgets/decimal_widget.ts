@@ -36,11 +36,47 @@ export class DecimalWidget extends Widget {
 
 widgets.add("decimal", DecimalWidget);
 
-/** An amount of money: two decimals unless the view says otherwise, `1 234,50`. */
+/**
+ * An amount of money, in its currency as the browser writes it — `1 234,50 €`, `$1,234.50` —
+ * read from the record's `currency` field, or the one `currency_field` names. Two decimals
+ * unless the view says otherwise; without a currency, the number alone.
+ */
 export class MonetaryWidget extends DecimalWidget {
     override get digits(): number {
         return super.digits ?? 2;
     }
+
+    /** The code of the record's currency, `EUR`, when it has one. */
+    get currency(): string | null {
+        const field = (this.props.attrs as Record<string, string>).currency_field ?? "currency";
+        const value = this.props.record[field];
+        const code = Array.isArray(value) ? value[1] : null;
+        return typeof code === "string" && /^[A-Z]{3}$/.test(code) ? code : null;
+    }
+
+    override get text(): string {
+        const currency = this.currency;
+        if (this.isEmpty || currency === null) {
+            return super.text;
+        }
+        const digits = this.digits;
+        return Number(this.value).toLocaleString(undefined, {
+            style: "currency",
+            currency,
+            minimumFractionDigits: digits,
+            maximumFractionDigits: digits,
+        });
+    }
+}
+
+/**
+ * The fields read besides those shown, for the widgets showing them: the currency of an amount.
+ */
+export function companionFields(columns: readonly { widget?: string; attrs: Record<string, string> }[], fields: Record<string, unknown>): string[] {
+    return columns
+        .filter((column) => column.widget === "monetary")
+        .map((column) => column.attrs.currency_field ?? "currency")
+        .filter((name, at, names) => name in fields && names.indexOf(name) === at);
 }
 
 widgets.add("monetary", MonetaryWidget);
