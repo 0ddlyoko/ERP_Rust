@@ -46,10 +46,6 @@ impl MoveType {
         matches!(self, MoveType::OutInvoice | MoveType::OutRefund)
     }
 
-    pub fn is_purchase(self) -> bool {
-        matches!(self, MoveType::InInvoice | MoveType::InRefund)
-    }
-
     pub fn is_refund(self) -> bool {
         matches!(self, MoveType::OutRefund | MoveType::InRefund)
     }
@@ -597,18 +593,6 @@ impl Move<MultipleIds> {
         Ok(())
     }
 
-    /// The payment reference of a posted invoice: its number. A localization may give it its
-    /// own form, a Belgian structured communication.
-    pub fn compute_payment_reference(&self, env: &mut Environment) -> Result<()> {
-        for entry in self {
-            if entry.get_payment_reference(env)?.is_none() {
-                let name = entry.get_name(env)?.clone();
-                entry.set_payment_reference(Some(name), env)?;
-            }
-        }
-        Ok(())
-    }
-
     /// What an entry is created with when nothing is said: today, the journal of its type, the
     /// company's currency.
     pub fn create(
@@ -830,6 +814,18 @@ impl Move<MultipleIds> {
         })
     }
 
+    /// The payment reference of a posted invoice: its number. A localization may give it its
+    /// own form, a Belgian structured communication.
+    pub fn assign_payment_reference(&self, env: &mut Environment) -> Result<()> {
+        for entry in self {
+            if entry.get_payment_reference(env)?.is_none() {
+                let name = entry.get_name(env)?.clone();
+                entry.set_payment_reference(Some(name), env)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Tie the credit note made from this invoice to what the invoice came from: nothing here;
     /// sales link its lines to the order lines the invoice's lines invoiced.
     pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
@@ -947,7 +943,7 @@ impl Move<SingleId> {
         if move_type.is_invoice() {
             self.clear_items(env)?;
             Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
-                .compute_payment_reference(env)?;
+                .assign_payment_reference(env)?;
             let items = self.invoice_items(env)?;
             let mut values = MapOfFields::default();
             values.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));

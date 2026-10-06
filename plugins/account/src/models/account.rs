@@ -48,17 +48,6 @@ impl AccountType {
             AccountType::AssetReceivable | AccountType::LiabilityPayable
         )
     }
-
-    /// Whether the type belongs to the profit and loss rather than the balance sheet.
-    pub fn is_profit_and_loss(self) -> bool {
-        matches!(
-            self,
-            AccountType::Income
-                | AccountType::IncomeOther
-                | AccountType::Expense
-                | AccountType::ExpenseDepreciation
-        )
-    }
 }
 
 /// An account of the chart: `400000 Customers`, where amounts are recorded.
