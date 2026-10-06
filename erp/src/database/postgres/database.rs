@@ -303,8 +303,9 @@ impl Database for PostgresDatabase {
                 (target_column, target_table),
             ];
             for (side, table) in sides {
-                let name = format!("{relation}_{side}_fkey");
-                if existing.contains(&name) {
+                let full = format!("{relation}_{side}_fkey");
+                let name = constraint_name(&full);
+                if existing.contains(&name) || existing.contains(truncated(&full)) {
                     continue;
                 }
                 let statement = format!(
@@ -623,5 +624,53 @@ impl Drop for PostgresDatabase {
         if self.is_transaction {
             let _ = self.rollback_transaction();
         }
+    }
+}
+
+/// The longest name PostgreSQL keeps whole: it cuts longer ones at this many bytes.
+const MAX_IDENTIFIER: usize = 63;
+
+/// `full` when PostgreSQL keeps it whole, else its start and a hash of all of it, so that two
+/// long names starting alike stay apart.
+fn constraint_name(full: &str) -> String {
+    if full.len() <= MAX_IDENTIFIER {
+        return full.to_string();
+    }
+    let hash = full.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+    });
+    format!("{}_{:016x}", truncated_to(full, MAX_IDENTIFIER - 17), hash)
+}
+
+/// `full` as PostgreSQL stores it: what an older version left in the database under that name.
+fn truncated(full: &str) -> &str {
+    truncated_to(full, MAX_IDENTIFIER)
+}
+
+fn truncated_to(full: &str, bytes: usize) -> &str {
+    let mut end = bytes.min(full.len());
+    while !full.is_char_boundary(end) {
+        end -= 1;
+    }
+    &full[..end]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constraint_names_fit() {
+        assert_eq!(constraint_name("pair_left_id_fkey"), "pair_left_id_fkey");
+        let long = "account_bank_statement_line_match_rel_account_bank_statement_line_id_fkey";
+        let other = "account_bank_statement_line_match_rel_account_bank_statement_line_other_fkey";
+        assert_eq!(constraint_name(long).len(), MAX_IDENTIFIER);
+        assert_eq!(
+            constraint_name(long),
+            constraint_name(long),
+            "the same every time"
+        );
+        assert_ne!(constraint_name(long), constraint_name(other));
+        assert_eq!(truncated(long).len(), MAX_IDENTIFIER);
     }
 }
