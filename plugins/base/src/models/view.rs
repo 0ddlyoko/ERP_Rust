@@ -148,6 +148,12 @@ const CONTENTS: &[&str] = &[
     "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "totals",
 ];
 const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
+/// What lays out a record as a card — the list's `<compact>`, `<folded>` and `<preview>`.
+const CARD: &[&str] = &[
+    "row", "column", "title", "subtitle", "figure", "muted", "spacer", "field",
+];
+/// What in a card may hold text between its fields: `<muted><field name="name"/> · …</muted>`.
+const CARD_TEXT: &[&str] = &["title", "subtitle", "figure", "muted"];
 /// What a field of a form's `<leader>` may stand for; one with none is a tile.
 const LEADER_ROLES: &[&str] = &["status", "avatar", "title", "subtitle", "figure", "note"];
 /// The colours a `decoration-*` attribute may name.
@@ -164,7 +170,7 @@ impl Arch<'_> {
             self.known(field)?;
         }
         let allowed: &[&str] = match root.name.as_str() {
-            "list" => &["field", "buttons"],
+            "list" => &["field", "buttons", "compact", "folded", "preview"],
             "kanban" => &["field"],
             "search" => &["field", "filter"],
             "form" => &[
@@ -191,10 +197,12 @@ impl Arch<'_> {
                     )));
                 }
                 Node::Text(text)
-                    if !text.trim().is_empty() && !HEADINGS.contains(&parent.name.as_str()) =>
+                    if !text.trim().is_empty()
+                        && !HEADINGS.contains(&parent.name.as_str())
+                        && !CARD_TEXT.contains(&parent.name.as_str()) =>
                 {
                     return Err(self.error(format!(
-                        "<{}> holds text, which only a heading may",
+                        "<{}> holds text, which only a heading or a card's text may",
                         parent.name
                     )));
                 }
@@ -210,7 +218,8 @@ impl Arch<'_> {
         }
         let conditions: &[&str] = match element.name.as_str() {
             "field" => &["invisible", "readonly", "required"],
-            "block" | "page" | "pages" | "button" | "totals" | "related" | "link" => &["invisible"],
+            "block" | "page" | "pages" | "button" | "totals" | "related" | "link" | "row"
+            | "column" | "title" | "subtitle" | "figure" | "muted" => &["invisible"],
             heading if HEADINGS.contains(&heading) => &["invisible"],
             _ => &[],
         };
@@ -261,6 +270,9 @@ impl Arch<'_> {
                 self.children(element, &["actions", "field"])
             }
             "related" => self.children(element, &["link"]),
+            "compact" | "folded" | "preview" | "row" | "column" | "title" | "subtitle"
+            | "figure" | "muted" => self.children(element, CARD),
+            "spacer" => self.children(element, &[]),
             "link" => {
                 self.required(element, "action")?;
                 self.field(element)?;

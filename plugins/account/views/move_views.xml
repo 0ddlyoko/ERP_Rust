@@ -16,6 +16,49 @@
             <field name="payment_state" widget="badge" decoration-danger="payment_state === 'not_paid' &amp;&amp; state === 'posted'"
                    decoration-warning="payment_state === 'partial'" decoration-success="payment_state === 'paid'"/>
             <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-info="state === 'draft'" decoration-success="state === 'posted'"/>
+            <compact>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <row>
+                            <title><field name="partner"/></title>
+                            <spacer/>
+                            <figure><field name="amount_total" widget="monetary"/></figure>
+                        </row>
+                        <row>
+                            <muted><field name="name"/> · <field name="invoice_date"/></muted>
+                            <spacer/>
+                            <field name="payment_state" widget="badge" decoration-danger="payment_state === 'not_paid' &amp;&amp; state === 'posted'"
+                                   decoration-warning="payment_state === 'partial'" decoration-success="payment_state === 'paid'"/>
+                        </row>
+                    </column>
+                </row>
+            </compact>
+            <folded>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="name"/></title>
+                        <muted><field name="amount_total" widget="monetary" short="1"/></muted>
+                    </column>
+                </row>
+            </folded>
+            <preview>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="partner"/></title>
+                        <muted><field name="name"/> · <field name="invoice_date"/></muted>
+                    </column>
+                </row>
+                <row>
+                    <field name="payment_state" widget="badge" decoration-danger="payment_state === 'not_paid' &amp;&amp; state === 'posted'"
+                           decoration-warning="payment_state === 'partial'" decoration-success="payment_state === 'paid'"/>
+                    <spacer/>
+                    <figure><field name="amount_total" widget="monetary"/></figure>
+                </row>
+                <muted>Due <field name="invoice_date_due"/> · <field name="amount_residual" widget="monetary"/> left</muted>
+            </preview>
         </list>
     </view>
     <view id="view_move_form" name="account_move.form" model="account_move">

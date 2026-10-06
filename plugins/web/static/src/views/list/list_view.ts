@@ -146,6 +146,9 @@ export class ListView extends View {
             sort: this.sort,
             ids: shown,
             total: this.grouping === null ? (this.total ?? 0) : shown.length,
+            domain: this.domain,
+            order: this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`],
+            groupBy: this.grouping?.groupBy ?? null,
         });
     }
 
@@ -546,7 +549,7 @@ export class ListView extends View {
 }
 
 /** The period starting on `day` as people name it: `October 2026`, `Q4 2026`, `Week of 5 Oct 2026`. */
-function periodLabel(day: string, period: string): string {
+export function periodLabel(day: string, period: string): string {
     const [year, month, date] = day.split("-").map(Number);
     const start = new Date(year, month - 1, date);
     switch (period) {

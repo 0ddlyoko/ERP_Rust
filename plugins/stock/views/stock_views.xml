@@ -12,6 +12,45 @@
             <field name="picking_type"/>
             <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
                    decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+            <compact>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <row>
+                            <title><field name="partner"/></title>
+                        </row>
+                        <row>
+                            <muted><field name="name"/> · <field name="scheduled_date"/></muted>
+                            <spacer/>
+                            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
+                                   decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+                        </row>
+                    </column>
+                </row>
+            </compact>
+            <folded>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="name"/></title>
+                        <muted><field name="scheduled_date"/></muted>
+                    </column>
+                </row>
+            </folded>
+            <preview>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="partner"/></title>
+                        <muted><field name="name"/> · <field name="scheduled_date"/></muted>
+                    </column>
+                </row>
+                <row>
+                    <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
+                           decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+                </row>
+                <muted><field name="picking_type"/> · <field name="origin"/></muted>
+            </preview>
         </list>
     </view>
     <view id="view_picking_form" name="stock_picking.form" model="stock_picking">

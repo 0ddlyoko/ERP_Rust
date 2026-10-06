@@ -45,6 +45,8 @@ export class FormView extends View {
         defaults: t.object().default({}),
         /** Called with a record once created, as `[id, name]`, instead of opening it. */
         onCreated: t.func<(record: [number, string | null]) => void>().optional(),
+        /** Shown beside the records of its list, which the user steps through instead of a pager. */
+        besideList: t.boolean().default(false),
     });
 
     @inject(Notifications) notifications!: Notifications;
@@ -225,7 +227,7 @@ export class FormView extends View {
 
     /** Where the record stands among those of the list it was opened from, if it was. */
     @computed get pager(): { position: number; total: number; previous: number | null; next: number | null } | null {
-        const memory = this.props.embedded ? undefined : listMemory(this.router.route.action);
+        const memory = this.props.embedded || this.props.besideList ? undefined : listMemory(this.router.route.action);
         const at = memory?.ids.indexOf(this.props.resId ?? -1) ?? -1;
         if (memory === undefined || at < 0) {
             return null;

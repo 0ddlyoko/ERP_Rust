@@ -19,6 +19,9 @@ export const viewProps = {
     embedded: t.boolean().default(false),
 };
 
+/** The cards a list lays its records out in besides its columns. */
+const CARDS = "compact, folded, preview";
+
 /** Views by kind: `list`, `form`. A plugin adds a kind of its own here, or replaces one. */
 export const viewKinds = registry.category<ComponentClass>("views");
 
@@ -80,14 +83,19 @@ export abstract class View extends Component {
         return new DOMParser().parseFromString(this.arch, "text/xml").documentElement;
     }
 
-    /** Every field the view shows, in the order its XML names them. */
+    /**
+     * Every field the view shows, in the order its XML names them — but those of the cards a list
+     * also lays its records out in, which are not its columns.
+     */
     @computed get columns(): Column[] {
         const fields = this.fields;
         const root = this.archRoot;
         if (fields === undefined || root === undefined) {
             return [];
         }
-        return Array.from(root.getElementsByTagName("field"), (element) => this.columnOf(element, fields));
+        return Array.from(root.getElementsByTagName("field"))
+            .filter((element) => element.closest(CARDS) === null)
+            .map((element) => this.columnOf(element, fields));
     }
 
     /** What a `<field>` element shows, with what its attributes say. */

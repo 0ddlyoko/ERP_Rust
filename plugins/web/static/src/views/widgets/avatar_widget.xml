@@ -1,0 +1,5 @@
+<templates>
+    <t t-name="web.AvatarWidget">
+        <span t-if="initials" class="o_avatar" t-att-style="style" t-att-title="name" role="img" t-att-aria-label="name">{{ initials }}</span>
+    </t>
+</templates>

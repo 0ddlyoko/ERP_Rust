@@ -350,6 +350,63 @@ fn test_a_search_and_list_buttons_are_shown_as_written() -> Result<()> {
     Ok(())
 }
 
+/// A list's cards — beside a form, folded, previewed — lay out fields in rows and columns, with
+/// text between them; what else a card holds is refused.
+#[test]
+fn test_list_cards_are_shown_as_written_and_checked() -> Result<()> {
+    let app = with_data(
+        "carding",
+        &[
+            r#"<erp><view id="cards" name="cards" model="users" priority="1"><list>
+            <field name="name"/>
+            <compact><row><field name="name" widget="avatar"/><column>
+                <title><field name="name"/></title><spacer/>
+                <muted><field name="login"/> · <field name="active"/></muted>
+            </column></row></compact>
+            <folded><title invisible="!active"><field name="login"/></title></folded>
+            <preview><figure><field name="login"/></figure></preview>
+        </list></view></erp>"#,
+        ],
+    )?;
+    let arch = view_of(&app, "users", "list")?;
+    assert!(
+        arch.contains("<compact>") && arch.contains("<preview>"),
+        "{arch}"
+    );
+
+    for (cards, expected) in [
+        (
+            "<compact><block/></compact>",
+            "<block> cannot stand in <compact>",
+        ),
+        ("<folded><row>loose</row></folded>", "holds text"),
+        ("<preview><field name=\"logn\"/></preview>", "\"logn\""),
+        (
+            "<compact><spacer><field name=\"login\"/></spacer></compact>",
+            "cannot stand in <spacer>",
+        ),
+    ] {
+        let data: &'static str = Box::leak(
+            format!(
+                r#"<erp><view id="bad" name="bad" model="users"><list>{cards}</list></view></erp>"#
+            )
+            .into_boxed_str(),
+        );
+        let data: &'static [&'static str] = Box::leak(vec![data].into_boxed_slice());
+        let mut app = new_app()?;
+        app.register_plugin(Box::new(DataPlugin {
+            name: "bad_cards",
+            data,
+        }))?;
+        let error = app
+            .load_plugin("bad_cards")
+            .expect_err("refused")
+            .to_string();
+        assert!(error.contains(expected), "{cards}: {error}");
+    }
+    Ok(())
+}
+
 /// A search nobody declared searches by the name of the records.
 #[test]
 fn test_a_search_nobody_declared_searches_by_name() -> Result<()> {

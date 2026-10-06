@@ -39,7 +39,8 @@ widgets.add("decimal", DecimalWidget);
 /**
  * An amount of money, in its currency as the browser writes it — `1 234,50 €`, `$1,234.50` —
  * read from the record's `currency` field, or the one `currency_field` names. Two decimals
- * unless the view says otherwise; without a currency, the number alone.
+ * unless the view says otherwise; without a currency, the number alone. With `short="1"`, in
+ * thousands or millions where it is that large — `€5.4K` — for a card that has little room.
  */
 export class MonetaryWidget extends DecimalWidget {
     override get digits(): number {
@@ -58,6 +59,14 @@ export class MonetaryWidget extends DecimalWidget {
         const currency = this.currency;
         if (this.isEmpty || currency === null) {
             return super.text;
+        }
+        if ((this.props.attrs as Record<string, string>).short === "1") {
+            return Number(this.value).toLocaleString(undefined, {
+                style: "currency",
+                currency,
+                notation: "compact",
+                maximumFractionDigits: Math.abs(Number(this.value)) >= 1000 ? 1 : 0,
+            });
         }
         const digits = this.digits;
         return Number(this.value).toLocaleString(undefined, {

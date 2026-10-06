@@ -2,6 +2,7 @@ import { Component, type ComponentClass, computed, effect, inject, props, t } fr
 import { Breadcrumb } from "@web/core/breadcrumb";
 import type { ActionDescription } from "@web/core/menus";
 import { Router } from "@web/core/router";
+import { RecordStrip } from "@web/views/strip/record_strip";
 import { viewKinds } from "@web/views/view";
 
 /**
@@ -11,9 +12,13 @@ import { viewKinds } from "@web/views/view";
  * On a view of one record, the breadcrumb ends with the record, and the action leads back to the
  * list; the record's view shows its own title. The records left on the way to it come between,
  * each leading back to itself; leaving the records for a list forgets them.
+ *
+ * A record of an action that also lists its records shows beside them, in a strip
+ * ([`RecordStrip`](../views/strip/record_strip.ts)).
  */
 export class ActionManager extends Component {
     static template = "web.ActionManager";
+    static components = { RecordStrip };
 
     props = props({
         action: t.any<ActionDescription>(),
@@ -57,6 +62,11 @@ export class ActionManager extends Component {
         const offered = this.props.action.views.filter((kind) => viewKinds.has(kind));
         const asked = this.props.view;
         return asked !== null && offered.includes(asked) ? asked : (offered[0] ?? null);
+    }
+
+    /** Whether the record shows beside the records of its action: it has a view of several. */
+    get besideList(): boolean {
+        return this.isRecord && this.switchable.length > 0;
     }
 
     /** The views of several records the action offers, to switch between: list, kanban. */

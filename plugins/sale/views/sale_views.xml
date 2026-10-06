@@ -15,6 +15,48 @@
                    decoration-success="state === 'sale'"/>
             <field name="invoice_status" widget="badge" decoration-warning="invoice_status === 'to_invoice'"
                    decoration-success="invoice_status === 'invoiced'"/>
+            <compact>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <row>
+                            <title><field name="partner"/></title>
+                            <spacer/>
+                            <figure><field name="amount_total" widget="monetary"/></figure>
+                        </row>
+                        <row>
+                            <muted><field name="name"/> · <field name="date_order"/></muted>
+                            <spacer/>
+                            <field name="state" widget="badge" decoration-muted="state === 'cancel'"
+                                   decoration-info="state === 'draft' || state === 'sent'" decoration-success="state === 'sale'"/>
+                        </row>
+                    </column>
+                </row>
+            </compact>
+            <folded>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="name"/></title>
+                        <muted><field name="amount_total" widget="monetary" short="1"/></muted>
+                    </column>
+                </row>
+            </folded>
+            <preview>
+                <row>
+                    <field name="partner" widget="avatar"/>
+                    <column>
+                        <title><field name="partner"/></title>
+                        <muted><field name="name"/> · <field name="date_order"/></muted>
+                    </column>
+                </row>
+                <row>
+                    <field name="state" widget="badge" decoration-muted="state === 'cancel'"
+                           decoration-info="state === 'draft' || state === 'sent'" decoration-success="state === 'sale'"/>
+                    <spacer/>
+                    <figure><field name="amount_total" widget="monetary"/></figure>
+                </row>
+            </preview>
         </list>
     </view>
     <view id="view_sale_order_form" name="sale_order.form" model="sale_order">
