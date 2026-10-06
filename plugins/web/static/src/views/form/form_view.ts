@@ -260,6 +260,12 @@ export class FormView extends View {
         return () => window.removeEventListener("scroll", follow);
     }
 
+    /** How many lines a one2many or many2many holds, as the user sees them. */
+    lineCount(name: string): number {
+        const value = this.current[name];
+        return Array.isArray(value) ? value.length : 0;
+    }
+
     /** The initials of a field's value, as its avatar shows them. */
     initials(name: string): string {
         return initialsOf(this.display(name));

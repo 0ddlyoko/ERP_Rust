@@ -96,6 +96,11 @@ export class Orm {
         return this.rpc.call(`${model}.count`, { domain });
     }
 
+    /** How many records each domain finds, in one call, in the order asked. */
+    countEach(model: string, domains: Domain[]): Promise<number[]> {
+        return this.rpc.call(`${model}.count`, { domains });
+    }
+
     /**
      * The records matching `domain` gathered by `groupBy` — a field, `date_order:month` for a
      * date by period — counted, with the sums of `sums`; all of them in one group without it.

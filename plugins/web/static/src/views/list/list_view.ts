@@ -4,6 +4,7 @@ import { decorationNames, decorationOf } from "@web/core/expression";
 import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
+import { FilterChips } from "@web/views/search/filter_chips";
 import { SearchBar } from "@web/views/search/search_bar";
 import {
     defaultFacets,
@@ -58,7 +59,7 @@ interface Confirming {
  */
 export class ListView extends View {
     static template = "web.ListView";
-    static components = { SearchBar };
+    static components = { FilterChips, SearchBar };
 
     override props = props({
         ...viewProps,

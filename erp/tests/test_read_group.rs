@@ -204,6 +204,22 @@ fn test_periods_start_where_they_should() {
     assert_eq!(Period::Month.next(date("2026-01-01")), date("2026-02-01"));
 }
 
+/// Several domains are counted in one call, a count each in the order asked.
+#[test]
+fn test_several_domains_are_counted_at_once() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    seed(&mut env)?;
+    let counts = env.call_rpc(
+        "invoice",
+        "count",
+        &json!({ "domains": [[], [["due_date", "<", "2026-02-01"]], [["id", "=", 0]]] }),
+    )?;
+    let all = env.call_rpc("invoice", "count", &json!({}))?;
+    assert_eq!(counts, json!([all, 2, 0]));
+    Ok(())
+}
+
 /// Dates and moments come as text over the protocol, and are compared as what they write.
 #[test]
 fn test_dates_written_as_text_are_dates() -> Result<()> {

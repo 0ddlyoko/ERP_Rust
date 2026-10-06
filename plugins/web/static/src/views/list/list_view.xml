@@ -44,6 +44,10 @@
                     </t>
                 </div>
             </div>
+            <Suspense>
+                <t t-set-slot="fallback"/>
+                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"/>
+            </Suspense>
             <section class="o_list_card">
                 <Suspense>
                     <t t-set-slot="fallback"><t t-call="web.Loading"/></t>

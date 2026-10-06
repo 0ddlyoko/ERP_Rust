@@ -2,6 +2,7 @@ import { Component, type ComponentClass, computed, inject, load, loading, props,
 import { and } from "@web/core/domain";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
+import { FilterChips } from "@web/views/search/filter_chips";
 import { SearchBar } from "@web/views/search/search_bar";
 import { defaultFacets, type Facet, groupByOf, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
 import { type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
@@ -42,7 +43,7 @@ export class KanbanCard extends Component {
  */
 export class KanbanView extends View {
     static template = "web.KanbanView";
-    static components = { KanbanCard, SearchBar };
+    static components = { FilterChips, KanbanCard, SearchBar };
 
     override props = props({
         ...viewProps,

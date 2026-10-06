@@ -15,6 +15,10 @@
                 </Suspense>
             </div>
             <Suspense>
+                <t t-set-slot="fallback"/>
+                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"/>
+            </Suspense>
+            <Suspense>
                 <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
                 <div t-if="grouped" class="o_kanban_lanes">
                     <section t-foreach="lanes" t-as="lane" t-key="lane.key" class="o_kanban_lane">

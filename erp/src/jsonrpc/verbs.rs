@@ -443,10 +443,12 @@ struct ReadMatchingParams {
     paging: Paging,
 }
 
+/// One domain to count, or several at once: `domains` answers a count per domain, in order.
 #[derive(Debug, Deserialize)]
 struct CountParams {
     #[serde(default = "everything")]
     domain: SearchType,
+    domains: Option<Vec<SearchType>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -513,9 +515,21 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             Ok(json!(ids))
         }
         Verb::Count => {
-            let CountParams { domain } = parse(params)?;
-            let domain = blind_domain(env, model_name, &domain)?;
-            Ok(json!(env.count(model_name, &domain)?))
+            let CountParams { domain, domains } = parse(params)?;
+            match domains {
+                None => {
+                    let domain = blind_domain(env, model_name, &domain)?;
+                    Ok(json!(env.count(model_name, &domain)?))
+                }
+                Some(domains) => {
+                    let mut counts = Vec::with_capacity(domains.len());
+                    for domain in &domains {
+                        let domain = blind_domain(env, model_name, domain)?;
+                        counts.push(env.count(model_name, &domain)?);
+                    }
+                    Ok(json!(counts))
+                }
+            }
         }
         Verb::ReadGroup => {
             let ReadGroupParams {

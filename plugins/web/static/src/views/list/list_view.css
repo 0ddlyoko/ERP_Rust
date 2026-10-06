@@ -611,3 +611,43 @@ body.o_resizing * {
 .o_search_filters_menu {
     width: 260px;
 }
+
+/* The search's filters as chips, each with how many records it finds */
+
+.o_filter_chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.o_filter_chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.o_filter_chip:hover {
+    background: color-mix(in oklch, var(--o-accent) 8%, white);
+}
+
+.o_filter_chip.active {
+    background: var(--o-side);
+    color: #ffffff;
+}
+
+.o_filter_chip_count {
+    color: var(--o-muted);
+    font-weight: 700;
+}
+
+.o_filter_chip.active .o_filter_chip_count {
+    color: #b9b7da;
+}

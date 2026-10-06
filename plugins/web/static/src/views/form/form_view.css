@@ -1247,3 +1247,18 @@ button.o_statusbar_label:hover {
 .o_related_menu button:hover {
     background: color-mix(in oklch, var(--o-accent) 10%, white);
 }
+
+.o_form_tab_count {
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--o-head);
+    color: var(--o-muted);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.o_form_tab.active .o_form_tab_count {
+    background: color-mix(in oklch, var(--o-accent) 14%, white);
+    color: var(--o-accent-strong);
+}

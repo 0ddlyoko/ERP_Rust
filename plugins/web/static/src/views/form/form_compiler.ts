@@ -199,6 +199,21 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return { xml, shown };
     };
 
+    /**
+     * How many lines a page's first one2many or many2many holds, beside its tab: what the user
+     * would open it for. Nothing for an empty one, or a page holding none.
+     */
+    const tabCount = (page: Element): string => {
+        const list = Array.from(page.children).find(
+            (child) => child.tagName === "field" && columnOf(child).field.type === "refs",
+        );
+        if (list === undefined) {
+            return "";
+        }
+        const name = escape(JSON.stringify(list.getAttribute("name") ?? ""));
+        return `<span t-if="__form.lineCount(${name})" class="o_form_tab_count">{{ __form.lineCount(${name}) }}</span>`;
+    };
+
     const pages = (element: Element): Piece => {
         condition(element, "invisible");
         const key = pagesCount++;
@@ -218,7 +233,8 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                     `t-att-aria-selected="${open} === ${at} ? 'true' : 'false'" ` +
                     `t-att-class="{ o_form_tab: true, active: ${open} === ${at} }" ` +
                     `t-on-click="() => __form.openPage(${key}, ${at})">` +
-                    `${text(entry.page.getAttribute("string") ?? entry.page.getAttribute("name") ?? "")}</button>`,
+                    `${text(entry.page.getAttribute("string") ?? entry.page.getAttribute("name") ?? "")}` +
+                    `${tabCount(entry.page)}</button>`,
             )
             .join("");
         const panels = list
