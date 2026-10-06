@@ -55,6 +55,12 @@
             <pages>
                 <page name="invoice_lines" string="Invoice lines" invisible="move_type === 'entry'">
                     <field name="invoice_lines" widget="list" nolabel="1" readonly="state !== 'draft'"/>
+                    <totals>
+                        <field name="amount_untaxed" widget="monetary"/>
+                        <field name="amount_tax" widget="monetary"/>
+                        <field name="amount_total" widget="monetary"/>
+                        <field name="amount_residual" widget="monetary" invisible="state !== 'posted'"/>
+                    </totals>
                 </page>
                 <page name="lines" string="Journal items">
                     <field name="lines" widget="list" nolabel="1"
@@ -72,11 +78,8 @@
                     <field name="state" widget="statusbar" visible="draft,posted" nolabel="1" readonly="1"/>
                     <field name="payment_state" readonly="1" invisible="move_type === 'entry'"/>
                 </block>
-                <block string="Amounts">
-                    <field name="amount_untaxed" widget="monetary"/>
-                    <field name="amount_tax" widget="monetary" invisible="move_type === 'entry'"/>
+                <block string="Amounts" invisible="move_type !== 'entry'">
                     <field name="amount_total" widget="monetary"/>
-                    <field name="amount_residual" widget="monetary" invisible="move_type === 'entry'"/>
                 </block>
                 <chatter/>
             </side>
