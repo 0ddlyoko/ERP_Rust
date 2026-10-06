@@ -1,6 +1,6 @@
 <erp>
     <view id="view_move_list" name="account_move.list" model="account_move">
-        <list>
+        <list decoration-muted="state === 'cancel'">
             <buttons>
                 <button name="action_post" type="method" string="Post"/>
                 <button name="action_register_payment" type="method" string="Register payment"/>
@@ -13,8 +13,9 @@
             <field name="amount_untaxed" widget="monetary" sum="Total"/>
             <field name="amount_total" widget="monetary" sum="Total"/>
             <field name="amount_residual" widget="monetary" sum="Total"/>
-            <field name="payment_state"/>
-            <field name="state"/>
+            <field name="payment_state" widget="badge" decoration-danger="payment_state === 'not_paid' &amp;&amp; state === 'posted'"
+                   decoration-warning="payment_state === 'partial'" decoration-success="payment_state === 'paid'"/>
+            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-info="state === 'draft'" decoration-success="state === 'posted'"/>
         </list>
     </view>
     <view id="view_move_form" name="account_move.form" model="account_move">

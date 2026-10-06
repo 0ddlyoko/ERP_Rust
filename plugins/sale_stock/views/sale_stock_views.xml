@@ -9,7 +9,8 @@
     </view>
     <view id="view_sale_order_list_stock" name="sale_order.list.stock" inherit="sale.view_sale_order_list">
         <xpath expr="//field[@name='invoice_status']" position="before">
-            <field name="delivery_status"/>
+            <field name="delivery_status" widget="badge" decoration-warning="delivery_status === 'pending' || delivery_status === 'partial'"
+                   decoration-success="delivery_status === 'full'"/>
         </xpath>
     </view>
     <view id="view_move_form_sale" name="stock_move.form.sale" inherit="stock.view_move_form">

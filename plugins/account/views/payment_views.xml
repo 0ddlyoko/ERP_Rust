@@ -1,6 +1,6 @@
 <erp>
     <view id="view_payment_list" name="account_payment.list" model="account_payment">
-        <list>
+        <list decoration-muted="state === 'cancel'">
             <buttons>
                 <button name="action_post" type="method" string="Confirm"/>
             </buttons>
@@ -10,7 +10,7 @@
             <field name="journal"/>
             <field name="memo"/>
             <field name="amount" widget="monetary" sum="Total"/>
-            <field name="state"/>
+            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-info="state === 'draft'" decoration-success="state === 'posted'"/>
         </list>
     </view>
     <view id="view_payment_form" name="account_payment.form" model="account_payment">

@@ -1,6 +1,6 @@
 <erp>
     <view id="view_sale_order_list" name="sale_order.list" model="sale_order">
-        <list>
+        <list decoration-muted="state === 'cancel'">
             <buttons>
                 <button name="action_confirm" type="method" string="Confirm"/>
                 <button name="action_create_invoice" type="method" string="Create invoice"/>
@@ -11,8 +11,10 @@
             <field name="user"/>
             <field name="amount_untaxed" widget="monetary" sum="Total"/>
             <field name="amount_total" widget="monetary" sum="Total"/>
-            <field name="state"/>
-            <field name="invoice_status"/>
+            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-info="state === 'draft' || state === 'sent'"
+                   decoration-success="state === 'sale'"/>
+            <field name="invoice_status" widget="badge" decoration-warning="invoice_status === 'to_invoice'"
+                   decoration-success="invoice_status === 'invoiced'"/>
         </list>
     </view>
     <view id="view_sale_order_form" name="sale_order.form" model="sale_order">

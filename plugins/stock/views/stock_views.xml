@@ -1,6 +1,6 @@
 <erp>
     <view id="view_picking_list" name="stock_picking.list" model="stock_picking">
-        <list>
+        <list decoration-muted="state === 'cancel'">
             <buttons>
                 <button name="action_assign" type="method" string="Check availability"/>
                 <button name="button_validate" type="method" string="Validate"/>
@@ -10,7 +10,8 @@
             <field name="scheduled_date"/>
             <field name="origin"/>
             <field name="picking_type"/>
-            <field name="state"/>
+            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
+                   decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
         </list>
     </view>
     <view id="view_picking_form" name="stock_picking.form" model="stock_picking">
