@@ -44,6 +44,8 @@ pub struct PluginInfo {
     pub category: Option<String>,
     pub website: Option<String>,
     pub version: Option<String>,
+    /// The colour its module shows in, as CSS reads it: `#4b3fe0`. Dark enough for white text.
+    pub color: Option<String>,
 }
 
 pub trait Plugin: Any + Send + Sync {

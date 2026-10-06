@@ -27,6 +27,7 @@ impl Plugin for AccountPlugin {
             ),
             category: Some("Accounting".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#2160d6".to_string()),
             ..PluginInfo::default()
         }
     }

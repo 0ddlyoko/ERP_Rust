@@ -23,6 +23,7 @@ impl Plugin for StockPlugin {
             ),
             category: Some("Inventory".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#a15c07".to_string()),
             ..PluginInfo::default()
         }
     }

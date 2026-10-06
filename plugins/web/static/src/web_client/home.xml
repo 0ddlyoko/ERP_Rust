@@ -8,7 +8,7 @@
             <div class="o_home_grid">
                 <article t-foreach="modules" t-as="module" t-key="module.id" class="o_home_card">
                     <h2 class="o_home_card_title">
-                        <span class="o_module_mark">{{ initial(module) }}</span>{{ module.name }}
+                        <span class="o_module_mark o_module_mark_small" t-att-style="module.color ? 'background: ' + module.color : ''"><Icon name="module.icon" size="17"/></span>{{ module.name }}
                     </h2>
                     <ul class="o_home_entries">
                         <li t-foreach="entriesOf(module)" t-as="entry" t-key="entry.id">

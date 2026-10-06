@@ -86,70 +86,56 @@ button {
     padding: 4px 4px 24px 0;
 }
 
-/* Left menu */
+/* Left menu: wide, or narrow to its icons and opened over the page while used */
+
+.o_sidebar_slot {
+    position: sticky;
+    z-index: 40;
+    top: 12px;
+    height: calc(100vh - 24px);
+}
+
+.o_web_client:has(.o_sidebar_narrow) {
+    grid-template-columns: 72px minmax(0, 1fr);
+}
 
 .o_sidebar {
-    position: sticky;
-    top: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    height: calc(100vh - 24px);
+    gap: 6px;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
+    overflow-x: hidden;
     overflow-y: auto;
     padding: 14px 12px;
     border-radius: var(--o-radius-card);
     background: var(--o-side);
     color: var(--o-side-ink);
+    transition: width 0.2s, box-shadow 0.2s;
 }
 
-.o_sidebar_brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 2px 6px;
-}
-
-.o_brand_mark {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    background: var(--o-accent);
-    color: #ffffff;
-    font-family: var(--o-font-display);
-    font-weight: 800;
-}
-
-.o_brand_name {
-    color: #ffffff;
-    font-family: var(--o-font-display);
-    font-size: 17px;
-    font-weight: 800;
+.o_sidebar_over {
+    width: 236px;
+    box-shadow: 0 18px 48px rgb(26 24 56 / 0.35);
 }
 
 .o_module_switcher {
     position: relative;
+    margin-bottom: 10px;
 }
 
 .o_module_button {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
-    height: 44px;
-    padding: 0 8px;
+    padding: 0;
     border: 0;
-    border-radius: var(--o-radius-control);
-    background: var(--o-side-raised);
+    background: transparent;
     color: #ffffff;
     text-align: left;
-}
-
-.o_module_button > svg {
-    color: var(--o-side-muted);
+    white-space: nowrap;
 }
 
 .o_module_mark {
@@ -157,33 +143,60 @@ button {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     background: var(--o-accent);
     color: #ffffff;
-    font-size: 13px;
-    font-weight: 800;
+}
+
+.o_module_mark_small {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+}
+
+.o_module_mark_home {
+    background: rgb(255 255 255 / 0.14);
+}
+
+.o_module_who {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.o_module_caption {
+    color: var(--o-side-muted);
+    font-size: 12px;
 }
 
 .o_module_name {
-    flex-grow: 1;
-    font-weight: 700;
+    overflow: hidden;
+    font-family: var(--o-font-display);
+    font-size: 18px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+}
+
+.o_module_switch_icon {
+    flex-shrink: 0;
+    color: var(--o-side-muted);
 }
 
 .o_module_list {
     position: absolute;
     z-index: 10;
-    top: 50px;
+    top: 56px;
     left: 0;
-    right: 0;
+    width: 212px;
     display: flex;
     flex-direction: column;
     gap: 2px;
     margin: 0;
     padding: 6px;
     list-style: none;
-    border: 1px solid var(--o-side-line);
     border-radius: var(--o-radius-row);
     background: #2a2850;
     box-shadow: var(--o-shadow-pop);
@@ -194,11 +207,12 @@ button {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 6px 8px;
+    padding: 6px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 10px;
     background: transparent;
     color: var(--o-side-ink);
+    font-weight: 600;
     text-align: left;
 }
 
@@ -210,11 +224,12 @@ button {
 
 .o_menu_search {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 8px;
     height: 36px;
+    margin-bottom: 6px;
     padding: 0 12px;
-    border: 0;
     border-radius: var(--o-radius-control);
     background: var(--o-side-raised);
     color: var(--o-side-muted);
@@ -236,34 +251,68 @@ button {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 13px;
+    font-size: 13.5px;
 }
 
 .o_menu_group {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
-    padding: 9px 10px;
+    height: 44px;
+    padding: 0;
     border: 0;
     border-radius: var(--o-radius-control);
     background: transparent;
     color: var(--o-side-ink);
     font-weight: 600;
     text-align: left;
+    white-space: nowrap;
 }
 
-.o_menu_group[aria-expanded="true"],
-.o_menu_group.active {
+.o_menu_group:hover {
+    background: var(--o-side-raised);
     color: #ffffff;
-    font-weight: 700;
+    text-decoration: none;
+}
+
+.o_menu_group.active {
+    background: var(--o-side-line);
+    color: #ffffff;
+}
+
+.o_menu_icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+}
+
+.o_menu_name {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_menu_chevron {
+    flex-shrink: 0;
+    margin-right: 12px;
+    color: var(--o-side-muted);
+}
+
+.o_menu_count {
+    flex-shrink: 0;
+    padding-right: 12px;
+    color: var(--o-side-muted);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .o_menu_group_entries {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    margin-left: 10px;
+    margin: 2px 0 6px 23px;
     padding-left: 12px;
     border-left: 1px solid var(--o-side-line);
 }
@@ -275,12 +324,21 @@ button {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .o_menu_link {
-    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 8px 10px;
     border-radius: 10px;
     color: var(--o-side-ink);
+    white-space: nowrap;
+}
+
+.o_menu_link .o_menu_count {
+    padding-right: 10px;
 }
 
 .o_menu_link:hover {
@@ -300,13 +358,54 @@ button {
     color: var(--o-side-muted);
 }
 
+.o_sidebar_others {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.o_sidebar_others .o_menu_section {
+    padding: 0 4px;
+}
+
+.o_module_tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 6px;
+}
+
+.o_module_tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 11px;
+    background: var(--o-side-raised);
+    color: #ffffff;
+    opacity: 0.85;
+}
+
+.o_module_tile:hover,
+.o_module_tile:focus-visible {
+    opacity: 1;
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
 .o_sidebar_user {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: auto;
-    padding: 12px 6px 0;
+    margin-top: 10px;
+    padding-top: 12px;
     border-top: 1px solid var(--o-side-line);
+    white-space: nowrap;
 }
 
 .o_user_avatar {
@@ -314,12 +413,13 @@ button {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    margin-left: 6px;
     border-radius: 50%;
     background: #ffb27a;
     color: var(--o-ink);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -336,7 +436,6 @@ button {
     font-size: 13px;
     font-weight: 600;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .o_user_role {
@@ -344,19 +443,46 @@ button {
     font-size: 12px;
 }
 
-.o_user_logout {
+.o_user_logout,
+.o_sidebar_fold {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
     border-radius: 8px;
+    background: transparent;
     color: var(--o-side-ink);
 }
 
-.o_user_logout:hover {
+.o_user_logout:hover,
+.o_sidebar_fold:hover {
     background: var(--o-side-raised);
     color: #ffffff;
+}
+
+.o_sidebar_folded .o_module_who,
+.o_sidebar_folded .o_module_switch_icon,
+.o_sidebar_folded .o_menu_name,
+.o_sidebar_folded .o_menu_chevron,
+.o_sidebar_folded .o_menu_count,
+.o_sidebar_folded .o_user_who,
+.o_sidebar_folded .o_sidebar_fold,
+.o_sidebar_folded .o_user_logout {
+    display: none;
+}
+
+.o_sidebar_folded .o_module_tiles {
+    flex-direction: column;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_sidebar {
+        transition: none;
+    }
 }
 
 /* The action open */
@@ -409,13 +535,17 @@ button {
         padding: 8px;
     }
 
-    .o_sidebar {
+    .o_web_client:has(.o_sidebar_narrow) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .o_sidebar_slot {
         position: static;
         height: auto;
     }
 
     .o_content {
-        padding: 16px;
+        padding: 8px 0 16px;
     }
 }
 
@@ -606,78 +736,6 @@ button {
     border-top-color: #fff;
     border-radius: 50%;
     animation: o_spin 0.7s linear infinite;
-}
-
-/* The menu folded into a strip */
-
-.o_sidebar_fold {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    margin-left: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--o-side-muted);
-}
-
-.o_sidebar_fold:hover {
-    background: var(--o-side-raised);
-    color: #ffffff;
-}
-
-.o_web_client:has(.o_sidebar_folded) {
-    grid-template-columns: 72px minmax(0, 1fr);
-}
-
-.o_sidebar_folded {
-    align-items: center;
-    padding-left: 8px;
-    padding-right: 8px;
-}
-
-.o_sidebar_folded .o_sidebar_brand {
-    flex-direction: column;
-    gap: 10px;
-    padding: 2px 0;
-}
-
-.o_sidebar_folded .o_sidebar_fold {
-    margin-left: 0;
-}
-
-.o_sidebar_folded .o_brand_name,
-.o_sidebar_folded .o_module_name,
-.o_sidebar_folded .o_module_button > svg,
-.o_sidebar_folded .o_menu_search,
-.o_sidebar_folded .o_menu_tree,
-.o_sidebar_folded .o_menu_results,
-.o_sidebar_folded .o_user_who,
-.o_sidebar_folded .o_user_logout {
-    display: none;
-}
-
-.o_sidebar_folded .o_module_switcher {
-    width: 100%;
-}
-
-.o_sidebar_folded .o_module_button {
-    justify-content: center;
-    padding: 0;
-}
-
-.o_sidebar_folded .o_module_list {
-    right: auto;
-    width: 220px;
-}
-
-.o_sidebar_folded .o_sidebar_user {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
 }
 
 /* The home page */

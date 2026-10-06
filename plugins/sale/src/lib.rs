@@ -22,6 +22,7 @@ impl Plugin for SalePlugin {
             ),
             category: Some("Sales".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#4b3fe0".to_string()),
             ..PluginInfo::default()
         }
     }

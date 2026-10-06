@@ -1,103 +1,144 @@
 <templates>
     <t t-name="web.Sidebar">
-        <nav t-att-class="{ o_sidebar: true, o_sidebar_folded: folded }" aria-label="Main menu">
-            <div class="o_sidebar_brand">
-                <a href="#" class="o_brand_home" aria-label="Home" title="Home" t-on-click.prevent="() => props.onHome?.()">
-                    <span class="o_brand_mark">O</span>
-                    <span class="o_brand_name">Oddaris</span>
-                </a>
-                <button type="button" class="o_sidebar_fold" t-on-click="fold"
-                        t-att-aria-label="folded ? 'Unfold the menu' : 'Fold the menu'"
-                        t-att-title="folded ? 'Unfold the menu' : 'Fold the menu'">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>
-                        <path t-if="folded" d="m13 10 2 2-2 2"/>
-                        <path t-else="" d="m15 10-2 2 2 2"/>
-                    </svg>
-                </button>
-            </div>
+        <div t-att-class="{ o_sidebar_slot: true, o_sidebar_narrow: narrow }">
+            <nav t-att-class="{ o_sidebar: true, o_sidebar_folded: !wide, o_sidebar_over: narrow &amp;&amp; wide }"
+                 aria-label="Main menu"
+                 t-on-mouseenter="() => hover(true)" t-on-mouseleave="() => hover(false)"
+                 t-on-focusin="(ev) => focus(true, ev)" t-on-focusout="(ev) => focus(false, ev)">
+                <div class="o_module_switcher">
+                    <button type="button" class="o_module_button" aria-haspopup="true"
+                            t-att-aria-label="'Module: ' + (module?.name ?? 'none') + '. Change module'"
+                            t-att-title="module?.name ?? 'Modules'"
+                            t-att-aria-expanded="switching ? 'true' : 'false'"
+                            t-on-click="() => switching = !switching">
+                        <span class="o_module_mark" t-att-style="tileStyle(module)">
+                            <Icon name="module?.icon ?? null"/>
+                        </span>
+                        <span class="o_module_who">
+                            <span class="o_module_caption">Module</span>
+                            <span class="o_module_name">{{ module?.name ?? "Modules" }}</span>
+                        </span>
+                        <svg class="o_module_switch_icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                            <rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/>
+                            <rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>
+                        </svg>
+                    </button>
+                    <ul t-if="switching" class="o_module_list">
+                        <li>
+                            <button type="button" t-on-click="home">
+                                <span class="o_module_mark o_module_mark_small o_module_mark_home">
+                                    <Icon name="'house'"/>
+                                </span>Home
+                            </button>
+                        </li>
+                        <li t-foreach="modules" t-as="choice" t-key="choice.id">
+                            <button type="button" t-att-class="{ active: choice.id === module?.id }"
+                                    t-on-click="() => pick(choice)">
+                                <span class="o_module_mark o_module_mark_small" t-att-style="tileStyle(choice)">
+                                    <Icon name="choice?.icon ?? null"/>
+                                </span>{{ choice.name }}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
 
-            <div class="o_module_switcher">
-                <button type="button" class="o_module_button" aria-haspopup="true"
-                        t-att-aria-expanded="switching ? 'true' : 'false'"
-                        t-on-click="() => switching = !switching">
-                    <span class="o_module_mark">{{ initial(module) }}</span>
-                    <span class="o_module_name">{{ module?.name ?? "Modules" }}</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                <label t-if="wide" class="o_menu_search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                        <rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/>
-                        <rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>
+                        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
                     </svg>
-                </button>
-                <ul t-if="switching" class="o_module_list">
-                    <li t-foreach="modules" t-as="choice" t-key="choice.id">
-                        <button type="button" t-att-class="{ active: choice.id === module?.id }"
-                                t-on-click="() => pick(choice)">
-                            <span class="o_module_mark">{{ initial(choice) }}</span>{{ choice.name }}
-                        </button>
-                    </li>
-                </ul>
-            </div>
+                    <input type="search" aria-label="Search a menu" placeholder="Search a menu…"
+                           t-att-value="query" t-on-input="(ev) => query = ev.target.value"/>
+                </label>
 
-            <label class="o_menu_search">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-                </svg>
-                <input type="search" aria-label="Search a menu" placeholder="Search a menu…"
-                       t-att-value="query" t-on-input="(ev) => query = ev.target.value"/>
-            </label>
-
-            <div t-if="query" class="o_menu_results">
-                <a t-foreach="results" t-as="result" t-key="result.entry.id" t-att-href="href(result.entry)"
-                   t-att-class="{ o_menu_link: true, active: isActive(result.entry) }"
-                   t-on-click.prevent="() => open(result.entry)">{{ result.path }}</a>
-                <p t-if="!results.length" class="o_menu_none">No menu matches.</p>
-            </div>
-            <div t-else="" class="o_menu_tree">
-                <t t-foreach="groups" t-as="group" t-key="group.id">
-                    <t t-if="entriesOf(group).length">
-                        <button type="button" class="o_menu_group" t-att-aria-expanded="isOpen(group) ? 'true' : 'false'"
-                                t-on-click="() => toggle(group)">
-                            {{ group.name }}
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path t-att-d="isOpen(group) ? 'm6 9 6 6 6-6' : 'm9 6 6 6-6 6'"/>
-                            </svg>
-                        </button>
-                        <div t-if="isOpen(group)" class="o_menu_group_entries">
-                            <t t-foreach="entriesOf(group)" t-as="entry" t-key="entry.id">
-                                <t t-if="entriesOf(entry).length">
-                                    <span class="o_menu_section">{{ entry.name }}</span>
-                                    <a t-foreach="entriesOf(entry)" t-as="leaf" t-key="leaf.id" t-att-href="href(leaf)"
-                                       t-att-class="{ o_menu_link: true, active: isActive(leaf) }"
-                                       t-on-click.prevent="() => open(leaf)">{{ leaf.name }}</a>
+                <div t-if="wide &amp;&amp; query" class="o_menu_results">
+                    <a t-foreach="results" t-as="result" t-key="result.entry.id" t-att-href="href(result.entry)"
+                       t-att-class="{ o_menu_link: true, active: isActive(result.entry) }"
+                       t-on-click.prevent="() => open(result.entry)">{{ result.path }}</a>
+                    <p t-if="!results.length" class="o_menu_none">No menu matches.</p>
+                </div>
+                <div t-else="" class="o_menu_tree">
+                    <t t-foreach="groups" t-as="group" t-key="group.id">
+                        <t t-if="entriesOf(group).length">
+                            <button type="button"
+                                    t-att-class="{ o_menu_group: true, active: !wide &amp;&amp; holdsActive(group) }"
+                                    t-att-aria-expanded="isOpen(group) ? 'true' : 'false'"
+                                    t-att-aria-label="group.name" t-att-title="wide ? null : group.name"
+                                    t-on-click="() => toggle(group)">
+                                <span class="o_menu_icon"><Icon name="group?.icon ?? null"/></span>
+                                <span class="o_menu_name">{{ group.name }}</span>
+                                <svg class="o_menu_chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                                     stroke-linejoin="round" aria-hidden="true">
+                                    <path t-att-d="isOpen(group) ? 'm6 9 6 6 6-6' : 'm9 6 6 6-6 6'"/>
+                                </svg>
+                            </button>
+                            <div t-if="wide &amp;&amp; isOpen(group)" class="o_menu_group_entries">
+                                <t t-foreach="entriesOf(group)" t-as="entry" t-key="entry.id">
+                                    <t t-if="entriesOf(entry).length">
+                                        <span class="o_menu_section">{{ entry.name }}</span>
+                                        <a t-foreach="entriesOf(entry)" t-as="leaf" t-key="leaf.id" t-att-href="href(leaf)"
+                                           t-att-class="{ o_menu_link: true, active: isActive(leaf) }"
+                                           t-on-click.prevent="() => open(leaf)">
+                                            <span class="o_menu_name">{{ leaf.name }}</span>
+                                            <span class="o_menu_count">{{ countOf(leaf) }}</span>
+                                        </a>
+                                    </t>
+                                    <a t-else="" t-att-href="href(entry)"
+                                       t-att-class="{ o_menu_link: true, active: isActive(entry) }"
+                                       t-on-click.prevent="() => open(entry)">
+                                        <span class="o_menu_name">{{ entry.name }}</span>
+                                        <span class="o_menu_count">{{ countOf(entry) }}</span>
+                                    </a>
                                 </t>
-                                <a t-else="" t-att-href="href(entry)"
-                                   t-att-class="{ o_menu_link: true, active: isActive(entry) }"
-                                   t-on-click.prevent="() => open(entry)">{{ entry.name }}</a>
-                            </t>
-                        </div>
+                            </div>
+                        </t>
+                        <a t-else="" t-att-href="href(group)" t-att-class="{ o_menu_group: true, active: isActive(group) }"
+                           t-att-aria-label="group.name" t-att-title="wide ? null : group.name"
+                           t-on-click.prevent="() => open(group)">
+                            <span class="o_menu_icon"><Icon name="group?.icon ?? null"/></span>
+                            <span class="o_menu_name">{{ group.name }}</span>
+                            <span class="o_menu_count">{{ countOf(group) }}</span>
+                        </a>
                     </t>
-                    <a t-else="" t-att-href="href(group)" t-att-class="{ o_menu_group: true, active: isActive(group) }"
-                       t-on-click.prevent="() => open(group)">{{ group.name }}</a>
-                </t>
-            </div>
+                </div>
 
-            <div class="o_sidebar_user">
-                <span class="o_user_avatar">{{ initials }}</span>
-                <span class="o_user_who">
-                    <span class="o_user_name">{{ session.name }}</span>
-                    <span class="o_user_role">{{ role }}</span>
-                </span>
-                <a href="/logout" class="o_user_logout" aria-label="Log out" title="Log out">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>
-                    </svg>
-                </a>
-            </div>
-        </nav>
+                <div class="o_sidebar_others">
+                    <span t-if="wide &amp;&amp; others.length" class="o_menu_section">Other modules</span>
+                    <div class="o_module_tiles">
+                        <button t-foreach="others" t-as="other" t-key="other.id" type="button" class="o_module_tile"
+                                t-att-style="tileStyle(other)" t-att-aria-label="other.name" t-att-title="other.name"
+                                t-on-click="() => pick(other)">
+                            <Icon name="other?.icon ?? null"/>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_sidebar_user">
+                    <span class="o_user_avatar" t-att-title="wide ? null : session.name">{{ initials }}</span>
+                    <span class="o_user_who">
+                        <span class="o_user_name">{{ session.name }}</span>
+                        <span class="o_user_role">{{ role }}</span>
+                    </span>
+                    <button type="button" class="o_sidebar_fold" t-on-click="fold"
+                            t-att-aria-label="folded ? 'Keep the menu open' : 'Keep the menu narrow'"
+                            t-att-title="folded ? 'Keep the menu open' : 'Keep the menu narrow'">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>
+                            <path t-if="folded" d="m13 10 2 2-2 2"/>
+                            <path t-else="" d="m15 10-2 2 2 2"/>
+                        </svg>
+                    </button>
+                    <a href="/logout" class="o_user_logout" aria-label="Log out" title="Log out">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+        </div>
     </t>
 </templates>

@@ -30,6 +30,7 @@ impl Plugin for BasePlugin {
             ),
             category: Some("Technical".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#5a5878".to_string()),
             ..PluginInfo::default()
         }
     }

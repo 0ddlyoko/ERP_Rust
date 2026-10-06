@@ -1,0 +1,9 @@
+<templates>
+    <t t-name="web.Icon">
+        <svg t-att-width="props.size" t-att-height="props.size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path t-foreach="strokes" t-as="stroke" t-key="stroke_index" t-att-d="stroke.replace('!', '')"
+                  t-att-fill="stroke.startsWith('!') ? 'currentColor' : 'none'"/>
+        </svg>
+    </t>
+</templates>

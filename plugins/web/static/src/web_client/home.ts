@@ -1,4 +1,5 @@
 import { Component, computed, inject, load, loading, props, resource, t } from "trame";
+import { Icon } from "@web/core/icons";
 import { actionsOf, type MenuEntry } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
 import { Session } from "@web/core/session";
@@ -12,6 +13,7 @@ const ENTRIES_SHOWN = 5;
  */
 export class Home extends Component {
     static template = "web.Home";
+    static components = { Icon };
 
     props = props({
         modules: t.array(t.any<MenuEntry>()),
@@ -72,9 +74,5 @@ export class Home extends Component {
 
     hasSome(entry: MenuEntry): boolean {
         return !loading(() => this.counts) && (this.counts?.[String(entry.action?.id)] ?? 0) > 0;
-    }
-
-    initial(module: MenuEntry): string {
-        return module.name.trim().charAt(0).toUpperCase();
     }
 }

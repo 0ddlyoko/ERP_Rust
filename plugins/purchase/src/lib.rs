@@ -23,6 +23,7 @@ impl Plugin for PurchasePlugin {
             ),
             category: Some("Purchases".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#0e7c66".to_string()),
             ..PluginInfo::default()
         }
     }

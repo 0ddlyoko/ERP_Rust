@@ -81,7 +81,10 @@ impl Plugin for WebPlugin {
     }
 
     fn imports(&self) -> Vec<(&'static str, &'static str)> {
-        vec![("trame", "web/static/lib/trame.js")]
+        vec![
+            ("trame", "web/static/lib/trame.js"),
+            ("lucide", "web/static/lib/lucide.js"),
+        ]
     }
 
     fn get_depends(&self) -> Vec<String> {

@@ -1,26 +1,26 @@
 <erp>
-    <menu id="menu_invoicing" name="Invoicing" sequence="30" groups="group_account_invoice">
-        <menu id="menu_customers" name="Customers" sequence="10">
+    <menu id="menu_invoicing" icon="receipt" name="Invoicing" sequence="30" groups="group_account_invoice">
+        <menu id="menu_customers" icon="users" name="Customers" sequence="10">
             <menu id="menu_out_invoices" name="Invoices" sequence="10" action="action_move_out_invoice"/>
             <menu id="menu_out_refunds" name="Credit notes" sequence="20" action="action_move_out_refund"/>
             <menu id="menu_payments_received" name="Payments" sequence="30" action="action_payments_received"/>
             <menu id="menu_customers_contacts" name="Customers" sequence="40" action="base.action_contacts"/>
         </menu>
-        <menu id="menu_vendors" name="Vendors" sequence="20">
+        <menu id="menu_vendors" icon="building" name="Vendors" sequence="20">
             <menu id="menu_in_invoices" name="Bills" sequence="10" action="action_move_in_invoice"/>
             <menu id="menu_in_refunds" name="Refunds" sequence="20" action="action_move_in_refund"/>
             <menu id="menu_payments_sent" name="Payments" sequence="30" action="action_payments_sent"/>
             <menu id="menu_vendors_contacts" name="Vendors" sequence="40" action="base.action_contacts"/>
         </menu>
-        <menu id="menu_accounting" name="Accounting" sequence="30" groups="group_account_manager">
+        <menu id="menu_accounting" icon="book-open" name="Accounting" sequence="30" groups="group_account_manager">
             <menu id="menu_journal_entries" name="Journal entries" sequence="10" action="action_move_journal_entries"/>
             <menu id="menu_journal_items" name="Journal items" sequence="20" action="action_move_lines"/>
             <menu id="menu_bank_statements" name="Bank statements" sequence="30" action="action_bank_statements"/>
         </menu>
-        <menu id="menu_reporting" name="Reporting" sequence="40" groups="group_account_manager">
+        <menu id="menu_reporting" icon="chart-column" name="Reporting" sequence="40" groups="group_account_manager">
             <menu id="menu_trial_balance" name="Trial balance" sequence="10" action="action_trial_balance"/>
         </menu>
-        <menu id="menu_configuration" name="Configuration" sequence="90" groups="group_account_manager">
+        <menu id="menu_configuration" icon="settings" name="Configuration" sequence="90" groups="group_account_manager">
             <menu id="menu_accounts" name="Chart of accounts" sequence="10" action="action_accounts"/>
             <menu id="menu_taxes" name="Taxes" sequence="20" action="action_taxes"/>
             <menu id="menu_tax_tags" name="Tax grids" sequence="25" action="action_tax_tags"/>

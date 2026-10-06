@@ -1,10 +1,12 @@
-use crate::models::{Action, BaseAction, BaseGroup, Group};
+use crate::models::{Action, BaseAction, BaseGroup, Group, Plugin};
 use code_gen::{Model, erp_methods};
 use erp::Result;
+use erp::data;
 use erp::environment::Environment;
 use erp::search::SearchType;
 use erp::serde_json::{Value, json};
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+use erp_search_code_gen::make_domain;
 use std::collections::{HashMap, HashSet};
 
 /// An entry of a client's menu: a title, the entries under it, and what choosing it opens.
@@ -26,6 +28,7 @@ pub struct Menu<Mode: IdMode> {
     #[erp(default = 10)]
     sequence: i32,
     action: Reference<BaseAction, SingleId>,
+    icon: Option<String>,
     #[erp(relation = "menu_group_rel")]
     groups: Reference<BaseGroup, MultipleIds>,
 }
@@ -37,6 +40,7 @@ struct Entry {
     parent: Option<u32>,
     order: (i32, u32),
     action: Option<u32>,
+    icon: Option<String>,
     groups: Vec<u32>,
 }
 
@@ -58,8 +62,9 @@ impl Menu<MultipleIds> {
         Ok(())
     }
 
-    /// The menus the caller sees, as a tree: each with its name, its action described the way a
-    /// client opens it, and the entries under it.
+    /// The menus the caller sees, as a tree: each with its name, its icon, its action described
+    /// the way a client opens it, and the entries under it. A module — an entry at the top — also
+    /// has the colour of the plugin declaring it.
     ///
     /// Read as sudo — menus are the client's layout, not anybody's data — then filtered by the
     /// caller's groups. An entry with no action and nothing visible under it is left out too: a
@@ -81,6 +86,7 @@ impl Menu<MultipleIds> {
                 parent: menu.get_parent::<Menu<SingleId>>(env)?.get_optional_id(),
                 order: (*menu.get_sequence(env)?, menu.get_id()),
                 action: menu.get_action::<Action<SingleId>>(env)?.get_optional_id(),
+                icon: menu.get_icon(env)?.cloned(),
                 groups: menu.get_groups::<Group<MultipleIds>>(env)?.get_ids(),
             });
         }
@@ -93,8 +99,34 @@ impl Menu<MultipleIds> {
         action_ids.sort_unstable();
         action_ids.dedup();
         let actions = Action::<MultipleIds>::from_ids(action_ids, env).describe_each(env)?;
-        Ok(branch(None, &under, &member_of, &actions))
+        let modules: Vec<u32> = entries
+            .iter()
+            .filter(|entry| entry.parent.is_none())
+            .map(|entry| entry.id)
+            .collect();
+        let colors = module_colors(env, &modules)?;
+        Ok(branch(None, &under, &member_of, &actions, &colors))
     }
+}
+
+/// The colour of each module, by its menu: that of the plugin whose data declares it.
+fn module_colors(env: &mut Environment, modules: &[u32]) -> Result<HashMap<u32, String>> {
+    let declared_by: HashMap<u32, String> = data::external_ids_of(env, "menu", modules)?
+        .into_iter()
+        .filter_map(|(id, xml_id)| Some((id, xml_id.split_once('.')?.0.to_string())))
+        .collect();
+    let names: Vec<String> = declared_by.values().cloned().collect();
+    let plugins: Plugin<MultipleIds> = env.search(&make_domain!([("name", "in", names)]))?;
+    let mut color_of = HashMap::new();
+    for plugin in plugins {
+        if let Some(color) = plugin.get_color(env)?.cloned() {
+            color_of.insert(plugin.get_name(env)?.clone(), color);
+        }
+    }
+    Ok(declared_by
+        .into_iter()
+        .filter_map(|(id, plugin)| Some((id, color_of.get(&plugin)?.clone())))
+        .collect())
 }
 
 /// The visible entries under one parent, each with its own branch.
@@ -103,6 +135,7 @@ fn branch(
     under: &HashMap<Option<u32>, Vec<&Entry>>,
     member_of: &HashSet<u32>,
     actions: &HashMap<u32, Value>,
+    colors: &HashMap<u32, String>,
 ) -> Value {
     let mut shown = Vec::new();
     for entry in under.get(&parent).map(Vec::as_slice).unwrap_or_default() {
@@ -111,7 +144,7 @@ fn branch(
         if !visible {
             continue;
         }
-        let children = branch(Some(entry.id), under, member_of, actions);
+        let children = branch(Some(entry.id), under, member_of, actions, colors);
         let action = entry
             .action
             .and_then(|id| actions.get(&id).cloned())
@@ -122,6 +155,8 @@ fn branch(
             shown.push(json!({
                 "id": entry.id,
                 "name": entry.name,
+                "icon": entry.icon,
+                "color": colors.get(&entry.id),
                 "action": action,
                 "children": children,
             }));

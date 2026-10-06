@@ -14,7 +14,8 @@ import { Sidebar } from "./sidebar";
  * The action open is the route's: one of the menus', or, for one no menu leads to — a button
  * opening it — loaded by its identifier. With none, the home page. The module
  * shown is the one the action is under — for one no menu leads to, the one with an action on the
- * same model — unless the user switched to another.
+ * same model — unless the user switched to another. The page takes the module's colour as its
+ * accent.
  */
 export class WebClient extends Component {
     static template = "web.WebClient";
@@ -66,6 +67,12 @@ export class WebClient extends Component {
         const opened = menu === null ? null : (tree.find((module) => holds(module, menu)) ?? null);
         const under = action ? (moduleOf(tree, action.id) ?? moduleOfModel(tree, action.model)) : null;
         return opened ?? this.switched ?? under ?? tree[0] ?? null;
+    }
+
+    /** The accent of the page: the module's colour, and a darker one for text and hovers. */
+    get accentStyle(): string {
+        const color = this.action ? this.module?.color : null;
+        return color ? `--o-accent: ${color}; --o-accent-strong: color-mix(in oklch, ${color} 72%, black)` : "";
     }
 
     /** Back to the home page. */

@@ -57,6 +57,34 @@ fn test_the_address_book_is_an_application() -> Result<()> {
     Ok(())
 }
 
+/// A module shows in the colour of the plugin declaring it, and its entries with their icons; an
+/// entry under a module has no colour of its own.
+#[test]
+fn test_a_module_has_its_plugin_colour_and_its_icons() -> Result<()> {
+    let app = new_app()?;
+    let admin = {
+        let mut env = app.new_env_as_option(None)?;
+        data::resolve(&mut env, "base.user_admin")?.expect("seeded")
+    };
+    let mut env = app.new_env_as_option(Some(admin))?;
+    let tree = env.call_rpc("menu", "tree", &json!({}))?;
+    let find = |name: &str| -> Value {
+        tree.as_array()
+            .expect("a list")
+            .iter()
+            .find(|entry| entry["name"] == name)
+            .cloned()
+            .expect("the module")
+    };
+    let contacts = find("Contacts");
+    assert_eq!(contacts["color"], "#c4501a");
+    assert_eq!(contacts["icon"], "contact");
+    assert_eq!(contacts["children"][0]["icon"], "users");
+    assert_eq!(contacts["children"][0]["color"], Value::Null);
+    assert_eq!(find("Settings")["color"], "#5a5878");
+    Ok(())
+}
+
 /// With the address book installed, the companies are reached from the settings, after the
 /// users and groups.
 #[test]

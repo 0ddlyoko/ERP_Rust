@@ -18,6 +18,7 @@ impl Plugin for ContactsPlugin {
             ),
             category: Some("Sales".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            color: Some("#c4501a".to_string()),
             ..PluginInfo::default()
         }
     }

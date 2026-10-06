@@ -16,6 +16,10 @@ export interface ActionDescription {
 export interface MenuEntry {
     readonly id: number;
     readonly name: string;
+    /** The icon it shows, by name: see `iconPaths`. */
+    readonly icon: string | null;
+    /** For a module, the colour of the plugin declaring it. */
+    readonly color: string | null;
     readonly action: ActionDescription | null;
     readonly children: readonly MenuEntry[];
 }

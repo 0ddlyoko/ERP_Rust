@@ -27,6 +27,7 @@ pub struct Plugin<Mode: IdMode> {
     author: Option<String>,
     installed_version: Option<String>,
     latest_version: Option<String>,
+    color: Option<String>,
 }
 
 #[erp_methods]

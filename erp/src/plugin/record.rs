@@ -40,6 +40,7 @@ pub(crate) fn record_plugin(
         ("category", &info.category),
         ("website", &info.website),
         ("latest_version", &info.version),
+        ("color", &info.color),
     ] {
         values.insert_option(field, value.clone().map(FieldType::String));
     }
