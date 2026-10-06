@@ -72,8 +72,8 @@ fn test_the_reference_comes_first() -> Result<()> {
     assert_eq!(chair.get_display_name(&mut env)?, "Chair");
 
     chair.set_default_code(Some("CH-02".to_string()), &mut env)?;
-    let found = env.call_rpc("product", "name_search", &json!({"name": "CH-02"}))?;
-    assert_eq!(found[0][1], json!("[CH-02] Chair"), "{found}");
+    let found = env.call_rpc("product", "name_search", &json!({"text": "CH-02"}))?;
+    assert_eq!(found, json!([[chair.get_id(), "[CH-02] Chair"]]));
     Ok(())
 }
 
