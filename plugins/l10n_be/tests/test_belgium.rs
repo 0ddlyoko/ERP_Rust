@@ -335,7 +335,6 @@ fn test_structured_communications() -> Result<()> {
         reference,
         l10n_be::structured::structured_communication(u64::from(invoice))
     );
-    assert!(l10n_be::structured::is_structured_communication(&reference));
     let bill = document(
         &mut env,
         "in_invoice",

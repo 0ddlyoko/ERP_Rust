@@ -3,9 +3,8 @@ use base::models::{Company, Contact};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{
-    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, Selection, SingleId,
-};
+use erp::model::ModelVerbs;
+use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, Selection, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use period::period_of;
@@ -233,6 +232,7 @@ impl VatReturn<MultipleIds> {
                 .iter()
                 .map(|(grid, label)| {
                     let mut line = MapOfFields::default();
+                    line.insert("vat_return", vat_return.get_id());
                     line.insert("grid", *grid);
                     line.insert("name", *label);
                     line.insert("amount", grids.get(*grid).copied().unwrap_or_default());
@@ -249,22 +249,12 @@ impl VatReturn<MultipleIds> {
                 )
             };
             let xml = intervat_xml(&vat, &name, from, to, &grids).ok();
-            let mut values = MapOfFields::default();
-            values.insert_field_type(
-                "lines",
-                FieldType::Commands(vec![Command::Clear, Command::Create(lines)]),
-            );
-            values.insert("amount_due", grids.get("71").copied().unwrap_or_default());
-            values.insert(
-                "amount_refundable",
-                grids.get("72").copied().unwrap_or_default(),
-            );
-            values.insert_option("xml", xml);
-            env.write(
-                "l10n_be_vat_return",
-                &SingleId::from(vat_return.get_id()),
-                values,
-            )?;
+            let old: VatReturnLine<MultipleIds> = vat_return.get_lines(env)?;
+            old.delete(env)?;
+            let _: VatReturnLine<MultipleIds> = env.create_new_records_from_maps(lines)?;
+            vat_return.set_amount_due(grids.get("71").copied().unwrap_or_default(), env)?;
+            vat_return.set_amount_refundable(grids.get("72").copied().unwrap_or_default(), env)?;
+            vat_return.set_xml(xml, env)?;
         }
         Ok(true)
     }

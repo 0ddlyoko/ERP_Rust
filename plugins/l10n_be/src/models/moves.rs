@@ -18,7 +18,7 @@ pub struct MoveBe<Mode: IdMode> {
 impl MoveBe<MultipleIds> {
     /// A customer invoice or credit note gets the structured communication of its id; other
     /// entries what accounting gives them.
-    pub fn compute_payment_reference(&self, env: &mut Environment, sup: Super) -> Result<()> {
+    pub fn assign_payment_reference(&self, env: &mut Environment, sup: Super) -> Result<()> {
         let mut others = Vec::new();
         for entry in self {
             let entry: Move<SingleId> = env.get_record(entry.get_id().into());

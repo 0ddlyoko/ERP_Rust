@@ -12,26 +12,6 @@ pub fn structured_communication(number: u64) -> String {
     format!("+++{}/{}/{}+++", &digits[..3], &digits[3..7], &digits[7..])
 }
 
-/// Whether `text` is a structured communication with the right check digits, written with or
-/// without its `+++`, `***`, slashes and spaces.
-pub fn is_structured_communication(text: &str) -> bool {
-    let digits: String = text.chars().filter(|c| c.is_ascii_digit()).collect();
-    let rest: String = text
-        .chars()
-        .filter(|c| !c.is_ascii_digit() && !matches!(c, '+' | '*' | '/' | ' '))
-        .collect();
-    if digits.len() != 12 || !rest.is_empty() {
-        return false;
-    }
-    let base: u64 = digits[..10].parse().unwrap_or(0);
-    let check: u64 = digits[10..].parse().unwrap_or(0);
-    let expected = match base % 97 {
-        0 => 97,
-        rest => rest,
-    };
-    check == expected
-}
-
 /// A Belgian VAT or enterprise number, `BE0477472701`, from any way it is written; errs when its
 /// check digits are wrong: 97 less the first eight digits modulo 97.
 pub fn normalize_belgian_vat(text: &str) -> Result<String, String> {
@@ -77,11 +57,6 @@ mod tests {
             "+++000/0000/09797+++",
             "a nought remainder is 97"
         );
-        assert!(is_structured_communication("+++123/4567/89002+++"));
-        assert!(is_structured_communication("123456789002"));
-        assert!(is_structured_communication("***123/4567/89002***"));
-        assert!(!is_structured_communication("+++123/4567/89003+++"));
-        assert!(!is_structured_communication("INV/2026/00001"));
     }
 
     #[test]

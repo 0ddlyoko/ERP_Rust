@@ -1,14 +1,12 @@
 //! Belgium: the minimum standard chart (PCMN), Belgian VAT with the grids of the periodic
 //! return, structured communications, and VAT numbers checked.
 
-use account::models::CompanyAccount;
+use account::models::{Account, CompanyAccount, Journal, Tax};
 use erp::Result;
-use erp::data;
 use erp::environment::Environment;
-use erp::model::ModelManager;
+use erp::model::{Model, ModelManager};
 use erp::plugin::{Plugin, PluginInfo};
-use erp::types::field::SingleId;
-use erp::types::model::MapOfFields;
+use erp::types::field::{IdMode, SingleId};
 
 pub mod invariants;
 pub mod models;
@@ -16,18 +14,17 @@ pub mod structured;
 
 pub struct L10nBePlugin;
 
-/// The company's defaults this chart sets when the company has none: field and record.
-const COMPANY_DEFAULTS: [(&str, &str); 9] = [
-    ("account_receivable", "a400000"),
-    ("account_payable", "a440000"),
-    ("account_income", "a700000"),
-    ("account_expense", "a604000"),
-    ("account_exchange_gain", "a754000"),
-    ("account_exchange_loss", "a654000"),
-    ("journal_exchange", "journal_exchange"),
-    ("sale_tax", "tax_sale_21"),
-    ("purchase_tax", "tax_purchase_21_goods"),
-];
+/// The chart's record `xml_id`, for a default the company does not have yet.
+fn unless_set<M: Model<SingleId>>(
+    env: &mut Environment,
+    current: M,
+    xml_id: &str,
+) -> Result<Option<M>> {
+    if !current.get_id_mode().is_empty() {
+        return Ok(None);
+    }
+    env.named(&format!("l10n_be.{xml_id}")).map(Some)
+}
 
 impl Plugin for L10nBePlugin {
     fn name(&self) -> String {
@@ -69,23 +66,43 @@ impl Plugin for L10nBePlugin {
         if company.is_empty() {
             return Ok(());
         }
-        let current = env.read(
-            "company",
-            &SingleId::from(company.get_id()),
-            &COMPANY_DEFAULTS.map(|(field, _)| field),
-        )?;
-        let current = current.into_iter().next().unwrap_or_default();
-        let mut values = MapOfFields::default();
-        for (field, xml_id) in COMPANY_DEFAULTS {
-            let set = current.get_option::<&u32>(field).is_some_and(|id| *id != 0);
-            if !set && let Some(id) = data::resolve(env, &format!("l10n_be.{xml_id}"))? {
-                values.insert(field, id);
-            }
+        let current = company.get_account_receivable(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a400000")? {
+            company.set_account_receivable(&account, env)?;
         }
-        if values.fields.is_empty() {
-            return Ok(());
+        let current = company.get_account_payable(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a440000")? {
+            company.set_account_payable(&account, env)?;
         }
-        env.write("company", &SingleId::from(company.get_id()), values)
+        let current = company.get_account_income(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a700000")? {
+            company.set_account_income(&account, env)?;
+        }
+        let current = company.get_account_expense(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a604000")? {
+            company.set_account_expense(&account, env)?;
+        }
+        let current = company.get_account_exchange_gain(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a754000")? {
+            company.set_account_exchange_gain(&account, env)?;
+        }
+        let current = company.get_account_exchange_loss(env)?;
+        if let Some(account) = unless_set::<Account<_>>(env, current, "a654000")? {
+            company.set_account_exchange_loss(&account, env)?;
+        }
+        let current = company.get_journal_exchange(env)?;
+        if let Some(journal) = unless_set::<Journal<_>>(env, current, "journal_exchange")? {
+            company.set_journal_exchange(&journal, env)?;
+        }
+        let current = company.get_sale_tax(env)?;
+        if let Some(tax) = unless_set::<Tax<_>>(env, current, "tax_sale_21")? {
+            company.set_sale_tax(&tax, env)?;
+        }
+        let current = company.get_purchase_tax(env)?;
+        if let Some(tax) = unless_set::<Tax<_>>(env, current, "tax_purchase_21_goods")? {
+            company.set_purchase_tax(&tax, env)?;
+        }
+        Ok(())
     }
 
     fn get_depends(&self) -> Vec<String> {
