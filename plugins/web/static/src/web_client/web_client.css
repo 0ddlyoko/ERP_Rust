@@ -395,7 +395,7 @@ button {
 .o_notifications {
     position: fixed;
     z-index: 100;
-    top: 16px;
+    top: 88px;
     right: 16px;
     display: flex;
     flex-direction: column;
