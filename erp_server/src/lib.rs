@@ -58,7 +58,7 @@ impl Server {
             reload: Arc::new(|current: &Application, install: Vec<String>| {
                 let mut next = current.successor();
                 next.set_install(install);
-                next.load()?;
+                next.load().map_err(owned)?;
                 Ok(next)
             }),
             installing: tokio::sync::Mutex::new(()),
@@ -126,13 +126,21 @@ pub fn service(
 /// Loading opens a database connection, and the PostgreSQL driver is synchronous: it builds a
 /// runtime of its own and blocks on it, which panics on a thread already driving one. Owning that
 /// rule here rather than stating it in a comment is what keeps a caller from getting it wrong —
-/// the same reason requests reach the driver through [`tokio::task::spawn_blocking`].
+/// the same reason requests reach the driver through [`tokio::task::spawn_blocking`]. What fails
+/// comes back as text, the application being gone by then: see [`owned`].
 pub async fn load(mut app: Application) -> Result<Application, Box<dyn Error + Send + Sync>> {
     tokio::task::spawn_blocking(move || {
-        app.load()?;
+        app.load().map_err(owned)?;
         Ok(app)
     })
     .await?
+}
+
+/// An error of an application about to be dropped, as text: one a plugin's code made has its
+/// code in the plugin's library, which closes with the application — reading it afterwards
+/// would print nothing, and crash.
+fn owned(error: Box<dyn Error + Send + Sync>) -> Box<dyn Error + Send + Sync> {
+    error.to_string().into()
 }
 
 /// Load an application, then serve it until the process is asked to stop.
