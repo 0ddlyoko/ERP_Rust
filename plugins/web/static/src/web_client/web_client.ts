@@ -3,6 +3,7 @@ import { type ActionDescription, actionsOf, type MenuEntry, Menus, moduleOf, mod
 import { Orm } from "@web/core/orm";
 import { type Route, Router } from "@web/core/router";
 import { ActionManager } from "./action_manager";
+import { Home } from "./home";
 import { LoadingIndicator } from "./loading_indicator";
 import { NotificationCenter } from "./notification_center";
 import { Sidebar } from "./sidebar";
@@ -11,13 +12,13 @@ import { Sidebar } from "./sidebar";
  * The root of the back office: the menu on the left, and the action open beside it.
  *
  * The action open is the route's: one of the menus', or, for one no menu leads to — a button
- * opening it — loaded by its identifier. With none, the first action of the menus. The module
+ * opening it — loaded by its identifier. With none, the home page. The module
  * shown is the one the action is under — for one no menu leads to, the one with an action on the
  * same model — unless the user switched to another.
  */
 export class WebClient extends Component {
     static template = "web.WebClient";
-    static components = { ActionManager, LoadingIndicator, NotificationCenter, Sidebar };
+    static components = { ActionManager, Home, LoadingIndicator, NotificationCenter, Sidebar };
 
     @inject(Menus) menus!: Menus;
     @inject(Orm) orm!: Orm;
@@ -51,7 +52,7 @@ export class WebClient extends Component {
         if (asked !== null) {
             return this.fromMenus(asked) ?? this.elsewhere ?? null;
         }
-        return actionsOf(this.tree ?? [])[0] ?? null;
+        return null;
     }
 
     @computed get module(): MenuEntry | null {
@@ -60,6 +61,12 @@ export class WebClient extends Component {
         const under = action ? (moduleOf(tree, action.id) ?? moduleOfModel(tree, action.model)) : null;
         return this.switched ?? under ?? tree[0] ?? null;
     }
+
+    /** Back to the home page. */
+    goHome = (): void => {
+        this.switched = null;
+        this.router.go({ action: null, view: null, id: null });
+    };
 
     /** Show a module's menus, and open its first action. */
     switchTo = (module: MenuEntry): void => {

@@ -2,8 +2,10 @@
     <t t-name="web.Sidebar">
         <nav t-att-class="{ o_sidebar: true, o_sidebar_folded: folded }" aria-label="Main menu">
             <div class="o_sidebar_brand">
-                <span class="o_brand_mark">O</span>
-                <span class="o_brand_name">Oddaris</span>
+                <a href="#" class="o_brand_home" aria-label="Home" title="Home" t-on-click.prevent="() => props.onHome?.()">
+                    <span class="o_brand_mark">O</span>
+                    <span class="o_brand_name">Oddaris</span>
+                </a>
                 <button type="button" class="o_sidebar_fold" t-on-click="fold"
                         t-att-aria-label="folded ? 'Unfold the menu' : 'Fold the menu'"
                         t-att-title="folded ? 'Unfold the menu' : 'Fold the menu'">

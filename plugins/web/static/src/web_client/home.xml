@@ -1,0 +1,32 @@
+<templates>
+    <t t-name="web.Home">
+        <section class="o_home">
+            <header class="o_home_header">
+                <h1 class="o_action_title">{{ greeting }}</h1>
+                <p class="o_home_date">{{ today }}</p>
+            </header>
+            <div class="o_home_grid">
+                <article t-foreach="modules" t-as="module" t-key="module.id" class="o_home_card">
+                    <h2 class="o_home_card_title">
+                        <span class="o_module_mark">{{ initial(module) }}</span>{{ module.name }}
+                    </h2>
+                    <ul class="o_home_entries">
+                        <li t-foreach="entriesOf(module)" t-as="entry" t-key="entry.id">
+                            <a href="#" class="o_home_entry" t-on-click.prevent="() => props.onOpen(entry)">
+                                <span class="o_home_entry_name">{{ entry.name }}</span>
+                                <Suspense>
+                                    <t t-set-slot="fallback"><span class="o_home_count">…</span></t>
+                                    <ActionCount action="entry.action"/>
+                                </Suspense>
+                            </a>
+                        </li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+    </t>
+
+    <t t-name="web.ActionCount">
+        <span t-att-class="{ o_home_count: true, o_home_count_some: count > 0 }">{{ count }}</span>
+    </t>
+</templates>

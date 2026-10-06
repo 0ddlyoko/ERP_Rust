@@ -32,6 +32,8 @@ export class Sidebar extends Component {
         action: t.any<ActionDescription | null>(),
         onModule: t.func<(module: MenuEntry) => void>(),
         onOpen: t.func<(entry: MenuEntry) => void>(),
+        /** Called when the user asks for the home page. */
+        onHome: t.func<() => void>().optional(),
     });
 
     @inject(Session) session!: Session;
