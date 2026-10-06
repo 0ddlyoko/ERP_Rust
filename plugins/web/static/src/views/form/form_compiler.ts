@@ -84,7 +84,9 @@ interface Piece {
  * Turn a form's XML into the Trame template of its body.
  *
  * Every condition stays the expression the view wrote — `invisible` a `t-if`, `readonly` a prop —
- * evaluated by Trame with each field it reads set to the record's value. A block, a page or pages
+ * evaluated by Trame with each field it reads set to the record's value. A field shown as a
+ * `statusbar` goes to the bar at the top, wherever the view put it; `<totals>` sums amounts up
+ * under what they sum. A block, a page or pages
  * with nothing shown in them are hidden; the first page shown is open unless the user opened
  * another. What `<side>` and `<chatter/>` hold goes in a column beside the rest; without them, or
  * with nothing shown in them, the rest takes the whole width.
@@ -138,7 +140,16 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         return `<span t-if="${error}" class="o_compute_error" role="img" aria-label="Could not be computed" t-att-title="${error}">!</span>`;
     };
 
+    /** The steps of the record, shown in the bar at the top rather than where the view put them. */
+    const statusbars: string[] = [];
+
     const field = (element: Element): Piece => {
+        if (element.getAttribute("widget") === "statusbar") {
+            condition(element, "invisible");
+            const readonly = condition(element, "readonly");
+            statusbars.push(`<div class="o_form_status"${ifShown(shownUnless(element))}>${widget(element, readonly)}</div>`);
+            return { xml: "", shown: "false" };
+        }
         condition(element, "invisible");
         const readonly = condition(element, "readonly");
         const required = condition(element, "required");
@@ -172,6 +183,29 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         const xml =
             `<div role="heading" aria-level="${level}" class="o_form_heading o_form_h${level} o_form_full"${ifShown(shown)}>` +
             `${parts.join("")}</div>`;
+        return { xml, shown };
+    };
+
+    /**
+     * Amounts summed up under what they sum, aligned on the right: each field a line, the last
+     * one, the total, set apart.
+     */
+    const totals = (element: Element): Piece => {
+        condition(element, "invisible");
+        const lines = Array.from(element.children)
+            .filter((child) => child.tagName === "field")
+            .map((child, at, all) => {
+                condition(child, "invisible");
+                const shown = shownUnless(child);
+                const label = `{{ __form.label(__form.layout.columns[${columns.length}].label) }}`;
+                const main = at === all.length - 1 ? " o_form_total_main" : "";
+                const xml =
+                    `<div class="o_form_total${main}"${ifShown(shown)}><span class="o_form_total_label">${label}</span>` +
+                    `<span class="o_form_total_value">${widget(child, "true")}</span></div>`;
+                return { xml, shown };
+            });
+        const shown = both(shownUnless(element), anyOf(lines.map((line) => line.shown)));
+        const xml = `<div class="o_form_totals o_form_full"${ifShown(shown)}>${lines.map((line) => line.xml).join("")}</div>`;
         return { xml, shown };
     };
 
@@ -241,6 +275,9 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             }
             if (tag === "pages") {
                 return [pages(element)];
+            }
+            if (tag === "totals") {
+                return [totals(element)];
             }
             return [];
         });
@@ -317,7 +354,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         .join("");
     const source =
         `<div class="o_form_body" t-ref="__form.element">${values}` +
-        `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>` +
+        `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>${statusbars.join("")}` +
         `<div t-if="__form.pager" class="o_pager"><span class="o_pager_value">` +
         `{{ __form.pager.position }} / {{ __form.pager.total }}</span>` +
         `<button type="button" class="o_pager_button" aria-label="Previous record" ` +

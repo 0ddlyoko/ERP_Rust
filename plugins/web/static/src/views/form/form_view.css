@@ -82,7 +82,7 @@
     font-size: 13px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1500px) {
     .o_form_layout.o_form_with_side {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -500,6 +500,8 @@ span.o_text {
 .o_x2many_list .o_list_table span.o_widget {
     display: block;
     min-height: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .o_x2many_list .o_list_table td .o_input {
@@ -513,18 +515,21 @@ span.o_text {
 
 .o_x2many_list .o_list_table th.o_field_integer,
 .o_x2many_list .o_list_table th.o_field_decimal {
-    width: 104px;
+    width: 88px;
 }
 
 /* Text and records take what the numbers leave, never less than this: the table scrolls instead. */
-.o_x2many_list .o_list_table th.o_field_string,
+.o_x2many_list .o_list_table th.o_field_string {
+    width: 170px;
+}
+
 .o_x2many_list .o_list_table th.o_field_ref {
-    width: 200px;
+    width: 140px;
 }
 
 .o_x2many_list .o_list_table th.o_field_refs,
 .o_x2many_list .o_list_table th.o_field_selection {
-    width: 130px;
+    width: 110px;
 }
 
 .o_x2many_list .o_list_table th.o_field_bool {
@@ -797,4 +802,101 @@ button.o_statusbar_label:hover {
 .o_x2many_list .o_list_empty td {
     height: 44px;
     text-align: left;
+}
+
+/* The steps of the record, in the bar at the top */
+
+.o_form_status .o_widget.o_statusbar {
+    flex-direction: row;
+    align-items: stretch;
+    height: 30px;
+    border: 1px solid var(--o-input-border);
+    border-radius: var(--o-radius-control);
+    background: var(--o-input-border);
+    overflow: hidden;
+}
+
+.o_form_status .o_statusbar_step {
+    min-height: 0;
+    gap: 0;
+    padding: 0 12px 0 18px;
+    font-size: 12.5px;
+    background: var(--o-surface);
+    clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%, 9px 50%);
+    margin-left: -7px;
+}
+
+.o_form_status .o_statusbar_step:first-child {
+    margin-left: 0;
+    padding-left: 12px;
+    clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);
+}
+
+.o_form_status .o_statusbar_step:last-child {
+    padding-right: 12px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 9px 50%);
+}
+
+.o_form_status .o_statusbar_step:only-child {
+    clip-path: none;
+}
+
+.o_form_status .o_statusbar_step::after,
+.o_form_status .o_statusbar_dot {
+    display: none;
+}
+
+.o_form_status .o_statusbar_step.o_statusbar_current {
+    background: var(--o-accent);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.o_form_status .o_statusbar_passed {
+    color: var(--o-accent-strong);
+}
+
+/* Amounts summed up under what they sum */
+
+.o_form_totals {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    padding-top: 6px;
+}
+
+.o_form_total {
+    display: grid;
+    grid-template-columns: 160px 140px;
+    align-items: baseline;
+    gap: 16px;
+    font-size: 13px;
+}
+
+.o_form_total_label {
+    color: var(--o-label);
+    text-align: right;
+}
+
+.o_form_total_value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_form_total_value .o_widget {
+    display: block;
+    min-height: 0;
+}
+
+.o_form_total_main {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--o-border);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.o_form_total_main .o_form_total_label {
+    color: var(--o-ink);
 }

@@ -145,7 +145,7 @@ struct Arch<'a> {
 
 /// Elements a block or a page holds: its contents, laid out on two columns.
 const CONTENTS: &[&str] = &[
-    "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages",
+    "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "totals",
 ];
 const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
 
@@ -156,7 +156,7 @@ impl Arch<'_> {
             "search" => &["field", "filter"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
-                "chatter",
+                "chatter", "totals",
             ],
             _ => return Ok(()),
         };
@@ -197,7 +197,7 @@ impl Arch<'_> {
         }
         let conditions: &[&str] = match element.name.as_str() {
             "field" => &["invisible", "readonly", "required"],
-            "block" | "page" | "pages" | "button" => &["invisible"],
+            "block" | "page" | "pages" | "button" | "totals" => &["invisible"],
             heading if HEADINGS.contains(&heading) => &["invisible"],
             _ => &[],
         };
@@ -245,6 +245,7 @@ impl Arch<'_> {
                 self.children(element, &["button"])
             }
             "chatter" => self.children(element, &[]),
+            "totals" => self.children(element, &["field"]),
             "filter" => {
                 self.required(element, "name")?;
                 self.required(element, "domain")?;

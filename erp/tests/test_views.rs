@@ -173,7 +173,7 @@ fn refused_form(form: &str) -> String {
         .to_string()
 }
 
-/// A form of blocks, pages, headings, buttons and a side is shown as written.
+/// A form of blocks, pages, headings, buttons, totals and a side is shown as written.
 #[test]
 fn test_a_form_lays_out_its_blocks_pages_and_buttons() -> Result<()> {
     let app = with_data(
@@ -184,7 +184,9 @@ fn test_a_form_lays_out_its_blocks_pages_and_buttons() -> Result<()> {
             <block string="{{ login }} \{{ literal }}">
                 <h1>User <field name="name"/></h1>
                 <block><field name="login"/></block>
-                <pages><page name="more" string="More"><field name="active"/></page></pages>
+                <pages><page name="more" string="More"><field name="active"/>
+                    <totals invisible="!active"><field name="login"/><field name="name"/></totals>
+                </page></pages>
             </block>
             <side><block><field name="groups"/></block><chatter/></side>
         </form></view></erp>"#,
@@ -237,6 +239,11 @@ fn test_what_a_form_may_not_hold_is_refused() -> Result<()> {
             "cannot be readonly",
         ),
         ("<field name=\"login\" nolabel=\"yes\"/>", "0 or 1"),
+        (
+            "<totals><block/></totals>",
+            "<block> cannot stand in <totals>",
+        ),
+        ("<totals><field name=\"logn\"/></totals>", "\"logn\""),
     ] {
         let error = refused_form(form);
         assert!(error.contains(expected), "{form}: {error}");
