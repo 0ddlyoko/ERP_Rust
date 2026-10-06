@@ -126,12 +126,6 @@ impl SaleOrder<SingleId> {
         Ok(self.get_state(env)?.key() == state.key())
     }
 
-    fn set_state_to(&self, env: &mut Environment, state: SaleState) -> Result<()> {
-        let mut values = MapOfFields::default();
-        values.insert("state", state);
-        env.write("sale_order", &SingleId::from(self.get_id()), values)
-    }
-
     /// The order's currency, the company's when none is set.
     pub fn currency_or_company(&self, env: &mut Environment) -> Result<Currency<SingleId>> {
         let currency: Currency<SingleId> = self.get_currency(env)?;
@@ -433,7 +427,7 @@ impl SaleOrder<MultipleIds> {
             if !order.is_state(env, SaleState::Draft)? && !order.is_state(env, SaleState::Sent)? {
                 return Err(format!("{} is no longer a quotation", order.get_name(env)?).into());
             }
-            order.set_state_to(env, SaleState::Sent)?;
+            order.set_state(SaleState::Sent, env)?;
         }
         Ok(true)
     }
@@ -456,16 +450,11 @@ impl SaleOrder<MultipleIds> {
                 if lines.get_ids_ref().is_empty() {
                     return Err(format!("{} has no line to confirm", order.get_name(env)?).into());
                 }
-                order.set_state_to(env, SaleState::Sale)?;
+                order.set_state(SaleState::Sale, env)?;
                 Self::from_ids(vec![order.get_id()], env).on_confirmed(env)?;
             }
             Ok(true)
         })
-    }
-
-    /// What follows a confirmation; inventory delivers what is sold.
-    pub fn on_confirmed(&self, _env: &mut Environment) -> Result<()> {
-        Ok(())
     }
 
     /// Cancel the orders: their draft invoices are cancelled with them; one invoiced and posted
@@ -494,16 +483,11 @@ impl SaleOrder<MultipleIds> {
                 if !drafts.is_empty() {
                     Move::<MultipleIds>::from_ids(drafts, env).button_cancel(env)?;
                 }
-                order.set_state_to(env, SaleState::Cancel)?;
+                order.set_state(SaleState::Cancel, env)?;
                 Self::from_ids(vec![order.get_id()], env).on_cancelled(env)?;
             }
             Ok(true)
         })
-    }
-
-    /// What follows a cancellation; inventory cancels what was to be delivered.
-    pub fn on_cancelled(&self, _env: &mut Environment) -> Result<()> {
-        Ok(())
     }
 
     /// Set cancelled orders back to quotation.
@@ -513,7 +497,7 @@ impl SaleOrder<MultipleIds> {
             if !order.is_state(env, SaleState::Cancel)? {
                 return Err(format!("{} is not cancelled", order.get_name(env)?).into());
             }
-            order.set_state_to(env, SaleState::Draft)?;
+            order.set_state(SaleState::Draft, env)?;
         }
         Ok(true)
     }
@@ -539,5 +523,15 @@ impl SaleOrder<MultipleIds> {
             }
             _ => Ok(json!({"type": "reload"})),
         }
+    }
+
+    /// What follows a confirmation; inventory delivers what is sold.
+    pub fn on_confirmed(&self, _env: &mut Environment) -> Result<()> {
+        Ok(())
+    }
+
+    /// What follows a cancellation; inventory cancels what was to be delivered.
+    pub fn on_cancelled(&self, _env: &mut Environment) -> Result<()> {
+        Ok(())
     }
 }

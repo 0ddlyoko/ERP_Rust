@@ -170,19 +170,15 @@ impl SaleOrderLine<MultipleIds> {
             let pricelist: Pricelist<SingleId> = order.get_pricelist(env)?;
             let mut price = pricelist.price_of(env, &product, quantity, date)?;
             let uom: Uom<SingleId> = line.get_uom(env)?;
-            {
+            if !uom.is_empty() {
                 let env = &mut *env.sudo();
                 let product_uom: Uom<SingleId> = product.get_uom(env)?;
-                if !uom.is_empty() && uom.get_id() != product_uom.get_id() {
-                    price = price * *uom.get_ratio(env)? / *product_uom.get_ratio(env)?;
-                }
+                price = product_uom.convert_price(env, price, &uom)?;
             }
             let currency = order.currency_or_company(env)?;
             let company = Currency::of_company(env)?;
             if currency.get_id() != company.get_id() {
-                let from = company.rate_at(env, date)?;
-                let to = currency.rate_at(env, date)?;
-                price = price * to / from;
+                price = company.convert(env, price, &currency, date)?;
             }
             line.set_price_unit(price, env)?;
         }
@@ -268,27 +264,6 @@ impl SaleOrderLine<MultipleIds> {
             line.set_qty_invoiced(invoiced, env)?;
             line.set_qty_to_invoice(to_invoice, env)?;
             line.set_invoice_status(status, env)?;
-        }
-        Ok(())
-    }
-
-    /// The product's customer taxes as the order's fiscal position maps them.
-    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
-        for line in self {
-            let product = line.product_record(env)?;
-            if product.is_empty() {
-                continue;
-            }
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
-                product.get_taxes(env)?
-            };
-            let order: SaleOrder<SingleId> = line.get_order(env)?;
-            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
-            line.set_taxes(&mapped, env)?;
         }
         Ok(())
     }
@@ -383,5 +358,26 @@ impl SaleOrderLine<MultipleIds> {
             }
         }
         sup.call(env)
+    }
+
+    /// The product's customer taxes as the order's fiscal position maps them.
+    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
+        for line in self {
+            let product = line.product_record(env)?;
+            if product.is_empty() {
+                continue;
+            }
+            let taxes: Tax<MultipleIds> = {
+                let env = &mut *env.sudo();
+                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
+                product.get_taxes(env)?
+            };
+            let order: SaleOrder<SingleId> = line.get_order(env)?;
+            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            line.set_taxes(&mapped, env)?;
+        }
+        Ok(())
     }
 }

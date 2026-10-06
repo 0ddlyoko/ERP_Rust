@@ -151,6 +151,48 @@ fn test_a_quotation() -> Result<()> {
     Ok(())
 }
 
+/// A line sold by the dozen is priced twelve units; a pricelist in dollars prices in dollars,
+/// at the rate of the order's date, to the cent.
+#[test]
+fn test_a_price_in_another_unit_and_currency() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let partner = customer(&mut env)?;
+    let pen = create(
+        &mut env,
+        "product",
+        json!({"name": "Pen", "list_price": "9.99"}),
+    )?;
+    let dozen = xml_id(&mut env, "uom.uom_dozen");
+    let by_the_dozen = json!({"product": pen, "product_uom_qty": "1", "uom": dozen});
+    let order = quotation(&mut env, partner, vec![by_the_dozen.clone()])?;
+    let line = line_ids(&mut env, order)?[0];
+    let row = read(&mut env, "sale_order_line", line, &["price_unit"])?;
+    assert_eq!(amount(&row["price_unit"]), d("119.88"));
+
+    let usd = xml_id(&mut env, "currency.currency_usd");
+    create(
+        &mut env,
+        "currency_rate",
+        json!({"currency": usd, "date": "2026-01-01", "rate": "1.0837"}),
+    )?;
+    let dollars = create(
+        &mut env,
+        "product_pricelist",
+        json!({"name": "Dollars", "currency": usd}),
+    )?;
+    let order = create(
+        &mut env,
+        "sale_order",
+        json!({"partner": partner, "date_order": "2026-03-02", "pricelist": dollars,
+               "lines": {"create": [by_the_dozen]}}),
+    )?;
+    let line = line_ids(&mut env, order)?[0];
+    let row = read(&mut env, "sale_order_line", line, &["price_unit"])?;
+    assert_eq!(amount(&row["price_unit"]), d("129.91"));
+    Ok(())
+}
+
 /// A customer's pricelist prices the lines: by category, by quantity, by product; the price
 /// follows the quantity, a price typed by hand stays, a discount lowers the line.
 #[test]

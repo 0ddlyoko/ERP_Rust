@@ -76,26 +76,6 @@ pub struct PricelistItem<Mode: IdMode> {
 
 #[erp_methods]
 impl PricelistItem<MultipleIds> {
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            PricelistItem::<MultipleIds>::from_ids(ids.clone(), env).check_items(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_items(env)
-        })
-    }
-
     /// A rule names what it applies to; a discount stays within 0 and 100 %; a fixed price and a
     /// quantity are not negative; a rule ends after it starts.
     pub fn check_items(&self, env: &mut Environment) -> Result<()> {
@@ -131,6 +111,26 @@ impl PricelistItem<MultipleIds> {
             }
         }
         Ok(())
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            PricelistItem::<MultipleIds>::from_ids(ids.clone(), env).check_items(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            self.check_items(env)
+        })
     }
 }
 
