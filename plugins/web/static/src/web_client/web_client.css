@@ -538,3 +538,39 @@ button {
         animation-duration: 2.4s;
     }
 }
+
+/* Calls waiting for the server */
+
+.o_loading_indicator {
+    position: fixed;
+    z-index: 110;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--o-side);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 0.18);
+    pointer-events: none;
+    animation: o_loading_show 0s linear 150ms backwards;
+}
+
+@keyframes o_loading_show {
+    from {
+        visibility: hidden;
+    }
+}
+
+.o_loading_spinner {
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: o_spin 0.7s linear infinite;
+}

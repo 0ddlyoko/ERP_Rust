@@ -1,4 +1,4 @@
-import { inject } from "trame";
+import { inject, state, untrack } from "trame";
 import { Session } from "./session";
 
 /** What the server answered instead of a result: the JSON-RPC error, as it was sent. */
@@ -47,6 +47,9 @@ export function request(method: string, params: object, id: number): string {
 export class Rpc {
     @inject(Session) session!: Session;
 
+    /** How many calls are waiting for their answer, for the page to show it is busy. */
+    @state accessor pending = 0;
+
     private nextId = 1;
 
     /**
@@ -56,6 +59,16 @@ export class Rpc {
      * still rejects, so nothing goes on as if it had succeeded.
      */
     async call<T = unknown>(method: string, params: object = {}): Promise<T> {
+        // Counted out of whatever is tracking: a resource making the call must not reload on it.
+        untrack(() => this.pending++);
+        try {
+            return await this.send<T>(method, params);
+        } finally {
+            untrack(() => this.pending--);
+        }
+    }
+
+    private async send<T>(method: string, params: object): Promise<T> {
         const response = await fetch("/jsonrpc", {
             method: "POST",
             credentials: "same-origin",

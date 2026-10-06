@@ -1,0 +1,7 @@
+<templates>
+    <t t-name="web.LoadingIndicator">
+        <div t-if="rpc.pending > 0" class="o_loading_indicator" role="status" aria-live="polite">
+            <span class="o_loading_spinner" aria-hidden="true"/>{{ text }}
+        </div>
+    </t>
+</templates>
