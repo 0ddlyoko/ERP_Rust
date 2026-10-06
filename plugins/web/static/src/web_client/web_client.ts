@@ -1,4 +1,4 @@
-import { Component, computed, inject, load, resource, state } from "trame";
+import { Component, computed, inject, load, loading, resource, state } from "trame";
 import { type ActionDescription, actionsOf, firstEntryOf, holds, type MenuEntry, Menus, moduleOf, moduleOfModel } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
 import { type Route, Router } from "@web/core/router";
@@ -35,12 +35,21 @@ export class WebClient extends Component {
         return this.router.route;
     }
 
+    /**
+     * The action the route names when no menu leads to it, by its name: unchanged while the user
+     * moves between its records, so that the action is not loaded again for each.
+     */
+    @computed get askedElsewhere(): string | null {
+        const asked = this.route.action;
+        if (asked === null || loading(() => this.menus.tree)) {
+            return null;
+        }
+        return this.fromMenus(asked) === undefined ? asked : null;
+    }
+
     /** The action the route names, when no menu leads to it. */
     @resource accessor elsewhere: ActionDescription | null = load(
-        () => {
-            const asked = this.route.action;
-            return asked !== null && this.fromMenus(asked) === undefined ? asked : null;
-        },
+        () => this.askedElsewhere,
         (asked) => (asked === null ? null : this.orm.call<ActionDescription>("action", "load", [], { xml_id: asked })),
     );
 

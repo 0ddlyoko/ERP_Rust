@@ -126,7 +126,7 @@ export class RecordStrip extends View {
     private keep(layout: StripLayout): void {
         this.layout = layout;
         try {
-            localStorage.setItem(`o_strip:${this.router.route.action}`, JSON.stringify(layout));
+            localStorage.setItem(`o_strip:${this.actionName}`, JSON.stringify(layout));
         } catch {
             // Kept for this page only when the browser keeps nothing.
         }
@@ -176,9 +176,17 @@ export class RecordStrip extends View {
         window.addEventListener("pointerup", up);
     }
 
+    /**
+     * The action as the route names it: the same while the user moves between its records, so
+     * that what is read from it is not read again for each.
+     */
+    @computed get actionName(): string | null {
+        return this.router.route.action;
+    }
+
     /** The list as the user left it, if they came from it. */
-    get memory() {
-        return listMemory(this.router.route.action);
+    @computed get memory() {
+        return listMemory(this.actionName);
     }
 
     /** What the records are gathered by: the field, and the period of a date. */
