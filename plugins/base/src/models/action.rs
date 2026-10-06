@@ -2,7 +2,8 @@ use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::data;
 use erp::environment::Environment;
-use erp::serde_json::{Value, json};
+use erp::search::SearchType;
+use erp::serde_json::{Map, Value, json};
 use erp::types::field::{IdMode, MultipleIds, SingleId};
 use std::collections::HashMap;
 
@@ -84,5 +85,32 @@ impl Action<MultipleIds> {
         let env = &mut *env.sudo();
         let action: Action<SingleId> = env.named(&xml_id)?;
         action.describe(env)
+    }
+
+    /// How many records each of these actions shows, by id: what a home page writes beside each
+    /// entry, in one call rather than one per entry.
+    ///
+    /// The actions are read as sudo, as [`Action::load`] does; their records are counted as the
+    /// caller. One whose records the caller may not read, or whose domain no longer holds,
+    /// counts `null`.
+    #[erp(rpc)]
+    pub fn counts(&self, env: &mut Environment) -> Result<Value> {
+        let mut counts = Map::new();
+        for action in self {
+            let (model, domain) = {
+                let env = &mut *env.sudo();
+                (
+                    action.get_model(env)?.clone(),
+                    action.get_domain(env)?.cloned(),
+                )
+            };
+            let domain = match domain {
+                Some(text) => erp::serde_json::from_str::<SearchType>(&text).ok(),
+                None => Some(SearchType::Nothing),
+            };
+            let count = domain.and_then(|domain| env.count(&model, &domain).ok());
+            counts.insert(action.get_id().to_string(), json!(count));
+        }
+        Ok(Value::Object(counts))
     }
 }

@@ -234,3 +234,48 @@ fn test_an_action_is_loaded_by_its_identifier() -> Result<()> {
     assert!(missing.is_err());
     Ok(())
 }
+
+/// What each action shows is counted in one call, as the caller: an action on records they may
+/// not read, or with a domain that no longer holds, counts nothing.
+#[test]
+fn test_actions_are_counted_together() -> Result<()> {
+    let app = new_app(&[r#"<erp>
+        <action id="action_admins" name="Admins" model="users" domain='[["login", "=", "admin"]]'/>
+        <action id="action_rules" name="Rules" model="access_rule"/>
+        <action id="action_broken" name="Broken" model="users" domain='[["nope"]]'/>
+    </erp>"#])?;
+    let ids: Vec<u32> = {
+        let mut env = app.new_env_as_option(None)?;
+        [
+            "base.action_users",
+            "menu_plugin.action_admins",
+            "menu_plugin.action_rules",
+            "menu_plugin.action_broken",
+        ]
+        .iter()
+        .map(|xml_id| data::resolve(&mut env, xml_id).map(|id| id.expect("loaded")))
+        .collect::<std::result::Result<_, _>>()?
+    };
+    let counts = |uid: u32| -> Result<Value> {
+        let mut env = app.new_env_as(uid)?;
+        env.call_rpc("action", "counts", &json!({ "ids": ids }))
+    };
+    let admin = counts(admin(&app)?)?;
+    assert_eq!(admin[ids[1].to_string()], json!(1), "{admin}");
+    assert!(
+        admin[ids[0].to_string()].as_u64().unwrap_or_default() >= 1,
+        "{admin}"
+    );
+    assert_eq!(
+        admin[ids[3].to_string()],
+        Value::Null,
+        "a domain that does not parse"
+    );
+    let employee = counts(employee(&app)?)?;
+    assert_eq!(
+        employee[ids[2].to_string()],
+        Value::Null,
+        "rules are for administrators: {employee}"
+    );
+    Ok(())
+}
