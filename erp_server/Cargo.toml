@@ -23,6 +23,18 @@ base = { path = "../plugins/base" }
 web = { path = "../plugins/web" }
 mail = { path = "../plugins/mail" }
 contacts = { path = "../plugins/contacts" }
+uom = { path = "../plugins/uom" }
+currency = { path = "../plugins/currency" }
+sequence = { path = "../plugins/sequence" }
+product = { path = "../plugins/product" }
+account = { path = "../plugins/account" }
+l10n_be = { path = "../plugins/l10n_be" }
+sale = { path = "../plugins/sale" }
+purchase = { path = "../plugins/purchase" }
+stock = { path = "../plugins/stock" }
+sale_stock = { path = "../plugins/sale_stock" }
+purchase_stock = { path = "../plugins/purchase_stock" }
+stock_account = { path = "../plugins/stock_account" }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }

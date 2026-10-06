@@ -738,18 +738,30 @@ dependencies = [
 name = "erp_server"
 version = "0.1.0"
 dependencies = [
+ "account",
  "axum",
  "base",
  "contacts",
+ "currency",
  "erp",
+ "l10n_be",
  "mail",
+ "product",
+ "purchase",
+ "purchase_stock",
  "reqwest",
+ "sale",
+ "sale_stock",
+ "sequence",
  "serde_json",
+ "stock",
+ "stock_account",
  "test_plugin",
  "test_utilities",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uom",
  "web",
 ]
 
