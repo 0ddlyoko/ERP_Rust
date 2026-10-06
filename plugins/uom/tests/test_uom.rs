@@ -113,6 +113,30 @@ fn test_seeded_units_convert() -> Result<()> {
     Ok(())
 }
 
+/// Prices convert the other way round, and are not rounded: a unit at 2 is a dozen at 24.
+#[test]
+fn test_prices_convert() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let unit = uom(&mut env, "uom_unit")?;
+    let dozen = uom(&mut env, "uom_dozen")?;
+    let kg = uom(&mut env, "uom_kg")?;
+    let gram = uom(&mut env, "uom_gram")?;
+    assert_eq!(unit.convert_price(&mut env, d("2"), &dozen)?, d("24"));
+    assert_eq!(
+        dozen.convert_price(&mut env, d("10"), &unit)?,
+        d("10") / d("12")
+    );
+    assert_eq!(kg.convert_price(&mut env, d("12.5"), &gram)?, d("0.0125"));
+    assert_eq!(kg.convert_price(&mut env, d("1.23456"), &kg)?, d("1.23456"));
+    let error = kg
+        .convert_price(&mut env, d("1"), &unit)
+        .expect_err("not the same thing")
+        .to_string();
+    assert!(error.contains("kg") && error.contains("Units"), "{error}");
+    Ok(())
+}
+
 /// Kilograms are no number of units.
 #[test]
 fn test_units_of_different_categories_do_not_convert() -> Result<()> {

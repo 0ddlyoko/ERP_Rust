@@ -59,6 +59,32 @@ impl Uom<SingleId> {
             let precision = *to.get_rounding(env)?;
             return Ok(conversion::round_to(quantity, precision, rounding));
         }
+        self.check_same_category(env, to)?;
+        let from_ratio = *self.get_ratio(env)?;
+        let to_ratio = *to.get_ratio(env)?;
+        let precision = *to.get_rounding(env)?;
+        Ok(conversion::convert(
+            quantity, from_ratio, to_ratio, precision, rounding,
+        )?)
+    }
+
+    /// A price per this unit, as a price per `to`: a unit priced 2 is a dozen priced 24. Not
+    /// rounded: a unit price keeps its decimals until it is multiplied by a quantity.
+    pub fn convert_price(
+        &self,
+        env: &mut Environment,
+        price: Decimal,
+        to: &Uom<SingleId>,
+    ) -> Result<Decimal> {
+        if self.get_id() == to.get_id() {
+            return Ok(price);
+        }
+        self.check_same_category(env, to)?;
+        Ok(price * *to.get_ratio(env)? / *self.get_ratio(env)?)
+    }
+
+    /// Errs between units measuring different things: kilograms are no number of hours.
+    fn check_same_category(&self, env: &mut Environment, to: &Uom<SingleId>) -> Result<()> {
         let from_category: UomCategory<SingleId> = self.get_category(env)?;
         let to_category: UomCategory<SingleId> = to.get_category(env)?;
         if from_category.get_id() != to_category.get_id() {
@@ -69,12 +95,7 @@ impl Uom<SingleId> {
             )
             .into());
         }
-        let from_ratio = *self.get_ratio(env)?;
-        let to_ratio = *to.get_ratio(env)?;
-        let precision = *to.get_rounding(env)?;
-        Ok(conversion::convert(
-            quantity, from_ratio, to_ratio, precision, rounding,
-        )?)
+        Ok(())
     }
 }
 
