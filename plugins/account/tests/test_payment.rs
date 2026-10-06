@@ -388,3 +388,77 @@ fn test_matching_by_hand() -> Result<()> {
     );
     check_books(&mut env)
 }
+
+/// Yen have no cents: an invoice in yen paid in two goes at another rate settles in yen, the
+/// euros matched rounded to the cent, and each payment's difference booked on its own.
+#[test]
+fn test_an_exchange_difference_in_a_currency_without_cents() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let jpy = erp_test_support::xml_id(&mut env, "currency.currency_jpy");
+    create(
+        &mut env,
+        "currency_rate",
+        json!({"currency": jpy, "date": "2026-01-01", "rate": "160"}),
+    )?;
+    create(
+        &mut env,
+        "currency_rate",
+        json!({"currency": jpy, "date": "2026-04-01", "rate": "150"}),
+    )?;
+    let customer = partner(&mut env, "Customer")?;
+    let invoice = create(
+        &mut env,
+        "account_move",
+        json!({"move_type": "out_invoice", "partner": customer,
+        "invoice_date": "2026-03-10", "currency": jpy,
+        "invoice_lines": {"create": [{"name": "Consulting", "price_unit": "10000", "taxes": []}]}}),
+    )?;
+    post(&mut env, invoice)?;
+    assert_eq!(
+        items(&mut env, invoice)?[0],
+        ("400000".to_string(), d("62.5"), d("0"))
+    );
+    for amount in ["3333", "6667"] {
+        let payment = create(
+            &mut env,
+            "account_payment",
+            json!({"partner": customer, "amount": amount,
+            "currency": jpy, "date": "2026-04-15", "invoices": [invoice]}),
+        )?;
+        call(&mut env, "account_payment", "action_post", &[payment])?;
+    }
+    assert_eq!(state(&mut env, invoice)?, ("paid".to_string(), d("0")));
+    let exchange = chart(&mut env, "journal_exchange");
+    let entries = env.call_rpc(
+        "account_move",
+        "search",
+        &json!({"domain": [["journal", "=", exchange]]}),
+    )?;
+    let entries: Vec<u32> = entries
+        .as_array()
+        .expect("entries")
+        .iter()
+        .map(|id| id.as_u64().expect("an id") as u32)
+        .collect();
+    // 3333 yen paid 22.22 euros for 20.83 invoiced, 6667 yen 44.45 for the 41.67 left.
+    let mut gains = Vec::new();
+    for entry in entries {
+        gains.push(items(&mut env, entry)?);
+    }
+    gains.sort();
+    assert_eq!(
+        gains,
+        vec![
+            vec![
+                ("400000".to_string(), d("1.39"), d("0")),
+                ("754000".to_string(), d("0"), d("1.39"))
+            ],
+            vec![
+                ("400000".to_string(), d("2.78"), d("0")),
+                ("754000".to_string(), d("0"), d("2.78"))
+            ],
+        ]
+    );
+    check_books(&mut env)
+}

@@ -126,6 +126,7 @@ impl MoveLine<MultipleIds> {
                 .collect()
         };
         let pairs = matching::match_lines(&open(&debits), &open(&credits));
+        let company_rounding = *Currency::of_company(env)?.get_rounding(env)?;
         let mut touched: Vec<u32> = self.get_ids_ref().clone();
         for (debit, credit, matched) in pairs {
             let debit_row = debits
@@ -140,14 +141,16 @@ impl MoveLine<MultipleIds> {
                 .expect("a credit");
             let (amount, debit_currency, credit_currency) = if by_currency {
                 // In the company's currency, each side counts the matched amount at its own rate.
-                let debit_side = prorata(debit_row.2, debit_row.3, matched);
-                let credit_side = prorata(credit_row.2, credit_row.3, matched);
+                let debit_side = prorata(debit_row.2, debit_row.3, matched, company_rounding);
+                let credit_side = prorata(credit_row.2, credit_row.3, matched, company_rounding);
                 (debit_side.min(credit_side), matched, matched)
             } else {
+                let debit_rounding = currency_rounding(env, debit)?;
+                let credit_rounding = currency_rounding(env, credit)?;
                 (
                     matched,
-                    prorata(debit_row.3, debit_row.2, matched),
-                    prorata(credit_row.3, credit_row.2, matched),
+                    prorata(debit_row.3, debit_row.2, matched, debit_rounding),
+                    prorata(credit_row.3, credit_row.2, matched, credit_rounding),
                 )
             };
             let mut values = MapOfFields::default();
@@ -394,10 +397,24 @@ impl MoveLine<MultipleIds> {
     }
 }
 
-/// `matched` of an item worth `amount` in one currency and `other` in the other, in that other.
-fn prorata(other: Decimal, amount: Decimal, matched: Decimal) -> Decimal {
+/// `matched` of an item worth `amount` in one currency and `other` in the other, in that other,
+/// rounded to that other currency's `rounding`.
+fn prorata(other: Decimal, amount: Decimal, matched: Decimal, rounding: Decimal) -> Decimal {
     if amount.is_zero() {
         return Decimal::ZERO;
     }
-    (other * matched / amount).round_dp(2)
+    currency::money::round(other * matched / amount, rounding)
+}
+
+/// The rounding of the currency a journal item is in: its own, else the company's.
+fn currency_rounding(env: &mut Environment, line: u32) -> Result<Decimal> {
+    let env = &mut *env.sudo();
+    let line: MoveLine<SingleId> = env.get_record(line.into());
+    let currency: Currency<SingleId> = line.get_currency(env)?;
+    let currency = if currency.is_empty() {
+        Currency::of_company(env)?
+    } else {
+        currency
+    };
+    Ok(*currency.get_rounding(env)?)
 }
