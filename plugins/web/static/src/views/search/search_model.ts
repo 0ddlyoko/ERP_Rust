@@ -19,17 +19,35 @@ export interface SearchFilter {
     isDefault: boolean;
 }
 
+/** A way to gather the records, as a `<filter group_by="…">` says, or a field offered for it. */
+export interface SearchGroupBy {
+    name: string;
+    label: string;
+    /** `state`, or `date_order:month` for a date by period. */
+    groupBy: string;
+}
+
 /** What a search view offers. */
 export interface SearchView {
     fields: SearchField[];
     filters: SearchFilter[];
+    /** The groupings the view names. */
+    groupBys: SearchGroupBy[];
+    /** Every field the records could be gathered by, for a grouping of the user's own. */
+    groupable: SearchGroupBy[];
 }
 
 /**
  * One condition of a search, shown as a chip: texts searched in one field, any of them; or
  * filters ticked, any of them.
  */
-export type Facet = { kind: "field"; name: string; values: string[] } | { kind: "filters"; names: string[] };
+export type Facet =
+    | { kind: "field"; name: string; values: string[] }
+    | { kind: "filters"; names: string[] }
+    | { kind: "groupby"; groupBy: string; label: string };
+
+/** Field types records can be gathered by: those holding one value each. */
+const GROUPABLE = new Set(["string", "ref", "selection", "integer", "bool", "date", "datetime"]);
 
 /** Field types a text is searched in. */
 const SEARCHABLE = new Set(["string", "ref", "refs", "selection", "integer", "decimal"]);
@@ -40,6 +58,7 @@ export function readSearchView(arch: string, fields: Fields): SearchView {
     const domainOf = (element: Element): Domain => JSON.parse(element.getAttribute("domain") ?? "[]") as Domain;
     const searchFields: SearchField[] = [];
     const filters: SearchFilter[] = [];
+    const groupBys: SearchGroupBy[] = [];
     for (const element of Array.from(root.children)) {
         const name = element.getAttribute("name") ?? "";
         if (element.tagName === "field") {
@@ -52,6 +71,10 @@ export function readSearchView(arch: string, fields: Fields): SearchView {
                     domain: domainOf(element),
                 });
             }
+        } else if (element.tagName === "filter" && element.hasAttribute("group_by")) {
+            const groupBy = element.getAttribute("group_by") ?? "";
+            const field = fields[groupBy.split(":")[0]];
+            groupBys.push({ name, label: element.getAttribute("string") ?? field?.label ?? groupBy, groupBy });
         } else if (element.tagName === "filter") {
             filters.push({
                 name,
@@ -61,7 +84,27 @@ export function readSearchView(arch: string, fields: Fields): SearchView {
             });
         }
     }
-    return { fields: searchFields, filters };
+    const groupable = Object.entries(fields)
+        .filter(([name, field]) => field.stored && GROUPABLE.has(field.type) && name !== "id")
+        .map(([name, field]) => ({
+            name,
+            label: field.label,
+            groupBy: field.type === "date" || field.type === "datetime" ? `${name}:month` : name,
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label));
+    return { fields: searchFields, filters, groupBys, groupable };
+}
+
+/** How the records are gathered, if they are. */
+export function groupByOf(facets: Facet[]): { groupBy: string; label: string } | null {
+    const facet = facets.find((candidate) => candidate.kind === "groupby");
+    return facet?.kind === "groupby" ? { groupBy: facet.groupBy, label: facet.label } : null;
+}
+
+/** The facets once the records are gathered by `groupBy`, or no longer, asked a second time. */
+export function withGroupBy(facets: Facet[], groupBy: string, label: string): Facet[] {
+    const others = facets.filter((facet) => facet.kind !== "groupby");
+    return groupByOf(facets)?.groupBy === groupBy ? others : [...others, { kind: "groupby", groupBy, label }];
 }
 
 /** The filters a search starts with: those ticked by default. */
@@ -102,6 +145,9 @@ function textDomain(searchField: SearchField, text: string): Domain {
 export function searchDomain(view: SearchView, facets: Facet[]): Domain {
     return and(
         facets.map((facet) => {
+            if (facet.kind === "groupby") {
+                return [];
+            }
             if (facet.kind === "filters") {
                 return or(view.filters.filter((filter) => facet.names.includes(filter.name)).map((filter) => filter.domain));
             }
@@ -113,6 +159,9 @@ export function searchDomain(view: SearchView, facets: Facet[]): Domain {
 
 /** A facet as its chip reads: `Login: ad or ma`, `Active or Archived`. */
 export function facetLabel(view: SearchView, facet: Facet): string {
+    if (facet.kind === "groupby") {
+        return `Grouped by ${facet.label}`;
+    }
     if (facet.kind === "filters") {
         return facet.names.map((name) => view.filters.find((filter) => filter.name === name)?.label ?? name).join(" or ");
     }

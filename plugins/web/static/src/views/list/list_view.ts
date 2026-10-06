@@ -2,9 +2,9 @@ import { type ComponentClass, computed, effect, inject, load, loading, props, re
 import { and } from "@web/core/domain";
 import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
-import type { Domain, Values } from "@web/core/orm";
+import type { Domain, Group, Values } from "@web/core/orm";
 import { SearchBar } from "@web/views/search/search_bar";
-import { defaultFacets, type Facet, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
+import { defaultFacets, type Facet, groupByOf, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
 import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { companionFields } from "@web/views/widgets/decimal_widget";
@@ -16,6 +16,15 @@ interface ActionItem {
     name: string;
     label: string;
 }
+
+/** A line of the table: a group's heading, a record, or the records of a group on their way. */
+type Line =
+    | { kind: "group"; key: string; group: Group }
+    | { kind: "record"; key: string; record: Values }
+    | { kind: "loading"; key: string };
+
+/** How many records an opened group shows. */
+const GROUP_LIMIT = 80;
 
 /** An action waiting for the user to confirm it. */
 interface Confirming {
@@ -32,7 +41,9 @@ interface Confirming {
  * Choosing a row opens its record in a form; once some rows are selected, it selects it instead,
  * the way its check box does, and the selection can be acted on: by the buttons the list's XML
  * declares, which call a method of the model on the records selected, and by the list actions
- * every list offers ([`listActions`](./list_actions.ts)). The list is remembered per action —
+ * every list offers ([`listActions`](./list_actions.ts)). Gathered by a field — the search says
+ * so — the rows are groups, counted and summed, each opened to show its records; a column with
+ * a `sum` attribute is summed up under the rows. The list is remembered per action —
  * its page, selection, search, sort and the records it shows — so coming back from a form finds
  * it as it was, and the form steps through those records.
  */
@@ -62,6 +73,8 @@ export class ListView extends View {
     @state accessor running = false;
     /** The columns' widths, once the user sized one. */
     @state accessor widths: ColumnWidths | null = null;
+    /** The groups opened, by their domain: their records, or `null` while they load. */
+    @state accessor openGroups = new Map<string, Values[] | null>();
 
     resize(event: MouseEvent, name: string): void {
         dragColumn(event, name, this.widths, (widths) => {
@@ -79,16 +92,22 @@ export class ListView extends View {
 
     /** Remember the list once its rows are there; reading them sooner would hold the view back. */
     @effect remember(): void {
-        if (loading(() => this.records) || loading(() => this.total) || loading(() => this.searchView)) {
+        if (
+            loading(() => this.records) ||
+            loading(() => this.total) ||
+            loading(() => this.searchView) ||
+            loading(() => this.groups)
+        ) {
             return;
         }
+        const shown = this.lines.flatMap((line) => (line.kind === "record" ? [this.idOf(line.record)] : []));
         rememberList(this.router.route.action, {
-            offset: this.offset,
+            offset: this.grouping === null ? this.offset : 0,
             selected: [...this.selected],
             facets: this.currentFacets,
             sort: this.sort,
-            ids: (this.records ?? []).map((record) => this.idOf(record)),
-            total: this.total ?? 0,
+            ids: shown,
+            total: this.grouping === null ? (this.total ?? 0) : shown.length,
         });
     }
 
@@ -106,7 +125,7 @@ export class ListView extends View {
         const arch = this.searchArch;
         const fields = this.fields;
         if (arch === undefined || fields === undefined) {
-            return { fields: [], filters: [] };
+            return { fields: [], filters: [], groupBys: [], groupable: [] };
         }
         return readSearchView(arch, fields);
     }
@@ -122,8 +141,146 @@ export class ListView extends View {
 
     readonly setFacets = (facets: Facet[]): void => {
         this.facets = facets;
+        this.openGroups.clear();
         this.turnTo(0);
     };
+
+    /** How the rows are gathered, as the search says, if they are. */
+    @computed get grouping(): { groupBy: string; label: string } | null {
+        return groupByOf(this.currentFacets);
+    }
+
+    /** The columns summed up, as their `sum` attribute asks: numbers kept in a column. */
+    @computed get sumColumns(): Column[] {
+        return this.columns.filter(
+            (column) =>
+                column.attrs.sum !== undefined && column.field.stored && ["integer", "decimal"].includes(column.field.type),
+        );
+    }
+
+    isSummed(column: Column): boolean {
+        return this.sumColumns.includes(column);
+    }
+
+    /** The groups the rows are gathered in, with their counts and sums. */
+    @resource accessor groups: Group[] | null = load(
+        () => ({
+            model: this.props.resModel,
+            domain: this.domain,
+            groupBy: this.grouping?.groupBy ?? null,
+            sums: this.sumColumns.map((column) => column.name),
+        }),
+        ({ model, domain, groupBy, sums }) =>
+            groupBy === null ? Promise.resolve(null) : this.orm.readGroup(model, domain, groupBy, sums),
+    );
+
+    /** What the summed columns add up to, over every record the search finds. */
+    @resource accessor totals: Record<string, string> | null = load(
+        () => ({ model: this.props.resModel, domain: this.domain, sums: this.sumColumns.map((column) => column.name) }),
+        ({ model, domain, sums }) =>
+            sums.length === 0
+                ? Promise.resolve(null)
+                : this.orm.readGroup(model, domain, null, sums).then(([all]) => all?.sums ?? {}),
+    );
+
+    /** The lines of the table: the records, or each group followed by its records once opened. */
+    get lines(): Line[] {
+        if (this.grouping === null) {
+            return (this.records ?? []).map((record) => ({ kind: "record", key: `id:${this.idOf(record)}`, record }));
+        }
+        return this.sortedGroups.flatMap((group): Line[] => {
+            const key = this.groupKey(group);
+            const opened = this.openGroups.get(key);
+            const records: Line[] =
+                opened === undefined
+                    ? []
+                    : opened === null
+                      ? [{ kind: "loading", key: `${key}/loading` }]
+                      : opened.map((record) => ({ kind: "record", key: `${key}/${this.idOf(record)}`, record }));
+            return [{ kind: "group", key, group }, ...records];
+        });
+    }
+
+    /** The groups in their value's order — a selection's as it lists its values. */
+    get sortedGroups(): Group[] {
+        const groups = [...(this.groups ?? [])];
+        const field = this.fields?.[(this.grouping?.groupBy ?? "").split(":")[0]];
+        if (field?.type !== "selection") {
+            return groups;
+        }
+        const order = (field.values ?? []).map(([key]) => key);
+        const rank = (group: Group): number => {
+            const at = order.indexOf(group.value as string);
+            return at < 0 ? order.length : at;
+        };
+        return groups.sort((left, right) => rank(left) - rank(right));
+    }
+
+    private groupKey(group: Group): string {
+        return JSON.stringify(group.domain);
+    }
+
+    isOpen(group: Group): boolean {
+        return this.openGroups.has(this.groupKey(group));
+    }
+
+    /** Open a group, its first records read, or close it. */
+    async toggleGroup(group: Group): Promise<void> {
+        const key = this.groupKey(group);
+        if (this.openGroups.has(key)) {
+            this.openGroups.delete(key);
+            return;
+        }
+        this.openGroups.set(key, null);
+        const fields = [...this.columns.map((column) => column.name), ...companionFields(this.columns, this.fields ?? {})];
+        const order = this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`];
+        try {
+            const records = await this.orm.searchRead(this.props.resModel, and([this.domain, group.domain]), fields, {
+                limit: GROUP_LIMIT,
+                order,
+                names: true,
+            });
+            if (this.openGroups.has(key)) {
+                this.openGroups.set(key, records);
+            }
+        } catch (error) {
+            this.openGroups.delete(key);
+            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+        }
+    }
+
+    /** What a group's heading says: its value as the field shows it, `None` for no value. */
+    groupLabel(group: Group): string {
+        const [name, period] = (this.grouping?.groupBy ?? "").split(":");
+        const field = this.fields?.[name];
+        const value = group.value;
+        if (value === null || value === undefined || value === false || value === "") {
+            return "None";
+        }
+        if (Array.isArray(value)) {
+            return String(value[1] ?? `#${value[0]}`);
+        }
+        if (field?.type === "selection") {
+            return field.values?.find(([key]) => key === value)?.[1] ?? String(value);
+        }
+        if (field?.type === "bool") {
+            return value ? "Yes" : "No";
+        }
+        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return periodLabel(value, period ?? "day");
+        }
+        return String(value);
+    }
+
+    /** A sum as its column writes numbers: two decimals for amounts, none for counts. */
+    sumText(column: Column, sums: Record<string, string>): string {
+        const value = sums[column.name];
+        if (value === undefined) {
+            return "";
+        }
+        const digits = column.field.type === "integer" ? 0 : Number(column.attrs.digits ?? 2);
+        return Number(value).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
 
     @resource accessor records: Values[] = load(
         () => ({
@@ -133,9 +290,10 @@ export class ListView extends View {
             order: this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`],
             limit: this.props.limit,
             offset: this.offset,
+            grouped: this.grouping !== null,
         }),
-        ({ model, fields, domain, order, limit, offset }) =>
-            this.orm.searchRead(model, domain, fields, { limit, offset, order, names: true }),
+        ({ model, fields, domain, order, limit, offset, grouped }) =>
+            grouped ? Promise.resolve([]) : this.orm.searchRead(model, domain, fields, { limit, offset, order, names: true }),
     );
 
     @resource accessor total: number = load(
@@ -216,8 +374,11 @@ export class ListView extends View {
                 await listActions.get(item.name).run({ orm: this.orm, model: this.props.resModel, ids });
             }
             this.selected.clear();
+            this.openGroups.clear();
             refresh(() => this.records);
             refresh(() => this.total);
+            refresh(() => this.groups);
+            refresh(() => this.totals);
         } catch (error) {
             this.notifications.add("danger", `${item.label} failed: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
@@ -288,6 +449,24 @@ export class ListView extends View {
         for (const record of this.records ?? []) {
             this.select(record, checked);
         }
+    }
+}
+
+/** The period starting on `day` as people name it: `October 2026`, `Q4 2026`, `Week of 5 Oct 2026`. */
+function periodLabel(day: string, period: string): string {
+    const [year, month, date] = day.split("-").map(Number);
+    const start = new Date(year, month - 1, date);
+    switch (period) {
+        case "year":
+            return String(year);
+        case "quarter":
+            return `Q${Math.floor((month - 1) / 3) + 1} ${year}`;
+        case "month":
+            return start.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+        case "week":
+            return `Week of ${start.toLocaleDateString(undefined, { dateStyle: "medium" })}`;
+        default:
+            return start.toLocaleDateString(undefined, { dateStyle: "medium" });
     }
 }
 

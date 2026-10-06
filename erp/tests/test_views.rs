@@ -283,6 +283,7 @@ fn test_a_search_and_list_buttons_are_shown_as_written() -> Result<()> {
                 <field name="name"/>
                 <field name="login" domain='[["active", "=", true]]'/>
                 <filter name="archived" string="Archived" domain='["|", ["active", "=", false], ["groups.name", "=", "x"]]'/>
+                <filter name="by_creation" string="Created" group_by="create_date:month"/>
             </search></view>
             <view id="buttons" name="buttons" model="users" priority="1"><list>
                 <buttons><button name="me" type="method" string="Me"/></buttons>
@@ -291,6 +292,7 @@ fn test_a_search_and_list_buttons_are_shown_as_written() -> Result<()> {
         </erp>"#],
     )?;
     assert!(view_of(&app, "users", "search")?.contains("archived"));
+    assert!(view_of(&app, "users", "search")?.contains("by_creation"));
     assert!(view_of(&app, "users", "list")?.contains("<buttons>"));
     Ok(())
 }
@@ -324,6 +326,8 @@ fn test_what_a_search_may_not_hold_is_refused() -> Result<()> {
             "\"actif\"",
         ),
         ("<field name=\"login\" domain='nope'/>", "is not one"),
+        ("<filter name=\"x\" group_by=\"logn\"/>", "\"logn\""),
+        ("<filter name=\"x\" group_by=\"logn:month\"/>", "\"logn\""),
     ] {
         let data: &'static str = Box::leak(
             format!(r#"<erp><view id="bad" name="bad" model="users"><search>{search}</search></view></erp>"#)

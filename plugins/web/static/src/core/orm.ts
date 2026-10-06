@@ -38,6 +38,17 @@ export interface FieldDescription {
     name_field?: boolean;
 }
 
+/** Records gathered by a value, as `read_group` answers. */
+export interface Group {
+    /** The value they share: a record as `[id, name]`, a period by its first day, `null` for none. */
+    value: unknown;
+    count: number;
+    /** What the numbers asked for add up to, as text. */
+    sums: Record<string, string>;
+    /** The domain finding the group's records. */
+    domain: Domain;
+}
+
 /** What changing a form's values changes in the fields computed from them, as `onchange` answers. */
 export interface OnchangeAnswer {
     values: Values;
@@ -83,6 +94,14 @@ export class Orm {
 
     count(model: string, domain: Domain = []): Promise<number> {
         return this.rpc.call(`${model}.count`, { domain });
+    }
+
+    /**
+     * The records matching `domain` gathered by `groupBy` — a field, `date_order:month` for a
+     * date by period — counted, with the sums of `sums`; all of them in one group without it.
+     */
+    readGroup(model: string, domain: Domain, groupBy: string | null, sums: string[] = []): Promise<Group[]> {
+        return this.rpc.call(`${model}.read_group`, { domain, group_by: groupBy ?? undefined, sums });
     }
 
     /** Create one record, or several; resolves with their ids. */

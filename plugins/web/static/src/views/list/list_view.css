@@ -391,3 +391,80 @@ body.o_resizing * {
     cursor: col-resize !important;
     user-select: none;
 }
+
+/* Rows gathered in groups, and what the columns add up to */
+
+.o_list_group {
+    cursor: pointer;
+    user-select: none;
+}
+
+.o_list_group td {
+    background: var(--o-head);
+    color: var(--o-ink);
+    font-weight: 600;
+}
+
+.o_list_group:hover td {
+    background: #f2f4f7;
+}
+
+.o_list_group_chevron {
+    display: block;
+    color: var(--o-muted);
+    transition: transform 0.12s ease;
+}
+
+.o_list_group[aria-expanded="true"] .o_list_group_chevron {
+    transform: rotate(90deg);
+}
+
+.o_list_group_count {
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--o-border);
+    color: var(--o-label);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.o_list_row.o_list_grouped td:nth-child(2) {
+    padding-left: 24px;
+}
+
+.o_list_totals td {
+    height: 38px;
+    border-top: 1px solid var(--o-border);
+    background: var(--o-head);
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.o_search_menu_section + .o_search_menu_section {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--o-row-line);
+}
+
+.o_search_menu_title {
+    margin: 0;
+    padding: 4px 8px 6px;
+    color: var(--o-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.o_search_filters_menu ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.o_search_group_custom {
+    margin-top: 4px;
+    font-size: 13px;
+}

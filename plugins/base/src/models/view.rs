@@ -248,7 +248,17 @@ impl Arch<'_> {
             "totals" => self.children(element, &["field"]),
             "filter" => {
                 self.required(element, "name")?;
-                self.required(element, "domain")?;
+                match element.attribute("group_by") {
+                    Some(group_by) => {
+                        let field = group_by
+                            .split_once(':')
+                            .map_or(group_by, |(field, _)| field);
+                        self.known(field)?;
+                    }
+                    None => {
+                        self.required(element, "domain")?;
+                    }
+                }
                 self.children(element, &[])
             }
             heading if HEADINGS.contains(&heading) => self.children(element, &["field"]),

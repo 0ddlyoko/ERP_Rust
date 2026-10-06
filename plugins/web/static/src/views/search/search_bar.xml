@@ -1,6 +1,6 @@
 <templates>
     <t t-name="web.SearchBar">
-        <div class="o_search_bar">
+        <div class="o_search_bar" t-ref="element">
             <label class="o_search">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -27,21 +27,44 @@
                     Search <strong>{{ field.label }}</strong> for: {{ text.trim() }}
                 </li>
             </ul>
-            <div t-if="props.view.filters.length" class="o_search_filters">
+            <div t-if="props.view.filters.length || props.view.groupable.length" class="o_search_filters">
                 <button type="button" class="o_button_secondary o_search_filters_toggle"
                         t-att-aria-expanded="filtersOpen ? 'true' : 'false'" t-on-click="() => filtersOpen = !filtersOpen">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
                     Filters
                 </button>
-                <ul t-if="filtersOpen" class="o_search_filters_menu">
-                    <li t-foreach="props.view.filters" t-as="filter" t-key="filter.name">
-                        <label>
-                            <input type="checkbox" t-att-checked="isTicked(filter.name)" t-on-change="() => toggle(filter.name)"/>
-                            {{ filter.label }}
-                        </label>
-                    </li>
-                </ul>
+                <div t-if="filtersOpen" class="o_search_filters_menu">
+                    <section t-if="props.view.filters.length" class="o_search_menu_section">
+                        <h3 class="o_search_menu_title">Filters</h3>
+                        <ul>
+                            <li t-foreach="props.view.filters" t-as="filter" t-key="filter.name">
+                                <label>
+                                    <input type="checkbox" t-att-checked="isTicked(filter.name)" t-on-change="() => toggle(filter.name)"/>
+                                    {{ filter.label }}
+                                </label>
+                            </li>
+                        </ul>
+                    </section>
+                    <section class="o_search_menu_section">
+                        <h3 class="o_search_menu_title">Group by</h3>
+                        <ul>
+                            <li t-foreach="props.view.groupBys" t-as="option" t-key="option.name">
+                                <label>
+                                    <input type="radio" name="o_group_by" t-att-checked="isGroupedBy(option.groupBy)"
+                                           t-on-click="() => groupBy(option)"/>
+                                    {{ option.label }}
+                                </label>
+                            </li>
+                        </ul>
+                        <select class="o_input o_search_group_custom" aria-label="Group by a field"
+                                t-on-change="(ev) => groupByField(ev.target.value)">
+                            <option value="" selected="">Group by a field…</option>
+                            <option t-foreach="props.view.groupable" t-as="option" t-key="option.name"
+                                    t-att-value="option.groupBy">{{ option.label }}</option>
+                        </select>
+                    </section>
+                </div>
             </div>
         </div>
     </t>

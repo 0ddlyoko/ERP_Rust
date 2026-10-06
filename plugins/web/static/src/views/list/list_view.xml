@@ -29,7 +29,10 @@
                 </div>
                 <Suspense>
                     <t t-set-slot="fallback"><div class="o_pager"><span class="o_pager_value">…</span></div></t>
-                    <div class="o_pager">
+                    <div t-if="grouping" class="o_pager">
+                        <span class="o_pager_value">{{ groups?.length ?? 0 }} groups</span>
+                    </div>
+                    <div t-else="" class="o_pager">
                         <span class="o_pager_value">{{ range }} / {{ total }}</span>
                         <button type="button" class="o_pager_button" aria-label="Previous page"
                                 t-att-disabled="!hasPrevious" t-on-click="previous">
@@ -83,25 +86,56 @@
                                 </tbody>
                             </t>
                             <tbody>
-                                <tr t-foreach="records" t-as="record" t-key="record.id"
-                                    t-att-class="{ o_list_row: true, selected: selected.has(idOf(record)) }"
-                                    t-on-click="() => choose(record)">
-                                    <td class="o_list_select" t-on-click.stop="() => {}">
-                                        <input type="checkbox" aria-label="Select this row"
-                                               t-att-checked="selected.has(idOf(record))"
-                                               t-on-change="(ev) => select(record, ev.target.checked)"/>
-                                    </td>
-                                    <td t-foreach="columns" t-as="column" t-key="column.name"
-                                        t-att-class="cellClass(column)">
-                                        <t t-component="widgetFor(column)" record="record" model="props.resModel" name="column.name"
-                                           field="column.field" attrs="column.attrs"/>
-                                    </td>
-                                    <td t-if="widths" class="o_list_filler"/>
-                                </tr>
-                                <tr t-if="records?.length === 0" class="o_list_empty">
+                                <t t-foreach="lines" t-as="line" t-key="line.key">
+                                    <tr t-if="line.kind === 'group'" class="o_list_group"
+                                        t-att-aria-expanded="isOpen(line.group) ? 'true' : 'false'"
+                                        t-on-click="() => toggleGroup(line.group)">
+                                        <td class="o_list_select">
+                                            <svg class="o_list_group_chevron" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                 stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+                                                 stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                                        </td>
+                                        <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
+                                            <t t-if="column_index === 0">
+                                                <span class="o_list_group_name">{{ groupLabel(line.group) }}</span>
+                                                <span class="o_list_group_count">{{ line.group.count }}</span>
+                                            </t>
+                                            <t t-elif="isSummed(column)">{{ sumText(column, line.group.sums) }}</t>
+                                        </td>
+                                        <td t-if="widths" class="o_list_filler"/>
+                                    </tr>
+                                    <tr t-elif="line.kind === 'loading'" class="o_list_empty">
+                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
+                                    </tr>
+                                    <tr t-else=""
+                                        t-att-class="{ o_list_row: true, o_list_grouped: grouping !== null, selected: selected.has(idOf(line.record)) }"
+                                        t-on-click="() => choose(line.record)">
+                                        <td class="o_list_select" t-on-click.stop="() => {}">
+                                            <input type="checkbox" aria-label="Select this row"
+                                                   t-att-checked="selected.has(idOf(line.record))"
+                                                   t-on-change="(ev) => select(line.record, ev.target.checked)"/>
+                                        </td>
+                                        <td t-foreach="columns" t-as="column" t-key="column.name"
+                                            t-att-class="cellClass(column)">
+                                            <t t-component="widgetFor(column)" record="line.record" model="props.resModel" name="column.name"
+                                               field="column.field" attrs="column.attrs"/>
+                                        </td>
+                                        <td t-if="widths" class="o_list_filler"/>
+                                    </tr>
+                                </t>
+                                <tr t-if="lines.length === 0" class="o_list_empty">
                                     <td t-att-colspan="columns.length + (widths ? 2 : 1)">No records.</td>
                                 </tr>
                             </tbody>
+                            <tfoot t-if="totals">
+                                <tr class="o_list_totals">
+                                    <td class="o_list_select"/>
+                                    <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
+                                        {{ isSummed(column) ? sumText(column, totals) : "" }}
+                                    </td>
+                                    <td t-if="widths" class="o_list_filler"/>
+                                </tr>
+                            </tfoot>
                         </Suspense>
                     </table>
                 </Suspense>
