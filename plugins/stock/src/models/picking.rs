@@ -68,13 +68,6 @@ impl Picking<SingleId> {
         Ok(self.get_state(env)?.key() == state.key())
     }
 
-    fn set_state_to(&self, env: &mut Environment, state: PickingState) -> Result<()> {
-        let mut values = MapOfFields::default();
-        values.insert("state", state);
-        env.sudo()
-            .write("stock_picking", &SingleId::from(self.get_id()), values)
-    }
-
     /// The kind of the transfer: receipt, delivery or internal.
     pub fn kind(&self, env: &mut Environment) -> Result<PickingKind> {
         let picking_type: PickingType<SingleId> = self.get_picking_type(env)?;
@@ -104,14 +97,12 @@ impl Picking<SingleId> {
                 ready = false;
             }
         }
-        self.set_state_to(
-            env,
-            if ready {
-                PickingState::Assigned
-            } else {
-                PickingState::Confirmed
-            },
-        )
+        let state = if ready {
+            PickingState::Assigned
+        } else {
+            PickingState::Confirmed
+        };
+        self.set_state(state, &mut env.sudo())
     }
 
     /// Validate the transfer: what was done moves, the moves done for less than asked leave a
@@ -159,18 +150,13 @@ impl Picking<SingleId> {
                 stock_move.do_move(env)?;
             }
         }
-        let mut values = MapOfFields::default();
-        values.insert("state", PickingState::Done);
-        values.insert("date_done", Utc::now());
-        env.sudo()
-            .write("stock_picking", &SingleId::from(self.get_id()), values)?;
+        self.set_state(PickingState::Done, &mut env.sudo())?;
+        self.set_date_done(Utc::now(), &mut env.sudo())?;
         if rest.is_empty() {
             return Ok(None);
         }
         let backorder = self.copy_with(env, &rest, None)?;
-        let mut values = MapOfFields::default();
-        values.insert("backorder", self.get_id());
-        env.write("stock_picking", &SingleId::from(backorder.get_id()), values)?;
+        backorder.set_backorder(self, env)?;
         Picking::<MultipleIds>::from_ids(vec![backorder.get_id()], env).action_confirm(env)?;
         Ok(Some(backorder))
     }
@@ -361,7 +347,7 @@ impl Picking<MultipleIds> {
                     stock_move.set_state(MoveStatus::Confirmed, env)?;
                 }
             }
-            picking.set_state_to(env, PickingState::Confirmed)?;
+            picking.set_state(PickingState::Confirmed, &mut env.sudo())?;
         }
         self.action_assign(env)
     }
@@ -397,7 +383,7 @@ impl Picking<MultipleIds> {
             if !picking.is_state(env, PickingState::Draft)?
                 && !picking.is_state(env, PickingState::Done)?
             {
-                picking.set_state_to(env, PickingState::Confirmed)?;
+                picking.set_state(PickingState::Confirmed, &mut env.sudo())?;
             }
         }
         Ok(true)
@@ -422,11 +408,6 @@ impl Picking<MultipleIds> {
         })
     }
 
-    /// What follows transfers done; sales and purchases count what was delivered or received.
-    pub fn on_done(&self, _env: &mut Environment) -> Result<()> {
-        Ok(())
-    }
-
     /// Cancel the transfers not done: their moves release what they promised.
     #[erp(rpc)]
     pub fn action_cancel(&self, env: &mut Environment) -> Result<bool> {
@@ -443,7 +424,7 @@ impl Picking<MultipleIds> {
                     stock_move.unreserve(env)?;
                     stock_move.set_state(MoveStatus::Cancel, env)?;
                 }
-                picking.set_state_to(env, PickingState::Cancel)?;
+                picking.set_state(PickingState::Cancel, &mut env.sudo())?;
             }
             Ok(true)
         })
@@ -481,10 +462,9 @@ impl Picking<MultipleIds> {
                     }
                 }
                 let returned = picking.copy_with(env, &rest, Some(return_type))?;
-                let mut values = MapOfFields::default();
-                values.insert("returned_picking", picking.get_id());
-                values.insert("origin", format!("Return of {}", picking.get_name(env)?));
-                env.write("stock_picking", &SingleId::from(returned.get_id()), values)?;
+                returned.set_returned_picking(&picking, env)?;
+                let origin = format!("Return of {}", picking.get_name(env)?);
+                returned.set_origin(Some(origin), env)?;
                 Self::from_ids(vec![returned.get_id()], env).action_confirm(env)?;
                 made.push(returned.get_id());
             }
@@ -494,6 +474,11 @@ impl Picking<MultipleIds> {
             [single] => json!({"type": "open", "action": "stock.action_pickings", "id": single}),
             _ => json!({"type": "reload"}),
         })
+    }
+
+    /// What follows transfers done; sales and purchases count what was delivered or received.
+    pub fn on_done(&self, _env: &mut Environment) -> Result<()> {
+        Ok(())
     }
 }
 

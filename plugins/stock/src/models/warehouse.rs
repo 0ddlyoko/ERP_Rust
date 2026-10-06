@@ -133,19 +133,13 @@ impl Warehouse<MultipleIds> {
                     picking_type.insert("default_location_dest", destination);
                     let picking_type: PickingType<SingleId> =
                         env.create_new_record_from_map(picking_type)?;
-                    types.push(picking_type.get_id());
+                    types.push(picking_type);
                 }
-                let mut links = MapOfFields::default();
-                links.insert("view_location", view.get_id());
-                links.insert("lot_stock", stock.get_id());
-                links.insert("in_type", types[0]);
-                links.insert("out_type", types[1]);
-                links.insert("int_type", types[2]);
-                env.write(
-                    "stock_warehouse",
-                    &SingleId::from(warehouse.get_id()),
-                    links,
-                )?;
+                warehouse.set_view_location(&view, env)?;
+                warehouse.set_lot_stock(&stock, env)?;
+                warehouse.set_in_type(&types[0], env)?;
+                warehouse.set_out_type(&types[1], env)?;
+                warehouse.set_int_type(&types[2], env)?;
             }
             Ok(ids)
         })

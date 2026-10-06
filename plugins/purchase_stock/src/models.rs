@@ -121,19 +121,19 @@ fn unit_cost(
     if quantity.is_zero() {
         return Ok(Decimal::ZERO);
     }
-    let mut cost = *line.get_price_subtotal(env)? / quantity;
+    let mut subtotal = *line.get_price_subtotal(env)?;
     let currency = order.currency_or_company(env)?;
     let company = Currency::of_company(env)?;
     if currency.get_id() != company.get_id() {
         let date = *order.get_date_order(env)?;
-        cost = cost * company.rate_at(env, date)? / currency.rate_at(env, date)?;
+        subtotal = currency.convert(env, subtotal, &company, date)?;
     }
+    let mut cost = subtotal / quantity;
     let env = &mut *env.sudo();
     let line_uom: Uom<SingleId> = line.get_uom(env)?;
     let product_uom: Uom<SingleId> = product.get_uom(env)?;
-    if !line_uom.is_empty() && !product_uom.is_empty() && line_uom.get_id() != product_uom.get_id()
-    {
-        cost = cost * *product_uom.get_ratio(env)? / *line_uom.get_ratio(env)?;
+    if !line_uom.is_empty() && !product_uom.is_empty() {
+        cost = line_uom.convert_price(env, cost, &product_uom)?;
     }
     Ok(cost.round_dp(6))
 }

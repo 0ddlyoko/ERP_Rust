@@ -202,12 +202,12 @@ impl StockMove<SingleId> {
             (true, false) => -self.value_out(env, &product, quantity)?,
             _ => Decimal::ZERO,
         };
-        let mut values = MapOfFields::default();
-        values.insert("state", MoveStatus::Done);
-        values.insert("value", value);
-        values.insert("date_done", Utc::now());
-        env.sudo()
-            .write("stock_move", &SingleId::from(self.get_id()), values)?;
+        {
+            let env = &mut *env.sudo();
+            self.set_state(MoveStatus::Done, env)?;
+            self.set_value(value, env)?;
+            self.set_date_done(Utc::now(), env)?;
+        }
         StockMove::<MultipleIds>::from_ids(vec![self.get_id()], env).on_moved(env)
     }
 
@@ -385,11 +385,6 @@ impl StockMove<MultipleIds> {
         Ok(MapOfFields::default())
     }
 
-    /// What follows a move done, valued: nothing here; accounting books the value it moved.
-    pub fn on_moved(&self, _env: &mut Environment) -> Result<()> {
-        Ok(())
-    }
-
     /// A move's quantities are not negative; one done stays as it was.
     pub fn create(
         &self,
@@ -453,5 +448,10 @@ impl StockMove<MultipleIds> {
             stock_move.unreserve(env)?;
         }
         sup.call(env)
+    }
+
+    /// What follows a move done, valued: nothing here; accounting books the value it moved.
+    pub fn on_moved(&self, _env: &mut Environment) -> Result<()> {
+        Ok(())
     }
 }

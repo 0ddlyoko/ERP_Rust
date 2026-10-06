@@ -1,11 +1,10 @@
 use crate::models::location::Location;
 use crate::models::quant::{BaseStockQuant, Quant};
 use crate::models::valuation_layer::{BaseStockValuationLayer, ValuationLayer};
-use crate::models::warehouse::Warehouse;
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
+use erp::types::field::{Decimal, IdMode, MultipleIds, Reference};
 use erp_search_code_gen::make_domain;
 
 #[selection]
@@ -90,20 +89,5 @@ impl ProductStock<MultipleIds> {
             product.set_stock_value(value, env)?;
         }
         Ok(())
-    }
-}
-
-impl ProductStock<SingleId> {
-    /// What of the product is on hand in a warehouse's stock.
-    pub fn on_hand_in(
-        &self,
-        env: &mut Environment,
-        warehouse: &Warehouse<SingleId>,
-    ) -> Result<Decimal> {
-        let stock: Location<SingleId> = warehouse.get_lot_stock(&mut env.sudo())?;
-        let locations = stock.and_below(env)?;
-        let quants = Quant::at(env, self.get_id(), &locations)?;
-        let env = &mut *env.sudo();
-        Ok(quants.get_quantity(env)?.into_iter().copied().sum())
     }
 }
