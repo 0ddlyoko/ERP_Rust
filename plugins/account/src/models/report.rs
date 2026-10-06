@@ -4,10 +4,9 @@ use crate::models::moves::MoveState;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
+use erp::model::ModelVerbs;
 use erp::types::field::Selection;
-use erp::types::field::{
-    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, SingleId,
-};
+use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use std::collections::BTreeMap;
@@ -101,6 +100,7 @@ impl TrialBalance<MultipleIds> {
                 debit_total += debit;
                 credit_total += credit;
                 let mut line = MapOfFields::default();
+                line.insert("report", report.get_id());
                 line.insert("account", account);
                 line.insert("initial_balance", initial);
                 line.insert("debit", debit);
@@ -108,18 +108,11 @@ impl TrialBalance<MultipleIds> {
                 line.insert("ending_balance", initial + debit - credit);
                 created.push(line);
             }
-            let mut values = MapOfFields::default();
-            values.insert_field_type(
-                "lines",
-                FieldType::Commands(vec![Command::Clear, Command::Create(created)]),
-            );
-            values.insert("total_debit", debit_total);
-            values.insert("total_credit", credit_total);
-            env.write(
-                "account_trial_balance",
-                &SingleId::from(report.get_id()),
-                values,
-            )?;
+            let old: TrialBalanceLine<MultipleIds> = report.get_lines(env)?;
+            old.delete(env)?;
+            let _: TrialBalanceLine<MultipleIds> = env.create_new_records_from_maps(created)?;
+            report.set_total_debit(debit_total, env)?;
+            report.set_total_credit(credit_total, env)?;
         }
         Ok(true)
     }

@@ -188,11 +188,9 @@ impl Payment<SingleId> {
         entry.action_post(&mut env.sudo())?;
         let entry: Move<SingleId> = env.get_record(entry.get_ids_ref()[0].into());
         let name = entry.get_name(&mut env.sudo())?.clone();
-        let mut values = MapOfFields::default();
-        values.insert("move_id", entry.get_id());
-        values.insert("state", PaymentStatus::Posted);
-        values.insert("name", name);
-        env.write("account_payment", &SingleId::from(self.get_id()), values)?;
+        self.set_move_id(&entry, env)?;
+        self.set_state(PaymentStatus::Posted, env)?;
+        self.set_name(name, env)?;
 
         let invoices: Move<MultipleIds> = self.get_invoices(env)?;
         if !invoices.get_ids_ref().is_empty() {
@@ -318,9 +316,7 @@ impl Payment<MultipleIds> {
                     entry.button_draft(&mut env.sudo())?;
                     entry.button_cancel(&mut env.sudo())?;
                 }
-                let mut values = MapOfFields::default();
-                values.insert("state", PaymentStatus::Cancel);
-                env.write("account_payment", &SingleId::from(payment.get_id()), values)?;
+                payment.set_state(PaymentStatus::Cancel, env)?;
             }
             Ok(true)
         })
@@ -335,10 +331,8 @@ impl Payment<MultipleIds> {
                     format!("{} is confirmed: cancel it first", payment.get_name(env)?).into(),
                 );
             }
-            let mut values = MapOfFields::default();
-            values.insert("state", PaymentStatus::Draft);
-            values.insert("move_id", 0u32);
-            env.write("account_payment", &SingleId::from(payment.get_id()), values)?;
+            payment.set_state(PaymentStatus::Draft, env)?;
+            payment.set_move_id(None::<&Move<SingleId>>, env)?;
         }
         Ok(true)
     }

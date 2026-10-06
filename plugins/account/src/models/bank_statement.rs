@@ -119,13 +119,7 @@ impl BankStatement<MultipleIds> {
                     )
                     .into());
                 }
-                let mut values = MapOfFields::default();
-                values.insert("state", StatementState::Confirm);
-                env.write(
-                    "account_bank_statement",
-                    &SingleId::from(statement.get_id()),
-                    values,
-                )?;
+                statement.set_state(StatementState::Confirm, env)?;
             }
             Ok(true)
         })
@@ -160,14 +154,8 @@ impl BankStatementLine<MultipleIds> {
                 let entry: Move<MultipleIds> = Move::from_ids(vec![entry.get_id()], env);
                 entry.button_draft(&mut env.sudo())?;
                 entry.button_cancel(&mut env.sudo())?;
-                let mut values = MapOfFields::default();
-                values.insert("move_id", 0u32);
-                values.insert("is_reconciled", false);
-                env.write(
-                    "account_bank_statement_line",
-                    &SingleId::from(line.get_id()),
-                    values,
-                )?;
+                line.set_move_id(None::<&Move<SingleId>>, env)?;
+                line.set_is_reconciled(false, env)?;
             }
             Ok(true)
         })
@@ -362,16 +350,11 @@ impl BankStatementLine<SingleId> {
             }
             MoveLine::<MultipleIds>::from_ids(pair, env).reconcile_lines(env)?;
         }
-        let mut values = MapOfFields::default();
-        values.insert("move_id", entry.get_id());
-        values.insert("is_reconciled", true);
-        if let Some(id) = partner.get_optional_id() {
-            values.insert("partner", id);
+        self.set_move_id(&entry, env)?;
+        self.set_is_reconciled(true, env)?;
+        if !partner.is_empty() {
+            self.set_partner(&partner, env)?;
         }
-        env.write(
-            "account_bank_statement_line",
-            &SingleId::from(self.get_id()),
-            values,
-        )
+        Ok(())
     }
 }

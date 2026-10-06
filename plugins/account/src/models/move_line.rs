@@ -238,11 +238,9 @@ impl MoveLine<MultipleIds> {
             let reconciled = line.is_reconcilable(env)?
                 && residual.is_zero()
                 && (!foreign || residual_currency.is_zero());
-            let mut values = MapOfFields::default();
-            values.insert("amount_residual", residual);
-            values.insert("amount_residual_currency", residual_currency);
-            values.insert("reconciled", reconciled);
-            env.write("account_move_line", &SingleId::from(line.get_id()), values)?;
+            line.set_amount_residual(residual, env)?;
+            line.set_amount_residual_currency(residual_currency, env)?;
+            line.set_reconciled(reconciled, env)?;
         }
         Ok(())
     }
