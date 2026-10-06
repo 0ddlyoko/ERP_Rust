@@ -66,7 +66,13 @@ pub struct InvoiceLine<Mode: IdMode> {
     price_unit: Decimal,
     #[erp(label = "Discount (%)", default = 0.0)]
     discount: Decimal,
-    #[erp(relation = "account_invoice_line_tax_rel")]
+    #[erp(
+        compute = "compute_taxes",
+        depends = ["product"],
+        stored,
+        editable,
+        relation = "account_invoice_line_tax_rel"
+    )]
     taxes: Reference<BaseAccountTax, MultipleIds>,
     #[erp(
         label = "Untaxed",
@@ -272,77 +278,13 @@ impl InvoiceLine<MultipleIds> {
         Ok(())
     }
 
-    /// The untaxed amount, the tax and the total of each line.
-    pub fn compute_amounts(&self, env: &mut Environment) -> Result<()> {
-        for line in self {
-            let invoice = line.invoice(env)?;
-            if invoice.is_empty() {
-                line.set_price_subtotal(Decimal::ZERO, env)?;
-                line.set_price_tax(Decimal::ZERO, env)?;
-                line.set_price_total(Decimal::ZERO, env)?;
-                continue;
-            }
-            let result = line.taxed(env, TaxDocument::Invoice)?;
-            line.set_price_subtotal(result.subtotal, env)?;
-            line.set_price_tax(result.total - result.subtotal, env)?;
-            line.set_price_total(result.total, env)?;
-        }
-        Ok(())
-    }
-
-    /// A line given a product and no taxes gets the product's.
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<erp::types::model::MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        let untaxed: Vec<usize> = values
-            .iter()
-            .enumerate()
-            .filter(|(_, line)| !line.contains_key("taxes") && line.contains_key("product"))
-            .map(|(index, _)| index)
-            .collect();
-        let ids: MultipleIds = sup.call_with(values, env)?;
-        let untaxed: Vec<u32> = untaxed
-            .into_iter()
-            .filter_map(|index| ids.get_ids_ref().get(index).copied())
-            .collect();
-        InvoiceLine::<MultipleIds>::from_ids(untaxed, env).apply_product_taxes(env)?;
-        Ok(ids)
-    }
-
-    /// Lines of a posted invoice are what was declared: they change only once it is back to
-    /// draft. A line given another product and no taxes gets the product's.
-    pub fn write(
-        &self,
-        env: &mut Environment,
-        values: erp::types::model::MapOfFields,
-        sup: Super,
-    ) -> Result<()> {
-        for line in self {
-            let invoice = line.invoice(env)?;
-            if !invoice.is_empty() && !invoice.is_draft(env)? {
-                return Err(format!(
-                    "{} is no longer a draft: reset it to draft to change its lines",
-                    invoice.get_name(env)?
-                )
-                .into());
-            }
-        }
-        let retaxed = values.contains_key("product") && !values.contains_key("taxes");
-        sup.call_with(values, env)?;
-        if retaxed {
-            self.apply_product_taxes(env)?;
-        }
-        Ok(())
-    }
-
-    /// The product's customer or vendor taxes, as the invoice's fiscal position maps them.
-    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
+    /// The product's customer or vendor taxes, as the invoice's fiscal position maps them; none
+    /// without a product. Taxes given by hand stay until the product changes.
+    pub fn compute_taxes(&self, env: &mut Environment) -> Result<()> {
         for line in self {
             let product: Product<SingleId> = line.get_product(env)?;
             if product.is_empty() {
+                line.set_taxes(&Tax::<MultipleIds>::from_ids(Vec::<u32>::new(), env), env)?;
                 continue;
             }
             let invoice = line.invoice(env)?;
@@ -362,6 +304,45 @@ impl InvoiceLine<MultipleIds> {
             line.set_taxes(&mapped, env)?;
         }
         Ok(())
+    }
+
+    /// The untaxed amount, the tax and the total of each line.
+    pub fn compute_amounts(&self, env: &mut Environment) -> Result<()> {
+        for line in self {
+            let invoice = line.invoice(env)?;
+            if invoice.is_empty() {
+                line.set_price_subtotal(Decimal::ZERO, env)?;
+                line.set_price_tax(Decimal::ZERO, env)?;
+                line.set_price_total(Decimal::ZERO, env)?;
+                continue;
+            }
+            let result = line.taxed(env, TaxDocument::Invoice)?;
+            line.set_price_subtotal(result.subtotal, env)?;
+            line.set_price_tax(result.total - result.subtotal, env)?;
+            line.set_price_total(result.total, env)?;
+        }
+        Ok(())
+    }
+
+    /// Lines of a posted invoice are what was declared: they change only once it is back to
+    /// draft.
+    pub fn write(
+        &self,
+        env: &mut Environment,
+        values: erp::types::model::MapOfFields,
+        sup: Super,
+    ) -> Result<()> {
+        for line in self {
+            let invoice = line.invoice(env)?;
+            if !invoice.is_empty() && !invoice.is_draft(env)? {
+                return Err(format!(
+                    "{} is no longer a draft: reset it to draft to change its lines",
+                    invoice.get_name(env)?
+                )
+                .into());
+            }
+        }
+        sup.call_with(values, env)
     }
 }
 

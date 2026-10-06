@@ -61,7 +61,13 @@ pub struct SaleOrderLine<Mode: IdMode> {
     price_unit: Decimal,
     #[erp(label = "Discount (%)", default = 0.0)]
     discount: Decimal,
-    #[erp(relation = "sale_order_line_tax_rel")]
+    #[erp(
+        compute = "compute_taxes",
+        depends = ["product"],
+        stored,
+        editable,
+        relation = "sale_order_line_tax_rel"
+    )]
     taxes: Reference<BaseAccountTax, MultipleIds>,
     #[erp(
         label = "Untaxed",
@@ -185,6 +191,29 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
+    /// The product's customer taxes as the order's fiscal position maps them; none without a
+    /// product. Taxes given by hand stay until the product changes.
+    pub fn compute_taxes(&self, env: &mut Environment) -> Result<()> {
+        for line in self {
+            let product = line.product_record(env)?;
+            if product.is_empty() {
+                line.set_taxes(&Tax::<MultipleIds>::from_ids(Vec::<u32>::new(), env), env)?;
+                continue;
+            }
+            let taxes: Tax<MultipleIds> = {
+                let env = &mut *env.sudo();
+                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
+                product.get_taxes(env)?
+            };
+            let order: SaleOrder<SingleId> = line.get_order(env)?;
+            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            line.set_taxes(&mapped, env)?;
+        }
+        Ok(())
+    }
+
     pub fn compute_amounts(&self, env: &mut Environment) -> Result<()> {
         for line in self {
             let order: SaleOrder<SingleId> = line.get_order(env)?;
@@ -268,7 +297,7 @@ impl SaleOrderLine<MultipleIds> {
         Ok(())
     }
 
-    /// A line given a product and no taxes gets the product's; a quantity is not negative.
+    /// A quantity is not negative.
     pub fn create(
         &self,
         env: &mut Environment,
@@ -283,23 +312,11 @@ impl SaleOrderLine<MultipleIds> {
                 return Err("An order line's quantity is not negative".into());
             }
         }
-        let untaxed: Vec<usize> = values
-            .iter()
-            .enumerate()
-            .filter(|(_, line)| !line.contains_key("taxes") && line.contains_key("product"))
-            .map(|(index, _)| index)
-            .collect();
-        let ids: MultipleIds = sup.call_with(values, env)?;
-        let untaxed: Vec<u32> = untaxed
-            .into_iter()
-            .filter_map(|index| ids.get_ids_ref().get(index).copied())
-            .collect();
-        SaleOrderLine::<MultipleIds>::from_ids(untaxed, env).apply_product_taxes(env)?;
-        Ok(ids)
+        sup.call_with(values, env)
     }
 
     /// Lines of a cancelled order stay as they are; those of a confirmed order keep their
-    /// product; a line given another product and no taxes gets the product's.
+    /// product.
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
         if values
             .get_option::<&Decimal>("product_uom_qty")
@@ -338,12 +355,7 @@ impl SaleOrderLine<MultipleIds> {
                 }
             }
         }
-        let retaxed = values.contains_key("product") && !values.contains_key("taxes");
-        sup.call_with(values, env)?;
-        if retaxed {
-            self.apply_product_taxes(env)?;
-        }
-        Ok(())
+        sup.call_with(values, env)
     }
 
     /// Lines invoiced already stay on their order.
@@ -358,26 +370,5 @@ impl SaleOrderLine<MultipleIds> {
             }
         }
         sup.call(env)
-    }
-
-    /// The product's customer taxes as the order's fiscal position maps them.
-    pub fn apply_product_taxes(&self, env: &mut Environment) -> Result<()> {
-        for line in self {
-            let product = line.product_record(env)?;
-            if product.is_empty() {
-                continue;
-            }
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
-                product.get_taxes(env)?
-            };
-            let order: SaleOrder<SingleId> = line.get_order(env)?;
-            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
-            line.set_taxes(&mapped, env)?;
-        }
-        Ok(())
     }
 }
