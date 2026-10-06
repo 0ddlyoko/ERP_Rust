@@ -1,4 +1,4 @@
-use crate::models::{BaseGroup, Group, Users};
+use crate::models::{BaseGroup, Group, ModelData, Users};
 use code_gen::Model;
 use erp::Result;
 use erp::access::{Rule, RuleSource};
@@ -109,14 +109,17 @@ impl AccessRule<SingleId> {
     /// Refuse a rule holding a domain that does not parse, and warn of one naming a model that
     /// does not exist.
     ///
-    /// Only a warning: at start-up, the rules of a plugin not loaded yet name models registered
-    /// once it is. A mistyped model name shows up in the log rather than in rights silently
-    /// missing — or, for a global rule, a restriction silently not applied.
+    /// Only a warning, and not for the rules of a plugin not loaded yet: they name models
+    /// registered once it is. A mistyped model name shows up in the log rather than in rights
+    /// silently missing — or, for a global rule, a restriction silently not applied.
     fn check_all(env: &mut Environment) -> Result<()> {
         let all: AccessRule<MultipleIds> = env.search(&SearchType::Nothing)?;
+        let not_loaded = ModelData::of_plugins_not_loaded(env, "access_rule")?;
         for rule in all {
             let model = rule.get_model(env)?.clone();
-            if env.model_manager.try_get_model(&model).is_err() {
+            if env.model_manager.try_get_model(&model).is_err()
+                && !not_loaded.contains(&rule.get_id())
+            {
                 let name = rule.get_name(env)?.clone();
                 tracing::warn!(
                     rule = rule.get_id(),

@@ -4,11 +4,13 @@
 use account::AccountPlugin;
 use account::testing::TestChartPlugin;
 use base::BasePlugin;
+use base::models::View;
 use contacts::ContactsPlugin;
 use currency::CurrencyPlugin;
 use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
+use erp::plugin::Plugin;
 use erp::types::field::Decimal;
 use erp_test_support::{admin_env, d, user_env, xml_id};
 use mail::MailPlugin;
@@ -19,23 +21,24 @@ use serde_json::{Value, json};
 use uom::UomPlugin;
 use web::WebPlugin;
 
+fn plugins() -> Vec<Box<dyn Plugin>> {
+    vec![
+        Box::new(BasePlugin {}),
+        Box::new(WebPlugin {}),
+        Box::new(MailPlugin {}),
+        Box::new(ContactsPlugin {}),
+        Box::new(UomPlugin {}),
+        Box::new(CurrencyPlugin {}),
+        Box::new(SequencePlugin {}),
+        Box::new(ProductPlugin {}),
+        Box::new(AccountPlugin {}),
+        Box::new(TestChartPlugin {}),
+        Box::new(SalePlugin {}),
+    ]
+}
+
 fn new_app() -> Result<Application> {
-    let mut app = erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(ContactsPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(CurrencyPlugin {}),
-            Box::new(SequencePlugin {}),
-            Box::new(ProductPlugin {}),
-            Box::new(AccountPlugin {}),
-            Box::new(TestChartPlugin {}),
-            Box::new(SalePlugin {}),
-        ],
-        "sale",
-    )?;
+    let mut app = erp_test_support::app(plugins(), "sale")?;
     app.load_plugin("account_test_chart")?;
     Ok(app)
 }
@@ -663,5 +666,25 @@ fn test_views_and_menus() -> Result<()> {
         sections,
         vec!["Orders", "To invoice", "Products", "Configuration"]
     );
+    Ok(())
+}
+
+/// The application loaded again, as once more plugins are installed: the plugins sales builds
+/// on load before it, while its view of a contact, showing the pricelist, is already there.
+#[test]
+fn test_loading_again() -> Result<()> {
+    let app = new_app()?;
+    let mut next = app.successor();
+    for plugin in plugins() {
+        next.register_plugin(plugin)?;
+    }
+    next.load()?;
+    let mut env = admin_env(&next)?;
+    let arch = env.get_empty_record::<View<_>>().load(
+        &mut env,
+        "contact".to_string(),
+        "form".to_string(),
+    )?;
+    assert!(arch.contains("pricelist"), "{arch}");
     Ok(())
 }

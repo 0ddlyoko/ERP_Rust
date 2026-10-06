@@ -1,3 +1,4 @@
+use crate::models::ModelData;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -6,7 +7,7 @@ use erp::internal_types::FinalInternalModel;
 use erp::search::SearchType;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::xml::{Element, Node, to_markup};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// How a model's records are shown — a list, a form — described in XML in a plugin's `views/`.
 ///
@@ -50,10 +51,18 @@ struct Views {
 impl Views {
     /// Read every view, as sudo: views are the client's code, not anybody's data.
     fn load(env: &mut Environment) -> Result<Self> {
+        Self::load_without(env, &HashSet::new())
+    }
+
+    /// Same, leaving out the views of these ids.
+    fn load_without(env: &mut Environment, left_out: &HashSet<u32>) -> Result<Self> {
         let env = &mut *env.sudo();
         let all: View<MultipleIds> = env.search(&SearchType::Nothing)?;
         let mut rows = Vec::new();
         for view in all {
+            if left_out.contains(&view.get_id()) {
+                continue;
+            }
             let inherit = view.get_inherit::<View<SingleId>>(env)?.get_optional_id();
             let label = match view.get_name(env)? {
                 Some(name) => format!("View {name}"),
@@ -509,9 +518,11 @@ impl View<SingleId> {
     /// field — shown, or named in a label's `{{ field }}` — its model lacks.
     ///
     /// Run once any plugin has loaded, so a view shipped by a later plugin is checked too. A view
-    /// of a model not registered yet is left for when its plugin loads.
+    /// of a model not registered yet is left for when its plugin loads, and so is a view of an
+    /// installed plugin that has not loaded yet: it may show a field that plugin adds.
     pub fn on_plugin_loaded(env: &mut Environment, _plugin: &str) -> Result<()> {
-        for view in Views::load(env)?.resolved()? {
+        let not_loaded = ModelData::of_plugins_not_loaded(env, "view")?;
+        for view in Views::load_without(env, &not_loaded)?.resolved()? {
             let Ok(model) = env.model_manager.try_get_model(&view.model) else {
                 continue;
             };
