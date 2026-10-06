@@ -1,3 +1,4 @@
+import { namesRead } from "@web/core/expression";
 import type { Column } from "@web/views/view";
 
 /** What a form's XML becomes: a Trame template, and the columns and texts it refers to by index. */
@@ -13,41 +14,6 @@ export interface CompiledForm {
 export interface FormButton {
     name: string;
     type: "method" | "action";
-}
-
-/** Names an expression may read without being fields: the language's own, and a few globals. */
-const EXPRESSION_WORDS = new Set([
-    "true", "false", "null", "undefined", "typeof", "instanceof", "in", "of", "new", "void",
-    "NaN", "Infinity", "Math", "Number", "String", "Boolean", "Array", "Date", "JSON", "Object",
-]);
-
-/**
- * The names a condition reads: what is left once strings, numbers, properties (`.includes`), the
- * language's words and the parameters of arrow functions (`x => x.id`) are set aside. The server
- * reads them the same way, to refuse one its model lacks.
- */
-export function namesRead(expression: string): string[] {
-    const parameters = new Set<string>();
-    for (const match of expression.matchAll(/(?:\(([^()]*)\)|([A-Za-z_$][\w$]*))\s*=>/g)) {
-        for (const name of (match[1] ?? match[2]).split(",")) {
-            if (name.trim()) {
-                parameters.add(name.trim());
-            }
-        }
-    }
-    const withoutStrings = expression.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, " ");
-    const names: string[] = [];
-    for (const match of withoutStrings.matchAll(/(\.\s*)?([A-Za-z_$][\w$]*)/g)) {
-        const [, property, name] = match;
-        const before = withoutStrings[match.index - 1];
-        if (property || (before !== undefined && /\d/.test(before)) || EXPRESSION_WORDS.has(name) || parameters.has(name)) {
-            continue;
-        }
-        if (!names.includes(name)) {
-            names.push(name);
-        }
-    }
-    return names;
 }
 
 function escape(text: string): string {

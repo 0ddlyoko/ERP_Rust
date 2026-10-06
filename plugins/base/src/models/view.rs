@@ -148,9 +148,14 @@ const CONTENTS: &[&str] = &[
     "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "totals",
 ];
 const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
+/// The colours a `decoration-*` attribute may name.
+const DECORATIONS: &[&str] = &["success", "info", "warning", "danger", "muted"];
 
 impl Arch<'_> {
     fn check(&self, root: &Element) -> std::result::Result<(), String> {
+        if root.name == "list" {
+            self.decorations(root)?;
+        }
         let allowed: &[&str] = match root.name.as_str() {
             "list" => &["field", "buttons"],
             "search" => &["field", "filter"],
@@ -210,6 +215,9 @@ impl Arch<'_> {
         }
         if let Some(domain) = element.attribute("domain") {
             self.domain(domain)?;
+        }
+        if element.name == "field" {
+            self.decorations(element)?;
         }
         if let Some(nolabel) = element.attribute("nolabel")
             && !matches!(nolabel, "0" | "1")
@@ -315,6 +323,24 @@ impl Arch<'_> {
             }
             self.known(name)?;
             rest = &after[end + 2..];
+        }
+        Ok(())
+    }
+
+    /// `decoration-success="state === 'done'"` and its kin: a colour the client knows, and a
+    /// condition reading fields of the model.
+    fn decorations(&self, element: &Element) -> std::result::Result<(), String> {
+        for (attribute, expression) in &element.attributes {
+            let Some(kind) = attribute.strip_prefix("decoration-") else {
+                continue;
+            };
+            if !DECORATIONS.contains(&kind) {
+                return Err(self.error(format!(
+                    "{attribute} is no decoration: {}",
+                    DECORATIONS.join(", ")
+                )));
+            }
+            self.condition(attribute, expression)?;
         }
         Ok(())
     }

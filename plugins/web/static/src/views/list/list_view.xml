@@ -107,9 +107,7 @@
                                     <tr t-elif="line.kind === 'loading'" class="o_list_empty">
                                         <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
                                     </tr>
-                                    <tr t-else=""
-                                        t-att-class="{ o_list_row: true, o_list_grouped: grouping !== null, selected: selected.has(idOf(line.record)) }"
-                                        t-on-click="() => choose(line.record)">
+                                    <tr t-else="" t-att-class="rowClass(line.record)" t-on-click="() => choose(line.record)">
                                         <td class="o_list_select" t-on-click.stop="() => {}">
                                             <input type="checkbox" aria-label="Select this row"
                                                    t-att-checked="selected.has(idOf(line.record))"

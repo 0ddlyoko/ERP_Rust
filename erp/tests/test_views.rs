@@ -285,15 +285,17 @@ fn test_a_search_and_list_buttons_are_shown_as_written() -> Result<()> {
                 <filter name="archived" string="Archived" domain='["|", ["active", "=", false], ["groups.name", "=", "x"]]'/>
                 <filter name="by_creation" string="Created" group_by="create_date:month"/>
             </search></view>
-            <view id="buttons" name="buttons" model="users" priority="1"><list>
+            <view id="buttons" name="buttons" model="users" priority="1"><list decoration-muted="!active">
                 <buttons><button name="me" type="method" string="Me"/></buttons>
                 <field name="name"/>
+                <field name="active" widget="badge" decoration-success="active"/>
             </list></view>
         </erp>"#],
     )?;
     assert!(view_of(&app, "users", "search")?.contains("archived"));
     assert!(view_of(&app, "users", "search")?.contains("by_creation"));
     assert!(view_of(&app, "users", "list")?.contains("<buttons>"));
+    assert!(view_of(&app, "users", "list")?.contains("decoration-muted"));
     Ok(())
 }
 
@@ -344,6 +346,42 @@ fn test_what_a_search_may_not_hold_is_refused() -> Result<()> {
             .expect_err("refused")
             .to_string();
         assert!(error.contains(expected), "{search}: {error}");
+    }
+    Ok(())
+}
+
+/// A decoration names a colour the client knows, and reads fields of the model.
+#[test]
+fn test_what_a_list_may_not_decorate_is_refused() -> Result<()> {
+    for (list, expected) in [
+        (
+            r#"<list decoration-pink="active"><field name="name"/></list>"#,
+            "decoration-pink is no decoration",
+        ),
+        (
+            r#"<list decoration-muted="!actif"><field name="name"/></list>"#,
+            "reads \"actif\"",
+        ),
+        (
+            r#"<list><field name="name" decoration-danger="logn === 'x'"/></list>"#,
+            "reads \"logn\"",
+        ),
+    ] {
+        let data: &'static str = Box::leak(
+            format!(r#"<erp><view id="bad" name="bad" model="users">{list}</view></erp>"#)
+                .into_boxed_str(),
+        );
+        let data: &'static [&'static str] = Box::leak(vec![data].into_boxed_slice());
+        let mut app = new_app()?;
+        app.register_plugin(Box::new(DataPlugin {
+            name: "bad_list",
+            data,
+        }))?;
+        let error = app
+            .load_plugin("bad_list")
+            .expect_err("refused")
+            .to_string();
+        assert!(error.contains(expected), "{list}: {error}");
     }
     Ok(())
 }

@@ -1,0 +1,10 @@
+<templates>
+    <t t-name="web.BadgeWidget">
+        <select t-if="editable" t-att-class="className + ' o_input'" t-on-change="(ev) => choose(ev.target.value)">
+            <option t-if="offersNothing" value="" t-att-selected="isEmpty"/>
+            <option t-foreach="choices" t-as="choice" t-key="choice[0]" t-att-value="choice[0]"
+                    t-att-selected="choice[0] === value">{{ choice[1] }}</option>
+        </select>
+        <span t-elif="!isEmpty" t-att-class="className + ' o_badge o_badge_' + decoration">{{ text }}</span>
+    </t>
+</templates>

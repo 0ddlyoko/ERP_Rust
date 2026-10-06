@@ -468,3 +468,66 @@ body.o_resizing * {
     margin-top: 4px;
     font-size: 13px;
 }
+
+/* A value as a coloured pill, and rows coloured as their record stands */
+
+.o_badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.o_badge_default {
+    background: #f2f4f7;
+    color: #344054;
+}
+
+.o_badge_success {
+    background: #ecfdf3;
+    color: #067647;
+}
+
+.o_badge_info {
+    background: #eff8ff;
+    color: #175cd3;
+}
+
+.o_badge_warning {
+    background: #fffaeb;
+    color: #b54708;
+}
+
+.o_badge_danger {
+    background: #fef3f2;
+    color: #b42318;
+}
+
+.o_badge_muted {
+    background: #f9fafb;
+    color: #98a2b3;
+}
+
+.o_list_decoration_muted td {
+    color: #98a2b3;
+}
+
+.o_list_decoration_danger td {
+    color: #b42318;
+}
+
+.o_list_decoration_warning td {
+    color: #b54708;
+}
+
+.o_list_decoration_success td {
+    color: #067647;
+}
+
+.o_list_decoration_info td {
+    color: #175cd3;
+}

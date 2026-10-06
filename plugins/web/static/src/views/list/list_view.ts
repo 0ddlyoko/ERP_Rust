@@ -1,5 +1,6 @@
 import { type ComponentClass, computed, effect, inject, load, loading, props, refresh, resource, state, t } from "trame";
 import { and } from "@web/core/domain";
+import { decorationNames, decorationOf } from "@web/core/expression";
 import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
@@ -88,6 +89,35 @@ export class ListView extends View {
 
     get tableStyle(): string {
         return tableStyle(this.widths);
+    }
+
+    /** The attributes of the `<list>` element, whose decorations colour the rows. */
+    @computed get listAttrs(): Record<string, string> {
+        return Object.fromEntries(Array.from(this.archRoot?.attributes ?? [], (attr) => [attr.name, attr.value]));
+    }
+
+    /** The fields read with the rows besides those shown: what their decorations read. */
+    @computed get extraNames(): string[] {
+        const fields = this.fields ?? {};
+        const names = [
+            ...decorationNames(this.listAttrs),
+            ...this.columns.flatMap((column) => decorationNames(column.attrs)),
+            ...companionFields(this.columns, fields),
+        ];
+        return [...new Set(names)].filter((name) => name in fields && !this.columns.some((column) => column.name === name));
+    }
+
+    /** The class of a record's row: selected, and coloured as the list's decorations say. */
+    rowClass(record: Values): string {
+        const decoration = decorationOf(this.listAttrs, record);
+        return [
+            "o_list_row",
+            this.grouping !== null ? "o_list_grouped" : "",
+            this.selected.has(this.idOf(record)) ? "selected" : "",
+            decoration === null ? "" : `o_list_decoration_${decoration}`,
+        ]
+            .filter(Boolean)
+            .join(" ");
     }
 
     /** Remember the list once its rows are there; reading them sooner would hold the view back. */
@@ -232,7 +262,7 @@ export class ListView extends View {
             return;
         }
         this.openGroups.set(key, null);
-        const fields = [...this.columns.map((column) => column.name), ...companionFields(this.columns, this.fields ?? {})];
+        const fields = [...this.columns.map((column) => column.name), ...this.extraNames];
         const order = this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`];
         try {
             const records = await this.orm.searchRead(this.props.resModel, and([this.domain, group.domain]), fields, {
@@ -285,7 +315,7 @@ export class ListView extends View {
     @resource accessor records: Values[] = load(
         () => ({
             model: this.props.resModel,
-            fields: [...this.columns.map((column) => column.name), ...companionFields(this.columns, this.fields ?? {})],
+            fields: [...this.columns.map((column) => column.name), ...this.extraNames],
             domain: this.domain,
             order: this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`],
             limit: this.props.limit,
