@@ -720,11 +720,7 @@ impl Move<MultipleIds> {
                         .into());
                     }
                 }
-                env.sudo().write(
-                    "account_move",
-                    &SingleId::from(entry.get_id()),
-                    state_values(MoveState::Draft),
-                )?;
+                entry.set_state(MoveState::Draft, &mut env.sudo())?;
                 if entry.get_move_type(env)?.is_invoice() {
                     entry.clear_items(env)?;
                 }
@@ -745,11 +741,7 @@ impl Move<MultipleIds> {
                     )
                     .into());
                 }
-                env.sudo().write(
-                    "account_move",
-                    &SingleId::from(entry.get_id()),
-                    state_values(MoveState::Cancel),
-                )?;
+                entry.set_state(MoveState::Cancel, &mut env.sudo())?;
             }
             Ok(true)
         })
@@ -831,13 +823,6 @@ impl Move<MultipleIds> {
     pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
         Ok(())
     }
-}
-
-/// The values changing an entry's state.
-fn state_values(state: MoveState) -> MapOfFields {
-    let mut values = MapOfFields::default();
-    values.insert("state", state);
-    values
 }
 
 impl Move<SingleId> {
@@ -944,11 +929,11 @@ impl Move<SingleId> {
             self.clear_items(env)?;
             Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
                 .assign_payment_reference(env)?;
-            let items = self.invoice_items(env)?;
-            let mut values = MapOfFields::default();
-            values.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
-            env.sudo()
-                .write("account_move", &SingleId::from(self.get_id()), values)?;
+            let mut items = self.invoice_items(env)?;
+            for item in &mut items {
+                item.insert("move_id", self.get_id());
+            }
+            let _: MoveLine<MultipleIds> = env.sudo().create_new_records_from_maps(items)?;
         }
         let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
         if lines.get_ids_ref().len() < 2 {
@@ -965,11 +950,7 @@ impl Move<SingleId> {
         if debit.is_zero() && !move_type.is_invoice() {
             return Err(format!("{} records nothing", self.get_name(env)?).into());
         }
-        env.sudo().write(
-            "account_move",
-            &SingleId::from(self.get_id()),
-            state_values(MoveState::Posted),
-        )?;
+        self.set_state(MoveState::Posted, &mut env.sudo())?;
         Ok(())
     }
 
