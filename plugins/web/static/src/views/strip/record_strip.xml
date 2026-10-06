@@ -33,7 +33,13 @@
                 <t t-else="">
                     <header class="o_strip_head">
                         <h2 class="o_strip_title">{{ props.action.name }}<span class="o_strip_count">{{ count }}</span></h2>
-                        <button type="button" class="o_strip_button" title="Fold the list" aria-label="Fold the list" t-on-click="fold">
+                        <button t-if="folded &amp;&amp; !narrowScreen" type="button" class="o_strip_button" title="Keep the list open"
+                                aria-label="Keep the list open" t-on-click="unfold">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                        </button>
+                        <button t-elif="!folded" type="button" class="o_strip_button" title="Fold the list" aria-label="Fold the list"
+                                t-on-click="fold">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
                         </button>

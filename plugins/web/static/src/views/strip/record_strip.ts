@@ -70,7 +70,8 @@ function periodStart(day: string, period: string): string {
  * with the records: resting on one asks the server nothing.
  *
  * Folded or open, and how wide, is kept per action by the browser; on a narrow screen it keeps
- * folded. Folded, it opens over the form while the pointer rests on its top.
+ * folded. Folded, it opens over the form while the pointer rests on its top, offering to stay
+ * open rather than to fold again.
  */
 export class RecordStrip extends View {
     static template = "web.RecordStrip";
