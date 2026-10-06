@@ -59,32 +59,9 @@ impl ProductCategory<MultipleIds> {
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        let renames = values.contains_key("name") || values.contains_key("parent");
         env.savepoint(|env| {
             sup.call_with(values, env)?;
-            self.check_no_cycle(env)?;
-            if renames {
-                self.rename_descendants(env)?;
-            }
-            Ok(())
+            self.check_no_cycle(env)
         })
-    }
-
-    /// Name the subcategories again, a level at a time from the top: the ORM recomputes the
-    /// children of a renamed category, not their own children.
-    pub fn rename_descendants(&self, env: &mut Environment) -> Result<()> {
-        let mut level: Vec<u32> = self.get_ids_ref().clone();
-        while !level.is_empty() {
-            let mut next = Vec::new();
-            for id in level {
-                let category: ProductCategory<SingleId> = env.get_record(id.into());
-                let children: ProductCategory<MultipleIds> = category.get_children(env)?;
-                next.extend(children.get_ids_ref().iter().copied());
-            }
-            ProductCategory::<MultipleIds>::from_ids(next.clone(), env)
-                .compute_complete_name(env)?;
-            level = next;
-        }
-        Ok(())
     }
 }
