@@ -70,6 +70,8 @@
             <filter name="can_be_purchased" string="Can be purchased" domain='[["purchase_ok", "=", true]]'/>
             <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
             <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+            <filter name="by_category" string="Category" group_by="category"/>
+            <filter name="by_type" string="Product type" group_by="product_type"/>
         </search>
     </view>
     <action id="action_products" name="Products" model="product" views="list,form"/>

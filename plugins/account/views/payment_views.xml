@@ -9,7 +9,7 @@
             <field name="partner"/>
             <field name="journal"/>
             <field name="memo"/>
-            <field name="amount" widget="monetary"/>
+            <field name="amount" widget="monetary" sum="Total"/>
             <field name="state"/>
         </list>
     </view>
@@ -59,6 +59,10 @@
             <field name="memo"/>
             <filter name="draft" string="Draft" domain='[["state", "=", "draft"]]'/>
             <filter name="posted" string="Confirmed" domain='[["state", "=", "posted"]]'/>
+            <filter name="by_partner" string="Partner" group_by="partner"/>
+            <filter name="by_journal" string="Journal" group_by="journal"/>
+            <filter name="by_status" string="Status" group_by="state"/>
+            <filter name="by_month" string="Date" group_by="date:month"/>
         </search>
     </view>
     <action id="action_payments_received" name="Payments received" model="account_payment" views="list,form"

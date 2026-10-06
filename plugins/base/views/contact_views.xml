@@ -66,6 +66,8 @@
             <filter name="companies" string="Companies" domain='[["is_company", "=", true]]'/>
             <filter name="active" string="Active" domain='[["active", "=", true]]' default="1"/>
             <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+            <filter name="by_country" string="Country" group_by="country"/>
+            <filter name="by_kind" string="Company" group_by="is_company"/>
         </search>
     </view>
     <action id="action_contacts" name="Contacts" model="contact" views="list,form"/>

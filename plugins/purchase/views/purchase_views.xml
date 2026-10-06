@@ -10,8 +10,8 @@
             <field name="partner"/>
             <field name="partner_ref"/>
             <field name="date_planned"/>
-            <field name="amount_untaxed" widget="monetary"/>
-            <field name="amount_total" widget="monetary"/>
+            <field name="amount_untaxed" widget="monetary" sum="Total"/>
+            <field name="amount_total" widget="monetary" sum="Total"/>
             <field name="state"/>
             <field name="bill_status"/>
         </list>
@@ -79,6 +79,10 @@
             <filter name="orders" string="Purchase orders" domain='[["state", "=", "purchase"]]'/>
             <filter name="to_bill" string="Waiting bills" domain='[["bill_status", "=", "to_bill"]]'/>
             <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+            <filter name="by_vendor" string="Vendor" group_by="partner"/>
+            <filter name="by_buyer" string="Buyer" group_by="user"/>
+            <filter name="by_status" string="Status" group_by="state"/>
+            <filter name="by_month" string="Order date" group_by="date_order:month"/>
         </search>
     </view>
     <action id="action_requests" name="Requests for quotation" model="purchase_order" views="list,form"

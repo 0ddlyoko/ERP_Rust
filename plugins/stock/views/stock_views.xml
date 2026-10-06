@@ -71,6 +71,10 @@
             <filter name="waiting" string="Waiting" domain='[["state", "=", "confirmed"]]'/>
             <filter name="done" string="Done" domain='[["state", "=", "done"]]'/>
             <filter name="to_do" string="To do" domain='[["state", "in", ["draft", "confirmed", "assigned"]]]' default="1"/>
+            <filter name="by_status" string="Status" group_by="state"/>
+            <filter name="by_type" string="Operation type" group_by="picking_type"/>
+            <filter name="by_contact" string="Contact" group_by="partner"/>
+            <filter name="by_day" string="Scheduled date" group_by="scheduled_date:day"/>
         </search>
     </view>
     <action id="action_pickings" name="Transfers" model="stock_picking" views="list,form"/>

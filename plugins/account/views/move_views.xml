@@ -10,9 +10,9 @@
             <field name="invoice_date"/>
             <field name="invoice_date_due"/>
             <field name="reference"/>
-            <field name="amount_untaxed" widget="monetary"/>
-            <field name="amount_total" widget="monetary"/>
-            <field name="amount_residual" widget="monetary"/>
+            <field name="amount_untaxed" widget="monetary" sum="Total"/>
+            <field name="amount_total" widget="monetary" sum="Total"/>
+            <field name="amount_residual" widget="monetary" sum="Total"/>
             <field name="payment_state"/>
             <field name="state"/>
         </list>
@@ -96,6 +96,11 @@
             <filter name="to_pay" string="Not paid" domain='[["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]]]'/>
             <filter name="paid" string="Paid" domain='[["payment_state", "=", "paid"]]'/>
             <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+            <filter name="by_partner" string="Partner" group_by="partner"/>
+            <filter name="by_status" string="Status" group_by="state"/>
+            <filter name="by_payment" string="Payment status" group_by="payment_state"/>
+            <filter name="by_journal" string="Journal" group_by="journal"/>
+            <filter name="by_month" string="Invoice date" group_by="invoice_date:month"/>
         </search>
     </view>
     <action id="action_move_out_invoice" name="Invoices" model="account_move" views="list,form"

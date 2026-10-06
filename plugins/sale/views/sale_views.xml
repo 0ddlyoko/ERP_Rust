@@ -9,8 +9,8 @@
             <field name="date_order"/>
             <field name="partner"/>
             <field name="user"/>
-            <field name="amount_untaxed" widget="monetary"/>
-            <field name="amount_total" widget="monetary"/>
+            <field name="amount_untaxed" widget="monetary" sum="Total"/>
+            <field name="amount_total" widget="monetary" sum="Total"/>
             <field name="state"/>
             <field name="invoice_status"/>
         </list>
@@ -80,6 +80,10 @@
             <filter name="orders" string="Sales orders" domain='[["state", "=", "sale"]]'/>
             <filter name="to_invoice" string="To invoice" domain='[["invoice_status", "=", "to_invoice"]]'/>
             <filter name="cancelled" string="Cancelled" domain='[["state", "=", "cancel"]]'/>
+            <filter name="by_customer" string="Customer" group_by="partner"/>
+            <filter name="by_salesperson" string="Salesperson" group_by="user"/>
+            <filter name="by_status" string="Status" group_by="state"/>
+            <filter name="by_month" string="Order date" group_by="date_order:month"/>
         </search>
     </view>
     <action id="action_quotations" name="Quotations" model="sale_order" views="list,form"
