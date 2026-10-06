@@ -1,28 +1,34 @@
 .o_list_view {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .o_control_panel {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .o_button_primary {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 42px;
-    padding: 0 16px;
-    border: 0;
-    border-radius: 10px;
+    height: var(--o-control-height);
+    padding: 0 14px;
+    border: 1px solid var(--o-accent);
+    border-radius: var(--o-radius-control);
     background: var(--o-accent);
     color: #ffffff;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.o_button_primary:hover:not(:disabled) {
+    border-color: var(--o-accent-strong);
+    background: var(--o-accent-strong);
 }
 
 .o_button_primary:disabled {
@@ -36,11 +42,11 @@
     align-items: center;
     gap: 8px;
     min-width: 240px;
-    height: 42px;
-    padding: 0 12px;
+    height: var(--o-control-height);
+    padding: 0 10px;
     box-sizing: border-box;
     border: 1px solid var(--o-input-border);
-    border-radius: 10px;
+    border-radius: var(--o-radius-control);
     background: var(--o-surface);
     color: var(--o-muted);
 }
@@ -78,12 +84,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border: 1px solid var(--o-input-border);
     border-radius: var(--o-radius-control);
     background: var(--o-surface);
-    color: #3a4659;
+    color: var(--o-label);
 }
 
 .o_pager_button:disabled {
@@ -96,6 +102,7 @@
     border: 1px solid var(--o-border);
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
+    box-shadow: var(--o-shadow-card);
 }
 
 .o_list_table {
@@ -105,10 +112,10 @@
 }
 
 .o_list_table th {
-    padding: 12px 10px;
-    border-bottom: 1px solid #e6eaf0;
-    background: #f7f9fb;
-    color: var(--o-label);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--o-border);
+    background: var(--o-head);
+    color: var(--o-muted);
     font-size: 12px;
     font-weight: 600;
     text-align: left;
@@ -116,9 +123,10 @@
 }
 
 .o_list_table td {
-    height: 52px;
-    padding: 0 10px;
-    border-bottom: 1px solid var(--o-ground);
+    height: 38px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--o-row-line);
+    white-space: nowrap;
 }
 
 .o_list_table tbody tr:last-child td {
@@ -130,7 +138,7 @@
 }
 
 .o_list_row:hover td {
-    background: #fbfcfd;
+    background: #f9fafb;
 }
 
 .o_list_row.selected td {
@@ -138,8 +146,9 @@
 }
 
 .o_list_table .o_list_select {
-    width: 28px;
-    padding-left: 20px;
+    width: 18px;
+    padding-left: 14px;
+    padding-right: 4px;
 }
 
 .o_list_select input,
@@ -160,6 +169,7 @@
 }
 
 .o_list_empty td {
+    height: 96px;
     color: var(--o-muted);
     text-align: center;
 }
@@ -176,17 +186,17 @@
 .o_search_bar .o_search {
     flex-wrap: wrap;
     height: auto;
-    min-height: 42px;
-    padding: 4px 12px;
+    min-height: var(--o-control-height);
+    padding: 3px 10px;
 }
 
 .o_facet {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 26px;
-    padding: 0 6px 0 10px;
-    border-radius: 999px;
+    height: 22px;
+    padding: 0 4px 0 8px;
+    border-radius: 4px;
     background: color-mix(in oklch, var(--o-accent) 14%, white);
     color: color-mix(in oklch, var(--o-accent) 70%, black);
     font-size: 12px;

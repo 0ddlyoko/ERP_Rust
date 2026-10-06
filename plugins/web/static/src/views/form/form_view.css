@@ -2,7 +2,7 @@
 .o_form_body {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
 }
 
 .o_form_bar {
@@ -17,14 +17,21 @@
 }
 
 .o_button_secondary {
-    height: 42px;
-    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    height: var(--o-control-height);
+    padding: 0 12px;
     border: 1px solid var(--o-input-border);
-    border-radius: 11px;
+    border-radius: var(--o-radius-control);
     background: var(--o-surface);
     color: var(--o-ink);
     font-size: 13px;
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.o_button_secondary:hover:not(:disabled) {
+    background: var(--o-head);
 }
 
 .o_button_secondary:disabled {
@@ -44,25 +51,25 @@
 .o_form_layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
+    gap: 14px;
     align-items: start;
 }
 
 .o_form_layout.o_form_with_side {
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 320px;
 }
 
 .o_form_main,
 .o_form_side {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
     min-width: 0;
 }
 
 .o_form_side {
     position: sticky;
-    top: 18px;
+    top: 14px;
 }
 
 .o_form_side .o_form_grid {
@@ -88,47 +95,62 @@
 .o_form_card {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    padding: 22px;
+    gap: 14px;
+    padding: 18px 20px;
     border: 1px solid var(--o-border);
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
+    box-shadow: var(--o-shadow-card);
 }
 
 .o_form_section {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
     min-width: 0;
 }
 
 .o_form_block_title {
     margin: 0;
-    font-size: 15px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--o-row-line);
+    color: var(--o-muted);
+    font-size: 11.5px;
     font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 .o_form_grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px 20px;
+    gap: 4px 36px;
 }
 
 .o_form_full {
     grid-column: 1 / -1;
 }
 
+/* A field with its label beside it; one without, as a list of lines, the whole width. */
 .o_form_field {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: var(--o-control-height);
+}
+
+.o_form_field:not(:has(> .o_form_label)) {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 0;
+    align-items: stretch;
 }
 
 .o_form_label {
     color: var(--o-label);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .o_form_required > .o_form_label::after {
@@ -149,12 +171,13 @@
 .o_form_field .o_widget {
     display: flex;
     align-items: center;
-    min-height: 40px;
+    min-height: var(--o-control-height);
 }
 
 .o_input {
-    height: 40px;
-    padding: 0 12px;
+    width: 100%;
+    height: var(--o-control-height);
+    padding: 0 10px;
     box-sizing: border-box;
     border: 1px solid var(--o-input-border);
     border-radius: var(--o-radius-control);
@@ -180,24 +203,31 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: -0.02em;
 }
 
 .o_form_heading .o_input {
     flex-grow: 1;
     height: auto;
-    padding: 4px 8px;
-    border-color: transparent;
-    font-weight: 800;
+    padding: 2px 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    font-weight: 700;
 }
 
 .o_form_heading .o_input:hover {
-    border-color: var(--o-input-border);
+    border-bottom-color: var(--o-input-border);
 }
 
-.o_form_h1 { font-size: 28px; }
-.o_form_h2 { font-size: 22px; }
+.o_form_heading .o_input:focus {
+    border-bottom-color: var(--o-accent);
+    outline: none;
+}
+
+.o_form_h1 { font-size: 24px; }
+.o_form_h2 { font-size: 20px; }
 .o_form_h3 { font-size: 18px; }
 .o_form_h4 { font-size: 16px; }
 .o_form_h5 { font-size: 14px; }
@@ -209,22 +239,23 @@
     border: 1px solid var(--o-border);
     border-radius: var(--o-radius-card);
     background: var(--o-surface);
+    box-shadow: var(--o-shadow-card);
 }
 
 .o_form_tabs {
     display: flex;
-    gap: 24px;
-    padding: 0 22px;
-    border-bottom: 1px solid #e6eaf0;
+    gap: 22px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--o-border);
 }
 
 .o_form_tab {
-    padding: 16px 0 14px;
+    padding: 11px 0 9px;
     border: 0;
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--o-muted);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
 }
 
@@ -235,7 +266,7 @@
 }
 
 .o_form_page {
-    padding: 22px;
+    padding: 16px 20px;
 }
 
 @media (max-width: 820px) {
@@ -259,8 +290,8 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: var(--o-control-height);
+    height: var(--o-control-height);
     border: 1px solid var(--o-input-border);
     border-radius: var(--o-radius-control);
     background: var(--o-surface);
@@ -312,8 +343,8 @@ span.o_text {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: var(--o-control-height);
+    height: var(--o-control-height);
     border: 1px solid var(--o-input-border);
     border-radius: var(--o-radius-control);
     background: var(--o-surface);
@@ -399,13 +430,13 @@ span.o_text {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 26px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: color-mix(in oklch, var(--o-accent) 14%, white);
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 4px;
+    background: color-mix(in oklch, var(--o-accent) 12%, white);
     color: color-mix(in oklch, var(--o-accent) 70%, black);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     white-space: nowrap;
 }
 
@@ -455,7 +486,14 @@ span.o_text {
 }
 
 .o_x2many_list .o_list_table td {
-    height: 44px;
+    height: 36px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_x2many_list .o_tags {
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 
 /* A cell's value follows its column's alignment, unlike a field of the form laid out in a row. */
@@ -475,7 +513,18 @@ span.o_text {
 
 .o_x2many_list .o_list_table th.o_field_integer,
 .o_x2many_list .o_list_table th.o_field_decimal {
-    width: 120px;
+    width: 104px;
+}
+
+/* Text and records take what the numbers leave, never less than this: the table scrolls instead. */
+.o_x2many_list .o_list_table th.o_field_string,
+.o_x2many_list .o_list_table th.o_field_ref {
+    width: 200px;
+}
+
+.o_x2many_list .o_list_table th.o_field_refs,
+.o_x2many_list .o_list_table th.o_field_selection {
+    width: 130px;
 }
 
 .o_x2many_list .o_list_table th.o_field_bool {
@@ -742,4 +791,10 @@ button.o_statusbar_label:hover {
 
 .o_button_primary.o_button_busy::after {
     border-color: #fff #fff transparent transparent;
+}
+
+/* Wider than the form once its columns are sized, a list of no lines says so where it starts. */
+.o_x2many_list .o_list_empty td {
+    height: 44px;
+    text-align: left;
 }
