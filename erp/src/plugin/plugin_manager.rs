@@ -75,10 +75,15 @@ pub struct PluginManager {
 }
 
 impl PluginManager {
+    /// Register the plugin libraries found in `directory_path`; none when it is empty, as for an
+    /// application whose plugins are all registered by hand.
     pub fn register_plugins(
         &mut self,
         directory_path: &String,
     ) -> Result<(), Box<dyn error::Error + Send + Sync>> {
+        if directory_path.is_empty() {
+            return Ok(());
+        }
         tracing::info!(directory = %directory_path, "Registering plugins from directory");
         let dll_extension = env::consts::DLL_EXTENSION;
         let paths = fs::read_dir(directory_path)?;
