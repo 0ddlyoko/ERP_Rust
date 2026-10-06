@@ -11,7 +11,7 @@ use erp::types::model::MapOfFields;
 use erp_test_support::{admin_env, d, user_env, xml_id};
 use mail::MailPlugin;
 use product::ProductPlugin;
-use product::models::{Product, ProductCategory};
+use product::models::{Product, ProductCategory, ProductType};
 use serde_json::json;
 use uom::UomPlugin;
 use uom::models::Uom;
@@ -43,7 +43,10 @@ fn test_a_name_is_enough() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let desk = new_product(&mut env, json!({"name": "Desk"}))?;
-    assert!(desk.is_goods(&mut env)?);
+    assert!(matches!(
+        *desk.get_product_type(&mut env)?,
+        ProductType::Goods
+    ));
     let category: ProductCategory<SingleId> = desk.get_category(&mut env)?;
     assert_eq!(category.get_id(), xml_id(&mut env, "product.category_all"));
     let uom: Uom<SingleId> = desk.get_uom(&mut env)?;
@@ -166,8 +169,10 @@ fn test_services_and_deleting() -> Result<()> {
         &mut env,
         json!({"name": "Support", "product_type": "service", "category": services}),
     )?;
-    assert!(support.is_service(&mut env)?);
-    assert!(!support.is_goods(&mut env)?);
+    assert!(matches!(
+        *support.get_product_type(&mut env)?,
+        ProductType::Service
+    ));
     assert!(
         env.delete("product_category", &SingleId::from(services))
             .is_err()

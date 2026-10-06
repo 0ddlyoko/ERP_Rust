@@ -72,18 +72,6 @@ pub struct Product<Mode: IdMode> {
     active: bool,
 }
 
-impl Product<SingleId> {
-    /// Whether the product is goods kept in stock, rather than a service or a consumable.
-    pub fn is_goods(&self, env: &mut Environment) -> Result<bool> {
-        Ok(matches!(*self.get_product_type(env)?, ProductType::Goods))
-    }
-
-    /// Whether the product is a service, of which nothing is ever delivered.
-    pub fn is_service(&self, env: &mut Environment) -> Result<bool> {
-        Ok(matches!(*self.get_product_type(env)?, ProductType::Service))
-    }
-}
-
 #[erp_methods]
 impl Product<MultipleIds> {
     /// Prices are not negative; the purchase unit measures what the unit does; a barcode
