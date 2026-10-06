@@ -83,9 +83,15 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
         None => None,
     };
     crate::request_log::identified(caller.or(env.uid()));
+    // Saved while still the caller: what is left to work out on saving reads with their rights.
     let answer = match caller {
-        Some(uid) => call(&mut env.as_user(uid), request),
-        None => call(&mut env, request),
+        Some(uid) => {
+            let mut env = env.as_user(uid);
+            call(&mut env, request).and_then(|response| env.save_all_to_db().map(|()| response))
+        }
+        None => {
+            call(&mut env, request).and_then(|response| env.save_all_to_db().map(|()| response))
+        }
     };
     match answer {
         Ok(response) => match env.close() {

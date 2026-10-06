@@ -206,11 +206,16 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
         return Err(RpcError::method_not_found(&request.method));
     }
 
+    // Saved while still the caller: what is left to work out on saving reads with their rights.
     let outcome = match caller {
-        Some(uid) => env
-            .as_user(uid)
-            .call_rpc(model_name, operation, &request.params),
-        None => env.call_rpc(model_name, operation, &request.params),
+        Some(uid) => {
+            let mut env = env.as_user(uid);
+            env.call_rpc(model_name, operation, &request.params)
+                .and_then(|result| env.save_all_to_db().map(|()| result))
+        }
+        None => env
+            .call_rpc(model_name, operation, &request.params)
+            .and_then(|result| env.save_all_to_db().map(|()| result)),
     };
 
     match outcome {

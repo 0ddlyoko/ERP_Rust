@@ -828,6 +828,39 @@ fn test_a_refused_call_rolls_back() -> Result<()> {
     Ok(())
 }
 
+/// What a call leaves to work out when it is saved — a stored total of the lines it created — is
+/// worked out as the caller, who may read the lines, not as nobody.
+#[test]
+fn test_a_call_is_saved_as_its_caller() -> Result<()> {
+    let app = new_app()?;
+    let token = {
+        let mut env = app.new_env_as_option(None)?;
+        let uid = make_user(&mut env, "seller")?;
+        let group = make_group(&mut env, "Sellers", &[uid])?;
+        make_rule(&mut env, "sale_order", Some(group), EVERYTHING)?;
+        make_rule(&mut env, "sale_order_line", Some(group), EVERYTHING)?;
+        let user: Users<SingleId> = env.get_record(uid.into());
+        user.change_password(&mut env, "secret")?;
+        let authenticated = env.get_empty_record::<Users<_>>().authenticate(
+            &mut env,
+            "seller".to_string(),
+            "secret".to_string(),
+        )?;
+        env.close()?;
+        authenticated.token
+    };
+    let body = json!({
+        "jsonrpc": "2.0",
+        "method": "sale_order.create",
+        "params": {"values": {"name": "Order", "lines": {"create": [{"price": 7, "amount": 3}]}}},
+        "id": 1,
+    })
+    .to_string();
+    let answer = erp::jsonrpc::handle(&app, Some(&token), &body).expect("an answer");
+    assert!(answer["error"].is_null(), "{answer}");
+    Ok(())
+}
+
 // ---- remembering rules ----
 
 #[test]
