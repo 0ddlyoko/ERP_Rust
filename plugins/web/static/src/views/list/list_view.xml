@@ -11,7 +11,8 @@
                     <t t-set-slot="fallback">
                         <label class="o_search"><input type="search" aria-label="Search" placeholder="Search…" disabled=""/></label>
                     </t>
-                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets"/>
+                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets" favorites="favorites"
+                               onSaveFavorite="saveFavorite" onForgetFavorite="forgetFavorite" onApplyFavorite="applyFavorite"/>
                 </Suspense>
                 <div t-if="selected.size" class="o_list_actions">
                     <span class="o_selection_count">{{ selected.size }} selected</span>
@@ -27,13 +28,9 @@
                         </li>
                     </ul>
                 </div>
-                <Suspense>
-                    <t t-set-slot="fallback"><div class="o_pager"><span class="o_pager_value">…</span></div></t>
-                    <div t-if="grouping" class="o_pager">
-                        <span class="o_pager_value">{{ groups?.length ?? 0 }} groups</span>
-                    </div>
-                    <div t-else="" class="o_pager">
-                        <span class="o_pager_value">{{ range }} / {{ total }}</span>
+                <div class="o_pager">
+                    <span class="o_pager_value">{{ pagerText }}</span>
+                    <t t-if="pagesTurn">
                         <button type="button" class="o_pager_button" aria-label="Previous page"
                                 t-att-disabled="!hasPrevious" t-on-click="previous">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -44,8 +41,8 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                         </button>
-                    </div>
-                </Suspense>
+                    </t>
+                </div>
             </div>
             <section class="o_list_card">
                 <Suspense>

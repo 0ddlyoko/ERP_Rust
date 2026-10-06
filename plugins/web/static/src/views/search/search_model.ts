@@ -27,6 +27,15 @@ export interface SearchGroupBy {
     groupBy: string;
 }
 
+/** A search the user saved on a list, as `saved_filter.mine` answers. */
+export interface Favorite {
+    id: number;
+    name: string;
+    facets: Facet[];
+    /** The list opens with it. */
+    is_default: boolean;
+}
+
 /** What a search view offers. */
 export interface SearchView {
     fields: SearchField[];

@@ -35,6 +35,7 @@ impl Plugin for WebPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
+        model_manager.register_model::<models::SavedFilter<_>>();
         model_manager.register_model::<models::Template<_>>();
         model_manager
             .shared_caches

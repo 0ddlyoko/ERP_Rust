@@ -64,6 +64,33 @@
                                     t-att-value="option.groupBy">{{ option.label }}</option>
                         </select>
                     </section>
+                    <section t-if="props.onSaveFavorite" class="o_search_menu_section">
+                        <h3 class="o_search_menu_title">Favorites</h3>
+                        <ul t-if="props.favorites.length">
+                            <li t-foreach="props.favorites" t-as="favorite" t-key="favorite.id" class="o_favorite">
+                                <button type="button" class="o_favorite_apply" t-on-click="() => applyFavorite(favorite)">
+                                    <svg t-if="favorite.is_default" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"
+                                         aria-label="Opened with"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2 1.2-6.8-5-4.9 6.9-1z"/></svg>
+                                    {{ favorite.name }}
+                                </button>
+                                <button type="button" class="o_favorite_forget" t-att-aria-label="'Forget ' + favorite.name"
+                                        t-on-click="() => props.onForgetFavorite?.(favorite)">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                                </button>
+                            </li>
+                        </ul>
+                        <form class="o_favorite_save" t-on-submit.prevent="saveFavorite">
+                            <input class="o_input" type="text" placeholder="Save this search as…" aria-label="Name of the search"
+                                   t-att-value="favoriteName" t-on-input="(ev) => favoriteName = ev.target.value"/>
+                            <label class="o_favorite_default">
+                                <input type="checkbox" t-att-checked="favoriteDefault"
+                                       t-on-change="(ev) => favoriteDefault = ev.target.checked"/>
+                                Open the list with it
+                            </label>
+                            <button type="submit" class="o_button_primary" t-att-disabled="!favoriteName.trim()">Save</button>
+                        </form>
+                    </section>
                 </div>
             </div>
         </div>

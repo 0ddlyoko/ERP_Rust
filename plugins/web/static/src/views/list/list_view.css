@@ -531,3 +531,71 @@ body.o_resizing * {
 .o_list_decoration_info td {
     color: #175cd3;
 }
+
+/* Searches saved by the user */
+
+.o_favorite {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.o_favorite_apply {
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--o-ink);
+    font-size: 13px;
+    text-align: left;
+}
+
+.o_favorite_apply svg {
+    color: #e0a81e;
+}
+
+.o_favorite_apply:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+}
+
+.o_favorite_forget {
+    display: flex;
+    padding: 5px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--o-muted);
+}
+
+.o_favorite_forget:hover {
+    background: color-mix(in oklch, var(--o-danger) 12%, white);
+    color: var(--o-danger);
+}
+
+.o_favorite_save {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.o_favorite_default {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 2px;
+    color: var(--o-label);
+    font-size: 12.5px;
+}
+
+.o_favorite_save .o_button_primary {
+    justify-content: center;
+}
+
+.o_search_filters_menu {
+    width: 260px;
+}

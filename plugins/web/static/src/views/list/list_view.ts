@@ -5,7 +5,15 @@ import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
 import { SearchBar } from "@web/views/search/search_bar";
-import { defaultFacets, type Facet, groupByOf, readSearchView, type SearchView, searchDomain } from "@web/views/search/search_model";
+import {
+    defaultFacets,
+    type Facet,
+    type Favorite,
+    groupByOf,
+    readSearchView,
+    type SearchView,
+    searchDomain,
+} from "@web/views/search/search_model";
 import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { companionFields } from "@web/views/widgets/decimal_widget";
@@ -160,9 +168,40 @@ export class ListView extends View {
         return readSearchView(arch, fields);
     }
 
+    /** The searches the user saved on this list. */
+    @resource accessor favorites: Favorite[] = load(
+        () => this.router.route.action,
+        (action) => (action === null ? Promise.resolve([]) : this.orm.call<Favorite[]>("saved_filter", "mine", [], { action })),
+    );
+
+    /** The search as the user left it; until they touch it, the one they open the list with, or the view's. */
     get currentFacets(): Facet[] {
-        return this.facets ?? defaultFacets(this.searchView);
+        return this.facets ?? this.favorites?.find((favorite) => favorite.is_default)?.facets ?? defaultFacets(this.searchView);
     }
+
+    /** Save the search as it stands under a name, the list opening with it if asked. */
+    readonly saveFavorite = async (name: string, isDefault: boolean): Promise<void> => {
+        const action = this.router.route.action;
+        if (action === null) {
+            return;
+        }
+        try {
+            await this.orm.call("saved_filter", "save", [], { action, name, facets: this.currentFacets, is_default: isDefault });
+            refresh(() => this.favorites);
+            this.notifications.add("success", `Search "${name}" saved.`);
+        } catch (error) {
+            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+        }
+    };
+
+    readonly forgetFavorite = async (favorite: Favorite): Promise<void> => {
+        await this.orm.call("saved_filter", "forget", [], { id: favorite.id });
+        refresh(() => this.favorites);
+    };
+
+    readonly applyFavorite = (favorite: Favorite): void => {
+        this.setFacets([...favorite.facets]);
+    };
 
     /** The records shown: those of the action, as the search narrows them. */
     @computed get domain(): Domain {
@@ -433,12 +472,36 @@ export class ListView extends View {
         return `${this.offset + 1}-${Math.min(this.offset + this.props.limit, this.total)}`;
     }
 
+    /** Whether what the search and its groupings depend on is still on its way. */
+    private get searchLoading(): boolean {
+        return loading(() => this.favorites) || loading(() => this.searchArch) || loading(() => this.fields);
+    }
+
+    /**
+     * What the pager says: the rows shown and how many match, or how many groups. Read without
+     * waiting on anything, so the pager shows `…` meanwhile rather than holding the bar back.
+     */
+    get pagerText(): string {
+        if (this.searchLoading) {
+            return "…";
+        }
+        if (this.grouping !== null) {
+            return loading(() => this.groups) ? "…" : `${this.groups?.length ?? 0} groups`;
+        }
+        return loading(() => this.total) ? "…" : `${this.range} / ${this.total}`;
+    }
+
+    /** Whether the rows come a page at a time: not while they are grouped. */
+    get pagesTurn(): boolean {
+        return !this.searchLoading && this.grouping === null;
+    }
+
     get hasPrevious(): boolean {
         return this.offset > 0;
     }
 
     get hasNext(): boolean {
-        return this.offset + this.props.limit < (this.total ?? 0);
+        return !loading(() => this.total) && this.offset + this.props.limit < (this.total ?? 0);
     }
 
     previous(): void {

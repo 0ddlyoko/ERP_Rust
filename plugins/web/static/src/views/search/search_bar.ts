@@ -4,6 +4,7 @@ import {
     type Facet,
     facetLabel,
     groupByOf,
+    type Favorite,
     type SearchField,
     type SearchGroupBy,
     type SearchView,
@@ -25,7 +26,32 @@ export class SearchBar extends Component {
         view: t.any<SearchView>(),
         facets: t.array(t.any<Facet>()),
         onChange: t.func<(facets: Facet[]) => void>(),
+        /** The searches the user saved, offered in the menu where the view saves them. */
+        favorites: t.array(t.any<Favorite>()).default([]),
+        onSaveFavorite: t.func<(name: string, isDefault: boolean) => void>().optional(),
+        onForgetFavorite: t.func<(favorite: Favorite) => void>().optional(),
+        onApplyFavorite: t.func<(favorite: Favorite) => void>().optional(),
     });
+
+    @state accessor favoriteName = "";
+    @state accessor favoriteDefault = false;
+
+    /** Save the search under the name typed. */
+    saveFavorite(): void {
+        const name = this.favoriteName.trim();
+        if (name === "" || this.props.onSaveFavorite === undefined) {
+            return;
+        }
+        this.props.onSaveFavorite(name, this.favoriteDefault);
+        this.favoriteName = "";
+        this.favoriteDefault = false;
+        this.filtersOpen = false;
+    }
+
+    applyFavorite(favorite: Favorite): void {
+        this.props.onApplyFavorite?.(favorite);
+        this.filtersOpen = false;
+    }
 
     @state accessor text = "";
     @state accessor active = 0;
