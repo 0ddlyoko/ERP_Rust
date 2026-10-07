@@ -288,6 +288,7 @@ impl Application {
             }
         }
         self.checks_deferred = false;
+        self.release_orphan_columns()?;
         self.schema_state = None;
         self.run_checks()?;
         let done = crate::request_log::current();
@@ -389,6 +390,19 @@ impl Application {
         if !self.checks_deferred {
             self.schema_state = None;
             self.run_checks()?;
+        }
+        Ok(())
+    }
+
+    /// Free the columns of fields gone from `NOT NULL`, every plugin being loaded: before, a field
+    /// a plugin still to load adds would look gone.
+    fn release_orphan_columns(&mut self) -> Result<()> {
+        let mut database = self.create_new_database()?;
+        if let DatabaseType::Postgres(postgres) = &mut database {
+            postgres.schema_state = self.schema_state.take();
+        }
+        for model in self.model_manager.get_models().values() {
+            database.release_orphan_columns(model)?;
         }
         Ok(())
     }

@@ -53,6 +53,16 @@ impl Database for DatabaseType {
         }
     }
 
+    fn release_orphan_columns(
+        &mut self,
+        model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<()> {
+        match self {
+            DatabaseType::Cache(cache) => cache.release_orphan_columns(model),
+            DatabaseType::Postgres(postgres) => postgres.release_orphan_columns(model),
+        }
+    }
+
     fn find_ids(
         &mut self,
         model_name: &str,

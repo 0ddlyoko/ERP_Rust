@@ -489,6 +489,40 @@ impl Database for PostgresDatabase {
         Ok(())
     }
 
+    /// Free the columns no field fills any more — a field removed — from `NOT NULL`: kept with
+    /// what they hold, they would refuse every record created without them.
+    fn release_orphan_columns(
+        &mut self,
+        model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<()> {
+        let qualified = self.qualified_relation(&model.table_name);
+        let orphans: Vec<String> = self
+            .state()?
+            .columns
+            .get(&model.table_name)
+            .map(|columns| {
+                columns
+                    .iter()
+                    .filter(|(column, nullable)| {
+                        !**nullable && *column != "id" && !model.fields.contains_key(*column)
+                    })
+                    .map(|(column, _)| column.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        for column in orphans {
+            self.client.batch_execute(&format!(
+                "ALTER TABLE {qualified} ALTER COLUMN {} DROP NOT NULL",
+                quote_ident(&column)
+            ))?;
+            tracing::info!(table = %model.table_name, %column, "No field fills the column: it may be empty");
+            if let Some(columns) = self.state()?.columns.get_mut(&model.table_name) {
+                columns.insert(column, true);
+            }
+        }
+        Ok(())
+    }
+
     /// Make a search request to a specific model, and only return ids that match this search request
     fn find_ids(
         &mut self,

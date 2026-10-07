@@ -139,6 +139,15 @@ pub trait Database {
         Ok(())
     }
 
+    /// Free the columns no field fills any more from what a required field asks of them, once
+    /// every plugin is loaded.
+    fn release_orphan_columns(
+        &mut self,
+        _model: &erp_internal_types::FinalInternalModel,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     /// Delete the given records, and return how many rows were actually removed.
     ///
     /// Ids that are not present are skipped rather than reported, mirroring `update`.
