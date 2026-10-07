@@ -451,7 +451,8 @@ export class KanbanView extends View implements CardHost {
 
     /**
      * What to read of the cards: column by column when gathered — each its first hundred, or as
-     * many as were asked for, a folded one none until unfolded — else the view's first ones.
+     * many as were asked for, a folded one none until unfolded, an empty one none until a card is
+     * dropped or added there — else the view's first ones.
      * `null` while the columns are still being found.
      */
     @computed get cardReads(): { lane: string; domain: Domain; limit: number }[] | null {
@@ -466,8 +467,11 @@ export class KanbanView extends View implements CardHost {
             return null;
         }
         const counts = new Map(groups.map((group) => [keyOf(group.value), group.count]));
+        const counted = this.countDeltas;
+        const deltas = this.deltasOf === groups ? counted : new Map<string, number>();
+        const holds = (lane: string): boolean => (counts.get(lane) ?? 0) + (deltas.get(lane) ?? 0) > 0;
         return this.heads
-            .filter((head) => !head.folded && (counts.get(head.key) ?? 0) > 0 && head.domain !== undefined)
+            .filter((head) => !head.folded && holds(head.key) && head.domain !== undefined)
             .map((head) => ({
                 lane: head.key,
                 domain: and([[...this.domain], [...(head.domain as Domain)]]),
@@ -1026,7 +1030,8 @@ export class KanbanView extends View implements CardHost {
     /**
      * Put a card in a column, at a position among its other cards: its column written if it
      * changed, and, when the records keep an order, a number between its new neighbours' — the
-     * column's cards numbered anew only when there is none left between them.
+     * column's cards numbered anew only when there is none left between them. The columns count
+     * it once written, so that one empty until then is read with the card in it.
      */
     async move(id: number, lane: Lane, index: number): Promise<void> {
         const name = this.groupField;
@@ -1041,8 +1046,6 @@ export class KanbanView extends View implements CardHost {
         const from = keyOf(record[name]);
         if (from !== lane.key) {
             moved[name] = groupValue(lane.value);
-            this.bump(from, -1);
-            this.bump(lane.key, 1);
         }
         if (this.hasSequence) {
             const at = order.indexOf(record);
@@ -1072,6 +1075,10 @@ export class KanbanView extends View implements CardHost {
         this.moveCard(id, from, lane.key, index, { [name]: lane.value, ...sequence });
         try {
             await Promise.all(writes);
+            if (from !== lane.key) {
+                this.bump(from, -1);
+                this.bump(lane.key, 1);
+            }
             this.rereadLanes(from === lane.key ? [from] : [from, lane.key]);
         } catch (error) {
             this.notifications.add("danger", error instanceof Error ? error.message : String(error));
