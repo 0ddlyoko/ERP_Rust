@@ -18,6 +18,55 @@ impl<'mm> Environment<'mm> {
     ///
     /// Refused as a whole unless the caller may write every one of the records. Goes through the
     /// model's `write`, so what a plugin overrode there runs.
+    /// Write to one record only what differs from what it holds — a list of records compared
+    /// whatever its order — and nothing at all when nothing does: no write, no `write_date`.
+    /// Returns whether anything was written.
+    ///
+    /// For what loads the same values again and again — data files, the plugins' own rows.
+    pub fn write_changes(
+        &mut self,
+        model_name: &str,
+        id: u32,
+        values: MapOfFields,
+    ) -> Result<bool> {
+        let names: Vec<String> = values.fields.keys().cloned().collect();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let held = self
+            .sudo()
+            .read(model_name, &SingleId::from(id), &names)
+            .ok()
+            .and_then(|rows| rows.into_iter().next());
+        let changed = match held {
+            Some(held) => {
+                let same = |given: &Option<FieldType>, held: Option<&Option<FieldType>>| match (
+                    given, held,
+                ) {
+                    (Some(FieldType::Refs(given)), Some(Some(FieldType::Refs(held)))) => {
+                        let (mut given, mut held) = (given.clone(), held.clone());
+                        given.sort_unstable();
+                        held.sort_unstable();
+                        given == held
+                    }
+                    (given, Some(held)) => given == held,
+                    (_, None) => false,
+                };
+                MapOfFields::new(
+                    values
+                        .fields
+                        .into_iter()
+                        .filter(|(name, given)| !same(given, held.fields.get(name)))
+                        .collect(),
+                )
+            }
+            None => values,
+        };
+        if changed.is_empty() {
+            return Ok(false);
+        }
+        self.write(model_name, &SingleId::from(id), changed)?;
+        Ok(true)
+    }
+
     pub fn write<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -228,14 +277,20 @@ impl<'mm> Environment<'mm> {
                 }
             } else if let Some(FieldReference {
                 target_model,
-                inverse_field: FieldReferenceType::M2M { relation, .. },
+                inverse_field:
+                    FieldReferenceType::M2M {
+                        relation,
+                        target_column,
+                        ..
+                    },
             }) = &field_info.inverse
             {
                 // A many2many has no column of its own; its pairs come from the relation table.
                 // Both sides may still be holding unwritten changes, so they reach the table
                 // first — the same precaution the one2many path takes.
                 self.save_relations_to_db(model_name, &[field_name])?;
-                if let Some(mirror) = self.mirror_of_relation(target_model, relation) {
+                if let Some(mirror) = self.mirror_of_relation(target_model, relation, target_column)
+                {
                     self.save_relations_to_db(target_model, &[&mirror])?;
                 }
                 let model_info = self.model_manager.try_get_model(model_name)?;
@@ -333,9 +388,16 @@ impl<'mm> Environment<'mm> {
     ///
     /// The two sides of a many2many name the same table independently, so the pairing is found
     /// by matching on it rather than being declared twice.
-    pub(super) fn mirror_of_relation(&self, model_name: &str, relation: &str) -> Option<String> {
+    pub(super) fn mirror_of_relation(
+        &self,
+        model_name: &str,
+        relation: &str,
+        column: &str,
+    ) -> Option<String> {
         let model = self.model_manager.try_get_model(model_name).ok()?;
-        model.field_of_relation(relation).map(str::to_string)
+        model
+            .field_of_relation(relation, column)
+            .map(str::to_string)
     }
 
     /// Refuse writing a field the ORM fills in: when and by whom a record was created or changed.
@@ -503,7 +565,11 @@ impl<'mm> Environment<'mm> {
                 // cannot be mirrored by writing the other — that would recurse forever. The
                 // other side is invalidated instead, and reloaded from the relation on next
                 // read. One reload is cheaper than the bookkeeping, and cannot go stale.
-                FieldReferenceType::M2M { relation, .. } => {
+                FieldReferenceType::M2M {
+                    relation,
+                    target_column,
+                    ..
+                } => {
                     let new_ids: Vec<u32> = match value.clone() {
                         None => Vec::new(),
                         Some(FieldType::Ref(id)) => vec![id],
@@ -525,7 +591,7 @@ impl<'mm> Environment<'mm> {
                         }
                     }
 
-                    let mirror = self.mirror_of_relation(target_model, relation);
+                    let mirror = self.mirror_of_relation(target_model, relation, target_column);
                     let touched: Vec<u32> = touched.into_iter().collect();
                     if let Some(mirror) = &mirror
                         && is_update_if_exists

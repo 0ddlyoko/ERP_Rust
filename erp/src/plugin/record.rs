@@ -68,7 +68,7 @@ pub(crate) fn record_plugin(
                     );
                 }
             }
-            env.write(PLUGIN_MODEL, &SingleId::from(*id), values)?;
+            env.write_changes(PLUGIN_MODEL, *id, values)?;
         }
         None => {
             if !installed {

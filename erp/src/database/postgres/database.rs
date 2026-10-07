@@ -23,6 +23,19 @@ pub struct PostgresDatabase {
     /// another name has to be reachable from every connection, not only the one that created
     /// its table.
     tables: HashMap<String, String>,
+    /// The schema as it stands, read once while the plugins load and kept in step with what is
+    /// created; `None` until first needed.
+    pub(crate) schema_state: Option<SchemaState>,
+}
+
+/// The tables of the schema with their columns — and whether each may be empty — their
+/// constraints, and the indexes there are: what bringing the schema in line with the models
+/// compares with, read in three queries rather than a few per model.
+#[derive(Default)]
+pub struct SchemaState {
+    columns: HashMap<String, HashMap<String, bool>>,
+    constraints: HashMap<String, HashSet<String>>,
+    indexes: HashSet<String>,
 }
 
 impl PostgresDatabase {
@@ -40,6 +53,7 @@ impl PostgresDatabase {
             schema: schema.to_string(),
             is_transaction: false,
             tables,
+            schema_state: None,
         })
     }
 }
@@ -66,16 +80,69 @@ impl PostgresDatabase {
         format!("{}.{}", quote_ident(&self.schema), quote_ident(relation))
     }
 
-    /// Columns the table already has.
-    fn existing_constraints(&mut self, table_name: &str) -> Result<HashSet<String>> {
-        let rows = self.client.query(
-            "SELECT \"constraint_name\" FROM \"information_schema\".\"table_constraints\" \
-             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
-            &[&self.schema, &table_name],
-        )?;
-        rows.iter()
-            .map(|row| Ok(row.try_get::<_, String>(0)?))
-            .collect()
+    /// The schema as it stands, read the first time it is needed.
+    fn state(&mut self) -> Result<&mut SchemaState> {
+        if self.schema_state.is_none() {
+            let mut state = SchemaState::default();
+            for row in self.client.query(
+                "SELECT \"relname\"::text, \"attname\"::text, NOT \"attnotnull\" FROM \"pg_attribute\" \
+                 JOIN \"pg_class\" ON \"pg_class\".\"oid\" = \"attrelid\" \
+                 JOIN \"pg_namespace\" ON \"pg_namespace\".\"oid\" = \"relnamespace\" \
+                 WHERE \"nspname\" = $1 AND \"relkind\" = 'r' AND \"attnum\" > 0 AND NOT \"attisdropped\"",
+                &[&self.schema],
+            )? {
+                state
+                    .columns
+                    .entry(row.try_get(0)?)
+                    .or_default()
+                    .insert(row.try_get(1)?, row.try_get(2)?);
+            }
+            for row in self.client.query(
+                "SELECT \"relname\"::text, \"conname\"::text FROM \"pg_constraint\" \
+                 JOIN \"pg_class\" ON \"pg_class\".\"oid\" = \"conrelid\" \
+                 JOIN \"pg_namespace\" ON \"pg_namespace\".\"oid\" = \"relnamespace\" \
+                 WHERE \"nspname\" = $1",
+                &[&self.schema],
+            )? {
+                state
+                    .constraints
+                    .entry(row.try_get(0)?)
+                    .or_default()
+                    .insert(row.try_get(1)?);
+            }
+            for row in self.client.query(
+                "SELECT \"relname\"::text FROM \"pg_class\" \
+                 JOIN \"pg_namespace\" ON \"pg_namespace\".\"oid\" = \"relnamespace\" \
+                 WHERE \"nspname\" = $1 AND \"relkind\" = 'i'",
+                &[&self.schema],
+            )? {
+                state.indexes.insert(row.try_get(0)?);
+            }
+            self.schema_state = Some(state);
+        }
+        Ok(self.schema_state.as_mut().expect("read above"))
+    }
+
+    /// Create a table unless it is there, with the columns given; as the schema state says.
+    fn create_table(
+        &mut self,
+        table: &str,
+        definition: &str,
+        columns: &[(&str, bool)],
+    ) -> Result<()> {
+        if self.state()?.columns.contains_key(table) {
+            return Ok(());
+        }
+        self.client.batch_execute(&format!(
+            "CREATE TABLE IF NOT EXISTS {} ({definition})",
+            self.qualified_relation(table)
+        ))?;
+        let columns = columns
+            .iter()
+            .map(|(name, nullable)| (name.to_string(), *nullable))
+            .collect();
+        self.state()?.columns.insert(table.to_string(), columns);
+        Ok(())
     }
 
     /// Give the rows already there a new column's default, as a record created now would get.
@@ -101,16 +168,12 @@ impl PostgresDatabase {
     /// Computed and automatic columns are left free: a computed one is filled after its row is
     /// inserted. When rows already hold no value, the constraint cannot be added: the server says
     /// so and starts anyway, the ORM still refusing empty values.
-    fn sync_not_null(&mut self, model: &FinalInternalModel, qualified: &str) -> Result<()> {
-        let rows = self.client.query(
-            "SELECT \"column_name\", \"is_nullable\" = 'YES' FROM \"information_schema\".\"columns\" \
-             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
-            &[&self.schema, &model.table_name],
-        )?;
-        let nullable: HashMap<String, bool> = rows
-            .iter()
-            .map(|row| Ok((row.try_get(0)?, row.try_get(1)?)))
-            .collect::<Result<_>>()?;
+    fn sync_not_null(
+        &mut self,
+        model: &FinalInternalModel,
+        qualified: &str,
+        nullable: &mut HashMap<String, bool>,
+    ) -> Result<()> {
         let mut fields: Vec<&FinalInternalField> = model.fields.values().collect();
         fields.sort_by_key(|field| &field.name);
         for field in fields {
@@ -121,7 +184,9 @@ impl PostgresDatabase {
             let wants_not_null = field.required && field.compute.is_none() && !field.automatic;
             if wants_not_null && is_nullable {
                 let set = format!("ALTER TABLE {qualified} ALTER COLUMN {column} SET NOT NULL");
-                if self.execute_or_undo(&set).is_err() {
+                if self.execute_or_undo(&set).is_ok() {
+                    nullable.insert(field.name.clone(), false);
+                } else {
                     let empty: i64 = self
                         .client
                         .query_one(
@@ -139,6 +204,7 @@ impl PostgresDatabase {
                 self.client.batch_execute(&format!(
                     "ALTER TABLE {qualified} ALTER COLUMN {column} DROP NOT NULL"
                 ))?;
+                nullable.insert(field.name.clone(), true);
             }
         }
         Ok(())
@@ -159,9 +225,9 @@ impl PostgresDatabase {
         }
     }
 
-    /// Index `column` of `table`, unless it already is.
+    /// Index `column` of `table`.
     fn create_index(&mut self, table: &str, column: &str, index: FieldIndex) -> Result<()> {
-        let name = constraint_name(&format!("{table}_{column}_index"));
+        let name = index_name(table, column);
         let qualified = self.qualified_relation(table);
         let plain = format!(
             "CREATE INDEX IF NOT EXISTS {} ON {qualified} ({})",
@@ -196,18 +262,15 @@ impl PostgresDatabase {
             quote_ident(&extension_schema)
         ))
     }
-
-    fn existing_columns(&mut self, table_name: &str) -> Result<HashSet<String>> {
-        let rows = self.client.query(
-            "SELECT \"column_name\" FROM \"information_schema\".\"columns\" \
-             WHERE \"table_schema\" = $1 AND \"table_name\" = $2",
-            &[&self.schema, &table_name],
-        )?;
-        rows.iter()
-            .map(|row| Ok(row.try_get::<_, String>(0)?))
-            .collect()
-    }
 }
+
+/// The name of the index on `column` of `table`.
+fn index_name(table: &str, column: &str) -> String {
+    constraint_name(&format!("{table}_{column}_index"))
+}
+
+/// How many parameters one statement may bind: PostgreSQL counts them on 16 bits.
+const MAX_PARAMETERS: usize = 65_000;
 
 impl Database for PostgresDatabase {
     /// Check if given database is already installed
@@ -258,14 +321,16 @@ impl Database for PostgresDatabase {
         );
 
         // `id` is never in the registry, so it is synthesised here.
-        self.client.batch_execute(&format!(
-            "CREATE TABLE IF NOT EXISTS {qualified} (\"id\" SERIAL PRIMARY KEY)"
-        ))?;
+        self.create_table(
+            &model.table_name,
+            "\"id\" SERIAL PRIMARY KEY",
+            &[("id", false)],
+        )?;
 
-        let existing = self.existing_columns(&model.table_name)?;
+        let mut existing = self.state()?.columns[&model.table_name].clone();
         let mut added = Vec::new();
         for (field_name, field) in &model.fields {
-            if existing.contains(field_name) {
+            if existing.contains_key(field_name) {
                 continue;
             }
             // A computed field that is worked out on each read has nowhere to be: no column, and
@@ -286,16 +351,18 @@ impl Database for PostgresDatabase {
                     ..
                 }) = &field.inverse
                 {
-                    let statement = format!(
-                        "CREATE TABLE IF NOT EXISTS {} ({} INTEGER NOT NULL, {} INTEGER NOT NULL, \
-                         PRIMARY KEY ({}, {}))",
-                        self.qualified_relation(relation),
+                    let definition = format!(
+                        "{} INTEGER NOT NULL, {} INTEGER NOT NULL, PRIMARY KEY ({}, {})",
                         quote_ident(column),
                         quote_ident(target_column),
                         quote_ident(column),
                         quote_ident(target_column)
                     );
-                    self.client.batch_execute(&statement)?;
+                    self.create_table(
+                        relation,
+                        &definition,
+                        &[(column.as_str(), false), (target_column.as_str(), false)],
+                    )?;
                 }
                 continue;
             };
@@ -305,8 +372,12 @@ impl Database for PostgresDatabase {
             ))?;
             self.fill_default(&qualified, field)?;
             added.push(field_name.clone());
+            existing.insert(field_name.clone(), true);
         }
-        self.sync_not_null(model, &qualified)?;
+        self.sync_not_null(model, &qualified, &mut existing)?;
+        if let Some(columns) = self.state()?.columns.get_mut(&model.table_name) {
+            columns.extend(existing);
+        }
         Ok(added)
     }
 
@@ -331,14 +402,20 @@ impl Database for PostgresDatabase {
             else {
                 continue;
             };
-            let existing = self.existing_constraints(relation)?;
+            let existing = self
+                .state()?
+                .constraints
+                .get(relation.as_str())
+                .cloned()
+                .unwrap_or_default();
             let target_table = self
                 .tables
                 .get(*target_model)
-                .map_or(*target_model, String::as_str);
+                .map_or(*target_model, String::as_str)
+                .to_string();
             let sides = [
                 (column, model.table_name.as_str()),
-                (target_column, target_table),
+                (target_column, target_table.as_str()),
             ];
             for (side, table) in sides {
                 let full = format!("{relation}_{side}_fkey");
@@ -357,6 +434,11 @@ impl Database for PostgresDatabase {
                     quote_ident("id"),
                 );
                 self.client.batch_execute(&statement)?;
+                self.state()?
+                    .constraints
+                    .entry(relation.clone())
+                    .or_default()
+                    .insert(name);
             }
         }
         Ok(())
@@ -368,6 +450,7 @@ impl Database for PostgresDatabase {
     /// A trigram index needs `pg_trgm`; without the right to install it, a plain one is made and
     /// the search stays correct, only slower.
     fn sync_indexes(&mut self, model: &erp_internal_types::FinalInternalModel) -> Result<()> {
+        let mut wanted: Vec<(String, String, FieldIndex)> = Vec::new();
         for (field_name, field) in &model.fields {
             if !field.stored {
                 continue;
@@ -382,7 +465,7 @@ impl Database for PostgresDatabase {
                 ..
             }) = &field.inverse
             {
-                self.create_index(relation, target_column, FieldIndex::Btree)?;
+                wanted.push((relation.clone(), target_column.clone(), FieldIndex::Btree));
                 continue;
             }
             let index = match field.index {
@@ -394,7 +477,14 @@ impl Database for PostgresDatabase {
                 FieldKind::String => index,
                 _ => FieldIndex::Btree,
             };
-            self.create_index(&model.table_name, field_name, index)?;
+            wanted.push((model.table_name.clone(), field_name.clone(), index));
+        }
+        for (table, column, index) in wanted {
+            let name = index_name(&table, &column);
+            if !self.state()?.indexes.contains(&name) {
+                self.create_index(&table, &column, index)?;
+                self.state()?.indexes.insert(name);
+            }
         }
         Ok(())
     }
@@ -533,51 +623,89 @@ impl Database for PostgresDatabase {
 
     /// Insert records and return their ids, in the order the data was given.
     ///
-    /// One statement per record: the maps may not share the same set of fields, and grouping
-    /// them would trade clarity for a round trip that the flush already batches elsewhere.
+    /// Records setting the same columns go in one statement, as many rows as its parameters
+    /// allow. The ids its rows get come back sorted to match them: a serial column takes its
+    /// values one row after another, in the order the rows are written.
     fn create(&mut self, model_name: &str, data: &[&MapOfFields]) -> Result<Vec<u32>> {
         let table = self.qualified_table(model_name)?;
-        let mut ids = Vec::with_capacity(data.len());
-        for record in data {
-            let mut builder = QueryBuilder::new();
-            let mut columns = Vec::new();
-            let mut placeholders = Vec::new();
-            for (field_name, value) in &record.fields {
-                if field_name == "id" {
-                    continue;
-                }
-                let Some(value) = value else {
-                    continue;
-                };
-                columns.push(quote_ident(field_name));
-                placeholders.push(builder.push_value(&value.clone().into())?);
+        let mut ids = vec![0; data.len()];
+        let mut groups: Vec<(Vec<&str>, Vec<usize>)> = Vec::new();
+        for (row, record) in data.iter().enumerate() {
+            let mut columns: Vec<&str> = record
+                .fields
+                .iter()
+                .filter(|(name, value)| *name != "id" && value.is_some())
+                .map(|(name, _)| name.as_str())
+                .collect();
+            columns.sort_unstable();
+            match groups.iter_mut().find(|(known, _)| *known == columns) {
+                Some((_, rows)) => rows.push(row),
+                None => groups.push((columns, vec![row])),
             }
-            let sql = if columns.is_empty() {
-                format!(
+        }
+        for (columns, rows) in groups {
+            if columns.is_empty() {
+                let sql = format!(
                     "INSERT INTO {table} DEFAULT VALUES RETURNING {}",
                     quote_ident("id")
-                )
-            } else {
-                format!(
-                    "INSERT INTO {table} ({}) VALUES ({}) RETURNING {}",
-                    columns.join(", "),
-                    placeholders.join(", "),
+                );
+                for row in rows {
+                    let inserted = self.client.query_one(&sql, &[])?;
+                    ids[row] = id_from_sql(inserted.try_get::<_, i32>(0)?)?;
+                }
+                continue;
+            }
+            let quoted: Vec<String> = columns.iter().map(|column| quote_ident(column)).collect();
+            for chunk in rows.chunks((MAX_PARAMETERS / columns.len()).max(1)) {
+                let mut builder = QueryBuilder::new();
+                let mut tuples = Vec::with_capacity(chunk.len());
+                for &row in chunk {
+                    let mut placeholders = Vec::with_capacity(columns.len());
+                    for column in &columns {
+                        if let Some(value) = &data[row].fields[*column] {
+                            placeholders.push(builder.push_value(&value.clone().into())?);
+                        }
+                    }
+                    tuples.push(format!("({})", placeholders.join(", ")));
+                }
+                let sql = format!(
+                    "INSERT INTO {table} ({}) VALUES {} RETURNING {}",
+                    quoted.join(", "),
+                    tuples.join(", "),
                     quote_ident("id")
-                )
-            };
-            let row = self.client.query_one(&sql, &builder.params())?;
-            ids.push(id_from_sql(row.try_get::<_, i32>(0)?)?);
+                );
+                let mut inserted = self
+                    .client
+                    .query(&sql, &builder.params())?
+                    .iter()
+                    .map(|row| id_from_sql(row.try_get::<_, i32>(0)?))
+                    .collect::<Result<Vec<u32>>>()?;
+                inserted.sort_unstable();
+                for (&row, id) in chunk.iter().zip(inserted) {
+                    ids[row] = id;
+                }
+            }
         }
         Ok(ids)
     }
 
     /// Update records, returning how many rows were actually touched.
     ///
-    /// An id that is not there is skipped rather than reported, mirroring the in-memory backend.
+    /// Records given the same values are updated by one statement. An id that is not there is
+    /// skipped rather than reported, mirroring the in-memory backend.
     fn update(&mut self, model_name: &str, data: &HashMap<u32, &MapOfFields>) -> Result<u32> {
         let table = self.qualified_table(model_name)?;
+        let mut groups: Vec<(&MapOfFields, Vec<u32>)> = Vec::new();
+        let mut sorted: Vec<(&u32, &&MapOfFields)> = data.iter().collect();
+        sorted.sort_unstable_by_key(|(id, _)| **id);
+        for (id, record) in sorted {
+            match groups.iter_mut().find(|(values, _)| *values == *record) {
+                Some((_, ids)) => ids.push(*id),
+                None => groups.push((record, vec![*id])),
+            }
+        }
         let mut updated = 0;
-        for (id, record) in data {
+        for (record, ids) in groups {
             let mut builder = QueryBuilder::new();
             let mut assignments = Vec::new();
             for (field_name, value) in &record.fields {
@@ -593,13 +721,16 @@ impl Database for PostgresDatabase {
             if assignments.is_empty() {
                 continue;
             }
-            let id_placeholder = builder.push_value(&FieldType::UInteger(*id))?;
+            let ids: Vec<i32> = ids.into_iter().map(id_to_sql).collect::<Result<_>>()?;
             let sql = format!(
-                "UPDATE {table} SET {} WHERE {} = {id_placeholder}",
+                "UPDATE {table} SET {} WHERE {} = ANY(${})",
                 assignments.join(", "),
-                quote_ident("id")
+                quote_ident("id"),
+                builder.params().len() + 1
             );
-            updated += self.client.execute(&sql, &builder.params())? as u32;
+            let mut params = builder.params();
+            params.push(&ids);
+            updated += self.client.execute(&sql, &params)? as u32;
         }
         Ok(updated)
     }

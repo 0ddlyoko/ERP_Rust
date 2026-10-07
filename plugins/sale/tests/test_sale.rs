@@ -696,7 +696,11 @@ fn test_a_new_record_starts_with_its_action_defaults() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let load = |env: &mut Environment, xml_id: &str| {
-        env.call_rpc("action", "load", &json!({ "ids": [], "args": { "xml_id": xml_id } }))
+        env.call_rpc(
+            "action",
+            "load",
+            &json!({ "ids": [], "args": { "xml_id": xml_id } }),
+        )
     };
     let invoices = load(&mut env, "account.action_move_out_invoice")?;
     assert_eq!(invoices["defaults"], json!({"move_type": "out_invoice"}));

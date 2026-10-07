@@ -4,6 +4,7 @@ use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
+use std::collections::HashMap;
 
 /// A value the database keeps under a key, for plugins and administrators: `demo_data` is `1`
 /// once the database wants demo data. One parameter per key.
@@ -57,6 +58,19 @@ impl Parameter<MultipleIds> {
             Some(parameter) => Ok(parameter.get_value(env)?.cloned()),
             None => Ok(None),
         }
+    }
+
+    /// The values kept under these keys, by key: those with none are left out. One search.
+    pub fn values_of(env: &mut Environment, keys: Vec<String>) -> Result<HashMap<String, String>> {
+        let env = &mut *env.sudo();
+        let found: Parameter<MultipleIds> = env.search(&make_domain!([("key", "in", keys)]))?;
+        let mut values = HashMap::new();
+        for parameter in &found {
+            if let Some(value) = parameter.get_value(env)?.cloned() {
+                values.insert(parameter.get_key(env)?.clone(), value);
+            }
+        }
+        Ok(values)
     }
 
     /// Keep a value under a key: the parameter holding it changes, or one is made.

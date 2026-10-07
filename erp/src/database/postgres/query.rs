@@ -1,5 +1,5 @@
-use crate::database::FieldType;
 use crate::database::postgres::{quote_ident, to_sql_param};
+use crate::database::{FieldType, empty_for_false};
 use crate::model::ModelManager;
 use erp_search::{
     LeftTuple, OrderBy, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType,
@@ -271,6 +271,10 @@ impl QueryBuilder {
         model_manager: &ModelManager,
     ) -> Result<String> {
         let model = model_manager.try_get_model(model_name)?;
+        let right = match field_name {
+            "id" => std::borrow::Cow::Borrowed(right),
+            _ => empty_for_false(model.try_get_internal_field(field_name)?.kind, right),
+        };
         // "id" is a real column but is not in the registry.
         if field_name != "id" {
             let field = model.try_get_internal_field(field_name)?;
@@ -288,13 +292,13 @@ impl QueryBuilder {
             }
             if let Some(reference) = &field.inverse
                 && let Some(sql) =
-                    self.relation_leaf(model, reference, operator, right, model_manager)?
+                    self.relation_leaf(model, reference, operator, &right, model_manager)?
             {
                 return Ok(sql);
             }
         }
         let column = quote_ident(field_name);
-        let condition = self.condition(&column, operator, right)?;
+        let condition = self.condition(&column, operator, &right)?;
         Ok(format!(
             "SELECT {} FROM {} WHERE {condition}",
             quote_ident("id"),

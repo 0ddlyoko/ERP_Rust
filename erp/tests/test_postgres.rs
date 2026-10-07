@@ -1782,3 +1782,30 @@ fn test_onchange_writes_nothing() -> Result<()> {
     );
     Ok(())
 }
+
+/// `false` against a many2one, in a domain written in Rust, is its being empty — not a yes-or-no
+/// the column cannot hold.
+#[test]
+fn test_false_against_a_reference_is_empty() -> Result<()> {
+    let app = app_or_skip!("t_false_is_empty");
+    let mut env = app.new_env()?;
+    let order: MultipleIds =
+        env.create_records("sale_order", vec![MapOfFields::new(HashMap::new())])?;
+    let mut held = MapOfFields::new(HashMap::new());
+    held.insert("order", order.get_ids_ref()[0]);
+    let held: MultipleIds = env.create_records("sale_order_line", vec![held])?;
+    let loose: MultipleIds =
+        env.create_records("sale_order_line", vec![MapOfFields::new(HashMap::new())])?;
+
+    let with: Vec<u32> = env.search_ids(
+        "sale_order_line",
+        &erp_search_code_gen::make_domain!([("order", "!=", false)]),
+    )?;
+    assert_eq!(with, held.get_ids_ref().clone());
+    let without: Vec<u32> = env.search_ids(
+        "sale_order_line",
+        &erp_search_code_gen::make_domain!([("order", "=", false)]),
+    )?;
+    assert_eq!(without, loose.get_ids_ref().clone());
+    Ok(())
+}

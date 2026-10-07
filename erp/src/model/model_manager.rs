@@ -24,6 +24,10 @@ use std::collections::{HashMap, HashSet};
 pub type LoadHook =
     fn(&mut Environment, &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
+/// A check a plugin asks to run once the plugins are loaded — at start, or after one is installed
+/// — rather than after each: what it checks covers what every plugin brings.
+pub type CheckHook = fn(&mut Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
 /// A tracked field of one record that changed: what it held, and what it holds now.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackedChange {
@@ -108,6 +112,7 @@ pub struct ModelManager {
     pub controllers: ControllerRegistry,
     pub assets: AssetRegistry,
     pub load_hooks: Vec<LoadHook>,
+    pub check_hooks: Vec<CheckHook>,
     pub tracking_hooks: Vec<TrackingHook>,
     pub create_hooks: Vec<CreateHook>,
     pub delete_hooks: Vec<DeleteHook>,
@@ -380,9 +385,14 @@ impl ModelManager {
                                 match inverse_field {
                                     // Symmetric with the one2many below: the hop back is the
                                     // field on the other side that names the same relation table.
-                                    FieldReferenceType::M2M { relation, .. } => {
+                                    FieldReferenceType::M2M {
+                                        relation,
+                                        target_column,
+                                        ..
+                                    } => {
                                         let target = self.get_model(target_model);
-                                        let Some(mirror) = target.field_of_relation(relation)
+                                        let Some(mirror) =
+                                            target.field_of_relation(relation, target_column)
                                         else {
                                             panic!(
                                                 "Field {}.{} names relation {relation}, which model {target_model} does not declare",

@@ -70,9 +70,9 @@ impl Plugin for BasePlugin {
             &["session", "users"],
             CACHED_ACCOUNTS,
         );
-        model_manager.load_hooks.push(|env, plugin| {
-            models::View::<SingleId>::on_plugin_loaded(env, plugin.to_string())
-        });
+        model_manager
+            .check_hooks
+            .push(models::View::<SingleId>::check_all);
         // What the core knows about identity is that something answers it. This is the something.
         model_manager
             .identities

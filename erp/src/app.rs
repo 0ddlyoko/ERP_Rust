@@ -10,6 +10,7 @@ use crate::plugin::PluginManager;
 use crate::util::dependency::CircularDependencyError;
 use std::error::Error;
 use std::sync::OnceLock;
+use std::time::Instant;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -108,6 +109,11 @@ pub struct Application {
     /// database — a test, a `--help` — never tries to.
     pool: OnceLock<ConnectionPool>,
     data_update: DataUpdate,
+    /// While the application loads, what checks every plugin at once runs only once, at the end.
+    checks_deferred: bool,
+    /// The schema as the plugins loading so far left it, handed from one to the next so it is
+    /// read once; forgotten once they are loaded, as other processes may change it.
+    schema_state: Option<crate::database::postgres::SchemaState>,
     install: Vec<String>,
     signing_secret: OnceLock<String>,
 }
@@ -123,6 +129,8 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            checks_deferred: false,
+            schema_state: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
@@ -140,6 +148,8 @@ impl Application {
             cache_db: self.cache_db.clone(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            checks_deferred: false,
+            schema_state: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         };
@@ -162,6 +172,8 @@ impl Application {
             cache_db: CacheDatabase::default(),
             pool: OnceLock::new(),
             data_update: DataUpdate::default(),
+            checks_deferred: false,
+            schema_state: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
@@ -247,7 +259,12 @@ impl Application {
         })
     }
 
+    /// Load the plugins installed, and those asked for; how long it took and how many SQL
+    /// statements it ran are logged once done, and for each plugin as it loads.
     pub fn load(&mut self) -> Result<()> {
+        let started = Instant::now();
+        crate::request_log::start();
+        self.checks_deferred = true;
         self.register_plugins()?;
         self.initialize_db()?;
         self.load_base_plugin()?;
@@ -270,6 +287,17 @@ impl Application {
                 }
             }
         }
+        self.checks_deferred = false;
+        self.schema_state = None;
+        self.run_checks()?;
+        let done = crate::request_log::current();
+        tracing::info!(
+            plugins = self.model_manager.loaded_plugins.len(),
+            ms = started.elapsed().as_millis(),
+            queries = done.queries,
+            sql_ms = done.sql_time.as_millis(),
+            "Plugins loaded"
+        );
         Ok(())
     }
 
@@ -358,7 +386,28 @@ impl Application {
     pub fn load_plugin(&mut self, plugin_name: &str) -> Result<()> {
         self._load_plugin(plugin_name)?;
         self.auto_install_plugins()?;
+        if !self.checks_deferred {
+            self.schema_state = None;
+            self.run_checks()?;
+        }
         Ok(())
+    }
+
+    /// Check at once what every plugin brings: the access rules, and what plugins ask to check
+    /// ([`ModelManager::check_hooks`]).
+    fn run_checks(&mut self) -> Result<()> {
+        let mut env = Environment::new(
+            &self.model_manager,
+            &self.config.server,
+            self.create_new_database()?,
+        )?;
+        if let Some(check) = env.model_manager.access.source().map(|source| source.check) {
+            check(&mut env)?;
+        }
+        for hook in env.model_manager.check_hooks.clone() {
+            hook(&mut env)?;
+        }
+        env.close()
     }
 
     /// Install every plugin marked auto-install whose dependencies are all installed.
@@ -431,6 +480,8 @@ impl Application {
             self.load_plugin_within(depend.as_str(), loading)?;
         }
         loading.pop();
+        let started = Instant::now();
+        let before = crate::request_log::current();
 
         // Opened before borrowing the plugin mutably: the connection is owned, so it does not
         // keep `self` borrowed afterwards.
@@ -461,6 +512,9 @@ impl Application {
         // `post_register`, so relational links are complete, and in dependency order, so a plugin
         // extending another's model finds the base columns already there.
         let mut database = database;
+        if let DatabaseType::Postgres(postgres) = &mut database {
+            postgres.schema_state = self.schema_state.take();
+        }
         let model_names: Vec<String> = self
             .model_manager
             .get_all_models_for_plugin(plugin_name)
@@ -485,6 +539,9 @@ impl Application {
             database.sync_constraints(model)?;
             database.sync_indexes(model)?;
         }
+        if let DatabaseType::Postgres(postgres) = &mut database {
+            self.schema_state = postgres.schema_state.take();
+        }
 
         // Data is loaded before `post_init`, so a plugin finds its own records in place by the
         // time its code runs.
@@ -494,6 +551,7 @@ impl Application {
             .insert(plugin_name.to_string(), plugin.demo());
         let info = plugin.info();
         let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
+        env.external_ids = Some(crate::data::ExternalIds::default());
         env.savepoint(|env| {
             for (model_name, field_name) in &to_fill {
                 env.fill_stored_field(model_name, field_name)?;
@@ -504,9 +562,6 @@ impl Application {
                 }
             }
             plugin.post_init(env)?;
-            if let Some(check) = env.model_manager.access.source().map(|source| source.check) {
-                check(env)?;
-            }
             for hook in env.model_manager.load_hooks.clone() {
                 hook(env, plugin_name)?;
             }
@@ -515,6 +570,14 @@ impl Application {
         })?;
         env.close()?;
 
+        let after = crate::request_log::current();
+        tracing::info!(
+            plugin = %plugin_name,
+            ms = started.elapsed().as_millis(),
+            queries = after.queries - before.queries,
+            sql_ms = (after.sql_time - before.sql_time).as_millis(),
+            "Plugin loaded"
+        );
         Ok(())
     }
 

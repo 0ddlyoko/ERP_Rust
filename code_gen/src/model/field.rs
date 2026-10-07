@@ -28,6 +28,8 @@ pub struct FieldGen {
     pub depends: Option<Vec<String>>,
     pub inverse: Option<String>,
     pub relation: Option<String>,
+    /// The relation table's columns, when given rather than named after the two models.
+    pub relation_columns: Option<(String, String)>,
     pub is_private: bool,
     /// Whether this struct asked for the field to be kept in a column.
     ///
@@ -66,6 +68,7 @@ impl FieldGen {
         let mut depends = None;
         let mut inverse = None;
         let mut relation = None;
+        let mut relation_columns = None;
         let mut is_private = false;
         let mut is_tracked = false;
         let mut editable = None;
@@ -179,6 +182,16 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Relation(ident, relation_value) => {
                     relation = Some((ident, relation_value.value()));
+                }
+                AllowedFieldAttrs::RelationColumns(_, value) => {
+                    let text = value.value();
+                    let Some((own, other)) = text.split_once(',') else {
+                        return Err(syn::Error::new(
+                            value.span(),
+                            "relation_columns names two columns: \"own_id,other_id\"",
+                        ));
+                    };
+                    relation_columns = Some((own.trim().to_string(), other.trim().to_string()));
                 }
                 AllowedFieldAttrs::Private(_) => {
                     is_private = true;
@@ -388,6 +401,7 @@ impl FieldGen {
             depends,
             inverse: inverse.map(|inv| inv.1),
             relation: relation.map(|rel| rel.1),
+            relation_columns,
             is_private,
             asks_for_storage: stored.is_some(),
             is_tracked,

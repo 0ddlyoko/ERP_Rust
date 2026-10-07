@@ -15,6 +15,10 @@ impl<'mm> Environment<'mm> {
         let fields_from_db = self.get_fields_from_db(model_name, &ids_to_load, fields);
         match fields_from_db {
             Ok(values) => {
+                // In the order of their ids, so that the records these point to list them in
+                // that order too — the order they were created in.
+                let mut values: Vec<_> = values.into_iter().collect();
+                values.sort_unstable_by_key(|(id, _)| id.get_id());
                 for (id, map_of_fields) in values {
                     for (field_name, field_value) in map_of_fields.fields {
                         self.save_field_to_cache(

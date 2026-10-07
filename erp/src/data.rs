@@ -50,12 +50,145 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     let root = document.root_element();
     let root_noupdate = read_noupdate(root);
 
-    for node in root.children().filter(roxmltree::Node::is_element) {
-        if node.has_tag_name("function") {
-            call_function(env, module, node)?;
-        } else {
-            load_record(env, module, node, root_noupdate, None)?;
+    let owned = env.external_ids.is_none();
+    if owned {
+        env.external_ids = Some(ExternalIds::default());
+    }
+    let loaded = (|| {
+        prefetch(env, module, root)?;
+        for node in root.children().filter(roxmltree::Node::is_element) {
+            if node.has_tag_name("function") {
+                call_function(env, module, node)?;
+            } else {
+                load_record(env, module, node, root_noupdate, None)?;
+            }
         }
+        Ok(())
+    })();
+    if owned {
+        env.external_ids = None;
+    }
+    loaded
+}
+
+/// The external identifiers modules gave, by module then name, each module read at once the
+/// first time one of its names is looked up.
+#[derive(Default)]
+pub(crate) struct ExternalIds {
+    modules: HashMap<String, HashMap<String, Named>>,
+}
+
+/// What an external identifier designates.
+#[derive(Clone)]
+struct Named {
+    model: String,
+    res_id: u32,
+    noupdate: bool,
+}
+
+/// What the registry says of an external identifier, from the names of its module read at once
+/// while a data file loads, else from the registry itself.
+fn named_by(env: &mut Environment, external_id: &str) -> Result<Option<Named>> {
+    let (module, name) = split(external_id);
+    let known = env
+        .external_ids
+        .as_ref()
+        .map(|registry| registry.modules.contains_key(module));
+    match known {
+        None => Ok(None),
+        Some(true) => Ok(lookup(env, module, name)),
+        Some(false) => {
+            let names = names_given_by(env, module)?;
+            if let Some(registry) = env.external_ids.as_mut() {
+                registry.modules.insert(module.to_string(), names);
+            }
+            Ok(lookup(env, module, name))
+        }
+    }
+}
+
+fn lookup(env: &Environment, module: &str, name: &str) -> Option<Named> {
+    env.external_ids
+        .as_ref()?
+        .modules
+        .get(module)?
+        .get(name)
+        .cloned()
+}
+
+/// Every name a module gave, with what it designates: two queries.
+fn names_given_by(env: &mut Environment, module: &str) -> Result<HashMap<String, Named>> {
+    let env = &mut *env.sudo();
+    let ids = env.search_ids(MODEL_DATA, &make_domain!([("module", "=", module)]))?;
+    let rows = env.read(
+        MODEL_DATA,
+        &MultipleIds::from(ids),
+        &["name", "model", "res_id", "noupdate"],
+    )?;
+    let mut names = HashMap::with_capacity(rows.len());
+    for row in &rows {
+        if let (Some(name), Some(model), Some(res_id)) = (
+            row.get_option::<&String>("name"),
+            row.get_option::<&String>("model"),
+            row.get_option::<&i32>("res_id"),
+        ) && let Ok(res_id) = u32::try_from(*res_id)
+        {
+            let noupdate = row
+                .get_option::<&bool>("noupdate")
+                .copied()
+                .unwrap_or(false);
+            names.insert(
+                name.clone(),
+                Named {
+                    model: model.clone(),
+                    res_id,
+                    noupdate,
+                },
+            );
+        }
+    }
+    Ok(names)
+}
+
+/// Read at once what the records a data file declares hold already, a query per model, so that
+/// comparing each with what the file says costs none.
+fn prefetch(env: &mut Environment, module: &str, root: roxmltree::Node) -> Result<()> {
+    let mut existing: HashMap<String, Vec<u32>> = HashMap::new();
+    let mut pending: Vec<roxmltree::Node> = root
+        .children()
+        .filter(roxmltree::Node::is_element)
+        .collect();
+    while let Some(node) = pending.pop() {
+        if node.has_tag_name("function") {
+            continue;
+        }
+        let model_name = model_of(node);
+        if env.model_manager.data_children(model_name).is_some() {
+            pending.extend(
+                node.children()
+                    .filter(|child| child.has_tag_name(model_name)),
+            );
+        }
+        let Some(name) = node.attribute("id") else {
+            continue;
+        };
+        if let Some(named) = named_by(env, &qualify(module, name))? {
+            existing.entry(named.model).or_default().push(named.res_id);
+        }
+    }
+    let env = &mut *env.sudo();
+    for (model_name, ids) in existing {
+        let Ok(model) = env.model_manager.try_get_model(&model_name) else {
+            continue;
+        };
+        let fields: Vec<String> = model
+            .fields
+            .values()
+            .filter(|field| field.is_stored() || field.is_many2many())
+            .map(|field| field.name.clone())
+            .collect();
+        let fields: Vec<&str> = fields.iter().map(String::as_str).collect();
+        env.read(&model_name, &MultipleIds::from(ids), &fields)?;
     }
     Ok(())
 }
@@ -277,7 +410,7 @@ pub fn save_record(
     match resolve(env, &external_id)? {
         Some(existing) => {
             if !is_protected(env, &external_id)? {
-                env.write(model_name, &SingleId::from(existing), values)?;
+                env.write_changes(model_name, existing, values)?;
             }
             Ok(existing)
         }
@@ -356,6 +489,14 @@ pub fn delete_record(env: &mut Environment, external_id: &str) -> Result<bool> {
         return Ok(false);
     };
     env.delete(&model, &SingleId::from(res_id))?;
+    let (module, name) = split(external_id);
+    if let Some(names) = env
+        .external_ids
+        .as_mut()
+        .and_then(|registry| registry.modules.get_mut(module))
+    {
+        names.remove(name);
+    }
     let env = &mut *env.sudo();
     let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
     env.delete(MODEL_DATA, &MultipleIds::from(ids))?;
@@ -403,6 +544,9 @@ pub fn resolve(env: &mut Environment, external_id: &str) -> Result<Option<u32>> 
 ///
 /// As sudo: the registry is how code names records, and naming one is not reading it.
 fn designated(env: &mut Environment, external_id: &str) -> Result<Option<(String, u32)>> {
+    if env.external_ids.is_some() {
+        return Ok(named_by(env, external_id)?.map(|named| (named.model, named.res_id)));
+    }
     let env = &mut *env.sudo();
     let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
     let Some(id) = ids.first() else {
@@ -459,6 +603,9 @@ impl Environment<'_> {
 
 /// Whether later loads must leave the record alone.
 fn is_protected(env: &mut Environment, external_id: &str) -> Result<bool> {
+    if env.external_ids.is_some() {
+        return Ok(named_by(env, external_id)?.is_some_and(|named| named.noupdate));
+    }
     let ids = env.search_ids(MODEL_DATA, &domain_for(external_id))?;
     let Some(id) = ids.first() else {
         return Ok(false);
@@ -482,5 +629,19 @@ fn remember(
     values.insert("res_id", res_id as i32);
     values.insert("noupdate", noupdate);
     env.create_records(MODEL_DATA, vec![values])?;
+    if let Some(names) = env
+        .external_ids
+        .as_mut()
+        .and_then(|registry| registry.modules.get_mut(module))
+    {
+        names.insert(
+            name.to_string(),
+            Named {
+                model: model_name.to_string(),
+                res_id,
+                noupdate,
+            },
+        );
+    }
     Ok(())
 }

@@ -150,3 +150,17 @@ impl From<FieldType> for field_type::FieldType {
         }
     }
 }
+
+/// `false` compared with a field that is no yes-or-no is its being empty, in a domain written
+/// in Rust as in one sent by a client: `("sale_line", "!=", false)` finds the records with a line.
+pub(crate) fn empty_for_false(
+    kind: erp_types::field::FieldKind,
+    right: &RightTuple,
+) -> std::borrow::Cow<'_, RightTuple> {
+    match right {
+        RightTuple::Boolean(false) if kind != erp_types::field::FieldKind::Bool => {
+            std::borrow::Cow::Owned(RightTuple::None)
+        }
+        right => std::borrow::Cow::Borrowed(right),
+    }
+}

@@ -73,6 +73,25 @@ impl Sequence<SingleId> {
         sequence.next(env, date)
     }
 
+    /// The next `count` names of the series `code`, for documents dated `date`, reserved at once.
+    ///
+    /// Errs when no active series has that code.
+    pub fn next_many_by_code(
+        env: &mut Environment,
+        code: String,
+        date: NaiveDate,
+        count: usize,
+    ) -> Result<Vec<String>> {
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        let sequence = Self::by_code(env, code.clone())?;
+        if sequence.is_empty() {
+            return Err(format!("No numbering is set up for \"{code}\"").into());
+        }
+        sequence.next_many(env, date, count)
+    }
+
     /// The next name of this series for a document dated `date`, the series moved on.
     ///
     /// The series is locked first, until the transaction ends: two documents numbered at once
@@ -80,6 +99,20 @@ impl Sequence<SingleId> {
     ///
     /// As sudo: whoever may create the document may number it, without managing the series.
     pub fn next(&self, env: &mut Environment, date: NaiveDate) -> Result<String> {
+        let mut names = self.next_many(env, date, 1)?;
+        Ok(names.pop().unwrap_or_default())
+    }
+
+    /// The next `count` names of this series for documents dated `date`, the series moved on past
+    /// all of them in one write.
+    ///
+    /// Locked and as sudo, as [`Sequence::next`].
+    pub fn next_many(
+        &self,
+        env: &mut Environment,
+        date: NaiveDate,
+        count: usize,
+    ) -> Result<Vec<String>> {
         let env = &mut *env.sudo();
         env.lock_records("sequence", &SingleId::from(self.get_id()))?;
         let reset = *self.get_reset(env)?;
@@ -99,11 +132,14 @@ impl Sequence<SingleId> {
             self.set_period(Some(period), env)?;
         }
         let step = (*self.get_number_increment(env)?).max(1);
-        self.set_number_next(number + step, env)?;
+        let count = i32::try_from(count)?;
+        self.set_number_next(number + step * count, env)?;
         let prefix = self.get_prefix(env)?.cloned().unwrap_or_default();
         let suffix = self.get_suffix(env)?.cloned().unwrap_or_default();
         let padding = *self.get_padding(env)?;
-        Ok(format::format_name(&prefix, number, padding, &suffix, date))
+        Ok((0..count)
+            .map(|at| format::format_name(&prefix, number + step * at, padding, &suffix, date))
+            .collect())
     }
 }
 

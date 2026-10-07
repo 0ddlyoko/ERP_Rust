@@ -1,5 +1,5 @@
 use crate::database::cache::{CacheDatabaseError, Row, Table};
-use crate::database::{Database, FieldType, Group, GroupBy, SearchedRow};
+use crate::database::{Database, FieldType, Group, GroupBy, SearchedRow, empty_for_false};
 use crate::model::ModelManager;
 use erp_search::{LeftTuple, RightTuple, SearchOperator, SearchOptions, SearchTuple, SearchType};
 use erp_types::field::{FieldReference, FieldReferenceType};
@@ -239,14 +239,20 @@ impl CacheConnection {
         let current_field = path.pop().unwrap();
         if path.is_empty() {
             let model = model_manager.get_model(model_name);
-            if current_field != "id"
-                && let Ok(field) = model.try_get_internal_field(&current_field)
+            let field = (current_field != "id")
+                .then(|| model.try_get_internal_field(&current_field).ok())
+                .flatten();
+            let right = match field {
+                Some(field) => empty_for_false(field.kind, right),
+                None => std::borrow::Cow::Borrowed(right),
+            };
+            if let Some(field) = field
                 && let Some(reference) = &field.inverse
-                && let Some(ids) = self._relation_rows(model_name, reference, operator, right)?
+                && let Some(ids) = self._relation_rows(model_name, reference, operator, &right)?
             {
                 return Ok(ids);
             }
-            return Ok(self._get_rows(model_name, &current_field, operator, right));
+            return Ok(self._get_rows(model_name, &current_field, operator, &right));
         }
         let model = model_manager.get_model(model_name);
         let final_field = model.get_internal_field(&current_field);

@@ -100,6 +100,9 @@ pub enum AllowedFieldAttrs {
     Depends(Ident, Vec<LitStr>),
     Inverse(Ident, LitStr),
     Relation(Ident, LitStr),
+    /// The two columns of the relation table, this side's then the other's: needed when a model
+    /// is related to itself, both of them naming it.
+    RelationColumns(Ident, LitStr),
     /// Says the field never leaves the process.
     Private(Ident),
     /// Says a computed field is kept in a column rather than worked out on every read.
@@ -128,6 +131,7 @@ static VALID_FIELD_STRINGS: &[&str] = &[
     "depends",
     "inverse",
     "relation",
+    "relation_columns",
     "private",
     "stored",
     "tracking",
@@ -178,6 +182,10 @@ impl Parse for AllowedFieldAttrs {
                 name,
                 parse_eq(input, "relation = \"my_relation_table\"")?,
             )),
+            "relation_columns" => Ok(AllowedFieldAttrs::RelationColumns(
+                name,
+                parse_eq(input, "relation_columns = \"task_id,depends_on_id\"")?,
+            )),
             "inverse" => Ok(AllowedFieldAttrs::Inverse(
                 name,
                 parse_eq(input, "inverse = \"inverse\"")?,
@@ -223,6 +231,7 @@ impl MySpanned for AllowedFieldAttrs {
             AllowedFieldAttrs::Depends(ident, _) => ident.span(),
             AllowedFieldAttrs::Inverse(ident, _) => ident.span(),
             AllowedFieldAttrs::Relation(ident, _) => ident.span(),
+            AllowedFieldAttrs::RelationColumns(ident, _) => ident.span(),
             AllowedFieldAttrs::Private(ident) => ident.span(),
             AllowedFieldAttrs::Stored(ident) => ident.span(),
             AllowedFieldAttrs::Tracking(ident) => ident.span(),

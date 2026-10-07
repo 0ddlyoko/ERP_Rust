@@ -687,15 +687,23 @@ impl<'mm> Environment<'mm> {
                 self.call_compute_method(model_name, &ids_not_in_cache, &[field_name])?;
             } else if let Some(FieldReference {
                 target_model,
-                inverse_field: FieldReferenceType::M2M { relation, .. },
+                inverse_field:
+                    FieldReferenceType::M2M {
+                        relation,
+                        target_column,
+                        ..
+                    },
             }) = &field_info.inverse
             {
                 // Both sides may hold unwritten pairs, so they reach the relation table before it
                 // is read back.
                 let target_model = *target_model;
                 let relation = relation.clone();
+                let target_column = target_column.clone();
                 self.save_relations_to_db(model_name, &[field_name])?;
-                if let Some(mirror) = self.mirror_of_relation(target_model, &relation) {
+                if let Some(mirror) =
+                    self.mirror_of_relation(target_model, &relation, &target_column)
+                {
                     self.save_relations_to_db(target_model, &[&mirror])?;
                 }
 

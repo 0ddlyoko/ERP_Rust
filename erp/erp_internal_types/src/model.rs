@@ -282,18 +282,24 @@ impl FinalInternalModel {
         field.default_value.clone()
     }
 
-    /// Field on this model that is the other end of a relation table.
+    /// Field on this model that is the other end of a relation table: the one whose own column
+    /// is `column`, the column the other end points with.
     ///
     /// The two sides of a many2many name the same table independently, so the pairing is found
-    /// by matching on it rather than being declared twice.
-    pub fn field_of_relation(&self, relation: &str) -> Option<&str> {
+    /// by matching on it rather than being declared twice; by the column too, so that a model
+    /// related to itself — a task waiting for others — tells its two sides apart.
+    pub fn field_of_relation(&self, relation: &str, column: &str) -> Option<&str> {
         self.fields.iter().find_map(|(name, field)| {
             matches!(
                 &field.inverse,
                 Some(erp_types::field::FieldReference {
-                    inverse_field: erp_types::field::FieldReferenceType::M2M { relation: other, .. },
+                    inverse_field: erp_types::field::FieldReferenceType::M2M {
+                        relation: other,
+                        column: own,
+                        ..
+                    },
                     ..
-                }) if other == relation
+                }) if other == relation && own == column
             )
             .then_some(name.as_str())
         })

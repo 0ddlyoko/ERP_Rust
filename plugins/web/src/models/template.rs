@@ -1,4 +1,5 @@
 use crate::qweb::{Renderer, Values};
+use base::models::Parameter;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::data;
@@ -191,19 +192,31 @@ fn elements_of<'a>(path: &str, root: &'a Element) -> Result<Vec<&'a Element>> {
 impl Template<SingleId> {
     /// Bring the templates of a plugin's static files in line with what it ships, once it loads.
     ///
-    /// Every load rather than only when data is loaded: the files are compiled into the plugin,
-    /// so a new build brings new ones without a new version. A template no longer shipped goes.
-    /// When `web` itself loads, the plugins loaded before it get theirs too.
+    /// The files are compiled into the plugin, so a new build may bring new ones without a new
+    /// version: what a plugin ships is kept as a fingerprint, and its templates are saved again
+    /// only when that changed — otherwise nothing is read but the fingerprints. A template no
+    /// longer shipped goes. When `web` itself loads, the plugins loaded before it get theirs too.
     pub fn on_plugin_loaded(env: &mut Environment, plugin: String) -> Result<()> {
         let plugins = if plugin == "web" {
             env.model_manager.loaded_plugins().to_vec()
         } else {
             vec![plugin.to_string()]
         };
+        let keys: Vec<String> = plugins
+            .iter()
+            .map(|plugin| fingerprint_key(plugin))
+            .collect();
+        let kept = Parameter::values_of(env, keys)?;
         for plugin in &plugins {
+            let key = fingerprint_key(plugin);
+            let fingerprint = fingerprint(env, plugin);
+            if kept.get(&key) == Some(&fingerprint) {
+                continue;
+            }
             Self::sync_files(env, plugin.clone())?;
+            Parameter::keep(env, key, fingerprint)?;
         }
-        Self::check_all(env)
+        Ok(())
     }
 
     /// Save every template first and link them after, so a template may inherit from one in a
@@ -247,8 +260,12 @@ impl Template<SingleId> {
                 })?),
                 None => None,
             };
-            let parent = parent.map(|parent| Template::<SingleId>::from_id(parent, env));
-            Template::<SingleId>::from_id(id, env).set_inherit(parent.as_ref(), env)?;
+            let template = Template::<SingleId>::from_id(id, env);
+            let held: Template<SingleId> = template.get_inherit(env)?;
+            if held.get_optional_id() != parent {
+                let parent = parent.map(|parent| Template::<SingleId>::from_id(parent, env));
+                template.set_inherit(parent.as_ref(), env)?;
+            }
         }
         for name in data::names_of(env, &plugin, "template")? {
             if !names.contains(name.as_str()) {
@@ -325,9 +342,9 @@ impl Template<SingleId> {
     /// matches nothing, a template inheriting from itself, two templates under one key, or one
     /// inheriting across the server's `templates/` and the browser's `static/`.
     ///
-    /// Run once any plugin has loaded, so an extension shipped by a later plugin is checked too —
+    /// Run once the plugins are loaded, so an extension shipped by a later plugin is checked too —
     /// and its plugin fails to install rather than the page failing to render.
-    fn check_all(env: &mut Environment) -> Result<()> {
+    pub fn check_all(env: &mut Environment) -> Result<()> {
         let templates = Templates::load(env)?;
         let mut keys = HashSet::new();
         for row in templates.served() {
@@ -363,4 +380,25 @@ impl Template<SingleId> {
 /// Whether a file is one of the templates the server renders: `<plugin>/templates/…`.
 fn is_server_file(file: &str) -> bool {
     file.split('/').nth(1) == Some("templates")
+}
+
+/// What a plugin ships as templates, as a fingerprint that changes with any of them.
+fn fingerprint(env: &Environment, plugin: &str) -> String {
+    let assets = &env.model_manager.assets;
+    let mut hasher = std::hash::DefaultHasher::new();
+    for (path, content) in assets
+        .files_of(plugin)
+        .into_iter()
+        .filter(|(path, _)| path.ends_with(".xml"))
+        .chain(assets.templates_of(plugin))
+    {
+        std::hash::Hash::hash(&path, &mut hasher);
+        std::hash::Hash::hash(&content, &mut hasher);
+    }
+    format!("{:016x}", std::hash::Hasher::finish(&hasher))
+}
+
+/// The parameter keeping the fingerprint of the templates a plugin ships.
+fn fingerprint_key(plugin: &str) -> String {
+    format!("web.templates.{plugin}")
 }

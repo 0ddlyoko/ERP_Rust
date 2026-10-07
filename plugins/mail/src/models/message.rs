@@ -148,10 +148,9 @@ pub fn note_changes(
     post(
         env,
         model_name,
-        record,
         author,
         MessageKind::Tracking,
-        lines,
+        vec![(record, lines)],
     )
 }
 
@@ -175,6 +174,7 @@ pub fn note_creation(env: &mut Environment, model_name: &str, ids: &[u32]) -> Re
     let rows = env
         .sudo()
         .read(model_name, &MultipleIds::from(ids.to_vec()), &names)?;
+    let mut created = Vec::with_capacity(rows.len());
     for row in rows {
         let Some(id) = row.get_option::<&u32>("id").copied() else {
             continue;
@@ -186,9 +186,9 @@ pub fn note_creation(env: &mut Environment, model_name: &str, ids: &[u32]) -> Re
                 lines.push(line(env, field, &None, &value)?);
             }
         }
-        post(env, model_name, id, author, MessageKind::Creation, lines)?;
+        created.push((id, lines));
     }
-    Ok(())
+    post(env, model_name, author, MessageKind::Creation, created)
 }
 
 /// One change as a message keeps it: the field, its label, and its values before and after, as
@@ -214,47 +214,61 @@ fn line(
     })
 }
 
-/// Add a message to a record's thread, with the changes it notes, as its author: the message is
-/// theirs, whoever this unit of work runs as by now. Without rights checked, since whoever may
-/// change a record may leave the trace of it.
+/// Add a message to each record's thread, with the changes it notes, as its author: the message
+/// is theirs, whoever this unit of work runs as by now. Without rights checked, since whoever may
+/// change a record may leave the trace of it. All the messages are created at once, then all
+/// their lines.
 fn post(
     env: &mut Environment,
     model_name: &str,
-    record: u32,
     author: Option<u32>,
     kind: MessageKind,
-    lines: Vec<Line>,
+    messages: Vec<(u32, Vec<Line>)>,
 ) -> Result<()> {
+    if messages.is_empty() {
+        return Ok(());
+    }
     let mut as_author = match author {
         Some(author) => env.as_user(author),
         None => env.sudo(),
     };
     let env = &mut *as_author.sudo();
-    let mut values = MapOfFields::default();
-    values.insert("model", model_name.to_string());
-    values.insert("record", i32::try_from(record)?);
-    values.insert("date", Utc::now());
-    values.insert("kind", kind);
-    if let Some(author) = author {
-        values.insert("author", author);
-    }
-    let message: Message<SingleId> = env.create_new_record_from_map(values)?;
-    for line in lines {
+    let date = Utc::now();
+    let mut heads = Vec::with_capacity(messages.len());
+    for (record, _) in &messages {
         let mut values = MapOfFields::default();
-        values.insert("message", message.get_id());
-        values.insert("field", line.field);
-        values.insert("label", line.label);
-        for (name, value) in [
-            ("old", line.old.0),
-            ("old_value", line.old.1),
-            ("new", line.new.0),
-            ("new_value", line.new.1),
-        ] {
-            if let Some(value) = value {
-                values.insert(name, value);
-            }
+        values.insert("model", model_name.to_string());
+        values.insert("record", i32::try_from(*record)?);
+        values.insert("date", date);
+        values.insert("kind", kind);
+        if let Some(author) = author {
+            values.insert("author", author);
         }
-        MessageChange::<SingleId>::create(values, env)?;
+        heads.push(values);
+    }
+    let posted: Message<MultipleIds> = env.create_new_records_from_maps(heads)?;
+    let mut changes = Vec::new();
+    for (message, (_, lines)) in posted.get_ids_ref().iter().zip(messages) {
+        for line in lines {
+            let mut values = MapOfFields::default();
+            values.insert("message", *message);
+            values.insert("field", line.field);
+            values.insert("label", line.label);
+            for (name, value) in [
+                ("old", line.old.0),
+                ("old_value", line.old.1),
+                ("new", line.new.0),
+                ("new_value", line.new.1),
+            ] {
+                if let Some(value) = value {
+                    values.insert(name, value);
+                }
+            }
+            changes.push(values);
+        }
+    }
+    if !changes.is_empty() {
+        let _: MessageChange<MultipleIds> = env.create_new_records_from_maps(changes)?;
     }
     Ok(())
 }

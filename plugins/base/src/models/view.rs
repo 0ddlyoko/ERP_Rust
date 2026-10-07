@@ -141,6 +141,7 @@ struct Arch<'a> {
     label: &'a str,
     model_name: &'a str,
     model: &'a FinalInternalModel,
+    kind: &'a str,
 }
 
 /// Elements a block or a page holds: its contents, laid out on two columns.
@@ -148,14 +149,17 @@ const CONTENTS: &[&str] = &[
     "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "totals",
 ];
 const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
-/// What lays out a record as a card — the list's `<compact>`, `<folded>` and `<preview>`.
+/// What lays out a record as a card — the list's `<compact>`, `<folded>` and `<preview>`, the
+/// kanban's `<card>`.
 const CARD: &[&str] = &[
     "row", "column", "title", "subtitle", "figure", "muted", "spacer", "field",
 ];
 /// What in a card may hold text between its fields: `<muted><field name="name"/> · …</muted>`.
 const CARD_TEXT: &[&str] = &["title", "subtitle", "figure", "muted"];
 /// What a field of a form's `<leader>` may stand for; one with none is a tile.
-const LEADER_ROLES: &[&str] = &["status", "avatar", "title", "subtitle", "figure", "note"];
+const LEADER_ROLES: &[&str] = &[
+    "status", "corner", "avatar", "title", "subtitle", "figure", "note",
+];
 /// The colours a `decoration-*` attribute may name.
 const DECORATIONS: &[&str] = &["success", "info", "warning", "danger", "muted"];
 
@@ -171,11 +175,11 @@ impl Arch<'_> {
         }
         let allowed: &[&str] = match root.name.as_str() {
             "list" => &["field", "buttons", "compact", "folded", "preview"],
-            "kanban" => &["field"],
+            "kanban" => &["field", "card"],
             "search" => &["field", "filter"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
-                "chatter", "totals", "leader", "related",
+                "chatter", "totals", "leader", "related", "footer",
             ],
             _ => return Ok(()),
         };
@@ -231,7 +235,10 @@ impl Arch<'_> {
             }
         }
         if let Some(domain) = element.attribute("domain") {
-            self.domain(domain)?;
+            match element.name.as_str() {
+                "field" if self.kind != "search" => self.relation_domain(domain)?,
+                _ => self.domain(domain)?,
+            }
         }
         if element.name == "field" {
             self.decorations(element)?;
@@ -270,7 +277,7 @@ impl Arch<'_> {
                 self.children(element, &["actions", "field"])
             }
             "related" => self.children(element, &["link"]),
-            "compact" | "folded" | "preview" | "row" | "column" | "title" | "subtitle"
+            "compact" | "folded" | "preview" | "card" | "row" | "column" | "title" | "subtitle"
             | "figure" | "muted" => self.children(element, CARD),
             "spacer" => self.children(element, &[]),
             "link" => {
@@ -285,6 +292,21 @@ impl Arch<'_> {
                     if kind != "method" && kind != "action" {
                         return Err(self.error(format!(
                             "button \"{}\" has type \"{kind}\": method or action",
+                            button.attribute("name").unwrap_or_default()
+                        )));
+                    }
+                }
+                self.children(element, &["button"])
+            }
+            "footer" => {
+                for button in element.children.iter().filter_map(as_element) {
+                    if button.attribute("special") == Some("cancel") {
+                        continue;
+                    }
+                    self.required(button, "name")?;
+                    if !matches!(button.attribute("type"), Some("method" | "action")) {
+                        return Err(self.error(format!(
+                            "footer button \"{}\" is a method, an action or special=\"cancel\"",
                             button.attribute("name").unwrap_or_default()
                         )));
                     }
@@ -401,7 +423,12 @@ impl Arch<'_> {
     }
 
     /// A domain as JSON, the form a caller sends: every path starts with a field of the model.
+    /// Outside a search, one not written as a list is an expression of the record giving one,
+    /// reading fields of the model: `project ? [['project', '=', project]] : []`.
     fn domain(&self, domain: &str) -> std::result::Result<(), String> {
+        if self.kind != "search" && !domain.trim_start().starts_with('[') {
+            return self.condition("domain", domain);
+        }
         let parsed: SearchType = erp::serde_json::from_str(domain)
             .map_err(|error| self.error(format!("domain {domain} is not one: {error}")))?;
         let mut paths = Vec::new();
@@ -414,12 +441,24 @@ impl Arch<'_> {
         Ok(())
     }
 
+    /// The records a relational field offers: a domain of the records it points to, as JSON —
+    /// whose fields are those of that model, not checked here — or an expression of the record.
+    fn relation_domain(&self, domain: &str) -> std::result::Result<(), String> {
+        if !domain.trim_start().starts_with('[') {
+            return self.condition("domain", domain);
+        }
+        erp::serde_json::from_str::<SearchType>(domain)
+            .map(|_| ())
+            .map_err(|error| self.error(format!("domain {domain} is not one: {error}")))
+    }
+
     fn error(&self, message: String) -> String {
         format!("{}: {message}", self.label)
     }
 }
 
-/// Names an expression may read without being fields: the language's own, and a few globals.
+/// Names an expression may read without being fields: the language's own, and a few globals —
+/// `today`, the day as `YYYY-MM-DD`, compared with a date as text.
 const EXPRESSION_WORDS: &[&str] = &[
     "true",
     "false",
@@ -441,6 +480,7 @@ const EXPRESSION_WORDS: &[&str] = &[
     "Date",
     "JSON",
     "Object",
+    "today",
 ];
 
 /// The names an expression reads: what is left once strings, numbers, properties (`.includes`),
@@ -595,10 +635,10 @@ impl View<SingleId> {
     /// matches nothing, a view inheriting from itself, an element where it may not stand, or a
     /// field — shown, or named in a label's `{{ field }}` — its model lacks.
     ///
-    /// Run once any plugin has loaded, so a view shipped by a later plugin is checked too. A view
-    /// of a model not registered yet is left for when its plugin loads, and so is a view of an
-    /// installed plugin that has not loaded yet: it may show a field that plugin adds.
-    pub fn on_plugin_loaded(env: &mut Environment, _plugin: String) -> Result<()> {
+    /// Run once the plugins are loaded, so every view is checked against every field. A view of
+    /// a model not registered is left alone, and so is a view of an installed plugin that has not
+    /// loaded: it may show a field that plugin adds.
+    pub fn check_all(env: &mut Environment) -> Result<()> {
         let not_loaded = ModelData::of_plugins_not_loaded(env, "view".to_string())?;
         for view in Views::load_without(env, &not_loaded)?.resolved()? {
             let Ok(model) = env.model_manager.try_get_model(&view.model) else {
@@ -608,6 +648,7 @@ impl View<SingleId> {
                 label: &view.label,
                 model_name: &view.model,
                 model,
+                kind: &view.root.name,
             };
             arch.check(&view.root)?;
         }

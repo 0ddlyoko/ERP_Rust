@@ -86,7 +86,11 @@ where
     let model = env.model_manager.try_get_model(M::_get_model_name())?;
     let mut defaults = MapOfFields::default();
     for name in &args.0 {
-        if let Some(value) = model.fields.get(name).and_then(|field| field.default_value.clone()) {
+        if let Some(value) = model
+            .fields
+            .get(name)
+            .and_then(|field| field.default_value.clone())
+        {
             defaults.insert_field_type(name, value);
         }
     }

@@ -7,7 +7,8 @@ mod selections;
 
 pub(crate) use crud::register_crud;
 pub use crud::{
-    CREATE, CreateArgs, DEFAULT_GET, DELETE, DefaultGetArgs, DeleteArgs, ModelVerbs, WRITE, WriteArgs,
+    CREATE, CreateArgs, DEFAULT_GET, DELETE, DefaultGetArgs, DeleteArgs, ModelVerbs, WRITE,
+    WriteArgs,
 };
 pub use errors::*;
 pub use iterator::*;

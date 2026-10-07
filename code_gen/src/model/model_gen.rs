@@ -414,6 +414,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             depends,
             inverse,
             relation,
+            relation_columns,
             is_private,
             asks_for_storage,
             is_tracked,
@@ -558,15 +559,27 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             let inverse_field = if let Some(relation) = relation {
                 // Column names come from the two model ids, so declaring the relation table is
                 // enough; the other side names the same table and sees the columns swapped.
+                // A model related to itself names them, both sides then telling each other apart.
+                let (column, target_column) = match relation_columns {
+                    Some((own, other)) => (quote! { #own.to_string() }, quote! { #other.to_string() }),
+                    None => (
+                        quote! {
+                            erp::types::field::FieldReferenceType::relation_column(
+                                <Self as erp::types::model::CommonModel<Mode>>::_get_model_name(),
+                            )
+                        },
+                        quote! {
+                            erp::types::field::FieldReferenceType::relation_column(
+                                #field_type_keyword::_get_model_name(),
+                            )
+                        },
+                    ),
+                };
                 quote! {
                     erp::types::field::FieldReferenceType::M2M {
                         relation: #relation.to_string(),
-                        column: erp::types::field::FieldReferenceType::relation_column(
-                            <Self as erp::types::model::CommonModel<Mode>>::_get_model_name(),
-                        ),
-                        target_column: erp::types::field::FieldReferenceType::relation_column(
-                            #field_type_keyword::_get_model_name(),
-                        ),
+                        column: #column,
+                        target_column: #target_column,
                     }
                 }
             } else if let Some(inverse) = inverse {

@@ -238,14 +238,22 @@ impl<'mm> Environment<'mm> {
                     .add_ids_to_recompute(model_name, &computed_fields_string, &[*id]);
             }
         }
-        // Now, we can update cache for given fields
+        // What was stored is read back once, for every record: a stored field brings the others
+        // along. One queued for its computation is not worked out here, but when first read or
+        // when saved; a field kept in the cache only is put there as given.
+        let created = MultipleIds::from(ids.clone());
+        let read_back = final_model.fields.iter().find(|(name, field)| {
+            field.is_stored()
+                && field.compute.is_none()
+                && data.iter().any(|values| values.contains_key(name))
+        });
+        if let Some((field_name, _)) = read_back {
+            self.ensure_fields_in_cache::<MultipleIds>(model_name, field_name, &created)?;
+        }
         for (i, d) in data.into_iter().enumerate() {
             let id = ids[i];
             for (field_name, value) in d.fields {
-                if final_model.is_stored(&field_name) {
-                    // If it's stored, it's already in the database. Load it in cache
-                    self.ensure_fields_in_cache::<SingleId>(model_name, &field_name, &id.into())?;
-                } else {
+                if !final_model.is_stored(&field_name) {
                     self.save_option_to_cache_unchecked::<SingleId, _>(
                         model_name,
                         &field_name,

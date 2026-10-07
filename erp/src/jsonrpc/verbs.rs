@@ -220,13 +220,40 @@ fn blind_domain(env: &Environment, model_name: &str, domain: &SearchType) -> Res
             }
             refuse_unknown_keys(env, model_name, tuple)?;
             let tuple = by_name(env, model_name, tuple)?;
+            let tuple = SearchTuple {
+                right: placeholders(env, tuple.right),
+                ..tuple
+            };
             SearchType::Tuple(typed_dates(env, model_name, tuple)?)
         }
     })
 }
 
+/// What a domain written once in a view means for whoever runs it: `"$uid"` is the caller —
+/// `[["assignees", "in", ["$uid"]]]` finds what is theirs — and `"$today"` is today's date.
+fn placeholders(env: &Environment, right: RightTuple) -> RightTuple {
+    match right {
+        RightTuple::String(text) if text == "$uid" => match env.uid() {
+            Some(uid) => RightTuple::UInteger(uid),
+            None => RightTuple::None,
+        },
+        RightTuple::String(text) if text == "$today" => {
+            RightTuple::Date(chrono::Utc::now().date_naive())
+        }
+        RightTuple::Array(values) => RightTuple::Array(
+            values
+                .into_iter()
+                .map(|value| placeholders(env, value))
+                .collect(),
+        ),
+        right => right,
+    }
+}
+
 /// A date or a moment compared with text, as JSON has to write it, compared with the date or
 /// moment the text writes: `"2026-01-31"`, `"2026-01-31T08:00:00Z"`, `"2026-01-31 08:00:00"`.
+/// `false` compared with a field that is no yes-or-no is its being empty: `[["parent", "=",
+/// false]]` finds the records of no parent.
 fn typed_dates(env: &Environment, model_name: &str, mut tuple: SearchTuple) -> Result<SearchTuple> {
     let mut model = env.model_manager.try_get_model(model_name)?;
     let mut kind = None;
@@ -259,6 +286,9 @@ fn typed_dates(env: &Environment, model_name: &str, mut tuple: SearchTuple) -> R
     tuple.right = match &tuple.right {
         RightTuple::Array(items) => {
             RightTuple::Array(items.iter().map(typed).collect::<Result<Vec<_>>>()?)
+        }
+        RightTuple::Boolean(false) if kind.is_some_and(|kind| kind != FieldKind::Bool) => {
+            RightTuple::None
         }
         right => typed(right)?,
     };

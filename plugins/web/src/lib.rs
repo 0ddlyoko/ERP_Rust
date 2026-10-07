@@ -46,6 +46,9 @@ impl Plugin for WebPlugin {
         model_manager.load_hooks.push(|env, plugin| {
             models::Template::<SingleId>::on_plugin_loaded(env, plugin.to_string())
         });
+        model_manager
+            .check_hooks
+            .push(models::Template::<SingleId>::check_all);
     }
 
     fn init_controllers(&self, controllers: &mut ControllerRegistry) {

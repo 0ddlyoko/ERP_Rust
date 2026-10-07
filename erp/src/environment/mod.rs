@@ -103,6 +103,9 @@ pub struct Environment<'mm> {
     requested_installs: Vec<String>,
     virtual_count: u32,
     closed: bool,
+    /// The external identifiers of the modules a data file names, read once per module while
+    /// the file loads; `None` outside of that.
+    pub(crate) external_ids: Option<crate::data::ExternalIds>,
 }
 
 impl Drop for Environment<'_> {
@@ -153,6 +156,7 @@ impl<'mm> Environment<'mm> {
             requested_installs: Vec::new(),
             virtual_count: 0,
             closed: false,
+            external_ids: None,
         };
         env.database.start_transaction()?;
         Ok(env)
