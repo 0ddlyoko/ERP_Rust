@@ -2,6 +2,7 @@ import { type ComponentClass, computed, effect, inject, load, loading, props, re
 import { and } from "@web/core/domain";
 import { decorationNames, decorationOf } from "@web/core/expression";
 import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
+import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
 import { FilterChips } from "@web/views/search/filter_chips";
@@ -73,11 +74,11 @@ export class ListView extends View {
         return "list";
     }
 
-    @state accessor offset = listMemory(this.router.route.action)?.offset ?? 0;
-    @state accessor selected = new Set<number>(listMemory(this.router.route.action)?.selected ?? []);
+    @state accessor offset = listMemory(listKey(this.router.route))?.offset ?? 0;
+    @state accessor selected = new Set<number>(listMemory(listKey(this.router.route))?.selected ?? []);
     /** The search as the user left it; until they touch it, the view's default filters. */
-    @state accessor facets: Facet[] | null = listMemory(this.router.route.action)?.facets ?? null;
-    @state accessor sort: Sort | null = listMemory(this.router.route.action)?.sort ?? null;
+    @state accessor facets: Facet[] | null = listMemory(listKey(this.router.route))?.facets ?? null;
+    @state accessor sort: Sort | null = listMemory(listKey(this.router.route))?.sort ?? null;
     @state accessor actionsOpen = false;
     @state accessor confirming: Confirming | null = null;
     @state accessor running = false;
@@ -140,7 +141,7 @@ export class ListView extends View {
             return;
         }
         const shown = this.lines.flatMap((line) => (line.kind === "record" ? [this.idOf(line.record)] : []));
-        rememberList(this.router.route.action, {
+        rememberList(listKey(this.router.route), {
             offset: this.grouping === null ? this.offset : 0,
             selected: [...this.selected],
             facets: this.currentFacets,
@@ -178,8 +179,14 @@ export class ListView extends View {
         (action) => (action === null ? Promise.resolve([]) : this.orm.call<Favorite[]>("saved_filter", "mine", [], { action })),
     );
 
-    /** The search as the user left it; until they touch it, the one they open the list with, or the view's. */
+    /**
+     * The search as the user left it; until they touch it, the one they open the list with, or the
+     * view's — none for records opened from another, such as an order's deliveries: all of them.
+     */
     get currentFacets(): Facet[] {
+        if (this.facets === null && this.router.route.ids) {
+            return [];
+        }
         return this.facets ?? this.favorites?.find((favorite) => favorite.is_default)?.facets ?? defaultFacets(this.searchView);
     }
 
@@ -440,7 +447,11 @@ export class ListView extends View {
                 }
                 const opened = opensRecord(answer);
                 if (opened !== null) {
-                    await this.router.go({ action: opened.action, view: "form", id: opened.id });
+                    await this.router.go(
+                        opened.ids === null
+                            ? { action: opened.action, view: "form", id: opened.id }
+                            : { action: opened.action, view: "list", id: null, ids: opened.ids },
+                    );
                     return;
                 }
             } else {

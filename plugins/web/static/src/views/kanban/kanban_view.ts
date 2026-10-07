@@ -74,7 +74,11 @@ export class KanbanView extends View {
         return { ...view, groupable: view.groupable.filter((option) => !option.groupBy.includes(":")) };
     }
 
+    /** The search the user made; until then the view's — none for records opened from another. */
     get currentFacets(): Facet[] {
+        if (this.facets === null && this.router.route.ids) {
+            return [];
+        }
         return this.facets ?? defaultFacets(this.searchView);
     }
 

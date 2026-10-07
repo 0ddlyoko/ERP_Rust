@@ -4,14 +4,14 @@
             <header class="o_action_header">
                 <nav class="o_breadcrumb" aria-label="Breadcrumb">
                     <t t-if="props.module"><span>{{ props.module }}</span><span aria-hidden="true">/</span></t>
-                    <t t-if="isRecord">
+                    <t t-if="isRecord || breadcrumb.trail.length">
                         <a href="#" class="o_breadcrumb_link" t-on-click.prevent="backToList">{{ rootAction }}</a>
                         <span aria-hidden="true">/</span>
                         <t t-foreach="breadcrumb.trail" t-as="crumb" t-key="crumb_index">
                             <a href="#" class="o_breadcrumb_link" t-on-click.prevent="() => backTo(crumb_index)">{{ crumb.name }}</a>
                             <span aria-hidden="true">/</span>
                         </t>
-                        <span class="o_breadcrumb_current">{{ breadcrumb.record ?? "" }}</span>
+                        <span class="o_breadcrumb_current">{{ isRecord ? (breadcrumb.record ?? "") : props.action.name }}</span>
                     </t>
                     <span t-else="" class="o_breadcrumb_current">{{ props.action.name }}</span>
                 </nav>
@@ -36,16 +36,22 @@
                 </div>
             </header>
             <div t-if="view &amp;&amp; besideList" class="o_split">
-                <RecordStrip t-key="props.action.id" resModel="props.action.model" domain="props.action.domain"
-                             embedded="true" action="props.action" selected="props.resId"/>
+                <RecordStrip t-if="stripAction" t-key="stripKey" resModel="stripAction.model" domain="stripDomain"
+                             embedded="true" action="stripAction" listRoute="stripRoute" selected="stripSelected"/>
                 <div class="o_split_main">
-                    <t t-component="view" t-key="viewKey" resModel="props.action.model"
-                       domain="props.action.domain" defaults="props.action.defaults" resId="props.resId ?? undefined" besideList="true"/>
+                    <t t-if="isRecord">
+                        <t t-component="view" t-key="viewKey" resModel="props.action.model" domain="domain"
+                           defaults="props.action.defaults" resId="props.resId ?? undefined" besideList="true"/>
+                    </t>
+                    <t t-else="">
+                        <t t-component="view" t-key="viewKey" resModel="props.action.model" domain="domain"
+                           defaults="props.action.defaults"/>
+                    </t>
                 </div>
             </div>
             <t t-elif="view">
                 <t t-component="view" t-key="viewKey" resModel="props.action.model"
-                   domain="props.action.domain" defaults="props.action.defaults" resId="props.resId ?? undefined"/>
+                   domain="domain" defaults="props.action.defaults" resId="props.resId ?? undefined"/>
             </t>
             <p t-else="" class="o_view_error">No view can show {{ props.action.views.join(", ") }}.</p>
         </section>

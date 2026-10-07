@@ -488,7 +488,8 @@ impl Picking<MultipleIds> {
         })?;
         Ok(match made.as_slice() {
             [single] => json!({"type": "open", "action": "stock.action_pickings", "id": single}),
-            _ => json!({"type": "reload"}),
+            [] => json!({"type": "reload"}),
+            several => json!({"type": "open", "action": "stock.action_pickings", "ids": several}),
         })
     }
 

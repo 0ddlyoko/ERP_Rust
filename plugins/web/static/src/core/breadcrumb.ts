@@ -1,17 +1,31 @@
 import { inject, state } from "trame";
-import { type Route, Router, writeRoute } from "./router";
+import { listKey, type Route, Router, writeRoute } from "./router";
 
-/** A record the user left for another one: where it was, under which action, and its name. */
+/**
+ * A record or a list the user left for another view: where it was, under which action, its name,
+ * and the list beside it then.
+ */
 export interface Crumb {
     route: Route;
     action: string;
     name: string;
+    strip: Route | null;
+}
+
+/** The list a route is in: its action, narrowed as it is, no record. */
+export function listOf(route: Route): Route {
+    return { action: route.action, view: null, id: null, ids: route.ids ?? null, menu: route.menu };
 }
 
 /**
- * What the breadcrumb shows: the records left on the way to the one open — opening the record of
- * a many2one, or of a one2many or many2many — then the action, and the record a view has open, if
- * one.
+ * What the breadcrumb shows: the records and lists left on the way to the view open — opening the
+ * record of a many2one, the records of a related link — then the action, and the record a view
+ * has open, if one.
+ *
+ * It also holds the list shown beside a record, `strip`: the one the user last opened a record
+ * from. Opening another record from that one — a customer, a delivery — keeps it; opening several
+ * shows them as a list, beside it; opening one of those makes theirs the list beside. Going back
+ * to a crumb brings back the list that was beside it.
  *
  * The trail changes once the next view shows, not when the route does: the view left stays shown
  * while the next one loads, and the breadcrumb with it.
@@ -22,11 +36,19 @@ export class Breadcrumb {
     @state accessor trail: Crumb[] = [];
     @state accessor action: string | null = null;
     @state accessor record: string | null = null;
+    /** The list beside a record, or beside a list opened from one; that of the action when none. */
+    @state accessor strip: Route | null = null;
 
     /** The record being left, added to the trail once the next one shows. */
     private leaving: Crumb | null = null;
     /** The crumb being gone back to, by position: the trail ends before it once its record shows. */
     private returning: number | null = null;
+    /** A record chosen in the list beside: the trail goes back to that list. */
+    private picking = false;
+    /** The list shown last, while it is the view shown: a record opened next is opened from it. */
+    private fromList: Route | null = null;
+    /** The view shown last, by route and kind: shown again — laid out anew — it changes nothing. */
+    private lastShown = "";
 
     /**
      * Go back to a crumb: those from it on are dropped once its record shows — at once when it is
@@ -61,9 +83,32 @@ export class Breadcrumb {
         await this.leave(here, go, () => writeRoute(this.router.route) !== writeRoute(here));
     }
 
+    /** Open some records of an action as a list, the record open left in the trail. */
+    async openList(action: string, ids: number[]): Promise<void> {
+        const here = this.router.route;
+        const go = () => this.router.go({ action, view: "list", id: null, ids, menu: here.menu });
+        if (here.id === null) {
+            await go();
+            return;
+        }
+        await this.leave(here, go, () => writeRoute(this.router.route) !== writeRoute(here));
+    }
+
+    /** Open a record of the list beside, or a new one: the trail goes back to that list. */
+    async pick(id: number | null): Promise<void> {
+        const strip = this.strip ?? listOf(this.router.route);
+        this.picking = true;
+        await this.router.go({ ...strip, view: "form", id });
+    }
+
     /** Leave the record open for another, through `go`; kept in the trail if it was left. */
     async leave(route: Route, go: () => Promise<void>, left: () => boolean): Promise<void> {
-        this.leaving = { route, action: this.action ?? "", name: this.record ?? "" };
+        this.leaving = {
+            route,
+            action: this.action ?? "",
+            name: this.record ?? this.action ?? "",
+            strip: this.strip ?? listOf(route),
+        };
         await go();
         if (!left()) {
             this.leaving = null;
@@ -71,23 +116,45 @@ export class Breadcrumb {
     }
 
     /**
-     * A view shows: the record left joins the trail; coming back to a crumb drops it and those
-     * after it; a list forgets them all.
+     * A view shows. Coming back to a crumb drops it and those after it, and brings back its list
+     * beside. What was left joins the trail. A list opened otherwise — from the menu — forgets
+     * them all; a record opened from a list has that list beside it, and the trail leads back to
+     * the list when it was itself opened from a record.
      */
     shown(route: Route, isRecord: boolean): void {
-        const leaving = this.leaving;
-        const returning = this.returning;
+        const shown = `${writeRoute(route)}/${isRecord}`;
+        if (shown === this.lastShown && this.leaving === null && this.returning === null && !this.picking) {
+            return;
+        }
+        this.lastShown = shown;
+        const { leaving, returning, picking, fromList } = this;
         this.leaving = null;
         this.returning = null;
-        if (!isRecord) {
-            this.trail = [];
-        } else if (returning !== null) {
+        this.picking = false;
+        this.fromList = isRecord ? null : listOf(route);
+        if (returning !== null) {
+            this.strip = this.trail[returning]?.strip ?? null;
             this.trail = this.trail.slice(0, returning);
         } else if (leaving !== null) {
             this.trail = [...this.trail, leaving];
+            this.strip = leaving.strip;
+        } else if (!isRecord) {
+            this.trail = [];
+            this.strip = null;
+        } else if (picking) {
+            const strip = listKey(this.strip ?? listOf(route));
+            const at = this.trail.findIndex((crumb) => crumb.route.id === null && listKey(crumb.route) === strip);
+            this.trail = this.trail.slice(0, at + 1);
+        } else if (fromList !== null) {
+            if (this.trail.length) {
+                const name = this.action ?? "";
+                this.trail = [...this.trail, { route: fromList, action: name, name, strip: this.strip }];
+            }
+            this.strip = fromList;
         } else {
             const at = this.trail.findIndex((crumb) => writeRoute(crumb.route) === writeRoute(route));
             if (at >= 0) {
+                this.strip = this.trail[at].strip;
                 this.trail = this.trail.slice(0, at);
             }
         }

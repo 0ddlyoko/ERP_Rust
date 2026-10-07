@@ -1,6 +1,7 @@
 import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state, t, untrack } from "trame";
 import { avatarStyleOf, initialsOf } from "@web/core/avatar";
 import { listMemory } from "@web/core/list_memory";
+import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
 import type { Values } from "@web/core/orm";
@@ -71,8 +72,6 @@ export class FormView extends View {
     @state accessor lineErrors: Record<string, Record<string, Record<string, string>>> = {};
     /** Whether the leader shows one line: the page is scrolled past it. */
     @state accessor leaderCompact = false;
-    /** The related link whose records are listed to choose from, by position. */
-    @state accessor openLink: number | null = null;
     /** What the user was told could not be computed, so as to tell it once. */
     private told = new Set<string>();
     private onchanges = 0;
@@ -232,7 +231,7 @@ export class FormView extends View {
 
     /** Where the record stands among those of the list it was opened from, if it was. */
     @computed get pager(): { position: number; total: number; previous: number | null; next: number | null } | null {
-        const memory = this.props.embedded || this.props.besideList ? undefined : listMemory(this.router.route.action);
+        const memory = this.props.embedded || this.props.besideList ? undefined : listMemory(listKey(this.router.route));
         const at = memory?.ids.indexOf(this.props.resId ?? -1) ?? -1;
         if (memory === undefined || at < 0) {
             return null;
@@ -337,34 +336,14 @@ export class FormView extends View {
         return records.length === 1 ? records[0].name : `${records[0].name} and ${records.length - 1} more`;
     }
 
-    /** Follow a related link: its one record opens; several are listed to choose from. */
-    followLink(at: number, action: string, name: string): void {
+    /** Follow a related link: its one record opens, several as a list; this one left in the trail. */
+    followLink(action: string, name: string): void {
         const records = this.relatedRecords(name);
         if (records.length === 1) {
-            this.openRelated(action, records[0].id);
+            void this.breadcrumb.open(action, records[0].id);
         } else if (records.length > 1) {
-            this.openLink = this.openLink === at ? null : at;
+            void this.breadcrumb.openList(action, records.map((record) => record.id));
         }
-    }
-
-    /** Open a related record under its action, this one left in the breadcrumb. */
-    openRelated(action: string, id: number): void {
-        this.openLink = null;
-        void this.breadcrumb.open(action, id);
-    }
-
-    /** The records of a related link listed, a press anywhere else puts them away. */
-    @effect closeLinkOutside(): (() => void) | void {
-        if (this.openLink === null) {
-            return;
-        }
-        const close = (event: PointerEvent): void => {
-            if (!(event.target as Element | null)?.closest(".o_related_item")) {
-                this.openLink = null;
-            }
-        };
-        document.addEventListener("pointerdown", close);
-        return () => document.removeEventListener("pointerdown", close);
     }
 
     /** Show another record of the list. */
@@ -666,7 +645,9 @@ export class FormView extends View {
             }
             const opened = opensRecord(answer);
             if (opened !== null) {
-                await this.router.go({ action: opened.action, view: "form", id: opened.id });
+                await (opened.ids === null
+                    ? this.breadcrumb.open(opened.action, opened.id)
+                    : this.breadcrumb.openList(opened.action, opened.ids));
                 return;
             }
             this.record = await this.read(this.props.resModel, id, Object.keys(this.record));

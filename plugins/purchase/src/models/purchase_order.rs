@@ -476,7 +476,11 @@ impl PurchaseOrder<MultipleIds> {
                 let action = single.action_xml_id(env)?;
                 Ok(json!({"type": "open", "action": action, "id": single.get_id()}))
             }
-            _ => Ok(json!({"type": "reload"})),
+            [first, ..] => {
+                let action = first.action_xml_id(env)?;
+                let ids: Vec<u32> = made.iter().map(|bill| bill.get_id()).collect();
+                Ok(json!({"type": "open", "action": action, "ids": ids}))
+            }
         }
     }
 

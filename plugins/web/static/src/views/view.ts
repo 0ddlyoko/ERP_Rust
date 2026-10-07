@@ -140,23 +140,30 @@ export function asksReload(answer: unknown): boolean {
     return typeof answer === "object" && answer !== null && (answer as { type?: unknown }).type === "reload";
 }
 
-/** A record a button's method answered with, to be shown: `{ type: "open", action, id }`. */
-export interface OpenedRecord {
-    action: string;
-    id: number;
-}
+/**
+ * What a button's method answered with, to be shown: one record, `{ type: "open", action, id }`,
+ * or several as a list, `{ type: "open", action, ids }` — `ids` is `null` for one.
+ */
+export type OpenedRecord = { action: string; id: number; ids: null } | { action: string; id: null; ids: number[] };
 
 /**
- * The record a button's method asks to show, `{ type: "open", action: "account.action_x", id: 4 }`:
- * what the method made, such as the credit note of an invoice. `null` for any other answer.
+ * The records a button's method asks to show, `{ type: "open", action: "account.action_x", id: 4 }`
+ * or `ids: [4, 5]`: what the method made, such as the credit note of an invoice, or the invoices
+ * of several orders. `null` for any other answer.
  */
 export function opensRecord(answer: unknown): OpenedRecord | null {
     if (typeof answer !== "object" || answer === null) {
         return null;
     }
-    const { type, action, id } = answer as { type?: unknown; action?: unknown; id?: unknown };
-    if (type !== "open" || typeof action !== "string" || typeof id !== "number") {
+    const { type, action, id, ids } = answer as { type?: unknown; action?: unknown; id?: unknown; ids?: unknown };
+    if (type !== "open" || typeof action !== "string") {
         return null;
     }
-    return { action, id };
+    if (typeof id === "number") {
+        return { action, id, ids: null };
+    }
+    if (Array.isArray(ids) && ids.length > 0 && ids.every((one) => typeof one === "number")) {
+        return { action, id: null, ids: ids as number[] };
+    }
+    return null;
 }

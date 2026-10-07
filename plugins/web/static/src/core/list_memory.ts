@@ -29,13 +29,16 @@ export interface ListMemory {
 
 const memories = new Map<string, ListMemory>();
 
-/** The list of an action as the user left it, so going back to it finds it as it was. */
-export function listMemory(action: string | null): ListMemory | undefined {
-    return action === null ? undefined : memories.get(action);
+/**
+ * A list as the user left it, by its [`listKey`](./router.ts): an action's, or some of its
+ * records', so going back to it finds it as it was.
+ */
+export function listMemory(key: string | null): ListMemory | undefined {
+    return key === null ? undefined : memories.get(key);
 }
 
-export function rememberList(action: string | null, memory: ListMemory): void {
-    if (action !== null) {
-        memories.set(action, memory);
+export function rememberList(key: string | null, memory: ListMemory): void {
+    if (key !== null) {
+        memories.set(key, memory);
     }
 }

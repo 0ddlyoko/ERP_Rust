@@ -3,12 +3,14 @@ import { state } from "trame";
 /**
  * Where the user is: the action open, the kind of its view shown, the record, if one, and the
  * entry of the menu it was opened from — an action two modules share shows under the one chosen.
+ * `ids` narrows the action to some of its records: the deliveries of an order, opened from it.
  */
 export interface Route {
     action: string | null;
     view: string | null;
     id: number | null;
     menu?: number | null;
+    ids?: readonly number[] | null;
 }
 
 /** A route as the address writes it: `#action=base.action_users&view=form&id=3`. */
@@ -16,11 +18,16 @@ export function readRoute(hash: string): Route {
     const params = new URLSearchParams(hash.replace(/^#/, ""));
     const id = Number(params.get("id"));
     const menu = Number(params.get("menu"));
+    const ids = (params.get("ids") ?? "")
+        .split(",")
+        .map(Number)
+        .filter((one) => Number.isInteger(one) && one > 0);
     return {
         action: params.get("action"),
         view: params.get("view"),
         id: Number.isInteger(id) && id > 0 ? id : null,
         menu: Number.isInteger(menu) && menu > 0 ? menu : null,
+        ids: ids.length ? ids : null,
     };
 }
 
@@ -32,6 +39,9 @@ export function writeRoute(route: Route): string {
     if (route.view !== null) {
         params.set("view", route.view);
     }
+    if (route.ids) {
+        params.set("ids", route.ids.join(","));
+    }
     if (route.id !== null) {
         params.set("id", String(route.id));
     }
@@ -39,6 +49,14 @@ export function writeRoute(route: Route): string {
         params.set("menu", String(route.menu));
     }
     return `#${params.toString()}`;
+}
+
+/** The list a route shows or comes from: its action, narrowed to some records if it is. */
+export function listKey(route: Route): string | null {
+    if (route.action === null) {
+        return null;
+    }
+    return route.ids ? `${route.action}#${route.ids.join(",")}` : route.action;
 }
 
 /**

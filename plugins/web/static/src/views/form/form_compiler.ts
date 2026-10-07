@@ -428,7 +428,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             return "";
         }
         const items = links
-            .map((link, at) => {
+            .map((link) => {
                 condition(link, "invisible");
                 const column = shownColumn(link);
                 relatedFields.push({ name: link.getAttribute("name") ?? "", action: link.getAttribute("action") ?? "" });
@@ -440,17 +440,12 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 return (
                     `<div class="o_related_item"${ifShown(shownUnless(link))}>` +
                     `<button type="button" t-att-class="{ o_related_link: true, o_related_none: !__form.relatedRecords(${name}).length }" ` +
-                    `t-att-aria-expanded="__form.openLink === ${at} ? 'true' : 'false'" ` +
-                    `t-on-click="() => __form.followLink(${at}, ${action}, ${name})">` +
+                    `t-on-click="() => __form.followLink(${action}, ${name})">` +
                     `<span class="o_related_icon"><Icon name="${icon}"/></span>` +
                     `<span class="o_related_text"><span class="o_related_head">` +
                     `<span class="o_related_count">{{ __form.relatedRecords(${name}).length }}</span>` +
                     `<span class="o_related_label">${caption}</span></span>` +
-                    `<span class="o_related_sub">{{ __form.relatedSummary(${name}) }}</span></span></button>` +
-                    `<ul t-if="__form.openLink === ${at}" class="o_related_menu">` +
-                    `<li t-foreach="__form.relatedRecords(${name})" t-as="linked" t-key="linked.id">` +
-                    `<button type="button" t-on-click="() => __form.openRelated(${action}, linked.id)">{{ linked.name }}</button>` +
-                    `</li></ul></div>`
+                    `<span class="o_related_sub">{{ __form.relatedSummary(${name}) }}</span></span></button></div>`
                 );
             })
             .join("");

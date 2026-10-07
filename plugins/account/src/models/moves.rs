@@ -1000,7 +1000,12 @@ impl Move<MultipleIds> {
                 let action = single.action_xml_id(env)?;
                 json!({"type": "open", "action": action, "id": single.get_id()})
             }
-            _ => json!({"type": "reload"}),
+            [first, ..] => {
+                let action = first.action_xml_id(env)?;
+                let ids: Vec<u32> = reversals.iter().map(|entry| entry.get_id()).collect();
+                json!({"type": "open", "action": action, "ids": ids})
+            }
+            [] => json!({"type": "reload"}),
         })
     }
 

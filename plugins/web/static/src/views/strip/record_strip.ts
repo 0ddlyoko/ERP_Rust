@@ -2,6 +2,7 @@ import { computed, effect, load, loading, props, resource, state, t } from "tram
 import { decorationNames, decorationOf, evaluate } from "@web/core/expression";
 import { listMemory } from "@web/core/list_memory";
 import type { ActionDescription } from "@web/core/menus";
+import { listKey, type Route } from "@web/core/router";
 import type { Values } from "@web/core/orm";
 import { periodLabel } from "@web/views/list/list_view";
 import { type Column, View, viewProps } from "@web/views/view";
@@ -83,6 +84,8 @@ export class RecordStrip extends View {
         ...viewProps,
         /** The action whose records these are. */
         action: t.any<ActionDescription>(),
+        /** The list these records are, as a route: the action, narrowed to some records or not. */
+        listRoute: t.any<Route>(),
         /** The record the form shows. */
         selected: t.number().orNull().default(null),
     });
@@ -91,7 +94,7 @@ export class RecordStrip extends View {
         return "list";
     }
 
-    @state accessor layout: StripLayout = readLayout(this.router.route.action);
+    @state accessor layout: StripLayout = readLayout(this.props.listRoute.action);
     @state accessor narrowScreen = window.matchMedia(FOLDS_BELOW).matches;
     /** Folded, opened over the form while the pointer is on it. */
     @state accessor peeking = false;
@@ -185,17 +188,14 @@ export class RecordStrip extends View {
         window.addEventListener("pointerup", up);
     }
 
-    /**
-     * The action as the route names it: the same while the user moves between its records, so
-     * that what is read from it is not read again for each.
-     */
+    /** The action the list is of: the same while the user moves between its records. */
     @computed get actionName(): string | null {
-        return this.router.route.action;
+        return this.props.listRoute.action;
     }
 
     /** The list as the user left it, if they came from it. */
     @computed get memory() {
-        return listMemory(this.actionName);
+        return listMemory(listKey(this.props.listRoute));
     }
 
     /** What the records are gathered by: the field, and the period of a date. */
@@ -371,12 +371,12 @@ export class RecordStrip extends View {
     open(record: Values): void {
         this.hidePreview();
         if (!this.isSelected(record)) {
-            void this.router.go({ ...this.router.route, id: record.id as number });
+            void this.breadcrumb.pick(record.id as number);
         }
     }
 
     create(): void {
-        void this.router.go({ ...this.router.route, id: null });
+        void this.breadcrumb.pick(null);
     }
 
     /** Show a record's preview once the pointer rested on it, beside it — above when low on the screen. */
