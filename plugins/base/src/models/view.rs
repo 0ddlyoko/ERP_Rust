@@ -589,6 +589,7 @@ impl View<MultipleIds> {
     }
 }
 
+#[erp_methods]
 impl View<SingleId> {
     /// Refuse views that cannot be shown: markup that does not parse, an extension whose path
     /// matches nothing, a view inheriting from itself, an element where it may not stand, or a
@@ -597,8 +598,8 @@ impl View<SingleId> {
     /// Run once any plugin has loaded, so a view shipped by a later plugin is checked too. A view
     /// of a model not registered yet is left for when its plugin loads, and so is a view of an
     /// installed plugin that has not loaded yet: it may show a field that plugin adds.
-    pub fn on_plugin_loaded(env: &mut Environment, _plugin: &str) -> Result<()> {
-        let not_loaded = ModelData::of_plugins_not_loaded(env, "view")?;
+    pub fn on_plugin_loaded(env: &mut Environment, _plugin: String) -> Result<()> {
+        let not_loaded = ModelData::of_plugins_not_loaded(env, "view".to_string())?;
         for view in Views::load_without(env, &not_loaded)?.resolved()? {
             let Ok(model) = env.model_manager.try_get_model(&view.model) else {
                 continue;

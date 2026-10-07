@@ -49,9 +49,10 @@ pub struct Sequence<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Sequence<SingleId> {
     /// The active series named `code`, empty when there is none.
-    pub fn by_code(env: &mut Environment, code: &str) -> Result<Sequence<SingleId>> {
+    pub fn by_code(env: &mut Environment, code: String) -> Result<Sequence<SingleId>> {
         let env = &mut *env.sudo();
         let found: Sequence<MultipleIds> =
             env.search(&make_domain!([("code", "=", code), ("active", "=", true)]))?;
@@ -64,8 +65,8 @@ impl Sequence<SingleId> {
     /// The next name of the series `code`, for a document dated `date`.
     ///
     /// Errs when no active series has that code: a document without a number is no document.
-    pub fn next_by_code(env: &mut Environment, code: &str, date: NaiveDate) -> Result<String> {
-        let sequence = Self::by_code(env, code)?;
+    pub fn next_by_code(env: &mut Environment, code: String, date: NaiveDate) -> Result<String> {
+        let sequence = Self::by_code(env, code.clone())?;
         if sequence.is_empty() {
             return Err(format!("No numbering is set up for \"{code}\"").into());
         }

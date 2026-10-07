@@ -117,6 +117,7 @@ pub struct SaleOrderLine<Mode: IdMode> {
     invoice_status: InvoiceStatus,
 }
 
+#[erp_methods]
 impl SaleOrderLine<SingleId> {
     /// What the line's product says, read as sudo: the person quoting may not manage products.
     fn product_record(&self, env: &mut Environment) -> Result<Product<SingleId>> {
@@ -174,17 +175,17 @@ impl SaleOrderLine<MultipleIds> {
             let quantity = *line.get_product_uom_qty(env)?;
             let date = *order.get_date_order(env)?;
             let pricelist: Pricelist<SingleId> = order.get_pricelist(env)?;
-            let mut price = pricelist.price_of(env, &product, quantity, date)?;
+            let mut price = pricelist.price_of(env, product.clone(), quantity, date)?;
             let uom: Uom<SingleId> = line.get_uom(env)?;
             if !uom.is_empty() {
                 let env = &mut *env.sudo();
                 let product_uom: Uom<SingleId> = product.get_uom(env)?;
-                price = product_uom.convert_price(env, price, &uom)?;
+                price = product_uom.convert_price(env, price, uom)?;
             }
             let currency = order.currency_or_company(env)?;
             let company = Currency::of_company(env)?;
             if currency.get_id() != company.get_id() {
-                price = company.convert(env, price, &currency, date)?;
+                price = company.convert(env, price, currency, date)?;
             }
             line.set_price_unit(price, env)?;
         }
@@ -207,7 +208,7 @@ impl SaleOrderLine<MultipleIds> {
             };
             let order: SaleOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
             let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }

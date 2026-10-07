@@ -52,9 +52,29 @@ impl Hash for SingleId {
     }
 }
 
+/// Records of a model, by their ids.
+///
+/// `prefetch` is the recordset these ids were taken from — what reading a field loads along with
+/// them — and `None` while they are a recordset of their own: the ids are then what is loaded.
+/// What is taken from them, looping over them or keeping some, gets theirs, so a record taken
+/// from a recordset still reads its fields with the others.
 #[derive(Default, Debug, Clone)]
 pub struct MultipleIds {
     pub ids: Vec<u32>,
+    prefetch: Option<Arc<[u32]>>,
+}
+
+impl MultipleIds {
+    /// The one record these ids name — none when empty — with the recordset it was taken from;
+    /// how many they are when several.
+    pub fn as_single(&self) -> Result<SingleId, usize> {
+        match (self.ids.as_slice(), &self.prefetch) {
+            ([], _) => Ok(SingleId::empty()),
+            ([id], Some(prefetch)) => Ok(SingleId::within(*id, prefetch.clone())),
+            ([id], None) => Ok(SingleId::from(*id)),
+            (ids, _) => Err(ids.len()),
+        }
+    }
 }
 
 pub mod sealed {
@@ -81,6 +101,11 @@ pub trait IdMode:
     fn prefetch_ids(&self) -> &[u32] {
         self.get_ids_ref()
     }
+    /// The same, shared, for what is taken from these ids — each record looped over, a part
+    /// kept — to load its fields with them.
+    fn shared_prefetch(&self) -> Arc<[u32]> {
+        Arc::from(self.prefetch_ids())
+    }
 }
 
 impl IdMode for SingleId {
@@ -104,6 +129,11 @@ impl IdMode for SingleId {
     }
     fn prefetch_ids(&self) -> &[u32] {
         self.prefetch.as_deref().unwrap_or(&self.ids)
+    }
+    fn shared_prefetch(&self) -> Arc<[u32]> {
+        self.prefetch
+            .clone()
+            .unwrap_or_else(|| Arc::from(self.ids.as_slice()))
     }
 }
 
@@ -134,6 +164,14 @@ impl IdMode for MultipleIds {
     }
     fn is_empty(&self) -> bool {
         self.ids.is_empty()
+    }
+    fn prefetch_ids(&self) -> &[u32] {
+        self.prefetch.as_deref().unwrap_or(&self.ids)
+    }
+    fn shared_prefetch(&self) -> Arc<[u32]> {
+        self.prefetch
+            .clone()
+            .unwrap_or_else(|| Arc::from(self.ids.as_slice()))
     }
 }
 
@@ -179,25 +217,37 @@ impl From<&SingleId> for RightTuple {
 
 impl From<u32> for MultipleIds {
     fn from(id: u32) -> Self {
-        MultipleIds { ids: vec![id] }
+        MultipleIds {
+            ids: vec![id],
+            prefetch: None,
+        }
     }
 }
 
 impl From<&u32> for MultipleIds {
     fn from(id: &u32) -> Self {
-        MultipleIds { ids: vec![*id] }
+        MultipleIds {
+            ids: vec![*id],
+            prefetch: None,
+        }
     }
 }
 
 impl From<Vec<u32>> for MultipleIds {
     fn from(ids: Vec<u32>) -> Self {
-        MultipleIds { ids }
+        MultipleIds {
+            ids,
+            prefetch: None,
+        }
     }
 }
 
 impl From<&Vec<u32>> for MultipleIds {
     fn from(ids: &Vec<u32>) -> Self {
-        MultipleIds { ids: ids.clone() }
+        MultipleIds {
+            ids: ids.clone(),
+            prefetch: None,
+        }
     }
 }
 
@@ -205,13 +255,17 @@ impl From<Vec<&u32>> for MultipleIds {
     fn from(ids: Vec<&u32>) -> Self {
         MultipleIds {
             ids: ids.into_iter().copied().collect(),
+            prefetch: None,
         }
     }
 }
 
 impl From<SingleId> for MultipleIds {
     fn from(id: SingleId) -> Self {
-        MultipleIds { ids: id.ids }
+        MultipleIds {
+            ids: id.ids,
+            prefetch: id.prefetch,
+        }
     }
 }
 
@@ -219,6 +273,7 @@ impl From<&SingleId> for MultipleIds {
     fn from(id: &SingleId) -> Self {
         MultipleIds {
             ids: id.ids.clone(),
+            prefetch: id.prefetch.clone(),
         }
     }
 }
@@ -227,6 +282,7 @@ impl From<Vec<SingleId>> for MultipleIds {
     fn from(ids: Vec<SingleId>) -> Self {
         MultipleIds {
             ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
+            prefetch: None,
         }
     }
 }
@@ -235,6 +291,7 @@ impl From<&Vec<SingleId>> for MultipleIds {
     fn from(ids: &Vec<SingleId>) -> Self {
         MultipleIds {
             ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
+            prefetch: None,
         }
     }
 }
@@ -243,15 +300,14 @@ impl From<Vec<&SingleId>> for MultipleIds {
     fn from(ids: Vec<&SingleId>) -> Self {
         MultipleIds {
             ids: ids.iter().flat_map(|id| id.ids.iter().copied()).collect(),
+            prefetch: None,
         }
     }
 }
 
 impl From<&MultipleIds> for MultipleIds {
     fn from(ids: &MultipleIds) -> Self {
-        Self {
-            ids: ids.ids.clone(),
-        }
+        ids.clone()
     }
 }
 
@@ -282,7 +338,11 @@ impl IntoIterator for MultipleIds {
     type IntoIter = MultipleIdsIntoIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        MultipleIdsIntoIterator::new(self.ids)
+        let prefetch = self.shared_prefetch();
+        MultipleIdsIntoIterator {
+            ids: self.ids.into_iter(),
+            prefetch,
+        }
     }
 }
 
@@ -293,10 +353,11 @@ pub struct MultipleIdsIntoIterator {
 }
 
 impl MultipleIdsIntoIterator {
-    pub fn new(ids: Vec<u32>) -> Self {
+    /// The ids, each remembering `prefetch`, the recordset they were taken from.
+    pub fn within(ids: Vec<u32>, prefetch: Arc<[u32]>) -> Self {
         MultipleIdsIntoIterator {
-            prefetch: Arc::from(ids.as_slice()),
             ids: ids.into_iter(),
+            prefetch,
         }
     }
 }
@@ -325,7 +386,10 @@ impl<'a> IntoIterator for &'a MultipleIds {
     type IntoIter = IdsRefIntoIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IdsRefIntoIterator::new(self.get_ids_ref())
+        IdsRefIntoIterator {
+            ids: self.ids.iter(),
+            prefetch: self.shared_prefetch(),
+        }
     }
 }
 
@@ -336,10 +400,11 @@ pub struct IdsRefIntoIterator<'a> {
 }
 
 impl<'a> IdsRefIntoIterator<'a> {
-    pub fn new(ids: &'a [u32]) -> Self {
+    /// The ids, each remembering `prefetch`, the recordset they were taken from.
+    pub fn within(ids: &'a [u32], prefetch: Arc<[u32]>) -> Self {
         IdsRefIntoIterator {
             ids: ids.iter(),
-            prefetch: Arc::from(ids),
+            prefetch,
         }
     }
 }
@@ -415,18 +480,21 @@ impl Sub for MultipleIds {
     type Output = MultipleIds;
 
     fn sub(self, rhs: Self) -> Self::Output {
+        let prefetch = Some(self.shared_prefetch());
         Self {
             ids: self
                 .ids
                 .into_iter()
                 .filter(|id| !rhs.contains(id))
                 .collect(),
+            prefetch,
         }
     }
 }
 
 impl SubAssign for MultipleIds {
     fn sub_assign(&mut self, rhs: Self) {
+        self.prefetch = Some(self.shared_prefetch());
         self.ids.retain(|id| !rhs.contains(id));
     }
 }
@@ -437,7 +505,10 @@ impl Add for MultipleIds {
     fn add(self, rhs: Self) -> Self::Output {
         let mut ids = self.ids.clone();
         ids.append(rhs.ids.clone().as_mut());
-        let mut result = Self { ids };
+        let mut result = Self {
+            ids,
+            prefetch: None,
+        };
         result.remove_dup();
         result
     }
@@ -450,16 +521,73 @@ impl Add for SingleId {
         if self.id != rhs.id {
             Self::Output {
                 ids: vec![self.id, rhs.id],
+                prefetch: None,
             }
         } else {
-            Self::Output { ids: vec![self.id] }
+            Self::Output {
+                ids: vec![self.id],
+                prefetch: None,
+            }
         }
     }
 }
 
 impl AddAssign for MultipleIds {
+    /// The union is a recordset of its own: it loads its own ids.
     fn add_assign(&mut self, rhs: Self) {
         self.ids.append(rhs.ids.clone().as_mut());
+        self.prefetch = None;
         self.remove_dup();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn prefetch_of(id: &SingleId) -> Vec<u32> {
+        id.prefetch_ids().to_vec()
+    }
+
+    /// A recordset of its own loads its own ids; a record taken from it remembers them.
+    #[test]
+    fn test_a_record_looped_over_remembers_its_recordset() {
+        let ids = MultipleIds::from(vec![1, 2, 3]);
+        assert_eq!(ids.prefetch_ids(), &[1, 2, 3]);
+        let records: Vec<SingleId> = ids.into_iter().collect();
+        assert_eq!(prefetch_of(&records[1]), vec![1, 2, 3]);
+    }
+
+    /// A part kept keeps the recordset it was taken from, and so do the records looped over in
+    /// it; a union is a recordset of its own.
+    #[test]
+    fn test_a_part_keeps_the_recordset_a_union_has_its_own() {
+        let part = MultipleIds::from(vec![1, 2, 3, 4]) - MultipleIds::from(vec![3, 4]);
+        assert_eq!(part.get_ids_ref(), &vec![1, 2]);
+        assert_eq!(part.prefetch_ids(), &[1, 2, 3, 4]);
+        let first = (&part).into_iter().next().expect("a record");
+        assert_eq!(prefetch_of(&first), vec![1, 2, 3, 4]);
+
+        let mut kept = MultipleIds::from(vec![5, 6]);
+        kept -= MultipleIds::from(vec![6]);
+        assert_eq!(kept.prefetch_ids(), &[5, 6]);
+
+        let union = part + MultipleIds::from(vec![9]);
+        assert_eq!(union.prefetch_ids(), &[1, 2, 9]);
+    }
+
+    /// One record, through a call and back, still reads with its recordset.
+    #[test]
+    fn test_one_record_comes_back_with_its_recordset() {
+        let record = MultipleIds::from(vec![7, 8])
+            .into_iter()
+            .nth(1)
+            .expect("a record");
+        let carried = MultipleIds::from(&record);
+        let back = carried.as_single().expect("one record");
+        assert_eq!(back.get_id(), 8);
+        assert_eq!(prefetch_of(&back), vec![7, 8]);
+        assert!(MultipleIds::default().as_single().expect("none").is_empty());
+        assert_eq!(MultipleIds::from(vec![1, 2]).as_single().err(), Some(2));
     }
 }

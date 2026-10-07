@@ -95,7 +95,7 @@ fn login_page(
     if let Some(error) = error {
         values.insert("error".to_string(), Value::Text(error.to_string()));
     }
-    let page = Template::<SingleId>::render_page(env, "web.Login", values)?;
+    let page = Template::<SingleId>::render_page(env, "web.Login".to_string(), values)?;
     Ok(Response::html(page))
 }
 

@@ -1011,7 +1011,7 @@ fn test_resolved_templates_follow_committed_changes() -> Result<()> {
     let mut values = MapOfFields::default();
     values.insert("arch", "<span>changed</span>");
     env.write("template", &SingleId::from(counter), values)?;
-    let seen = Template::<SingleId>::bundle_markup(&mut env, "test.backend")?;
+    let seen = Template::<SingleId>::bundle_markup(&mut env, "test.backend".to_string())?;
     assert!(
         seen.as_deref()
             .is_some_and(|markup| markup.contains("changed"))
@@ -1104,7 +1104,7 @@ const PAGES: TemplateFiles = &[(
 
 fn render(app: &Application, key: &str) -> Result<String> {
     let mut env = app.new_env_as_option(None)?;
-    Template::<SingleId>::render_page(&mut env, key, web::qweb::Values::new())
+    Template::<SingleId>::render_page(&mut env, key.to_string(), web::qweb::Values::new())
 }
 
 /// A called template gets its caller's body as `0` and the values set in it, and those values

@@ -32,7 +32,8 @@ impl Settings<MultipleIds> {
         let demo_data = values.get_option::<&bool>("demo_data").copied();
         sup.call_with(values, env)?;
         if let Some(wanted) = demo_data {
-            Parameter::<MultipleIds>::keep(env, DEMO_PARAMETER, if wanted { "1" } else { "0" })?;
+            let value = if wanted { "1" } else { "0" };
+            Parameter::<MultipleIds>::keep(env, DEMO_PARAMETER.to_string(), value.to_string())?;
             if wanted {
                 demo::load_installed(env)?;
             }

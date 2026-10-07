@@ -33,6 +33,7 @@ pub struct Warehouse<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Warehouse<SingleId> {
     /// The first warehouse, where goods are received and delivered unless said otherwise.
     pub fn main(env: &mut Environment) -> Result<Warehouse<SingleId>> {

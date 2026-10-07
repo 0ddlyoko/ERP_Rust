@@ -72,7 +72,7 @@ impl ProductStock<MultipleIds> {
         };
         for product in self {
             let (on_hand, free) = {
-                let quants = Quant::at(env, product.get_id(), &internal)?;
+                let quants = Quant::at(env, product.get_id(), internal.clone())?;
                 let env = &mut *env.sudo();
                 let mut on_hand = Decimal::ZERO;
                 let mut free = Decimal::ZERO;

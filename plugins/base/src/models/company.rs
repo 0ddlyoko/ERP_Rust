@@ -1,5 +1,5 @@
 use crate::models::contact::BaseContact;
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
@@ -7,7 +7,7 @@ use erp_search::SearchType;
 
 /// The business running this database: its name, and the contact holding its address and VAT.
 #[derive(Model)]
-#[erp(id = "company")]
+#[erp(id = "company", methods)]
 #[allow(dead_code)]
 pub struct Company<Mode: IdMode> {
     id: Mode,
@@ -16,6 +16,7 @@ pub struct Company<Mode: IdMode> {
     contact: Reference<BaseContact, SingleId>,
 }
 
+#[erp_methods]
 impl Company<SingleId> {
     /// The company documents are made for: the first one, the seeded `base.main_company` unless
     /// it was removed. Empty on a database that has none.

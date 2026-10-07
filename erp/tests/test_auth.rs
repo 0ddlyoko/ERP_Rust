@@ -22,7 +22,10 @@ fn login(
     login: &str,
     password: &str,
 ) -> Result<Option<u32>> {
-    Ok(Users::identified_by(env, login, password)?.map(|user| user.get_id()))
+    Ok(
+        Users::identified_by(env, login.to_string(), password.to_string())?
+            .map(|user| user.get_id()),
+    )
 }
 
 fn create_user(
@@ -109,7 +112,7 @@ fn test_changing_a_password() -> Result<()> {
 
     let uid = create_user(&mut env, "alice", "old", true)?;
     let user: Users<SingleId> = env.get_record(uid.into());
-    user.change_password(&mut env, "new")?;
+    user.change_password(&mut env, "new".to_string())?;
 
     assert_eq!(login(&mut env, "alice", "new")?, Some(uid));
     assert_eq!(login(&mut env, "alice", "old")?, None);
@@ -286,8 +289,8 @@ fn test_check_password_on_the_record() -> Result<()> {
     let uid = create_user(&mut env, "alice", "s3cret", true)?;
     let user: Users<SingleId> = env.get_record(uid.into());
 
-    assert!(user.check_password(&mut env, "s3cret")?);
-    assert!(!user.check_password(&mut env, "wrong")?);
+    assert!(user.check_password(&mut env, "s3cret".to_string())?);
+    assert!(!user.check_password(&mut env, "wrong".to_string())?);
     assert!(user.has_password(&mut env)?);
     Ok(())
 }
@@ -299,7 +302,8 @@ fn test_authenticate_returns_the_record() -> Result<()> {
     let mut env = app.new_env_as_option(None)?;
 
     create_user(&mut env, "alice", "s3cret", true)?;
-    let user = Users::identified_by(&mut env, "alice", "s3cret")?.expect("should log in");
+    let user = Users::identified_by(&mut env, "alice".to_string(), "s3cret".to_string())?
+        .expect("should log in");
 
     assert_eq!(user.get_login(&mut env)?, &"alice".to_string());
     assert!(*user.get_active(&mut env)?);
@@ -320,7 +324,7 @@ fn test_a_record_change_persists_on_its_own() -> Result<()> {
 
     let mut env = app.new_env_as_option(None)?;
     let user: Users<SingleId> = env.get_record(uid.into());
-    user.change_password(&mut env, "new")?;
+    user.change_password(&mut env, "new".to_string())?;
     user.set_name("Alice".to_string(), &mut env)?;
     env.close()?;
 

@@ -197,9 +197,9 @@ fn test_fiscal_positions_map_taxes() -> Result<()> {
         chart(&mut env, "tax_sale_0"),
         chart(&mut env, "tax_sale_6"),
     );
-    assert_eq!(position.map_taxes(&mut env, &[s21, s6])?, vec![s0, s6]);
+    assert_eq!(position.map_taxes(&mut env, vec![s21, s6])?, vec![s0, s6]);
     let none: FiscalPosition<SingleId> = env.get_record(SingleId::empty());
-    assert_eq!(none.map_taxes(&mut env, &[s21])?, vec![s21]);
+    assert_eq!(none.map_taxes(&mut env, vec![s21])?, vec![s21]);
     Ok(())
 }
 

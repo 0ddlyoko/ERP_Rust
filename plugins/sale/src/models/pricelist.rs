@@ -29,7 +29,7 @@ pub enum PricelistCompute {
 
 /// Prices for a kind of customer: rules by product, category, quantity and dates.
 #[derive(Model)]
-#[erp(id = "product_pricelist")]
+#[erp(id = "product_pricelist", methods)]
 #[allow(dead_code)]
 pub struct Pricelist<Mode: IdMode> {
     id: Mode,
@@ -134,6 +134,7 @@ impl PricelistItem<MultipleIds> {
     }
 }
 
+#[erp_methods]
 impl Pricelist<SingleId> {
     /// The rules of the pricelist, as the pricing engine reads them.
     pub fn rules(&self, env: &mut Environment) -> Result<Vec<Rule>> {
@@ -169,7 +170,7 @@ impl Pricelist<SingleId> {
     pub fn price_of(
         &self,
         env: &mut Environment,
-        product: &Product<SingleId>,
+        product: Product<SingleId>,
         quantity: Decimal,
         date: NaiveDate,
     ) -> Result<Decimal> {

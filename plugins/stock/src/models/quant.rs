@@ -37,6 +37,7 @@ pub struct Quant<Mode: IdMode> {
     inventory_diff: Decimal,
 }
 
+#[erp_methods]
 impl Quant<SingleId> {
     /// The quant of `product` at `location`, made when there is none.
     pub fn of(env: &mut Environment, product: u32, location: u32) -> Result<Quant<SingleId>> {
@@ -66,7 +67,7 @@ impl Quant<SingleId> {
     pub fn at(
         env: &mut Environment,
         product: u32,
-        locations: &[u32],
+        locations: Vec<u32>,
     ) -> Result<Quant<MultipleIds>> {
         let env = &mut *env.sudo();
         env.search_with(
@@ -79,7 +80,7 @@ impl Quant<SingleId> {
     }
 
     /// What of `product` at these locations is on hand and not promised.
-    pub fn available(env: &mut Environment, product: u32, locations: &[u32]) -> Result<Decimal> {
+    pub fn available(env: &mut Environment, product: u32, locations: Vec<u32>) -> Result<Decimal> {
         let quants = Self::at(env, product, locations)?;
         let env = &mut *env.sudo();
         let mut available = Decimal::ZERO;
@@ -94,7 +95,7 @@ impl Quant<SingleId> {
     pub fn reserve(
         env: &mut Environment,
         product: u32,
-        locations: &[u32],
+        locations: Vec<u32>,
         quantity: Decimal,
     ) -> Result<Decimal> {
         let quants = Self::at(env, product, locations)?;
@@ -120,7 +121,7 @@ impl Quant<SingleId> {
     pub fn unreserve(
         env: &mut Environment,
         product: u32,
-        locations: &[u32],
+        locations: Vec<u32>,
         quantity: Decimal,
     ) -> Result<()> {
         let quants = Self::at(env, product, locations)?;

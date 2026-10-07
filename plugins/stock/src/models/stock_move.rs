@@ -96,6 +96,7 @@ pub struct StockMove<Mode: IdMode> {
     date_done: Option<Timestamp>,
 }
 
+#[erp_methods]
 impl StockMove<SingleId> {
     pub fn is_status(&self, env: &mut Environment, status: MoveStatus) -> Result<bool> {
         Ok(erp::types::field::Selection::key(self.get_state(env)?)
@@ -111,7 +112,7 @@ impl StockMove<SingleId> {
         if uom.is_empty() || uom.get_id() == product_uom.get_id() {
             return Ok(quantity);
         }
-        uom.convert_to(env, quantity, &product_uom, Rounding::HalfUp)
+        uom.convert_to(env, quantity, product_uom, Rounding::HalfUp)
     }
 
     /// Promise what the move needs from its source, when its source is the company's stock.
@@ -129,7 +130,7 @@ impl StockMove<SingleId> {
         let product: Product<SingleId> = self.get_product(env)?;
         let locations = source.and_below(env)?;
         let reserved = if needed > Decimal::ZERO {
-            Quant::reserve(env, product.get_id(), &locations, needed)?
+            Quant::reserve(env, product.get_id(), locations, needed)?
         } else {
             Decimal::ZERO
         };
@@ -155,7 +156,7 @@ impl StockMove<SingleId> {
         let source: Location<SingleId> = self.get_location(env)?;
         let product: Product<SingleId> = self.get_product(env)?;
         let locations = source.and_below(env)?;
-        Quant::unreserve(env, product.get_id(), &locations, reserved)?;
+        Quant::unreserve(env, product.get_id(), locations, reserved)?;
         self.set_reserved_quantity(Decimal::ZERO, env)
     }
 
@@ -183,7 +184,7 @@ impl StockMove<SingleId> {
         self.unreserve(env)?;
         if from_stock && quantity > Decimal::ZERO {
             let locations = source.and_below(env)?;
-            let available = Quant::available(env, product.get_id(), &locations)?;
+            let available = Quant::available(env, product.get_id(), locations.clone())?;
             if available < quantity {
                 let name = product.get_display_name(&mut env.sudo())?.clone();
                 let location = source.get_complete_name(&mut env.sudo())?.clone();
@@ -192,14 +193,14 @@ impl StockMove<SingleId> {
                 )
                 .into());
             }
-            self.take_from(env, product.get_id(), &locations, quantity)?;
+            self.take_from(env, product.get_id(), locations, quantity)?;
         }
         if to_stock && quantity > Decimal::ZERO {
             Quant::add(env, product.get_id(), destination.get_id(), quantity)?;
         }
         let value = match (from_stock, to_stock) {
-            (false, true) => self.value_in(env, &product, quantity)?,
-            (true, false) => -self.value_out(env, &product, quantity)?,
+            (false, true) => self.value_in(env, product, quantity)?,
+            (true, false) => -self.value_out(env, product, quantity)?,
             _ => Decimal::ZERO,
         };
         {
@@ -216,7 +217,7 @@ impl StockMove<SingleId> {
         &self,
         env: &mut Environment,
         product: u32,
-        locations: &[u32],
+        locations: Vec<u32>,
         quantity: Decimal,
     ) -> Result<()> {
         let quants = Quant::at(env, product, locations)?;
@@ -251,7 +252,7 @@ impl StockMove<SingleId> {
     }
 
     /// The cost method of the product's category.
-    fn cost_method(env: &mut Environment, product: &Product<SingleId>) -> Result<CostMethod> {
+    fn cost_method(env: &mut Environment, product: Product<SingleId>) -> Result<CostMethod> {
         let env = &mut *env.sudo();
         let category: ProductCategory<SingleId> = product.get_category(env)?;
         let category: ProductCategoryStock<SingleId> = env.get_record(category.get_id().into());
@@ -266,10 +267,10 @@ impl StockMove<SingleId> {
     fn value_in(
         &self,
         env: &mut Environment,
-        product: &Product<SingleId>,
+        product: Product<SingleId>,
         quantity: Decimal,
     ) -> Result<Decimal> {
-        let method = Self::cost_method(env, product)?;
+        let method = Self::cost_method(env, product.clone())?;
         let rounding = *Currency::of_company(env)?.get_rounding(&mut env.sudo())?;
         let env = &mut *env.sudo();
         let standard = *product.get_standard_price(env)?;
@@ -292,10 +293,10 @@ impl StockMove<SingleId> {
     fn value_out(
         &self,
         env: &mut Environment,
-        product: &Product<SingleId>,
+        product: Product<SingleId>,
         quantity: Decimal,
     ) -> Result<Decimal> {
-        let method = Self::cost_method(env, product)?;
+        let method = Self::cost_method(env, product.clone())?;
         let rounding = *Currency::of_company(env)?.get_rounding(&mut env.sudo())?;
         let env = &mut *env.sudo();
         let standard = *product.get_standard_price(env)?;

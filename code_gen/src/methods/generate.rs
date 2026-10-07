@@ -300,7 +300,7 @@ fn block_receiver(self_ty: &Type) -> Result<MethodReceiver> {
 }
 
 /// Rebuild what a method works on from the ids the chain carries: the records, the one record —
-/// refusing any other number — or nothing, for a method of the model.
+/// or none, as a `SingleId` may be empty, refusing several — or nothing, for a method of the model.
 fn record_of(method: &ParsedMethod, self_ty: &Type, ids: TokenStream) -> TokenStream {
     let name = method.name.to_string();
     match method.receiver {
@@ -310,12 +310,12 @@ fn record_of(method: &ParsedMethod, self_ty: &Type, ids: TokenStream) -> TokenSt
             >>::create_instance(#ids);
         },
         MethodReceiver::Record => quote! {
-            let record = match erp::types::field::IdMode::get_ids_ref(&#ids).as_slice() {
-                [id] => <#self_ty as erp::types::model::CommonModel<
+            let record = match #ids.as_single() {
+                Ok(id) => <#self_ty as erp::types::model::CommonModel<
                     erp::types::field::SingleId,
-                >>::create_instance(erp::types::field::SingleId::from(*id)),
-                ids => {
-                    return Err(format!("{} works on one record, not {}", #name, ids.len()).into());
+                >>::create_instance(id),
+                Err(count) => {
+                    return Err(format!("{} works on one record, not {}", #name, count).into());
                 }
             };
         },

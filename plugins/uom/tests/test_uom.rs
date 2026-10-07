@@ -66,47 +66,47 @@ fn test_seeded_units_convert() -> Result<()> {
     let hour = uom(&mut env, "uom_hour")?;
 
     assert_eq!(
-        dozen.convert_to(&mut env, d("3"), &unit, Rounding::HalfUp)?,
+        dozen.convert_to(&mut env, d("3"), unit.clone(), Rounding::HalfUp)?,
         d("36")
     );
     assert_eq!(
-        unit.convert_to(&mut env, d("18"), &dozen, Rounding::HalfUp)?,
+        unit.convert_to(&mut env, d("18"), dozen.clone(), Rounding::HalfUp)?,
         d("1.5")
     );
     assert_eq!(
-        unit.convert_to(&mut env, d("13"), &dozen, Rounding::Up)?,
+        unit.convert_to(&mut env, d("13"), dozen.clone(), Rounding::Up)?,
         d("1.09")
     );
     assert_eq!(
-        gram.convert_to(&mut env, d("1500"), &kg, Rounding::HalfUp)?,
+        gram.convert_to(&mut env, d("1500"), kg.clone(), Rounding::HalfUp)?,
         d("1.5")
     );
     assert_eq!(
-        kg.convert_to(&mut env, d("1.2345"), &gram, Rounding::HalfUp)?,
+        kg.convert_to(&mut env, d("1.2345"), gram.clone(), Rounding::HalfUp)?,
         d("1235")
     );
     assert_eq!(
-        lb.convert_to(&mut env, d("2"), &kg, Rounding::HalfUp)?,
+        lb.convert_to(&mut env, d("2"), kg.clone(), Rounding::HalfUp)?,
         d("0.907")
     );
     assert_eq!(
-        ton.convert_to(&mut env, d("0.5"), &kg, Rounding::HalfUp)?,
+        ton.convert_to(&mut env, d("0.5"), kg.clone(), Rounding::HalfUp)?,
         d("500")
     );
     assert_eq!(
-        day.convert_to(&mut env, d("2.5"), &hour, Rounding::HalfUp)?,
+        day.convert_to(&mut env, d("2.5"), hour, Rounding::HalfUp)?,
         d("20")
     );
     assert_eq!(
-        kg.convert_to(&mut env, d("0"), &gram, Rounding::HalfUp)?,
+        kg.convert_to(&mut env, d("0"), gram, Rounding::HalfUp)?,
         d("0")
     );
     assert_eq!(
-        dozen.convert_to(&mut env, d("-1"), &unit, Rounding::HalfUp)?,
+        dozen.convert_to(&mut env, d("-1"), unit, Rounding::HalfUp)?,
         d("-12")
     );
     assert_eq!(
-        kg.convert_to(&mut env, d("1.23456"), &kg, Rounding::HalfUp)?,
+        kg.convert_to(&mut env, d("1.23456"), kg.clone(), Rounding::HalfUp)?,
         d("1.235"),
         "the same unit only rounds"
     );
@@ -122,15 +122,21 @@ fn test_prices_convert() -> Result<()> {
     let dozen = uom(&mut env, "uom_dozen")?;
     let kg = uom(&mut env, "uom_kg")?;
     let gram = uom(&mut env, "uom_gram")?;
-    assert_eq!(unit.convert_price(&mut env, d("2"), &dozen)?, d("24"));
     assert_eq!(
-        dozen.convert_price(&mut env, d("10"), &unit)?,
+        unit.convert_price(&mut env, d("2"), dozen.clone())?,
+        d("24")
+    );
+    assert_eq!(
+        dozen.convert_price(&mut env, d("10"), unit.clone())?,
         d("10") / d("12")
     );
-    assert_eq!(kg.convert_price(&mut env, d("12.5"), &gram)?, d("0.0125"));
-    assert_eq!(kg.convert_price(&mut env, d("1.23456"), &kg)?, d("1.23456"));
+    assert_eq!(kg.convert_price(&mut env, d("12.5"), gram)?, d("0.0125"));
+    assert_eq!(
+        kg.convert_price(&mut env, d("1.23456"), kg.clone())?,
+        d("1.23456")
+    );
     let error = kg
-        .convert_price(&mut env, d("1"), &unit)
+        .convert_price(&mut env, d("1"), unit)
         .expect_err("not the same thing")
         .to_string();
     assert!(error.contains("kg") && error.contains("Units"), "{error}");
@@ -145,7 +151,7 @@ fn test_units_of_different_categories_do_not_convert() -> Result<()> {
     let unit = uom(&mut env, "uom_unit")?;
     let kg = uom(&mut env, "uom_kg")?;
     let error = kg
-        .convert_to(&mut env, d("1"), &unit, Rounding::HalfUp)
+        .convert_to(&mut env, d("1"), unit, Rounding::HalfUp)
         .expect_err("not the same thing")
         .to_string();
     assert!(error.contains("kg") && error.contains("Units"), "{error}");

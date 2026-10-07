@@ -69,6 +69,7 @@ pub struct Journal<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Journal<SingleId> {
     /// The first active journal of a type, empty when there is none.
     pub fn first_of_type(
@@ -101,6 +102,22 @@ impl Journal<SingleId> {
             }
         }
         self.get_sequence(env)
+    }
+
+    /// A code is unique among journals and short enough to start a number.
+    fn check_journal(&self, env: &mut Environment) -> Result<()> {
+        let code = self.get_code(env)?.trim().to_string();
+        if code.is_empty() || code.len() > 8 {
+            return Err(format!("A journal code has 1 to 8 characters, not \"{code}\"").into());
+        }
+        let same = env.sudo().count(
+            "account_journal",
+            &make_domain!([("code", "=", code.clone())]),
+        )?;
+        if same > 1 {
+            return Err(format!("The journal code {code} is already used").into());
+        }
+        Ok(())
     }
 }
 
@@ -159,24 +176,6 @@ impl Journal<MultipleIds> {
             }
             Ok(())
         })
-    }
-}
-
-impl Journal<SingleId> {
-    /// A code is unique among journals and short enough to start a number.
-    fn check_journal(&self, env: &mut Environment) -> Result<()> {
-        let code = self.get_code(env)?.trim().to_string();
-        if code.is_empty() || code.len() > 8 {
-            return Err(format!("A journal code has 1 to 8 characters, not \"{code}\"").into());
-        }
-        let same = env.sudo().count(
-            "account_journal",
-            &make_domain!([("code", "=", code.clone())]),
-        )?;
-        if same > 1 {
-            return Err(format!("The journal code {code} is already used").into());
-        }
-        Ok(())
     }
 }
 

@@ -26,6 +26,7 @@ pub struct Users<Mode: IdMode> {
     contact: Reference<BaseContact, SingleId>,
 }
 
+#[erp_methods]
 impl Users<SingleId> {
     /// Find the user these credentials identify.
     ///
@@ -36,19 +37,19 @@ impl Users<SingleId> {
     /// than this — it opens a session. This only says whose credentials these are.
     pub fn identified_by(
         env: &mut Environment,
-        login: &str,
-        password: &str,
+        login: String,
+        password: String,
     ) -> Result<Option<Users<SingleId>>> {
         // Checking credentials decides who the caller is, so it cannot wait on their rights.
         let env = &mut *env.sudo();
         let found: Users<MultipleIds> = env.search(&make_domain!([
-            ("login", "=", login),
+            ("login", "=", login.as_str()),
             ("active", "=", true)
         ]))?;
         let Some(id) = found.id.get_ids_ref().first().copied() else {
             // Deliberate: verifying against a throwaway hash keeps the cost of a missing account
             // close to that of a wrong password.
-            let _ = Password::new("")?.is_same_password(password);
+            let _ = Password::new("")?.is_same_password(&password);
             return Ok(None);
         };
 
@@ -60,16 +61,16 @@ impl Users<SingleId> {
     }
 
     /// Whether this password is the user's.
-    pub fn check_password(&self, env: &mut Environment, password: &str) -> Result<bool> {
-        Ok(self.get_password(env)?.is_same_password(password))
+    pub fn check_password(&self, env: &mut Environment, password: String) -> Result<bool> {
+        Ok(self.get_password(env)?.is_same_password(&password))
     }
 
     /// Replace the user's password.
     ///
     /// Not named `set_password`: that is the generated setter for the field, which takes a
     /// [`Password`] — already hashed — rather than the clear password.
-    pub fn change_password(&self, env: &mut Environment, password: &str) -> Result<()> {
-        self.set_password(Password::new(password)?, env)
+    pub fn change_password(&self, env: &mut Environment, password: String) -> Result<()> {
+        self.set_password(Password::new(&password)?, env)
     }
 
     /// Whether the user has a usable password yet.
@@ -88,22 +89,6 @@ pub struct Authenticated {
     pub token: String,
     pub uid: u32,
     pub expires_at: erp::types::field::Timestamp,
-}
-
-impl Users<MultipleIds> {
-    /// New contacts for users with these values, one each and in their order, named as the user.
-    /// Created together, as sudo: who may create a user may give them a contact.
-    fn contacts_for(env: &mut Environment, users: &[&MapOfFields]) -> Result<Contact<MultipleIds>> {
-        let contacts = users
-            .iter()
-            .map(|user| {
-                let mut contact = MapOfFields::default();
-                contact.insert_option("name", user.get_option::<&String>("name").cloned());
-                contact
-            })
-            .collect();
-        Contact::<MultipleIds>::create(contacts, &mut env.sudo())
-    }
 }
 
 #[erp_methods]
@@ -125,8 +110,8 @@ impl Users<MultipleIds> {
             })
             .map(|(index, _)| index)
             .collect();
-        let users: Vec<&MapOfFields> = without.iter().map(|index| &values[*index]).collect();
-        let contacts = Self::contacts_for(env, &users)?;
+        let users: Vec<MapOfFields> = without.iter().map(|index| values[*index].clone()).collect();
+        let contacts = Self::contacts_for(env, users)?;
         for (index, contact) in without.into_iter().zip(contacts) {
             values[index].insert("contact", contact.get_id());
         }
@@ -144,7 +129,7 @@ impl Users<MultipleIds> {
         password: String,
     ) -> Result<Authenticated> {
         let _ = self;
-        let Some(user) = Users::<SingleId>::identified_by(env, &login, &password)? else {
+        let Some(user) = Users::<SingleId>::identified_by(env, login, password)? else {
             return Err("These credentials identify nobody".into());
         };
         let uid = user.get_id();
@@ -166,7 +151,7 @@ impl Users<MultipleIds> {
         let Some(uid) = env.uid() else {
             return Ok(false);
         };
-        Session::revoke(env, &token, uid)
+        Session::revoke(env, token, uid)
     }
 
     /// Change the caller's own password.
@@ -193,10 +178,10 @@ impl Users<MultipleIds> {
         // The current password is the authorisation here, not the caller's rights on `users`.
         let env = &mut *env.sudo();
         let user = Users::<SingleId>::from_id(uid, env);
-        if !user.check_password(env, &current)? {
+        if !user.check_password(env, current)? {
             return Err("That is not the current password".into());
         }
-        user.change_password(env, &new)?;
+        user.change_password(env, new)?;
         Ok(true)
     }
 
@@ -222,5 +207,22 @@ impl Users<MultipleIds> {
     pub fn unarchive(&self, env: &mut Environment) -> Result<bool> {
         self.set_active(true, env)?;
         Ok(true)
+    }
+
+    /// New contacts for users with these values, one each and in their order, named as the user.
+    /// Created together, as sudo: who may create a user may give them a contact.
+    fn contacts_for(
+        env: &mut Environment,
+        users: Vec<MapOfFields>,
+    ) -> Result<Contact<MultipleIds>> {
+        let contacts = users
+            .iter()
+            .map(|user| {
+                let mut contact = MapOfFields::default();
+                contact.insert_option("name", user.get_option::<&String>("name").cloned());
+                contact
+            })
+            .collect();
+        Contact::<MultipleIds>::create(contacts, &mut env.sudo())
     }
 }

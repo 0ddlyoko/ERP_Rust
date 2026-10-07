@@ -106,6 +106,7 @@ pub struct PurchaseOrder<Mode: IdMode> {
     bills: Reference<BaseAccountMove, MultipleIds>,
 }
 
+#[erp_methods]
 impl PurchaseOrder<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: PurchaseState) -> Result<bool> {
         Ok(self.get_state(env)?.key() == state.key())
@@ -312,7 +313,10 @@ impl PurchaseOrder<MultipleIds> {
                 .get_option::<&String>("name")
                 .is_none_or(|name| name == "New")
             {
-                order.insert("name", Sequence::next_by_code(env, "purchase.order", date)?);
+                order.insert(
+                    "name",
+                    Sequence::next_by_code(env, "purchase.order".to_string(), date)?,
+                );
             }
             if order
                 .get_option::<&u32>("currency")

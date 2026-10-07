@@ -2,7 +2,7 @@ use crate::models::account::{Account, BaseAccount};
 use crate::models::journal::{BaseAccountJournal, Journal};
 use crate::models::tax::BaseAccountTax;
 use base::models::Company;
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, NaiveDate, Reference, SingleId};
@@ -10,7 +10,7 @@ use erp::types::field::{IdMode, NaiveDate, Reference, SingleId};
 /// What the company's books default to: the accounts customers and suppliers are recorded on,
 /// the taxes new products get, and the date before which nothing may change.
 #[derive(Model)]
-#[erp(id = "company")]
+#[erp(id = "company", methods)]
 #[erp(derived_model = "base::models")]
 #[allow(dead_code)]
 pub struct CompanyAccount<Mode: IdMode> {
@@ -41,22 +41,17 @@ pub struct CompanyAccount<Mode: IdMode> {
     lock_date: Option<NaiveDate>,
 }
 
+#[erp_methods]
 impl CompanyAccount<SingleId> {
-    /// The accounting settings of the current company.
-    pub fn current(env: &mut Environment) -> Result<CompanyAccount<SingleId>> {
-        let company = Company::current(env)?;
-        Ok(env.get_record(company.get_id().into()))
-    }
-
     /// One of the company's default accounts, as sudo; errs naming it when it is not set, as
     /// nothing can be recorded without it.
     pub fn required_account(
         &self,
         env: &mut Environment,
-        which: &str,
+        which: String,
     ) -> Result<Account<SingleId>> {
         let env = &mut *env.sudo();
-        let account: Account<SingleId> = match which {
+        let account: Account<SingleId> = match which.as_str() {
             "receivable" => self.get_account_receivable(env)?,
             "payable" => self.get_account_payable(env)?,
             "income" => self.get_account_income(env)?,
@@ -93,5 +88,13 @@ impl CompanyAccount<SingleId> {
             .into());
         }
         Ok(())
+    }
+}
+
+impl CompanyAccount<SingleId> {
+    /// The accounting settings of the current company.
+    pub fn current(env: &mut Environment) -> Result<CompanyAccount<SingleId>> {
+        let company = Company::current(env)?;
+        Ok(env.get_record(company.get_id().into()))
     }
 }

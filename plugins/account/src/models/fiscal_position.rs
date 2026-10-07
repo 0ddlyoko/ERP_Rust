@@ -1,6 +1,6 @@
 use crate::models::account::{Account, BaseAccount};
 use crate::models::tax::{BaseAccountTax, Tax};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
@@ -8,7 +8,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 /// How taxes and accounts change for a kind of customer or supplier: an EU business with a VAT
 /// number is invoiced intra-community, without VAT; one outside the EU, as an export.
 #[derive(Model)]
-#[erp(id = "account_fiscal_position")]
+#[erp(id = "account_fiscal_position", methods)]
 #[allow(dead_code)]
 pub struct FiscalPosition<Mode: IdMode> {
     id: Mode,
@@ -53,10 +53,11 @@ pub struct FiscalPositionAccount<Mode: IdMode> {
     account_dest: Reference<BaseAccount, SingleId>,
 }
 
+#[erp_methods]
 impl FiscalPosition<SingleId> {
     /// `taxes` as they apply under this position: each mapped tax replaced, a tax mapped to
     /// none dropped, the others kept. No position keeps them all.
-    pub fn map_taxes(&self, env: &mut Environment, taxes: &[u32]) -> Result<Vec<u32>> {
+    pub fn map_taxes(&self, env: &mut Environment, taxes: Vec<u32>) -> Result<Vec<u32>> {
         if self.is_empty() {
             return Ok(taxes.to_vec());
         }
@@ -72,11 +73,11 @@ impl FiscalPosition<SingleId> {
         for tax in taxes {
             let replacements: Vec<Option<u32>> = rows
                 .iter()
-                .filter(|(source, _)| source == tax)
+                .filter(|(source, _)| *source == tax)
                 .map(|(_, destination)| *destination)
                 .collect();
             if replacements.is_empty() {
-                mapped.push(*tax);
+                mapped.push(tax);
             } else {
                 mapped.extend(replacements.into_iter().flatten());
             }

@@ -41,7 +41,7 @@ pub struct SupplierInfo<Mode: IdMode> {
 
 /// How a product is billed, and the vendors selling it.
 #[derive(Model)]
-#[erp(id = "product")]
+#[erp(id = "product", methods)]
 #[erp(derived_model = "product::models")]
 #[allow(dead_code)]
 pub struct ProductPurchase<Mode: IdMode> {
@@ -52,6 +52,7 @@ pub struct ProductPurchase<Mode: IdMode> {
     sellers: Reference<BaseProductSupplierinfo, MultipleIds>,
 }
 
+#[erp_methods]
 impl ProductPurchase<SingleId> {
     /// The price `vendor` asks for `quantity` of the product, in the purchase unit; none when it
     /// asks none.

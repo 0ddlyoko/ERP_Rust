@@ -46,15 +46,15 @@ fn test_names_follow_each_other() -> Result<()> {
     new_series(&mut env, "invoice", "INV/{year}/", "yearly")?;
     let on = date("2026-03-01");
     assert_eq!(
-        Sequence::next_by_code(&mut env, "invoice", on)?,
+        Sequence::next_by_code(&mut env, "invoice".to_string(), on)?,
         "INV/2026/00001"
     );
     assert_eq!(
-        Sequence::next_by_code(&mut env, "invoice", on)?,
+        Sequence::next_by_code(&mut env, "invoice".to_string(), on)?,
         "INV/2026/00002"
     );
     assert_eq!(
-        Sequence::next_by_code(&mut env, "invoice", on)?,
+        Sequence::next_by_code(&mut env, "invoice".to_string(), on)?,
         "INV/2026/00003"
     );
     Ok(())
@@ -70,7 +70,7 @@ fn test_series_restart_with_their_period() -> Result<()> {
     new_series(&mut env, "monthly", "M{year}{month}-", "monthly")?;
     new_series(&mut env, "never", "N", "never")?;
     let next = |env: &mut Environment, code: &str, on: &str| {
-        Sequence::next_by_code(env, code, date(on)).expect("a name")
+        Sequence::next_by_code(env, code.to_string(), date(on)).expect("a name")
     };
     assert_eq!(next(&mut env, "yearly", "2026-12-31"), "Y26-00001");
     assert_eq!(next(&mut env, "yearly", "2026-12-31"), "Y26-00002");
@@ -91,14 +91,14 @@ fn test_numbers_survive_the_transaction() -> Result<()> {
         let mut env = admin_env(&app)?;
         new_series(&mut env, "order", "SO", "never")?;
         assert_eq!(
-            Sequence::next_by_code(&mut env, "order", date("2026-01-01"))?,
+            Sequence::next_by_code(&mut env, "order".to_string(), date("2026-01-01"))?,
             "SO00001"
         );
         env.close()?;
     }
     let mut env = admin_env(&app)?;
     assert_eq!(
-        Sequence::next_by_code(&mut env, "order", date("2026-01-01"))?,
+        Sequence::next_by_code(&mut env, "order".to_string(), date("2026-01-01"))?,
         "SO00002"
     );
     Ok(())
@@ -124,14 +124,14 @@ fn test_steps_and_manual_restart() -> Result<()> {
 fn test_an_unknown_code_is_an_error() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
-    let error = Sequence::next_by_code(&mut env, "nothing", date("2026-01-01"))
+    let error = Sequence::next_by_code(&mut env, "nothing".to_string(), date("2026-01-01"))
         .expect_err("no such series")
         .to_string();
     assert!(error.contains("nothing"), "{error}");
     let id = new_series(&mut env, "archived", "A", "never")?;
     let series: Sequence<SingleId> = env.get_record(id.into());
     series.set_active(false, &mut env)?;
-    assert!(Sequence::next_by_code(&mut env, "archived", date("2026-01-01")).is_err());
+    assert!(Sequence::next_by_code(&mut env, "archived".to_string(), date("2026-01-01")).is_err());
     Ok(())
 }
 
@@ -170,7 +170,7 @@ fn test_access_rights() -> Result<()> {
     }
     let mut env = user_env(&app, "employee", &["base.group_user"])?;
     assert_eq!(
-        Sequence::next_by_code(&mut env, "shared", date("2026-01-01"))?,
+        Sequence::next_by_code(&mut env, "shared".to_string(), date("2026-01-01"))?,
         "SH00001"
     );
     assert!(new_series(&mut env, "mine", "M", "never").is_err());
@@ -224,7 +224,8 @@ fn test_numbers_taken_at_once_differ() -> Result<()> {
                 scope.spawn(|| -> Result<String> {
                     let mut env = admin_env(&app)?;
                     start.wait();
-                    let name = Sequence::next_by_code(&mut env, "busy", date("2026-01-01"))?;
+                    let name =
+                        Sequence::next_by_code(&mut env, "busy".to_string(), date("2026-01-01"))?;
                     // Held a moment, as a document is written, before the work is committed.
                     std::thread::sleep(std::time::Duration::from_millis(100));
                     env.close()?;

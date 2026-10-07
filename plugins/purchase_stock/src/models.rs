@@ -126,14 +126,14 @@ fn unit_cost(
     let company = Currency::of_company(env)?;
     if currency.get_id() != company.get_id() {
         let date = *order.get_date_order(env)?;
-        subtotal = currency.convert(env, subtotal, &company, date)?;
+        subtotal = currency.convert(env, subtotal, company, date)?;
     }
     let mut cost = subtotal / quantity;
     let env = &mut *env.sudo();
     let line_uom: Uom<SingleId> = line.get_uom(env)?;
     let product_uom: Uom<SingleId> = product.get_uom(env)?;
     if !line_uom.is_empty() && !product_uom.is_empty() {
-        cost = line_uom.convert_price(env, cost, &product_uom)?;
+        cost = line_uom.convert_price(env, cost, product_uom)?;
     }
     Ok(cost.round_dp(6))
 }

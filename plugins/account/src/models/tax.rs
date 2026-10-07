@@ -114,6 +114,7 @@ pub struct TaxRepartition<Mode: IdMode> {
     sequence: i32,
 }
 
+#[erp_methods]
 impl Tax<SingleId> {
     /// The tax as the engine computes it, for invoices or for credit notes. Without any
     /// distribution for that document, all of it goes to the account of the line it is on.

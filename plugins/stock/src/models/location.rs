@@ -47,6 +47,7 @@ pub struct Location<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Location<SingleId> {
     /// Whether goods here are the company's stock.
     pub fn is_internal(&self, env: &mut Environment) -> Result<bool> {

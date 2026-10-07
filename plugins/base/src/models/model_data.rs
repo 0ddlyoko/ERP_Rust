@@ -1,4 +1,4 @@
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, SingleId};
@@ -11,7 +11,7 @@ use std::collections::HashSet;
 /// plugin reference another plugin's data and lets a data file be reloaded without duplicating
 /// anything.
 #[derive(Model)]
-#[erp(id = "model_data")]
+#[erp(id = "model_data", methods)]
 #[allow(dead_code)]
 pub struct ModelData<Mode: IdMode> {
     id: Mode,
@@ -32,11 +32,12 @@ pub struct ModelData<Mode: IdMode> {
     noupdate: bool,
 }
 
+#[erp_methods]
 impl ModelData<SingleId> {
     /// The records of `model` that installed plugins not loaded yet in this application declare:
     /// while it loads, plugins come one at a time, and what such a record names may come with its
     /// plugin.
-    pub fn of_plugins_not_loaded(env: &mut Environment, model: &str) -> Result<HashSet<u32>> {
+    pub fn of_plugins_not_loaded(env: &mut Environment, model: String) -> Result<HashSet<u32>> {
         let loaded = env.model_manager.loaded_plugins().to_vec();
         let env = &mut *env.sudo();
         let entries: ModelData<MultipleIds> = env.search(&make_domain!([("model", "=", model)]))?;

@@ -2,6 +2,7 @@ use crate::model::Model;
 use erp_types::field::SingleId;
 use erp_types::field::{IdsRefIntoIterator, MultipleIdsIntoIterator};
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// Hands out each record of a recordset, every one remembering the recordset so that reading a
 /// field of one loads it for all.
@@ -11,9 +12,10 @@ pub struct ModelIntoIterator<M: Model<SingleId>> {
 }
 
 impl<M: Model<SingleId>> ModelIntoIterator<M> {
-    pub fn new(ids: Vec<u32>) -> Self {
+    /// Each record of `ids`, remembering `prefetch`, the recordset they were taken from.
+    pub fn new(ids: Vec<u32>, prefetch: Arc<[u32]>) -> Self {
         ModelIntoIterator {
-            ids: MultipleIdsIntoIterator::new(ids),
+            ids: MultipleIdsIntoIterator::within(ids, prefetch),
             _phantom_data: PhantomData,
         }
     }
@@ -34,9 +36,10 @@ pub struct ModelIterator<'a, M: Model<SingleId>> {
 }
 
 impl<'a, M: Model<SingleId>> ModelIterator<'a, M> {
-    pub fn new(ids: &'a [u32]) -> Self {
+    /// Each record of `ids`, remembering `prefetch`, the recordset they were taken from.
+    pub fn new(ids: &'a [u32], prefetch: Arc<[u32]>) -> Self {
         ModelIterator {
-            ids: IdsRefIntoIterator::new(ids),
+            ids: IdsRefIntoIterator::within(ids, prefetch),
             _phantom_data: PhantomData,
         }
     }

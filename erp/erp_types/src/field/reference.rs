@@ -27,9 +27,7 @@ impl<BM: BaseModel, Mode: IdMode> Reference<BM, Mode> {
     where
         M: CommonModel<MultipleIds, BaseModel = BM>,
     {
-        M::create_instance(MultipleIds {
-            ids: self.id_mode.get_ids_ref().clone(),
-        })
+        M::create_instance(MultipleIds::from(self.id_mode.get_ids_ref().clone()))
     }
 
     /// Check if the given id is contained in the current reference
@@ -175,7 +173,7 @@ impl<'a, E: BaseModel> IntoIterator for &'a Reference<E, MultipleIds> {
 
     fn into_iter(self) -> Self::IntoIter {
         ReferenceIterator {
-            ids: IdsRefIntoIterator::new(&self.id_mode.ids),
+            ids: IdsRefIntoIterator::within(&self.id_mode.ids, self.id_mode.shared_prefetch()),
             _phantom_data: PhantomData,
         }
     }

@@ -1,5 +1,5 @@
 use crate::models::{BaseGroup, Group, ModelData, Users};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::access::{Rule, RuleSource};
 use erp::environment::Environment;
@@ -13,7 +13,7 @@ use erp_search_code_gen::make_domain;
 /// domain is JSON, in the form a caller sends over the wire; left empty, the rule says nothing
 /// about that operation.
 #[derive(Model)]
-#[erp(id = "access_rule")]
+#[erp(id = "access_rule", methods)]
 #[allow(dead_code)]
 pub struct AccessRule<Mode: IdMode> {
     pub id: Mode,
@@ -33,27 +33,13 @@ pub const RULES_CACHE: &str = "base.access_rules";
 /// The groups of each user, by id.
 pub const GROUPS_CACHE: &str = "base.user_groups";
 
+#[erp_methods]
 impl AccessRule<SingleId> {
-    /// Where the core gets its rules from, and what makes them stale.
-    ///
-    /// Who is in a group is written from either side of the relation, so both `users` and
-    /// `group` count as membership.
-    pub fn source() -> RuleSource {
-        RuleSource {
-            rules: Self::rules_for,
-            groups: Self::groups_of,
-            check: Self::check_all,
-            rules_model: "access_rule",
-            rule_target: "model",
-            membership: &["users", "group"],
-        }
-    }
-
     /// Every rule written for a model, kept across requests until a rule changes.
-    fn rules_for(env: &mut Environment, model_name: &str) -> Result<Vec<Rule>> {
-        let rules = env.cached(RULES_CACHE, model_name, |env| {
+    fn rules_for(env: &mut Environment, model_name: String) -> Result<Vec<Rule>> {
+        let rules = env.cached(RULES_CACHE, &model_name, |env| {
             let found: AccessRule<MultipleIds> =
-                env.search(&make_domain!([("model", "=", model_name)]))?;
+                env.search(&make_domain!([("model", "=", model_name.as_str())]))?;
             let mut rules = Vec::with_capacity(found.get_ids_ref().len());
             for rule in found {
                 rules.push(rule.to_rule(env)?);
@@ -88,25 +74,6 @@ impl AccessRule<SingleId> {
         })
     }
 
-    /// Read one domain, saying which rule it belongs to when it does not parse.
-    fn parse(
-        &self,
-        name: &str,
-        operation: &str,
-        raw: Option<String>,
-    ) -> Result<Option<SearchType>> {
-        let Some(raw) = raw else {
-            return Ok(None);
-        };
-        erp::serde_json::from_str(&raw).map(Some).map_err(|error| {
-            format!(
-                "Access rule {} ({name}) has a {operation} domain that is not one: {error}",
-                self.get_id()
-            )
-            .into()
-        })
-    }
-
     /// Refuse a rule holding a domain that does not parse, and warn of one naming a model that
     /// does not exist.
     ///
@@ -115,7 +82,7 @@ impl AccessRule<SingleId> {
     /// silently missing — or, for a global rule, a restriction silently not applied.
     fn check_all(env: &mut Environment) -> Result<()> {
         let all: AccessRule<MultipleIds> = env.search(&SearchType::Nothing)?;
-        let not_loaded = ModelData::of_plugins_not_loaded(env, "access_rule")?;
+        let not_loaded = ModelData::of_plugins_not_loaded(env, "access_rule".to_string())?;
         for rule in all {
             let model = rule.get_model(env)?.clone();
             if env.model_manager.try_get_model(&model).is_err()
@@ -133,5 +100,41 @@ impl AccessRule<SingleId> {
             rule.to_rule(env)?;
         }
         Ok(())
+    }
+}
+
+impl AccessRule<SingleId> {
+    /// Where the core gets its rules from, and what makes them stale.
+    ///
+    /// Who is in a group is written from either side of the relation, so both `users` and
+    /// `group` count as membership.
+    pub fn source() -> RuleSource {
+        RuleSource {
+            rules: |env, model_name| Self::rules_for(env, model_name.to_string()),
+            groups: Self::groups_of,
+            check: Self::check_all,
+            rules_model: "access_rule",
+            rule_target: "model",
+            membership: &["users", "group"],
+        }
+    }
+
+    /// Read one domain, saying which rule it belongs to when it does not parse.
+    fn parse(
+        &self,
+        name: &str,
+        operation: &str,
+        raw: Option<String>,
+    ) -> Result<Option<SearchType>> {
+        let Some(raw) = raw else {
+            return Ok(None);
+        };
+        erp::serde_json::from_str(&raw).map(Some).map_err(|error| {
+            format!(
+                "Access rule {} ({name}) has a {operation} domain that is not one: {error}",
+                self.get_id()
+            )
+            .into()
+        })
     }
 }

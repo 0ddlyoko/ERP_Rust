@@ -32,7 +32,7 @@ impl Web {
             "session_info".to_string(),
             Value::Markup(script_json(&session_info(env, request)?)),
         );
-        let page = Template::<SingleId>::render_page(env, "web.WebClientPage", values)?;
+        let page = Template::<SingleId>::render_page(env, "web.WebClientPage".to_string(), values)?;
         Ok(Response::html(page))
     }
 
@@ -76,7 +76,7 @@ impl Web {
             "js" => (scripts(env, name), "text/javascript; charset=utf-8"),
             "css" => (styles(env, name), "text/css; charset=utf-8"),
             "xml" => (
-                Template::<SingleId>::bundle_markup(env, name)?
+                Template::<SingleId>::bundle_markup(env, name.to_string())?
                     .as_ref()
                     .clone(),
                 "application/xml; charset=utf-8",

@@ -17,34 +17,6 @@ pub struct Parameter<Mode: IdMode> {
     value: Option<String>,
 }
 
-impl Parameter<MultipleIds> {
-    /// The value kept under a key, if any; read as sudo, parameters being the database's.
-    pub fn value_of(env: &mut Environment, key: &str) -> Result<Option<String>> {
-        let env = &mut *env.sudo();
-        let found: Parameter<MultipleIds> = env.search(&make_domain!([("key", "=", key)]))?;
-        match found.into_iter().next() {
-            Some(parameter) => Ok(parameter.get_value(env)?.cloned()),
-            None => Ok(None),
-        }
-    }
-
-    /// Keep a value under a key: the parameter holding it changes, or one is made.
-    pub fn keep(env: &mut Environment, key: &str, value: &str) -> Result<()> {
-        let env = &mut *env.sudo();
-        let found: Parameter<MultipleIds> = env.search(&make_domain!([("key", "=", key)]))?;
-        match found.into_iter().next() {
-            Some(parameter) => parameter.set_value(Some(value.to_string()), env),
-            None => {
-                let mut values = MapOfFields::default();
-                values.insert("key", key);
-                values.insert("value", value);
-                env.create_records("parameter", vec![values])?;
-                Ok(())
-            }
-        }
-    }
-}
-
 #[erp_methods]
 impl Parameter<MultipleIds> {
     /// A key is held by one parameter only, so that reading it finds one value.
@@ -74,5 +46,33 @@ impl Parameter<MultipleIds> {
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
         sup.call_with(values, env)?;
         self.check_keys(env)
+    }
+
+    /// The value kept under a key, if any; read as sudo, parameters being the database's.
+    pub fn value_of(env: &mut Environment, key: String) -> Result<Option<String>> {
+        let env = &mut *env.sudo();
+        let found: Parameter<MultipleIds> =
+            env.search(&make_domain!([("key", "=", key.as_str())]))?;
+        match found.into_iter().next() {
+            Some(parameter) => Ok(parameter.get_value(env)?.cloned()),
+            None => Ok(None),
+        }
+    }
+
+    /// Keep a value under a key: the parameter holding it changes, or one is made.
+    pub fn keep(env: &mut Environment, key: String, value: String) -> Result<()> {
+        let env = &mut *env.sudo();
+        let found: Parameter<MultipleIds> =
+            env.search(&make_domain!([("key", "=", key.as_str())]))?;
+        match found.into_iter().next() {
+            Some(parameter) => parameter.set_value(Some(value), env),
+            None => {
+                let mut values = MapOfFields::default();
+                values.insert("key", key);
+                values.insert("value", value);
+                env.create_records("parameter", vec![values])?;
+                Ok(())
+            }
+        }
     }
 }

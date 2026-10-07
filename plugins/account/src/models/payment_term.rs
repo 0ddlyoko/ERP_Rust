@@ -55,6 +55,7 @@ pub struct PaymentTermLine<Mode: IdMode> {
     sequence: i32,
 }
 
+#[erp_methods]
 impl PaymentTerm<SingleId> {
     /// The installments of the term, in order.
     pub fn installments(&self, env: &mut Environment) -> Result<Vec<Installment>> {

@@ -49,6 +49,7 @@ pub struct Currency<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Currency<SingleId> {
     /// The currency the current company keeps its books in.
     pub fn of_company(env: &mut Environment) -> Result<Currency<SingleId>> {
@@ -93,7 +94,7 @@ impl Currency<SingleId> {
         &self,
         env: &mut Environment,
         amount: Decimal,
-        to: &Currency<SingleId>,
+        to: Currency<SingleId>,
         date: NaiveDate,
     ) -> Result<Decimal> {
         if self.get_id() == to.get_id() {

@@ -163,6 +163,7 @@ impl BankStatementLine<MultipleIds> {
     }
 }
 
+#[erp_methods]
 impl BankStatementLine<SingleId> {
     /// The open items this transaction settles, found by their payment reference, else by
     /// partner and amount: receivables, payables, and payments waiting for the bank.

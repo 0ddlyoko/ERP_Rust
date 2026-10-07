@@ -1,6 +1,6 @@
 use crate::models::stock_move::BaseStockMove;
 use crate::valuation::Layer;
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
@@ -11,7 +11,7 @@ use product::models::{BaseProduct, Product};
 /// What a move added to the value of the stock, or took from it; for units still in stock,
 /// what is left of them and of their value.
 #[derive(Model)]
-#[erp(id = "stock_valuation_layer")]
+#[erp(id = "stock_valuation_layer", methods)]
 #[allow(dead_code)]
 pub struct ValuationLayer<Mode: IdMode> {
     id: Mode,
@@ -31,6 +31,7 @@ pub struct ValuationLayer<Mode: IdMode> {
     remaining_value: Decimal,
 }
 
+#[erp_methods]
 impl ValuationLayer<SingleId> {
     /// Record what a move did to the stock's value; units coming in stay open for FIFO.
     pub fn record(

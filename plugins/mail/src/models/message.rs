@@ -89,6 +89,7 @@ impl Message<MultipleIds> {
     }
 }
 
+#[erp_methods]
 impl Message<SingleId> {
     /// What a client shows of the message: who, when, what kind, and what it says or changed.
     fn describe(&self, env: &mut Environment) -> Result<Value> {

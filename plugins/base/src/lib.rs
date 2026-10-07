@@ -70,13 +70,13 @@ impl Plugin for BasePlugin {
             &["session", "users"],
             CACHED_ACCOUNTS,
         );
-        model_manager
-            .load_hooks
-            .push(models::View::<SingleId>::on_plugin_loaded);
+        model_manager.load_hooks.push(|env, plugin| {
+            models::View::<SingleId>::on_plugin_loaded(env, plugin.to_string())
+        });
         // What the core knows about identity is that something answers it. This is the something.
         model_manager
             .identities
-            .register(models::Session::<SingleId>::resolve);
+            .register(|env, token| models::Session::<SingleId>::resolve(env, token.to_string()));
         model_manager.identities.register_user_model("users");
         model_manager
             .access
@@ -122,7 +122,7 @@ impl Plugin for BasePlugin {
     fn post_init(&mut self, env: &mut Environment) -> Result<()> {
         let admin: models::Users<SingleId> = env.named("base.user_admin")?;
         if !admin.has_password(env)? {
-            admin.change_password(env, DEFAULT_ADMIN_PASSWORD)?;
+            admin.change_password(env, DEFAULT_ADMIN_PASSWORD.to_string())?;
         }
 
         let portal: models::Users<SingleId> = env.named("base.user_portal")?;

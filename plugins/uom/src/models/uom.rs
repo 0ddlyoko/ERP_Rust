@@ -44,6 +44,7 @@ pub struct Uom<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Uom<SingleId> {
     /// `quantity` of this unit, counted in `to`, rounded to the precision of `to`.
     ///
@@ -52,14 +53,14 @@ impl Uom<SingleId> {
         &self,
         env: &mut Environment,
         quantity: Decimal,
-        to: &Uom<SingleId>,
+        to: Uom<SingleId>,
         rounding: Rounding,
     ) -> Result<Decimal> {
         if self.get_id() == to.get_id() {
             let precision = *to.get_rounding(env)?;
             return Ok(conversion::round_to(quantity, precision, rounding));
         }
-        self.check_same_category(env, to)?;
+        self.check_same_category(env, to.clone())?;
         let from_ratio = *self.get_ratio(env)?;
         let to_ratio = *to.get_ratio(env)?;
         let precision = *to.get_rounding(env)?;
@@ -74,17 +75,17 @@ impl Uom<SingleId> {
         &self,
         env: &mut Environment,
         price: Decimal,
-        to: &Uom<SingleId>,
+        to: Uom<SingleId>,
     ) -> Result<Decimal> {
         if self.get_id() == to.get_id() {
             return Ok(price);
         }
-        self.check_same_category(env, to)?;
+        self.check_same_category(env, to.clone())?;
         Ok(price * *to.get_ratio(env)? / *self.get_ratio(env)?)
     }
 
     /// Errs between units measuring different things: kilograms are no number of hours.
-    fn check_same_category(&self, env: &mut Environment, to: &Uom<SingleId>) -> Result<()> {
+    fn check_same_category(&self, env: &mut Environment, to: Uom<SingleId>) -> Result<()> {
         let from_category: UomCategory<SingleId> = self.get_category(env)?;
         let to_category: UomCategory<SingleId> = to.get_category(env)?;
         if from_category.get_id() != to_category.get_id() {

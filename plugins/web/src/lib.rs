@@ -43,9 +43,9 @@ impl Plugin for WebPlugin {
         model_manager
             .shared_caches
             .register(models::template::RESOLVED_CACHE, &["template"]);
-        model_manager
-            .load_hooks
-            .push(models::Template::<SingleId>::on_plugin_loaded);
+        model_manager.load_hooks.push(|env, plugin| {
+            models::Template::<SingleId>::on_plugin_loaded(env, plugin.to_string())
+        });
     }
 
     fn init_controllers(&self, controllers: &mut ControllerRegistry) {

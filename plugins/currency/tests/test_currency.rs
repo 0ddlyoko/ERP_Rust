@@ -97,31 +97,31 @@ fn test_amounts_convert_at_the_rates_of_their_date() -> Result<()> {
     let jpy = currency(&mut env, "jpy")?;
 
     assert_eq!(
-        euro.convert(&mut env, d("100"), &usd, date("2026-02-01"))?,
+        euro.convert(&mut env, d("100"), usd.clone(), date("2026-02-01"))?,
         d("105")
     );
     assert_eq!(
-        euro.convert(&mut env, d("100"), &usd, date("2026-03-15"))?,
+        euro.convert(&mut env, d("100"), usd.clone(), date("2026-03-15"))?,
         d("108.5")
     );
     assert_eq!(
-        usd.convert(&mut env, d("108.50"), &euro, date("2026-03-15"))?,
+        usd.convert(&mut env, d("108.50"), euro.clone(), date("2026-03-15"))?,
         d("100")
     );
     assert_eq!(
-        usd.convert(&mut env, d("10"), &gbp, date("2026-03-15"))?,
+        usd.convert(&mut env, d("10"), gbp, date("2026-03-15"))?,
         d("7.83")
     );
     assert_eq!(
-        euro.convert(&mut env, d("10.99"), &jpy, date("2026-03-15"))?,
+        euro.convert(&mut env, d("10.99"), jpy, date("2026-03-15"))?,
         d("1784")
     );
     assert_eq!(
-        euro.convert(&mut env, d("-50"), &usd, date("2026-03-15"))?,
+        euro.convert(&mut env, d("-50"), usd, date("2026-03-15"))?,
         d("-54.25")
     );
     assert_eq!(
-        euro.convert(&mut env, d("10.005"), &euro, date("2026-03-15"))?,
+        euro.convert(&mut env, d("10.005"), euro.clone(), date("2026-03-15"))?,
         d("10.01")
     );
     Ok(())

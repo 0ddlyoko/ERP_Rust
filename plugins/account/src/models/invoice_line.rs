@@ -97,6 +97,7 @@ pub struct InvoiceLine<Mode: IdMode> {
     price_total: Decimal,
 }
 
+#[erp_methods]
 impl InvoiceLine<SingleId> {
     fn invoice(&self, env: &mut Environment) -> Result<Move<SingleId>> {
         self.get_move_id(env)
@@ -119,6 +120,15 @@ impl InvoiceLine<SingleId> {
             taxes: specs,
             rounding,
         })?)
+    }
+
+    /// Whether the line belongs to a sale, priced and taxed for customers.
+    pub fn is_sale(&self, env: &mut Environment) -> Result<bool> {
+        let invoice = self.invoice(env)?;
+        Ok(matches!(
+            *invoice.get_move_type(env)?,
+            MoveType::OutInvoice | MoveType::OutRefund
+        ))
     }
 }
 
@@ -299,7 +309,7 @@ impl InvoiceLine<MultipleIds> {
                 }
             };
             let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
             let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }
@@ -343,16 +353,5 @@ impl InvoiceLine<MultipleIds> {
             }
         }
         sup.call_with(values, env)
-    }
-}
-
-impl InvoiceLine<SingleId> {
-    /// Whether the line belongs to a sale, priced and taxed for customers.
-    pub fn is_sale(&self, env: &mut Environment) -> Result<bool> {
-        let invoice = self.invoice(env)?;
-        Ok(matches!(
-            *invoice.get_move_type(env)?,
-            MoveType::OutInvoice | MoveType::OutRefund
-        ))
     }
 }

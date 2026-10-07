@@ -25,6 +25,7 @@ pub struct Action<Mode: IdMode> {
     record: Option<String>,
 }
 
+#[erp_methods]
 impl Action<SingleId> {
     /// What a client needs to open it: its external identifier — what a link names it by — its
     /// model, its kinds of views in order, its domain, and the record it opens, if one.
@@ -63,20 +64,6 @@ impl Action<SingleId> {
             "views": views,
             "domain": domain,
         }))
-    }
-}
-
-impl Action<MultipleIds> {
-    /// Each action described as [`Action::describe`] does, by id: their external identifiers
-    /// looked up together rather than one by one.
-    pub fn describe_each(&self, env: &mut Environment) -> Result<HashMap<u32, Value>> {
-        let mut xml_ids = data::external_ids_of(env, "action", &self.get_ids())?;
-        let mut described = HashMap::new();
-        for action in self {
-            let xml_id = xml_ids.remove(&action.get_id());
-            described.insert(action.get_id(), action.describe_as(env, xml_id)?);
-        }
-        Ok(described)
     }
 }
 
@@ -119,5 +106,17 @@ impl Action<MultipleIds> {
             counts.insert(action.get_id().to_string(), json!(count));
         }
         Ok(Value::Object(counts))
+    }
+
+    /// Each action described as [`Action::describe`] does, by id: their external identifiers
+    /// looked up together rather than one by one.
+    pub fn describe_each(&self, env: &mut Environment) -> Result<HashMap<u32, Value>> {
+        let mut xml_ids = data::external_ids_of(env, "action", &self.get_ids())?;
+        let mut described = HashMap::new();
+        for action in self {
+            let xml_id = xml_ids.remove(&action.get_id());
+            described.insert(action.get_id(), action.describe_as(env, xml_id)?);
+        }
+        Ok(described)
     }
 }

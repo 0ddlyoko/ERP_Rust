@@ -155,9 +155,8 @@ impl<'mm> Environment<'mm> {
                 .iter()
                 .find(|(key, _value)| model.is_kept(key))
             {
-                let ids: MultipleIds = MultipleIds {
-                    ids: value.iter().copied().collect(),
-                };
+                let ids: MultipleIds =
+                    MultipleIds::from(value.iter().copied().collect::<Vec<u32>>());
                 self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
             }
             let cache_models = self.cache.get_cache_models(model_name);
@@ -200,9 +199,8 @@ impl<'mm> Environment<'mm> {
                 .iter()
                 .find(|(key, _value)| fields.contains(&key.as_str()))
             {
-                let ids: MultipleIds = MultipleIds {
-                    ids: value.iter().copied().collect(),
-                };
+                let ids: MultipleIds =
+                    MultipleIds::from(value.iter().copied().collect::<Vec<u32>>());
                 self.call_compute_method(model_name, &ids, &[key.clone().as_str()])?;
             }
             let cache_models = self.cache.get_cache_models(model_name);
@@ -257,9 +255,8 @@ impl<'mm> Environment<'mm> {
                     }
                 })
             {
-                let ids: MultipleIds = MultipleIds {
-                    ids: value.into_iter().copied().collect(),
-                };
+                let ids: MultipleIds =
+                    MultipleIds::from(value.into_iter().copied().collect::<Vec<u32>>());
                 self.call_compute_method(model_name, &ids, &[field.clone().as_str()])?;
             }
             let cache_models = self.cache.get_cache_models(model_name);

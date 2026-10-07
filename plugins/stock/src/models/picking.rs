@@ -63,6 +63,7 @@ pub struct Picking<Mode: IdMode> {
     note: Option<String>,
 }
 
+#[erp_methods]
 impl Picking<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: PickingState) -> Result<bool> {
         Ok(self.get_state(env)?.key() == state.key())
@@ -155,7 +156,7 @@ impl Picking<SingleId> {
         if rest.is_empty() {
             return Ok(None);
         }
-        let backorder = self.copy_with(env, &rest, None)?;
+        let backorder = self.copy_with(env, rest, None)?;
         backorder.set_backorder(self, env)?;
         Picking::<MultipleIds>::from_ids(vec![backorder.get_id()], env).action_confirm(env)?;
         Ok(Some(backorder))
@@ -166,7 +167,7 @@ impl Picking<SingleId> {
     fn copy_with(
         &self,
         env: &mut Environment,
-        rest: &[(StockMove<SingleId>, Decimal)],
+        rest: Vec<(StockMove<SingleId>, Decimal)>,
         reverse_with: Option<PickingType<SingleId>>,
     ) -> Result<Picking<SingleId>> {
         let picking_type: PickingType<SingleId> = match &reverse_with {
@@ -188,7 +189,7 @@ impl Picking<SingleId> {
             let mut values = MapOfFields::default();
             values.insert("name", stock_move.get_name(env)?.clone());
             values.insert("product", product.get_id());
-            values.insert("product_uom_qty", *quantity);
+            values.insert("product_uom_qty", quantity);
             if let Some(uom) = uom.get_optional_id() {
                 values.insert("uom", uom);
             }
@@ -224,6 +225,21 @@ impl Picking<SingleId> {
         values.insert_option("scheduled_date", self.get_scheduled_date(env)?.copied());
         values.insert_field_type("moves", FieldType::Commands(vec![Command::Create(moves)]));
         env.create_new_record_from_map(values)
+    }
+
+    /// The moves of a transfer carry its source document.
+    fn align_moves(&self, env: &mut Environment) -> Result<()> {
+        let Some(origin) = self.get_origin(env)?.cloned() else {
+            return Ok(());
+        };
+        for stock_move in self.live_moves(env)? {
+            if stock_move.get_origin(env)?.is_none()
+                && !stock_move.is_status(env, MoveStatus::Done)?
+            {
+                stock_move.set_origin(Some(origin.clone()), env)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -461,7 +477,7 @@ impl Picking<MultipleIds> {
                         rest.push((stock_move, done));
                     }
                 }
-                let returned = picking.copy_with(env, &rest, Some(return_type))?;
+                let returned = picking.copy_with(env, rest, Some(return_type))?;
                 returned.set_returned_picking(&picking, env)?;
                 let origin = format!("Return of {}", picking.get_name(env)?);
                 returned.set_origin(Some(origin), env)?;
@@ -478,23 +494,6 @@ impl Picking<MultipleIds> {
 
     /// What follows transfers done; sales and purchases count what was delivered or received.
     pub fn on_done(&self, _env: &mut Environment) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl Picking<SingleId> {
-    /// The moves of a transfer carry its source document.
-    fn align_moves(&self, env: &mut Environment) -> Result<()> {
-        let Some(origin) = self.get_origin(env)?.cloned() else {
-            return Ok(());
-        };
-        for stock_move in self.live_moves(env)? {
-            if stock_move.get_origin(env)?.is_none()
-                && !stock_move.is_status(env, MoveStatus::Done)?
-            {
-                stock_move.set_origin(Some(origin.clone()), env)?;
-            }
-        }
         Ok(())
     }
 }

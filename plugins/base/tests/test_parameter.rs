@@ -17,13 +17,13 @@ fn test_a_key_holds_one_value() -> Result<()> {
     let mut env = app.new_env()?;
 
     assert_eq!(
-        Parameter::<MultipleIds>::value_of(&mut env, "colour")?,
+        Parameter::<MultipleIds>::value_of(&mut env, "colour".to_string())?,
         None
     );
-    Parameter::<MultipleIds>::keep(&mut env, "colour", "blue")?;
-    Parameter::<MultipleIds>::keep(&mut env, "colour", "green")?;
+    Parameter::<MultipleIds>::keep(&mut env, "colour".to_string(), "blue".to_string())?;
+    Parameter::<MultipleIds>::keep(&mut env, "colour".to_string(), "green".to_string())?;
     assert_eq!(
-        Parameter::<MultipleIds>::value_of(&mut env, "colour")?.as_deref(),
+        Parameter::<MultipleIds>::value_of(&mut env, "colour".to_string())?.as_deref(),
         Some("green")
     );
 

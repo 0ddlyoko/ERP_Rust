@@ -5,7 +5,7 @@ use crate::models::fiscal_position::{BaseAccountFiscalPosition, FiscalPosition};
 use crate::models::invoice_line::{BaseAccountInvoiceLine, InvoiceLine};
 use crate::models::journal::{BaseAccountJournal, Journal, JournalType};
 use crate::models::move_line::{BaseAccountMoveLine, LineKind, MoveLine};
-use crate::models::payment::PartnerType;
+use crate::models::payment::{PartnerType, Payment};
 use crate::models::payment_term::{BaseAccountPaymentTerm, PaymentTerm};
 use crate::models::tax::TaxDocument;
 use base::models::{BaseContact, Contact};
@@ -208,6 +208,7 @@ pub struct Move<Mode: IdMode> {
     reversal_reason: Option<String>,
 }
 
+#[erp_methods]
 impl Move<SingleId> {
     pub fn is_draft(&self, env: &mut Environment) -> Result<bool> {
         Ok(matches!(*self.get_state(env)?, MoveState::Draft))
@@ -248,7 +249,14 @@ impl Move<SingleId> {
         }
         if account.is_empty() {
             let company = CompanyAccount::current(env)?;
-            account = company.required_account(env, if sale { "receivable" } else { "payable" })?;
+            account = company.required_account(
+                env,
+                if sale {
+                    "receivable".to_string()
+                } else {
+                    "payable".to_string()
+                },
+            )?;
         }
         Ok(account)
     }
@@ -269,7 +277,7 @@ impl Move<SingleId> {
         let invoice_date = self.get_invoice_date(env)?.copied().unwrap_or(date);
         let partner: Contact<SingleId> = self.get_partner(env)?;
         let to_company = |env: &mut Environment, amount: Decimal| -> Result<Decimal> {
-            currency.convert(env, amount, &company_currency, date)
+            currency.convert(env, amount, company_currency.clone(), date)
         };
 
         let mut items = Vec::new();
@@ -417,6 +425,234 @@ impl Move<SingleId> {
             MoveType::InRefund => "account.action_move_in_refund",
             _ => "account.action_move_journal_entries",
         })
+    }
+
+    /// Whether every payment of the invoice is one of its own credit notes.
+    fn settled_by_reversal(&self, env: &mut Environment) -> Result<bool> {
+        let env = &mut *env.sudo();
+        let reversals: Move<MultipleIds> = self.get_reversals(env)?;
+        if reversals.get_ids_ref().is_empty() {
+            return Ok(false);
+        }
+        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        let group = lines.matched_group(env)?;
+        for id in group {
+            let line: MoveLine<SingleId> = env.get_record(id.into());
+            let owner: Move<SingleId> = line.get_move_id(env)?;
+            if owner.get_id() != self.get_id() && !reversals.get_ids_ref().contains(&owner.get_id())
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// Remove the journal items of an invoice back to draft: they are made again at posting.
+    fn clear_items(&self, env: &mut Environment) -> Result<()> {
+        let env = &mut *env.sudo();
+        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        if !lines.get_ids_ref().is_empty() {
+            env.delete(
+                "account_move_line",
+                &MultipleIds::from(lines.get_ids_ref().clone()),
+            )?;
+        }
+        Ok(())
+    }
+
+    fn post_one(&self, env: &mut Environment) -> Result<()> {
+        if !self.is_draft(env)? {
+            return Err(format!(
+                "{} is not a draft: it cannot be posted",
+                self.get_name(env)?
+            )
+            .into());
+        }
+        let move_type = *self.get_move_type(env)?;
+        let today = Utc::now().date_naive();
+        if move_type.is_invoice() {
+            let partner: Contact<SingleId> = self.get_partner(env)?;
+            if partner.is_empty() {
+                return Err(format!(
+                    "The {} needs a {} before it is posted",
+                    move_type_label(move_type),
+                    if move_type.is_sale() {
+                        "customer"
+                    } else {
+                        "vendor"
+                    }
+                )
+                .into());
+            }
+            let lines: InvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
+            if lines.get_ids_ref().is_empty() {
+                return Err(
+                    format!("The {} has no line to post", move_type_label(move_type)).into(),
+                );
+            }
+            if self.get_invoice_date(env)?.is_none() {
+                self.set_invoice_date(Some(today), env)?;
+            }
+            let invoice_date = *self.get_invoice_date(env)?.expect("just set");
+            self.set_date(invoice_date, env)?;
+            if *self.get_amount_total(env)? < Decimal::ZERO {
+                return Err(format!(
+                    "The total of the {} is negative: make a credit note instead",
+                    move_type_label(move_type)
+                )
+                .into());
+            }
+        }
+        let date = *self.get_date(env)?;
+        let company = CompanyAccount::current(env)?;
+        company.check_lock(env, date)?;
+        let journal: Journal<SingleId> = self.get_journal(env)?;
+        if journal.is_empty() {
+            return Err("An entry needs a journal".into());
+        }
+        if self.get_name(env)? == "/" {
+            let numbering = journal.numbering(env, move_type.is_refund())?;
+            if numbering.is_empty() {
+                return Err("The journal has no numbering".into());
+            }
+            let name = numbering.next(env, date)?;
+            let journal_id = journal.get_id();
+            let taken = env.sudo().count(
+                "account_move",
+                &make_domain!([("journal", "=", journal_id), ("name", "=", name.clone())]),
+            )?;
+            if taken > 0 {
+                return Err(format!("The number {name} is already used in this journal").into());
+            }
+            self.set_name(name, env)?;
+        }
+        if move_type.is_invoice() {
+            self.clear_items(env)?;
+            Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
+                .assign_payment_reference(env)?;
+            let mut items = self.invoice_items(env)?;
+            for item in &mut items {
+                item.insert("move_id", self.get_id());
+            }
+            let _: MoveLine<MultipleIds> = env.sudo().create_new_records_from_maps(items)?;
+        }
+        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        if lines.get_ids_ref().len() < 2 {
+            return Err(format!("{} needs at least two journal items", self.get_name(env)?).into());
+        }
+        let (debit, credit) = self.totals(env)?;
+        if debit != credit {
+            return Err(format!(
+                "{} does not balance: {debit} debited, {credit} credited",
+                self.get_name(env)?
+            )
+            .into());
+        }
+        if debit.is_zero() && !move_type.is_invoice() {
+            return Err(format!("{} records nothing", self.get_name(env)?).into());
+        }
+        self.set_state(MoveState::Posted, &mut env.sudo())?;
+        Ok(())
+    }
+
+    /// The reverse of this entry: a draft credit note of an invoice, its lines copied; the
+    /// posted mirror of an entry made by hand.
+    pub fn reverse_one(
+        &self,
+        env: &mut Environment,
+        date: Option<NaiveDate>,
+        reason: Option<String>,
+    ) -> Result<Move<SingleId>> {
+        if !self.is_posted(env)? {
+            return Err(format!(
+                "{} is not posted: there is nothing to reverse",
+                self.get_name(env)?
+            )
+            .into());
+        }
+        let move_type = *self.get_move_type(env)?;
+        let date = date.unwrap_or_else(|| Utc::now().date_naive());
+        let journal: Journal<SingleId> = self.get_journal(env)?;
+        let partner: Contact<SingleId> = self.get_partner(env)?;
+        let currency = self.currency_or_company(env)?;
+        let mut values = MapOfFields::default();
+        values.insert("move_type", move_type.reversed());
+        values.insert("journal", journal.get_id());
+        values.insert("date", date);
+        values.insert("currency", currency.get_id());
+        values.insert("reversed_entry", self.get_id());
+        values.insert("reference", format!("Reversal of {}", self.get_name(env)?));
+        if let Some(reason) = reason {
+            values.insert("reversal_reason", reason);
+        }
+        if let Some(partner) = partner.get_optional_id() {
+            values.insert("partner", partner);
+        }
+        if move_type.is_invoice() {
+            values.insert("invoice_date", date);
+            let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
+            if let Some(term) = term.get_optional_id() {
+                values.insert("payment_term", term);
+            }
+            let position: FiscalPosition<SingleId> = self.get_fiscal_position(env)?;
+            if let Some(position) = position.get_optional_id() {
+                values.insert("fiscal_position", position);
+            }
+            let mut copies = Vec::new();
+            for line in &self.get_invoice_lines::<InvoiceLine<MultipleIds>>(env)? {
+                let mut copy = MapOfFields::default();
+                let product: product::models::Product<SingleId> = line.get_product(env)?;
+                if let Some(product) = product.get_optional_id() {
+                    copy.insert("product", product);
+                }
+                copy.insert_option("name", line.get_name(env)?.cloned());
+                let account: Account<SingleId> = line.get_account(env)?;
+                copy.insert("account", account.get_id());
+                copy.insert("quantity", *line.get_quantity(env)?);
+                let uom: uom::models::Uom<SingleId> = line.get_uom(env)?;
+                if let Some(uom) = uom.get_optional_id() {
+                    copy.insert("uom", uom);
+                }
+                copy.insert("price_unit", *line.get_price_unit(env)?);
+                copy.insert("discount", *line.get_discount(env)?);
+                let taxes: crate::models::tax::Tax<MultipleIds> = line.get_taxes(env)?;
+                copy.insert("taxes", FieldType::Refs(taxes.get_ids_ref().clone()));
+                copy.insert("sequence", *line.get_sequence(env)?);
+                copies.push(copy);
+            }
+            values.insert_field_type(
+                "invoice_lines",
+                FieldType::Commands(vec![Command::Create(copies)]),
+            );
+        } else {
+            let mut mirrored = Vec::new();
+            for line in &self.get_lines::<MoveLine<MultipleIds>>(env)? {
+                let mut copy = MapOfFields::default();
+                let account: Account<SingleId> = line.get_account(env)?;
+                copy.insert("account", account.get_id());
+                let partner: Contact<SingleId> = line.get_partner(env)?;
+                if let Some(partner) = partner.get_optional_id() {
+                    copy.insert("partner", partner);
+                }
+                copy.insert_option("name", line.get_name(env)?.cloned());
+                copy.insert("debit", *line.get_credit(env)?);
+                copy.insert("credit", *line.get_debit(env)?);
+                copy.insert("amount_currency", -*line.get_amount_currency(env)?);
+                copy.insert("currency", currency.get_id());
+                mirrored.push(copy);
+            }
+            values.insert_field_type(
+                "lines",
+                FieldType::Commands(vec![Command::Create(mirrored)]),
+            );
+        }
+        let reversal: Move<SingleId> = env.create_new_record_from_map(values)?;
+        Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
+            .link_reversal(env, reversal.get_id())?;
+        if !move_type.is_invoice() {
+            Move::<MultipleIds>::from_ids(vec![reversal.get_id()], env).action_post(env)?;
+        }
+        Ok(reversal)
     }
 }
 
@@ -824,235 +1060,71 @@ impl Move<MultipleIds> {
     pub fn link_reversal(&self, _env: &mut Environment, _reversal: u32) -> Result<()> {
         Ok(())
     }
-}
 
-impl Move<SingleId> {
-    /// Whether every payment of the invoice is one of its own credit notes.
-    fn settled_by_reversal(&self, env: &mut Environment) -> Result<bool> {
-        let env = &mut *env.sudo();
-        let reversals: Move<MultipleIds> = self.get_reversals(env)?;
-        if reversals.get_ids_ref().is_empty() {
-            return Ok(false);
-        }
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
-        let group = lines.matched_group(env)?;
-        for id in group {
-            let line: MoveLine<SingleId> = env.get_record(id.into());
-            let owner: Move<SingleId> = line.get_move_id(env)?;
-            if owner.get_id() != self.get_id() && !reversals.get_ids_ref().contains(&owner.get_id())
-            {
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-
-    /// Remove the journal items of an invoice back to draft: they are made again at posting.
-    fn clear_items(&self, env: &mut Environment) -> Result<()> {
-        let env = &mut *env.sudo();
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
-        if !lines.get_ids_ref().is_empty() {
-            env.delete(
-                "account_move_line",
-                &MultipleIds::from(lines.get_ids_ref().clone()),
-            )?;
-        }
-        Ok(())
-    }
-
-    fn post_one(&self, env: &mut Environment) -> Result<()> {
-        if !self.is_draft(env)? {
-            return Err(format!(
-                "{} is not a draft: it cannot be posted",
-                self.get_name(env)?
-            )
-            .into());
-        }
-        let move_type = *self.get_move_type(env)?;
-        let today = Utc::now().date_naive();
-        if move_type.is_invoice() {
-            let partner: Contact<SingleId> = self.get_partner(env)?;
-            if partner.is_empty() {
+    /// The draft payment of what is left on these posted invoices of one partner.
+    pub fn prepare_payment(&self, env: &mut Environment) -> Result<Payment<SingleId>> {
+        let mut partner = None;
+        let mut total = Decimal::ZERO;
+        let mut kind = None;
+        let mut currency = None;
+        let mut memo = Vec::new();
+        for invoice in self {
+            if !invoice.is_posted(env)? {
                 return Err(format!(
-                    "The {} needs a {} before it is posted",
-                    move_type_label(move_type),
-                    if move_type.is_sale() {
-                        "customer"
-                    } else {
-                        "vendor"
-                    }
+                    "{} is not posted: it cannot be paid yet",
+                    invoice.get_name(env)?
                 )
                 .into());
             }
-            let lines: InvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
-            if lines.get_ids_ref().is_empty() {
-                return Err(
-                    format!("The {} has no line to post", move_type_label(move_type)).into(),
-                );
+            let move_type = *invoice.get_move_type(env)?;
+            if !move_type.is_invoice() {
+                return Err(format!("{} is no invoice", invoice.get_name(env)?).into());
             }
-            if self.get_invoice_date(env)?.is_none() {
-                self.set_invoice_date(Some(today), env)?;
+            let this_partner: Contact<SingleId> = invoice.get_partner(env)?;
+            if partner.is_some_and(|partner| partner != this_partner.get_id()) {
+                return Err("Invoices of different partners are paid separately".into());
             }
-            let invoice_date = *self.get_invoice_date(env)?.expect("just set");
-            self.set_date(invoice_date, env)?;
-            if *self.get_amount_total(env)? < Decimal::ZERO {
-                return Err(format!(
-                    "The total of the {} is negative: make a credit note instead",
-                    move_type_label(move_type)
-                )
-                .into());
+            partner = Some(this_partner.get_id());
+            let this_currency = invoice.currency_or_company(env)?.get_id();
+            if currency.is_some_and(|currency| currency != this_currency) {
+                return Err("Invoices in different currencies are paid separately".into());
             }
+            currency = Some(this_currency);
+            let residual = *invoice.get_amount_residual(env)?;
+            // A credit note pays back: it lowers what the invoices of the same side ask.
+            let sign = if matches!(move_type, MoveType::OutRefund | MoveType::InRefund) {
+                -Decimal::ONE
+            } else {
+                Decimal::ONE
+            };
+            total += sign * residual;
+            kind = Some(move_type.is_sale());
+            memo.push(
+                invoice
+                    .get_payment_reference(env)?
+                    .cloned()
+                    .unwrap_or(invoice.get_name(env)?.clone()),
+            );
         }
-        let date = *self.get_date(env)?;
-        let company = CompanyAccount::current(env)?;
-        company.check_lock(env, date)?;
-        let journal: Journal<SingleId> = self.get_journal(env)?;
-        if journal.is_empty() {
-            return Err("An entry needs a journal".into());
+        let (Some(partner), Some(sale)) = (partner, kind) else {
+            return Err("Choose the invoices to pay".into());
+        };
+        if total.is_zero() {
+            return Err("There is nothing left to pay".into());
         }
-        if self.get_name(env)? == "/" {
-            let numbering = journal.numbering(env, move_type.is_refund())?;
-            if numbering.is_empty() {
-                return Err("The journal has no numbering".into());
-            }
-            let name = numbering.next(env, date)?;
-            let journal_id = journal.get_id();
-            let taken = env.sudo().count(
-                "account_move",
-                &make_domain!([("journal", "=", journal_id), ("name", "=", name.clone())]),
-            )?;
-            if taken > 0 {
-                return Err(format!("The number {name} is already used in this journal").into());
-            }
-            self.set_name(name, env)?;
-        }
-        if move_type.is_invoice() {
-            self.clear_items(env)?;
-            Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
-                .assign_payment_reference(env)?;
-            let mut items = self.invoice_items(env)?;
-            for item in &mut items {
-                item.insert("move_id", self.get_id());
-            }
-            let _: MoveLine<MultipleIds> = env.sudo().create_new_records_from_maps(items)?;
-        }
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
-        if lines.get_ids_ref().len() < 2 {
-            return Err(format!("{} needs at least two journal items", self.get_name(env)?).into());
-        }
-        let (debit, credit) = self.totals(env)?;
-        if debit != credit {
-            return Err(format!(
-                "{} does not balance: {debit} debited, {credit} credited",
-                self.get_name(env)?
-            )
-            .into());
-        }
-        if debit.is_zero() && !move_type.is_invoice() {
-            return Err(format!("{} records nothing", self.get_name(env)?).into());
-        }
-        self.set_state(MoveState::Posted, &mut env.sudo())?;
-        Ok(())
-    }
-
-    /// The reverse of this entry: a draft credit note of an invoice, its lines copied; the
-    /// posted mirror of an entry made by hand.
-    pub fn reverse_one(
-        &self,
-        env: &mut Environment,
-        date: Option<NaiveDate>,
-        reason: Option<String>,
-    ) -> Result<Move<SingleId>> {
-        if !self.is_posted(env)? {
-            return Err(format!(
-                "{} is not posted: there is nothing to reverse",
-                self.get_name(env)?
-            )
-            .into());
-        }
-        let move_type = *self.get_move_type(env)?;
-        let date = date.unwrap_or_else(|| Utc::now().date_naive());
-        let journal: Journal<SingleId> = self.get_journal(env)?;
-        let partner: Contact<SingleId> = self.get_partner(env)?;
-        let currency = self.currency_or_company(env)?;
+        let refund = total < Decimal::ZERO;
+        let inbound = sale != refund;
         let mut values = MapOfFields::default();
-        values.insert("move_type", move_type.reversed());
-        values.insert("journal", journal.get_id());
-        values.insert("date", date);
-        values.insert("currency", currency.get_id());
-        values.insert("reversed_entry", self.get_id());
-        values.insert("reference", format!("Reversal of {}", self.get_name(env)?));
-        if let Some(reason) = reason {
-            values.insert("reversal_reason", reason);
+        values.insert("partner", partner);
+        values.insert("partner_type", if sale { "customer" } else { "supplier" });
+        values.insert("payment_type", if inbound { "inbound" } else { "outbound" });
+        values.insert("amount", total.abs());
+        values.insert("memo", memo.join(", "));
+        if let Some(currency) = currency {
+            values.insert("currency", currency);
         }
-        if let Some(partner) = partner.get_optional_id() {
-            values.insert("partner", partner);
-        }
-        if move_type.is_invoice() {
-            values.insert("invoice_date", date);
-            let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
-            if let Some(term) = term.get_optional_id() {
-                values.insert("payment_term", term);
-            }
-            let position: FiscalPosition<SingleId> = self.get_fiscal_position(env)?;
-            if let Some(position) = position.get_optional_id() {
-                values.insert("fiscal_position", position);
-            }
-            let mut copies = Vec::new();
-            for line in &self.get_invoice_lines::<InvoiceLine<MultipleIds>>(env)? {
-                let mut copy = MapOfFields::default();
-                let product: product::models::Product<SingleId> = line.get_product(env)?;
-                if let Some(product) = product.get_optional_id() {
-                    copy.insert("product", product);
-                }
-                copy.insert_option("name", line.get_name(env)?.cloned());
-                let account: Account<SingleId> = line.get_account(env)?;
-                copy.insert("account", account.get_id());
-                copy.insert("quantity", *line.get_quantity(env)?);
-                let uom: uom::models::Uom<SingleId> = line.get_uom(env)?;
-                if let Some(uom) = uom.get_optional_id() {
-                    copy.insert("uom", uom);
-                }
-                copy.insert("price_unit", *line.get_price_unit(env)?);
-                copy.insert("discount", *line.get_discount(env)?);
-                let taxes: crate::models::tax::Tax<MultipleIds> = line.get_taxes(env)?;
-                copy.insert("taxes", FieldType::Refs(taxes.get_ids_ref().clone()));
-                copy.insert("sequence", *line.get_sequence(env)?);
-                copies.push(copy);
-            }
-            values.insert_field_type(
-                "invoice_lines",
-                FieldType::Commands(vec![Command::Create(copies)]),
-            );
-        } else {
-            let mut mirrored = Vec::new();
-            for line in &self.get_lines::<MoveLine<MultipleIds>>(env)? {
-                let mut copy = MapOfFields::default();
-                let account: Account<SingleId> = line.get_account(env)?;
-                copy.insert("account", account.get_id());
-                let partner: Contact<SingleId> = line.get_partner(env)?;
-                if let Some(partner) = partner.get_optional_id() {
-                    copy.insert("partner", partner);
-                }
-                copy.insert_option("name", line.get_name(env)?.cloned());
-                copy.insert("debit", *line.get_credit(env)?);
-                copy.insert("credit", *line.get_debit(env)?);
-                copy.insert("amount_currency", -*line.get_amount_currency(env)?);
-                copy.insert("currency", currency.get_id());
-                mirrored.push(copy);
-            }
-            values.insert_field_type(
-                "lines",
-                FieldType::Commands(vec![Command::Create(mirrored)]),
-            );
-        }
-        let reversal: Move<SingleId> = env.create_new_record_from_map(values)?;
-        Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
-            .link_reversal(env, reversal.get_id())?;
-        if !move_type.is_invoice() {
-            Move::<MultipleIds>::from_ids(vec![reversal.get_id()], env).action_post(env)?;
-        }
-        Ok(reversal)
+        values.insert("invoices", FieldType::Refs(self.get_ids_ref().clone()));
+        env.create_new_record_from_map(values)
     }
 }
 

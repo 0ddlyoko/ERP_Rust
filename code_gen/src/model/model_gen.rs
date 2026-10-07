@@ -677,7 +677,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             type IntoIter = erp::model::ModelIntoIterator<Self::Item>;
 
             fn into_iter(self) -> Self::IntoIter {
-                erp::model::ModelIntoIterator::new(self.id.get_ids_ref().clone())
+                erp::model::ModelIntoIterator::new(
+                    self.id.get_ids_ref().clone(),
+                    self.id.shared_prefetch(),
+                )
             }
         }
 
@@ -686,7 +689,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             type IntoIter = erp::model::ModelIterator<'a, Self::Item>;
 
             fn into_iter(self) -> Self::IntoIter {
-                erp::model::ModelIterator::new(self.id.get_ids_ref())
+                erp::model::ModelIterator::new(self.id.get_ids_ref(), self.id.shared_prefetch())
             }
         }
     };

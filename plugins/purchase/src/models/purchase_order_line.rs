@@ -82,6 +82,7 @@ pub struct PurchaseOrderLine<Mode: IdMode> {
     bill_status: BillStatus,
 }
 
+#[erp_methods]
 impl PurchaseOrderLine<SingleId> {
     /// The vendor's price rule for the line's product and quantity, if it has one.
     fn seller(
@@ -166,7 +167,7 @@ impl PurchaseOrderLine<MultipleIds> {
                     if unit.is_empty() || purchase.is_empty() {
                         cost
                     } else {
-                        unit.convert_price(env, cost, &purchase)?
+                        unit.convert_price(env, cost, purchase)?
                     }
                 }
             };
@@ -177,7 +178,7 @@ impl PurchaseOrderLine<MultipleIds> {
                 price
             } else {
                 let date = *order.get_date_order(env)?;
-                company.convert(env, price, &currency, date)?
+                company.convert(env, price, currency, date)?
             };
             line.set_price_unit(price, env)?;
         }
@@ -218,7 +219,7 @@ impl PurchaseOrderLine<MultipleIds> {
             };
             let order: PurchaseOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
-            let mapped = position.map_taxes(env, taxes.get_ids_ref())?;
+            let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
             let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }

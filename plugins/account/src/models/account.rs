@@ -79,9 +79,10 @@ pub struct Account<Mode: IdMode> {
     active: bool,
 }
 
+#[erp_methods]
 impl Account<SingleId> {
     /// The active account of `code`, empty when there is none.
-    pub fn by_code(env: &mut Environment, code: &str) -> Result<Account<SingleId>> {
+    pub fn by_code(env: &mut Environment, code: String) -> Result<Account<SingleId>> {
         let env = &mut *env.sudo();
         let found: Account<MultipleIds> = env.search(&make_domain!([("code", "=", code)]))?;
         Ok(found

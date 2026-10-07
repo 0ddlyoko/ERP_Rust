@@ -1,5 +1,5 @@
 use crate::models::{BaseUsers, Users};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::errors::MissingRecords;
@@ -10,7 +10,7 @@ use erp::types::model::MapOfFields;
 
 /// Proof that someone authenticated, and how long it stays good for.
 #[derive(Model)]
-#[erp(id = "session")]
+#[erp(id = "session", methods)]
 #[allow(dead_code)]
 pub struct Session<Mode: IdMode> {
     pub id: Mode,
@@ -45,6 +45,7 @@ struct Held {
     user_active: bool,
 }
 
+#[erp_methods]
 impl Session<SingleId> {
     /// Open a session for a user.
     ///
@@ -79,7 +80,7 @@ impl Session<SingleId> {
     /// Saying which would tell whoever is guessing how far they got. What a session holds is kept
     /// across requests until a session or a user changes, so most requests resolve without the
     /// database.
-    pub fn resolve(env: &mut Environment, token: &str) -> Result<Option<u32>> {
+    pub fn resolve(env: &mut Environment, token: String) -> Result<Option<u32>> {
         let Some((selector, secret)) = token.split_once('.') else {
             return Ok(None);
         };
@@ -122,9 +123,9 @@ impl Session<SingleId> {
     ///
     /// Returns whether it ended one. Checking the owner is what keeps a token picked up somewhere
     /// from being used to log somebody else out.
-    pub fn revoke(env: &mut Environment, token: &str, uid: u32) -> Result<bool> {
+    pub fn revoke(env: &mut Environment, token: String, uid: u32) -> Result<bool> {
         let env = &mut *env.sudo();
-        if Self::resolve(env, token)? != Some(uid) {
+        if Self::resolve(env, token.clone())? != Some(uid) {
             return Ok(false);
         }
         let Some(id) = token

@@ -3,7 +3,7 @@ use crate::models::company::CompanyAccount;
 use crate::models::contact::ContactAccount;
 use crate::models::journal::{BaseAccountJournal, Journal, JournalType};
 use crate::models::move_line::{LineKind, MoveLine};
-use crate::models::moves::{BaseAccountMove, Move, MoveType};
+use crate::models::moves::{BaseAccountMove, Move};
 use base::models::{BaseContact, Contact};
 use code_gen::{Model, erp_methods, selection};
 use currency::models::{BaseCurrency, Currency};
@@ -80,6 +80,7 @@ pub struct Payment<Mode: IdMode> {
     invoices: Reference<BaseAccountMove, MultipleIds>,
 }
 
+#[erp_methods]
 impl Payment<SingleId> {
     /// The account the payment settles: the partner's receivable or payable.
     fn counterpart_account(&self, env: &mut Environment) -> Result<Account<SingleId>> {
@@ -95,8 +96,14 @@ impl Payment<SingleId> {
         if !account.is_empty() {
             return Ok(account);
         }
-        CompanyAccount::current(env)?
-            .required_account(env, if customer { "receivable" } else { "payable" })
+        CompanyAccount::current(env)?.required_account(
+            env,
+            if customer {
+                "receivable".to_string()
+            } else {
+                "payable".to_string()
+            },
+        )
     }
 
     /// Where the money waits for the bank statement: the journal's outstanding account, else
@@ -143,7 +150,7 @@ impl Payment<SingleId> {
         } else {
             currency
         };
-        let balance = currency.convert(env, amount, &company_currency, date)?;
+        let balance = currency.convert(env, amount, company_currency, date)?;
         let partner: Contact<SingleId> = self.get_partner(env)?;
         let journal: Journal<SingleId> = self.get_journal(env)?;
         let liquidity = self.liquidity_account(env)?;
@@ -335,73 +342,5 @@ impl Payment<MultipleIds> {
             payment.set_move_id(None::<&Move<SingleId>>, env)?;
         }
         Ok(true)
-    }
-}
-
-impl Move<MultipleIds> {
-    /// The draft payment of what is left on these posted invoices of one partner.
-    pub fn prepare_payment(&self, env: &mut Environment) -> Result<Payment<SingleId>> {
-        let mut partner = None;
-        let mut total = Decimal::ZERO;
-        let mut kind = None;
-        let mut currency = None;
-        let mut memo = Vec::new();
-        for invoice in self {
-            if !invoice.is_posted(env)? {
-                return Err(format!(
-                    "{} is not posted: it cannot be paid yet",
-                    invoice.get_name(env)?
-                )
-                .into());
-            }
-            let move_type = *invoice.get_move_type(env)?;
-            if !move_type.is_invoice() {
-                return Err(format!("{} is no invoice", invoice.get_name(env)?).into());
-            }
-            let this_partner: Contact<SingleId> = invoice.get_partner(env)?;
-            if partner.is_some_and(|partner| partner != this_partner.get_id()) {
-                return Err("Invoices of different partners are paid separately".into());
-            }
-            partner = Some(this_partner.get_id());
-            let this_currency = invoice.currency_or_company(env)?.get_id();
-            if currency.is_some_and(|currency| currency != this_currency) {
-                return Err("Invoices in different currencies are paid separately".into());
-            }
-            currency = Some(this_currency);
-            let residual = *invoice.get_amount_residual(env)?;
-            // A credit note pays back: it lowers what the invoices of the same side ask.
-            let sign = if matches!(move_type, MoveType::OutRefund | MoveType::InRefund) {
-                -Decimal::ONE
-            } else {
-                Decimal::ONE
-            };
-            total += sign * residual;
-            kind = Some(move_type.is_sale());
-            memo.push(
-                invoice
-                    .get_payment_reference(env)?
-                    .cloned()
-                    .unwrap_or(invoice.get_name(env)?.clone()),
-            );
-        }
-        let (Some(partner), Some(sale)) = (partner, kind) else {
-            return Err("Choose the invoices to pay".into());
-        };
-        if total.is_zero() {
-            return Err("There is nothing left to pay".into());
-        }
-        let refund = total < Decimal::ZERO;
-        let inbound = sale != refund;
-        let mut values = MapOfFields::default();
-        values.insert("partner", partner);
-        values.insert("partner_type", if sale { "customer" } else { "supplier" });
-        values.insert("payment_type", if inbound { "inbound" } else { "outbound" });
-        values.insert("amount", total.abs());
-        values.insert("memo", memo.join(", "));
-        if let Some(currency) = currency {
-            values.insert("currency", currency);
-        }
-        values.insert("invoices", FieldType::Refs(self.get_ids_ref().clone()));
-        env.create_new_record_from_map(values)
     }
 }

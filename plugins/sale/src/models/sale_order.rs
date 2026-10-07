@@ -121,6 +121,7 @@ pub struct SaleOrder<Mode: IdMode> {
     invoices: Reference<BaseAccountMove, MultipleIds>,
 }
 
+#[erp_methods]
 impl SaleOrder<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: SaleState) -> Result<bool> {
         Ok(self.get_state(env)?.key() == state.key())
@@ -368,7 +369,10 @@ impl SaleOrder<MultipleIds> {
                 .get_option::<&String>("name")
                 .is_none_or(|name| name == "New")
             {
-                order.insert("name", Sequence::next_by_code(env, "sale.order", date)?);
+                order.insert(
+                    "name",
+                    Sequence::next_by_code(env, "sale.order".to_string(), date)?,
+                );
             }
             if !order.contains_key("user")
                 && let Some(uid) = env.uid()

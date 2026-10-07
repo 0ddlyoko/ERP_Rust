@@ -1,5 +1,5 @@
 use crate::qweb::{Renderer, Values};
-use code_gen::Model;
+use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::data;
 use erp::environment::Environment;
@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// parent is. `<t t-inherit="…">` is an `extension`, changing its parent in place; extensions
 /// apply in the order a bundle loads them: by plugin, then file, then `sequence` in the file.
 #[derive(Model)]
-#[erp(id = "template")]
+#[erp(id = "template", methods)]
 #[allow(dead_code)]
 pub struct Template<Mode: IdMode> {
     pub id: Mode,
@@ -187,35 +187,36 @@ fn elements_of<'a>(path: &str, root: &'a Element) -> Result<Vec<&'a Element>> {
     Ok(elements)
 }
 
+#[erp_methods]
 impl Template<SingleId> {
     /// Bring the templates of a plugin's static files in line with what it ships, once it loads.
     ///
     /// Every load rather than only when data is loaded: the files are compiled into the plugin,
     /// so a new build brings new ones without a new version. A template no longer shipped goes.
     /// When `web` itself loads, the plugins loaded before it get theirs too.
-    pub fn on_plugin_loaded(env: &mut Environment, plugin: &str) -> Result<()> {
+    pub fn on_plugin_loaded(env: &mut Environment, plugin: String) -> Result<()> {
         let plugins = if plugin == "web" {
             env.model_manager.loaded_plugins().to_vec()
         } else {
             vec![plugin.to_string()]
         };
         for plugin in &plugins {
-            Self::sync_files(env, plugin)?;
+            Self::sync_files(env, plugin.clone())?;
         }
         Self::check_all(env)
     }
 
     /// Save every template first and link them after, so a template may inherit from one in a
     /// file that comes later.
-    fn sync_files(env: &mut Environment, plugin: &str) -> Result<()> {
+    fn sync_files(env: &mut Environment, plugin: String) -> Result<()> {
         let assets = &env.model_manager.assets;
         let static_templates = assets
-            .files_of(plugin)
+            .files_of(&plugin)
             .into_iter()
             .filter(|(path, _)| path.ends_with(".xml"));
         let mut shipped = Vec::new();
-        for (path, content) in static_templates.chain(assets.templates_of(plugin)) {
-            for template in shipped_in(plugin, path, content)? {
+        for (path, content) in static_templates.chain(assets.templates_of(&plugin)) {
+            for template in shipped_in(&plugin, path, content)? {
                 shipped.push((path, template));
             }
         }
@@ -236,12 +237,12 @@ impl Template<SingleId> {
                 "primary"
             };
             values.insert("mode", mode);
-            let id = data::save_record(env, plugin, &template.name, "template", values, false)?;
+            let id = data::save_record(env, &plugin, &template.name, "template", values, false)?;
             links.push((id, *path, template.inherit.as_deref()));
         }
         for (id, path, inherit) in links {
             let parent = match inherit {
-                Some(key) => Some(Self::served_under(env, key)?.ok_or_else(|| {
+                Some(key) => Some(Self::served_under(env, key.to_string())?.ok_or_else(|| {
                     format!("{path}: t-inherit names {key}, which no loaded plugin ships")
                 })?),
                 None => None,
@@ -249,7 +250,7 @@ impl Template<SingleId> {
             let parent = parent.map(|parent| Template::<SingleId>::from_id(parent, env));
             Template::<SingleId>::from_id(id, env).set_inherit(parent.as_ref(), env)?;
         }
-        for name in data::names_of(env, plugin, "template")? {
+        for name in data::names_of(env, &plugin, "template")? {
             if !names.contains(name.as_str()) {
                 data::delete_record(env, &format!("{plugin}.{name}"))?;
             }
@@ -258,7 +259,7 @@ impl Template<SingleId> {
     }
 
     /// The template served under a key, the one a `t-inherit` names.
-    fn served_under(env: &mut Environment, key: &str) -> Result<Option<u32>> {
+    fn served_under(env: &mut Environment, key: String) -> Result<Option<u32>> {
         let env = &mut *env.sudo();
         let found: Template<MultipleIds> = env.search(&make_domain!([("key", "=", key)]))?;
         Ok(found.get_ids_ref().first().copied())
@@ -268,12 +269,12 @@ impl Template<SingleId> {
     ///
     /// Those served from a file of the bundle, every extension applied. `None` when there is
     /// none. Kept in a shared cache until a template changes or a plugin loads.
-    pub fn bundle_markup(env: &mut Environment, bundle: &str) -> Result<Arc<Option<String>>> {
-        env.cached(BUNDLES_CACHE, bundle, |env| {
+    pub fn bundle_markup(env: &mut Environment, bundle: String) -> Result<Arc<Option<String>>> {
+        env.cached(BUNDLES_CACHE, &bundle, |env| {
             let files: HashSet<String> = env
                 .model_manager
                 .assets
-                .bundle(bundle)
+                .bundle(&bundle)
                 .into_iter()
                 .collect();
             let templates = Templates::load(env)?;
@@ -299,7 +300,7 @@ impl Template<SingleId> {
     /// A page: a template rendered on the server, as an HTML document.
     ///
     /// Only the templates of a `templates/` directory: those of `static/` are the browser's.
-    pub fn render_page(env: &mut Environment, key: &str, mut values: Values) -> Result<String> {
+    pub fn render_page(env: &mut Environment, key: String, mut values: Values) -> Result<String> {
         let resolved = env.cached(RESOLVED_CACHE, "all", |env| {
             let templates = Templates::load(env)?;
             let mut server = HashMap::new();
@@ -316,7 +317,7 @@ impl Template<SingleId> {
         })?;
         let (server, browser) = resolved.as_ref();
         let import_map = env.model_manager.assets.import_map();
-        let html = Renderer::new(server, browser, &import_map).render(key, &mut values)?;
+        let html = Renderer::new(server, browser, &import_map).render(&key, &mut values)?;
         Ok(format!("<!doctype html>\n{html}\n"))
     }
 
