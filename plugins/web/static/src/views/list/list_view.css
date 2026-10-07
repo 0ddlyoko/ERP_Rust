@@ -621,6 +621,7 @@ body.o_resizing * {
 }
 
 .o_filter_chip {
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -650,4 +651,113 @@ body.o_resizing * {
 
 .o_filter_chip.active .o_filter_chip_count {
     color: #b9b7da;
+}
+
+/* Rows come in rather than appear: a search narrowed, a filter added, a page turned. */
+
+@keyframes o_rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+.o_list_row,
+.o_list_group {
+    animation: o_rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.o_filter_chip:active {
+    transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_list_row,
+    .o_list_group {
+        animation: none;
+    }
+
+    .o_filter_chip {
+        transition: none;
+    }
+}
+
+.o_list_group_add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--o-muted);
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.o_list_group_add:hover {
+    background: var(--o-surface);
+    color: var(--o-accent);
+}
+
+.o_list_quick td {
+    padding: 8px 12px;
+}
+
+.o_list_quick form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: o_rise 0.18s ease both;
+}
+
+.o_list_quick .o_input {
+    max-width: 420px;
+}
+
+.o_list_row:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--o-accent);
+}
+
+.o_progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 90px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_progress_track {
+    flex: 1;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(127 127 160 / 0.22);
+}
+
+.o_progress_bar {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--o-success);
+    transition: width 0.3s;
+}
+
+.o_progress_warn .o_progress_bar {
+    background: var(--o-warning);
+}
+
+.o_progress_over .o_progress_bar {
+    background: var(--o-danger);
+}
+
+.o_progress_over .o_progress_text {
+    color: var(--o-danger);
 }

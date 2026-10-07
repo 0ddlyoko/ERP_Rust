@@ -7,7 +7,8 @@ export type Choice = [string, string];
 /**
  * A field holding an enum, by its key: shown by its label, chosen from a list where a view edits
  * it. A field that may be empty offers no value too. A key its field does not list — a value of
- * a plugin since removed — is shown as it is.
+ * a plugin since removed — is shown as it is. `choices="draft,sent"` offers only those values,
+ * the one held shown whatever it is: the others are the server's to set.
  */
 export class SelectionWidget extends Widget {
     static override template = "web.SelectionWidget";
@@ -15,7 +16,9 @@ export class SelectionWidget extends Widget {
     override props = props({ ...widgetProps });
 
     get choices(): Choice[] {
-        const choices = this.props.field.values ?? [];
+        const offered = (this.props.attrs as Record<string, string>).choices?.split(",").map((key) => key.trim());
+        const values = this.props.field.values ?? [];
+        const choices = offered === undefined ? values : values.filter(([key]) => offered.includes(key));
         const key = this.value as string;
         return this.isEmpty || choices.some(([known]) => known === key) ? choices : [...choices, [key, key]];
     }

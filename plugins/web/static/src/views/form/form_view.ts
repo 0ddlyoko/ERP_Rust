@@ -46,6 +46,15 @@ export class FormView extends View {
         onCreated: t.func<(record: [number, string | null]) => void>().optional(),
         /** Shown beside the records of its list, which the user steps through instead of a pager. */
         besideList: t.boolean().default(false),
+        /**
+         * An assistant in a dialog — a wizard: no bar to save, only the buttons of its `<footer>`,
+         * which create the record and run their method on it, then close the dialog.
+         */
+        dialog: t.boolean().default(false),
+        /** Called with what a footer button's method answered, once it ran. */
+        onDone: t.func<(answer: unknown) => void>().optional(),
+        /** Called to close the dialog the form is in. */
+        onClose: t.func<() => void>().optional(),
     });
 
     @inject(Notifications) notifications!: Notifications;
@@ -93,6 +102,7 @@ export class FormView extends View {
             names: this.readNames,
             fields: this.fields,
             defaults: this.props.defaults,
+            version: this.orm.versionOf(this.props.resModel),
         }),
         async ({ model, id, names, defaults }) =>
             id === undefined
@@ -122,12 +132,16 @@ export class FormView extends View {
         return this.layout === undefined ? null : bodyFor(this.layout.source);
     }
 
-    /** The fields read with the record: those shown, and those a condition reads. */
+    /**
+     * The fields read with the record: those shown, those its related links count, and those a
+     * condition reads.
+     */
     @computed get readNames(): string[] {
         const fields = this.fields ?? {};
         const conditions = (this.layout?.conditionNames ?? []).filter((name) => name in fields);
+        const related = (this.layout?.relatedFields ?? []).map(({ name }) => name).filter((name) => name in fields);
         const companions = companionFields(this.columns, fields);
-        return [...new Set([...this.columns.map((column) => column.name), ...conditions, ...companions])];
+        return [...new Set([...this.columns.map((column) => column.name), ...related, ...conditions, ...companions])];
     }
 
     /** The record as the user sees it: what was read, what the server computed, what they changed. */
@@ -336,10 +350,17 @@ export class FormView extends View {
         return records.length === 1 ? records[0].name : `${records[0].name} and ${records.length - 1} more`;
     }
 
-    /** Follow a related link: its one record opens, several as a list; this one left in the trail. */
-    followLink(action: string, name: string): void {
+    /**
+     * Follow a related link: its one record opens, several as a list; this one left in the trail.
+     * A link saying `by` — the field of its records pointing back here — opens all of them as
+     * this record's, where a new one is created as one of them: a project's board of tasks.
+     */
+    followLink(action: string, name: string, by: string | null = null): void {
         const records = this.relatedRecords(name);
-        if (records.length === 1) {
+        const id = this.props.resId;
+        if (by !== null && id !== undefined) {
+            void this.breadcrumb.openBy(action, by, id);
+        } else if (records.length === 1) {
             void this.breadcrumb.open(action, records[0].id);
         } else if (records.length > 1) {
             void this.breadcrumb.openList(action, records.map((record) => record.id));
@@ -501,6 +522,7 @@ export class FormView extends View {
                 const values = this.forServer({ ...this.record, ...this.changes });
                 delete values.id;
                 const [created] = await this.orm.create(model, values);
+                this.orm.touch(model);
                 this.changes = {};
                 this.forgetComputed();
                 this.tried = false;
@@ -518,6 +540,7 @@ export class FormView extends View {
             }
             await this.orm.write(model, [id], this.forServer(this.changes));
             this.record = await this.read(model, id, Object.keys(this.record));
+            this.orm.touchRecords(model, [id]);
             this.changes = {};
             this.forgetComputed();
             this.tried = false;
@@ -617,6 +640,10 @@ export class FormView extends View {
      * A record not created yet is created first, and shown; its button is pressed from there.
      */
     async press(button: FormButton, at: number): Promise<void> {
+        if (button.type === "cancel") {
+            this.props.onClose?.();
+            return;
+        }
         if (button.type === "action") {
             this.router.go({ action: button.name, view: null, id: null });
             return;
@@ -626,9 +653,38 @@ export class FormView extends View {
         }
         this.pressing = at;
         try {
-            await this.run(button);
+            await (this.props.dialog ? this.runInDialog(button) : this.run(button));
         } finally {
             this.pressing = null;
+        }
+    }
+
+    /**
+     * Run a button of a wizard: create the record with what the user filled in, run the method on
+     * it, and close the dialog. Should the method fail, the record created goes, and why stays shown.
+     */
+    private async runInDialog(button: FormButton): Promise<void> {
+        this.tried = true;
+        await nextTick();
+        if (this.element?.querySelector(".o_form_missing")) {
+            this.refuse("Some required fields are empty.");
+            return;
+        }
+        this.failure = null;
+        const model = this.props.resModel;
+        let created: number | null = null;
+        try {
+            const values = this.forServer({ ...this.record, ...this.changes });
+            delete values.id;
+            [created] = await this.orm.create(model, values);
+            const answer = await this.orm.call(model, button.name, [created]);
+            this.props.onDone?.(answer);
+            this.props.onClose?.();
+        } catch (error) {
+            if (created !== null) {
+                await this.orm.delete(model, [created]).catch(() => 0);
+            }
+            this.refuse(error instanceof Error ? error.message : String(error));
         }
     }
 
@@ -651,6 +707,7 @@ export class FormView extends View {
                 return;
             }
             this.record = await this.read(this.props.resModel, id, Object.keys(this.record));
+            this.orm.touchRecords(this.props.resModel, [id]);
         } catch (error) {
             this.failure = error instanceof Error ? error.message : String(error);
         }

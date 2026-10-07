@@ -1,8 +1,9 @@
-import { Component, computed, inject, load, loading, props, resource, state, t } from "trame";
+import { Component, type ComponentClass, computed, effect, inject, load, loading, props, resource, state, t } from "trame";
 import { Icon } from "@web/core/icons";
 import { type ActionDescription, actionsOf, holds, leadsTo, type MenuEntry, pathsOf } from "@web/core/menus";
 import { Orm } from "@web/core/orm";
 import { Session } from "@web/core/session";
+import { systray } from "./systray";
 
 /** Where the browser remembers the menu folded. */
 const FOLDED_KEY = "o_sidebar_folded";
@@ -20,7 +21,7 @@ function readFolded(): boolean {
 
 /**
  * The menu on the left: the module chosen, its menus with how many records each shows, a search
- * over every module's, the other modules, and who is logged in.
+ * over every module's, the other modules, what plugins put in the tray, and who is logged in.
  *
  * Under a module come groups the user opens and folds — the one leading to the action open starts
  * unfolded. In a group, an entry with entries of its own is a section heading over them.
@@ -79,6 +80,11 @@ export class Sidebar extends Component {
 
     entriesOf(entry: MenuEntry): readonly MenuEntry[] {
         return entry.children;
+    }
+
+    /** What plugins put in the tray, by their key. */
+    get tray(): [string, ComponentClass][] {
+        return systray.getEntries();
     }
 
     /** Whether the menu keeps to its icons: a record is open or the user folded it. */
@@ -149,6 +155,29 @@ export class Sidebar extends Component {
 
     href(entry: MenuEntry): string {
         return entry.action ? `#action=${entry.action.xml_id ?? entry.action.id}` : "#";
+    }
+
+    /** The list of modules closes on a press anywhere outside the switcher, or on Escape. */
+    @effect closeSwitcherOutside(): (() => void) | void {
+        if (!this.switching) {
+            return;
+        }
+        const press = (event: MouseEvent): void => {
+            if (!(event.target instanceof Element && event.target.closest(".o_module_switcher"))) {
+                this.switching = false;
+            }
+        };
+        const key = (event: KeyboardEvent): void => {
+            if (event.key === "Escape") {
+                this.switching = false;
+            }
+        };
+        document.addEventListener("mousedown", press);
+        document.addEventListener("keydown", key);
+        return () => {
+            document.removeEventListener("mousedown", press);
+            document.removeEventListener("keydown", key);
+        };
     }
 
     pick(module: MenuEntry): void {

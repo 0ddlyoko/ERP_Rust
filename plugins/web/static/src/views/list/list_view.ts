@@ -1,10 +1,13 @@
-import { type ComponentClass, computed, effect, inject, load, loading, props, refresh, resource, state, t } from "trame";
+import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, refresh, resource, state, t } from "trame";
 import { and } from "@web/core/domain";
 import { decorationNames, decorationOf } from "@web/core/expression";
 import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
 import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
+import { FormDialog } from "@web/views/form/form_dialog";
+import { groupCreateFields, groupValue, needsForm, titleField } from "@web/views/group_create";
+import { favoritesOf, forgetFavorite, saveFavorite } from "@web/views/search/favorites";
 import { FilterChips } from "@web/views/search/filter_chips";
 import { SearchBar } from "@web/views/search/search_bar";
 import {
@@ -31,6 +34,7 @@ interface ActionItem {
 /** A line of the table: a group's heading, a record, or the records of a group on their way. */
 type Line =
     | { kind: "group"; key: string; group: Group }
+    | { kind: "quick"; key: string; group: Group }
     | { kind: "record"; key: string; record: Values }
     | { kind: "loading"; key: string };
 
@@ -60,7 +64,7 @@ interface Confirming {
  */
 export class ListView extends View {
     static template = "web.ListView";
-    static components = { FilterChips, SearchBar };
+    static components = { FilterChips, FormDialog, SearchBar };
 
     override props = props({
         ...viewProps,
@@ -86,6 +90,18 @@ export class ListView extends View {
     @state accessor widths: ColumnWidths | null = null;
     /** The groups opened, by their domain: their records, or `null` while they load. */
     @state accessor openGroups = new Map<string, Values[] | null>();
+    /** The group a record is being created in from its title, by its key. */
+    @state accessor adding: string | null = null;
+    /** What a record whose title is not enough starts with, while a form completes it. */
+    @state accessor completing: Values | null = null;
+    /** The group that record is created in. */
+    private completingGroup: Group | null = null;
+    /** How many records the view created, for the counts of its filters. */
+    @state accessor added = 0;
+    /** What the groups' counts gained since read, by group: records created in them. */
+    @state accessor countDeltas = new Map<string, number>();
+    /** The groups those deltas apply to: read again, the counts are right of themselves. */
+    private deltasOf: Group[] | null = null;
 
     resize(event: MouseEvent, name: string): void {
         dragColumn(event, name, this.widths, (widths) => {
@@ -176,7 +192,7 @@ export class ListView extends View {
     /** The searches the user saved on this list. */
     @resource accessor favorites: Favorite[] = load(
         () => this.router.route.action,
-        (action) => (action === null ? Promise.resolve([]) : this.orm.call<Favorite[]>("saved_filter", "mine", [], { action })),
+        (action) => favoritesOf(this.orm, action),
     );
 
     /**
@@ -193,20 +209,13 @@ export class ListView extends View {
     /** Save the search as it stands under a name, the list opening with it if asked. */
     readonly saveFavorite = async (name: string, isDefault: boolean): Promise<void> => {
         const action = this.router.route.action;
-        if (action === null) {
-            return;
-        }
-        try {
-            await this.orm.call("saved_filter", "save", [], { action, name, facets: this.currentFacets, is_default: isDefault });
+        if (await saveFavorite(this.orm, this.notifications, action, name, this.currentFacets, isDefault)) {
             refresh(() => this.favorites);
-            this.notifications.add("success", `Search "${name}" saved.`);
-        } catch (error) {
-            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
         }
     };
 
     readonly forgetFavorite = async (favorite: Favorite): Promise<void> => {
-        await this.orm.call("saved_filter", "forget", [], { id: favorite.id });
+        await forgetFavorite(this.orm, favorite);
         refresh(() => this.favorites);
     };
 
@@ -228,6 +237,105 @@ export class ListView extends View {
     /** How the rows are gathered, as the search says, if they are. */
     @computed get grouping(): { groupBy: string; label: string } | null {
         return groupByOf(this.currentFacets);
+    }
+
+    /**
+     * The field the groups are of, when it is one the view's `group_create` lists: each group then
+     * offers to create a record in it, from its title, which takes the group's value.
+     */
+    @computed get groupCreateField(): string | null {
+        const groupBy = this.grouping?.groupBy ?? null;
+        if (groupBy === null || groupBy.includes(":")) {
+            return null;
+        }
+        return groupCreateFields(this.archRoot, this.fields).includes(groupBy) ? groupBy : null;
+    }
+
+    /** Open a group to create a record in it from its title, at its top. */
+    async openAdd(group: Group): Promise<void> {
+        if (!this.isOpen(group)) {
+            await this.toggleGroup(group);
+        }
+        this.adding = this.groupKey(group);
+        await nextTick();
+        document.querySelector<HTMLInputElement>(".o_list_quick input")?.focus();
+    }
+
+    readonly closeAdd = (): void => {
+        this.adding = null;
+    };
+
+    /**
+     * Create a record in a group from the title typed: at once, its row then focused, when the
+     * title is enough; else completed in a form first.
+     */
+    async add(group: Group, form: HTMLFormElement): Promise<void> {
+        const field = this.groupCreateField;
+        const title = titleField(this.archRoot, this.fields);
+        const text = form.querySelector("input")?.value.trim() ?? "";
+        if (field === null || title === null || text === "") {
+            return;
+        }
+        const values: Values = { ...this.props.defaults, [title]: text, [field]: groupValue(group.value) };
+        this.adding = null;
+        if (await needsForm(this.orm, this.props.resModel, this.fields ?? {}, values)) {
+            this.completing = { ...values, [field]: group.value };
+            this.completingGroup = group;
+            return;
+        }
+        try {
+            const [id] = await this.orm.create(this.props.resModel, values);
+            await this.createdIn(group);
+            await this.focusRow(id);
+        } catch (error) {
+            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+        }
+    }
+
+    readonly completed = ([id]: [number, string | null]): void => {
+        const group = this.completingGroup;
+        if (group !== null) {
+            void this.createdIn(group).then(() => this.focusRow(id));
+        }
+    };
+
+    readonly closeForm = (): void => {
+        this.completing = null;
+    };
+
+    /**
+     * A record created in a group: counted there and among the view's without counting them
+     * again, and the group's records read again to show it.
+     */
+    private async createdIn(group: Group): Promise<void> {
+        const key = this.groupKey(group);
+        const groups = this.groups ?? null;
+        const deltas = this.deltasOf === groups ? new Map(this.countDeltas) : new Map<string, number>();
+        deltas.set(key, (deltas.get(key) ?? 0) + 1);
+        this.deltasOf = groups;
+        this.countDeltas = deltas;
+        this.added += 1;
+        this.openGroups.delete(key);
+        await this.toggleGroup(group);
+    }
+
+    /** How many records a group holds, with those created in it since read. */
+    groupCount(group: Group): number {
+        const delta = this.deltasOf === (this.groups ?? null) ? (this.countDeltas.get(this.groupKey(group)) ?? 0) : 0;
+        return group.count + delta;
+    }
+
+    /** Bring a row just created into view and focus it, once shown. */
+    private async focusRow(id: number): Promise<void> {
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const row = document.querySelector<HTMLElement>(`.o_list_row[data-id="${id}"]`);
+            if (row !== null) {
+                row.scrollIntoView({ block: "nearest" });
+                row.focus();
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
     }
 
     /** The columns summed up, as their `sum` attribute asks: numbers kept in a column. */
@@ -277,7 +385,8 @@ export class ListView extends View {
                     : opened === null
                       ? [{ kind: "loading", key: `${key}/loading` }]
                       : opened.map((record) => ({ kind: "record", key: `${key}/${this.idOf(record)}`, record }));
-            return [{ kind: "group", key, group }, ...records];
+            const quick: Line[] = this.adding === key ? [{ kind: "quick", key: `${key}/quick`, group }] : [];
+            return [{ kind: "group", key, group }, ...quick, ...records];
         });
     }
 

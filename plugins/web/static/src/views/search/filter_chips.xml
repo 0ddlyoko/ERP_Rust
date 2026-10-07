@@ -1,6 +1,6 @@
 <templates>
     <t t-name="web.FilterChips">
-        <div t-if="filters.length" class="o_filter_chips" role="group" aria-label="Filters">
+        <div t-if="filters.length || savedSearches.length" class="o_filter_chips" role="group" aria-label="Filters">
             <button type="button" t-att-class="{ o_filter_chip: true, active: ticked.length === 0 }"
                     t-att-aria-pressed="ticked.length === 0 ? 'true' : 'false'" t-on-click="showAll">
                 All<span t-if="countAt(0)" class="o_filter_chip_count">{{ countAt(0) }}</span>
@@ -9,6 +9,14 @@
                     t-att-class="{ o_filter_chip: true, active: ticked.includes(filter.name) }"
                     t-att-aria-pressed="ticked.includes(filter.name) ? 'true' : 'false'" t-on-click="() => toggle(filter.name)">
                 {{ filter.label }}<span t-if="countAt(filter_index + 1)" class="o_filter_chip_count">{{ countAt(filter_index + 1) }}</span>
+            </button>
+            <button t-foreach="savedSearches" t-as="favorite" t-key="favorite.id" type="button"
+                    t-att-class="{ o_filter_chip: true, o_filter_chip_saved: true, active: isApplied(favorite) }"
+                    t-att-aria-pressed="isApplied(favorite) ? 'true' : 'false'" t-on-click="() => props.onApplyFavorite?.(favorite)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>
+                </svg>
+                {{ favorite.name }}<span t-if="countAt(savedAt(favorite_index))" class="o_filter_chip_count">{{ countAt(savedAt(favorite_index)) }}</span>
             </button>
         </div>
     </t>

@@ -15,9 +15,10 @@ export interface CompiledForm {
     relatedFields: { name: string; action: string }[];
 }
 
+/** A button of the form: a method of the record, an action, or — `special="cancel"` — closing its dialog. */
 export interface FormButton {
     name: string;
-    type: "method" | "action";
+    type: "method" | "action" | "cancel";
 }
 
 function escape(text: string): string {
@@ -62,9 +63,10 @@ interface Piece {
  * with nothing shown in them, the rest takes the whole width.
  *
  * A `<leader>` makes a dark band at the top, the record at a glance: its `<actions>` — buttons —
- * and the form's own beside its `role="status"` fields as pills; an `avatar`, a `title` and a
- * `subtitle`; a `figure` — a big amount — with `note`s under it; any other field as a tile. All
- * are shown, not edited: the form below edits them. With a leader, a statusbar stays where the view
+ * and the form's own beside its `role="status"` fields as pills, a `corner` field at the top
+ * right; an `avatar`, a `title` and a `subtitle`; a `figure` — a big amount — with `note`s under
+ * it; any other field as a tile. They are shown, not edited — the form below edits them — but
+ * for those marked `edit="1"`, edited in place, on the band. With a leader, a statusbar stays where the view
  * put it. `<related>` follows: a `<link>` per one2many or many2many, with how many records it
  * holds, opening them under its `action` — once the record exists.
  */
@@ -313,9 +315,10 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             .flatMap((element) => Array.from(element.children))
             .map((button) => {
                 condition(button, "invisible");
+                const kind = button.getAttribute("type");
                 buttons.push({
                     name: button.getAttribute("name") ?? "",
-                    type: button.getAttribute("type") === "action" ? "action" : "method",
+                    type: button.getAttribute("special") === "cancel" ? "cancel" : kind === "action" ? "action" : "method",
                 });
                 const at = buttons.length - 1;
                 return (
@@ -346,6 +349,19 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             condition(element, "invisible");
             return ifShown(shownUnless(element));
         };
+        const edited = (element: Element): boolean => element.getAttribute("edit") === "1";
+        /** A field of the band: edited there when marked so, else shown. */
+        const leaderWidget = (element: Element): string =>
+            widget(element, edited(element) ? condition(element, "readonly") : "true");
+        /** The classes of a field edited on the band, marked when required and left empty. */
+        const editClasses = (element: Element): string =>
+            edited(element) ? `{ o_leader_edit: true, ${requiredMarks(element, condition(element, "required"))} }` : "{}";
+        const corner = rolesIn(leader, "corner")
+            .map((element) => {
+                const shown = shownIf(element);
+                return `<span class="o_leader_corner" t-att-class="${escape(editClasses(element))}"${shown}>${leaderWidget(element)}</span>`;
+            })
+            .join("");
         const actions = buttonsOf(Array.from(leader.children).filter((element) => element.tagName === "actions"));
         const pills = rolesIn(leader, "status")
             .map((element) => {
@@ -367,6 +383,9 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         const title = rolesIn(leader, "title")
             .slice(0, 1)
             .map((element) => {
+                if (edited(element)) {
+                    return `<h2 class="o_leader_title" t-att-class="${escape(editClasses(element))}">${leaderWidget(element)}</h2>`;
+                }
                 shownColumn(element);
                 return `<h2 class="o_leader_title">{{ __form.display(${fieldName(element)}) || __form.title }}</h2>`;
             })
@@ -399,14 +418,14 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 const shown = shownIf(element);
                 const label = `{{ __form.label(__form.layout.columns[${columns.length}].label) }}`;
                 return (
-                    `<div class="o_leader_tile"${shown}><span class="o_leader_tile_label">${label}</span>` +
-                    `<span class="o_leader_tile_value">${widget(element, "true")}</span></div>`
+                    `<div class="o_leader_tile" t-att-class="${escape(editClasses(element))}"${shown}><span class="o_leader_tile_label">${label}</span>` +
+                    `<span class="o_leader_tile_value">${leaderWidget(element)}</span></div>`
                 );
             })
             .join("");
         return (
             `<header t-att-class="{ o_leader: true, o_leader_compact: __form.leaderCompact }">` +
-            `<div class="o_leader_top">${actions}${pills}<span class="o_form_bar_gap"/>${controls}</div>` +
+            `<div class="o_leader_top">${actions}${pills}<span class="o_form_bar_gap"/>${corner}${controls}</div>` +
             `<div class="o_leader_identity">${avatar}<div class="o_leader_names">${title}${subtitles}</div>` +
             (figure || notes ? `<div class="o_leader_figure">${figure}${notes}</div>` : "") +
             `</div>` +
@@ -437,10 +456,11 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 const label = link.getAttribute("string");
                 const caption = label === null ? `{{ __form.label(${column}.label) }}` : text(label);
                 const icon = escape(JSON.stringify(link.getAttribute("icon") ?? ""));
+                const by = escape(JSON.stringify(link.getAttribute("by")));
                 return (
                     `<div class="o_related_item"${ifShown(shownUnless(link))}>` +
                     `<button type="button" t-att-class="{ o_related_link: true, o_related_none: !__form.relatedRecords(${name}).length }" ` +
-                    `t-on-click="() => __form.followLink(${action}, ${name})">` +
+                    `t-on-click="() => __form.followLink(${action}, ${name}, ${by})">` +
                     `<span class="o_related_icon"><Icon name="${icon}"/></span>` +
                     `<span class="o_related_text"><span class="o_related_head">` +
                     `<span class="o_related_count">{{ __form.relatedRecords(${name}).length }}</span>` +
@@ -497,14 +517,16 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
             ? `<div class="o_form_bar">${bar}<span class="o_form_bar_gap"/>${statusbars.join("")}${controls}</div>`
             : leaderXml(controls);
     const related = relatedXml();
+    const footerButtons = buttonsOf(Array.from(root.children).filter((element) => element.tagName === "footer"));
+    const footer = footerButtons ? `<footer class="o_form_footer">${footerButtons}</footer>` : "";
 
     const conditionNames = [...new Set(conditions.flatMap(namesRead))];
     const values = conditionNames
         .map((name) => `<t t-set="${name}" t-value="${escape(`__form.conditionValue(${JSON.stringify(name)})`)}"/>`)
         .join("");
     const source =
-        `<div class="o_form_body" t-ref="__form.element">${values}${top}` +
+        `<div class="o_form_body" t-ref="__form.element">${values}<t t-if="!__form.props.dialog">${top}</t>` +
         `<p t-if="__form.failure" class="o_form_failure" role="alert">{{ __form.failure }}</p>` +
-        `${related}${body}</div>`;
+        `<t t-if="!__form.props.dialog">${related}</t>${body}${footer}</div>`;
     return { source, columns, texts, buttons, conditionNames, hasLeader: leader !== null, relatedFields };
 }

@@ -10,6 +10,8 @@
     gap: 12px;
     overflow-x: auto;
     padding-bottom: 8px;
+    scrollbar-color: color-mix(in oklch, var(--o-muted) 35%, transparent) transparent;
+    scrollbar-width: thin;
 }
 
 .o_kanban_lane {
@@ -23,11 +25,102 @@
     background: var(--o-panel);
 }
 
+.o_kanban_lane_target {
+    box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--o-accent) 35%, transparent);
+}
+
 .o_kanban_lane_header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 2px 4px 4px;
+    gap: 6px;
+    padding: 2px 2px 4px 4px;
+}
+
+.o_kanban_lane_spacer {
+    flex: 1;
+}
+
+.o_kanban_lane_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--o-muted);
+    cursor: pointer;
+}
+
+.o_kanban_lane_button:hover {
+    background: var(--o-surface);
+    color: var(--o-accent);
+}
+
+.o_kanban_lane_folded {
+    flex: 0 0 48px;
+    padding: 8px 0;
+}
+
+.o_kanban_lane_unfold {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--o-ink);
+    font: inherit;
+    cursor: pointer;
+}
+
+.o_kanban_lane_vertical {
+    font-family: var(--o-font-display);
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+}
+
+.o_kanban_quick {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: var(--o-radius-row);
+    background: var(--o-surface);
+}
+
+.o_kanban_quick_actions {
+    display: flex;
+    gap: 6px;
+}
+
+.o_kanban_drop {
+    height: 4px;
+    margin: -2px 4px;
+    border-radius: 999px;
+    background: var(--o-accent);
+}
+
+.o_kanban_card.o_kanban_dragging {
+    display: none;
+}
+
+.o_kanban_lane.o_kanban_dragging {
+    opacity: 0.4;
+}
+
+.o_kanban_ghost {
+    opacity: 0.45;
+    filter: grayscale(1);
+    pointer-events: none;
+    animation: none;
+    box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--o-accent) 45%, transparent);
 }
 
 .o_kanban_lane_title {
@@ -40,6 +133,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 12px;
+}
+
+.o_kanban_card[draggable="true"] {
+    cursor: grab;
 }
 
 .o_kanban_card {
@@ -55,7 +152,7 @@
 }
 
 .o_kanban_card:hover,
-.o_kanban_card:focus-visible {
+.o_kanban_card:focus {
     box-shadow: 0 0 0 2px var(--o-accent), 0 4px 14px rgb(26 24 56 / 0.08);
     outline: none;
 }
@@ -72,9 +169,266 @@
     display: none;
 }
 
+.o_kanban_more {
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_kanban_more:hover {
+    background: var(--o-surface);
+    color: var(--o-accent);
+}
+
 .o_kanban_more,
 .o_kanban_empty {
     margin: 4px;
     color: var(--o-muted);
     font-size: 12.5px;
+}
+
+.o_kanban_lane_header[draggable="true"] {
+    cursor: grab;
+}
+
+.o_kanban_lane_title_edit {
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: text;
+}
+
+.o_kanban_lane_title_edit:hover {
+    background: var(--o-surface);
+}
+
+.o_kanban_lane_rename {
+    flex: 1;
+}
+
+.o_kanban_lane_rename .o_input {
+    height: 30px;
+    font-weight: 700;
+}
+
+.o_kanban_lane_add {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    color: var(--o-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_kanban_lane_add:hover {
+    background: var(--o-surface);
+    color: var(--o-accent);
+}
+
+.o_kanban_add_column {
+    min-height: 0;
+    background: color-mix(in oklch, var(--o-panel) 60%, transparent);
+}
+
+.o_kanban_lane_drop {
+    flex: 0 0 4px;
+    align-self: stretch;
+    margin: 0 -8px;
+    border-radius: 999px;
+    background: var(--o-accent);
+}
+
+/* What changes on the board is seen changing: columns slide in and fold away, cards rise into
+   place, a column folds and unfolds rather than jumping. */
+
+@keyframes o_lane_in {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+}
+
+@keyframes o_lane_out {
+    to {
+        flex-basis: 0;
+        min-width: 0;
+        margin-right: -12px;
+        padding-right: 0;
+        padding-left: 0;
+        opacity: 0;
+        overflow: hidden;
+    }
+}
+
+@keyframes o_card_in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+}
+
+@keyframes o_drop_in {
+    from {
+        transform: scaleX(0.3);
+        opacity: 0;
+    }
+}
+
+.o_kanban_lane {
+    animation: o_lane_in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    transition: flex-basis 0.22s ease, box-shadow 0.15s ease;
+}
+
+.o_kanban_lane_leaving {
+    animation: o_lane_out 0.2s ease forwards;
+    pointer-events: none;
+}
+
+.o_kanban_card {
+    animation: o_card_in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    transition: box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.o_kanban_drop,
+.o_kanban_lane_drop {
+    animation: o_drop_in 0.14s ease both;
+}
+
+.o_kanban_quick {
+    animation: o_card_in 0.18s ease both;
+}
+
+/* What follows the pointer while dragging: the card, tilted, lifted off the board. */
+.o_kanban_drag_image {
+    position: fixed;
+    top: -2000px;
+    left: -2000px;
+    padding: 20px;
+    pointer-events: none;
+}
+
+.o_kanban_drag_image > * {
+    box-shadow: 0 14px 30px rgb(26 24 56 / 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_kanban_lane,
+    .o_kanban_card,
+    .o_kanban_drop,
+    .o_kanban_lane_drop,
+    .o_kanban_quick,
+    .o_kanban_lane_leaving {
+        animation: none;
+        transition: none;
+    }
+}
+
+.o_kanban_lane_unnamed {
+    color: var(--o-muted);
+    font-style: italic;
+    font-weight: 500;
+}
+
+/* A card's colour, as its decorations say: a stripe along its left edge. */
+.o_card_decoration_success {
+    box-shadow: inset 4px 0 0 var(--o-success);
+}
+
+.o_card_decoration_info {
+    box-shadow: inset 4px 0 0 var(--o-info);
+}
+
+.o_card_decoration_warning {
+    box-shadow: inset 4px 0 0 var(--o-warning);
+}
+
+.o_card_decoration_danger {
+    box-shadow: inset 4px 0 0 var(--o-danger);
+}
+
+.o_card_decoration_muted {
+    opacity: 0.7;
+}
+
+.o_kanban_card[class*="o_card_decoration_"]:hover,
+.o_kanban_card[class*="o_card_decoration_"]:focus {
+    box-shadow: 0 0 0 2px var(--o-accent), 0 4px 14px rgb(26 24 56 / 0.08);
+}
+
+/* A field of a card changed from it: a click on it changes it rather than opening the record. */
+.o_card_quick {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 8px;
+}
+
+.o_card_quick_open {
+    margin: -2px -4px;
+    padding: 2px 4px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.o_card_quick_open:hover {
+    background: var(--o-panel);
+}
+
+.o_quick_backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+}
+
+.o_quick_popover {
+    position: fixed;
+    z-index: 71;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 280px;
+    padding: 12px;
+    border-radius: var(--o-radius-row);
+    background: var(--o-surface);
+    box-shadow: var(--o-shadow-pop);
+    animation: o_card_in 0.14s ease both;
+}
+
+.o_quick_label {
+    color: var(--o-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_card_quick_open {
+    min-width: 24px;
+    min-height: 24px;
+}
+
+/* Stars not lit show while the pointer is on the card, to be lit from it. */
+.o_kanban_card .o_card_quick .o_priority_star:not(.o_priority_lit) {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.o_kanban_card:hover .o_card_quick .o_priority_star,
+.o_kanban_card:focus-within .o_card_quick .o_priority_star {
+    opacity: 1;
 }

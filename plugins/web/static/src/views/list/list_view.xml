@@ -46,7 +46,8 @@
             </div>
             <Suspense>
                 <t t-set-slot="fallback"/>
-                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"/>
+                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"
+                             added="added" favorites="favorites ?? []" onApplyFavorite="applyFavorite"/>
             </Suspense>
             <section class="o_list_card">
                 <Suspense>
@@ -99,16 +100,33 @@
                                         <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
                                             <t t-if="column_index === 0">
                                                 <span class="o_list_group_name">{{ groupLabel(line.group) }}</span>
-                                                <span class="o_list_group_count">{{ line.group.count }}</span>
+                                                <span class="o_list_group_count">{{ groupCount(line.group) }}</span>
+                                                <button t-if="groupCreateField" type="button" class="o_list_group_add"
+                                                        title="Add to this group" aria-label="Add to this group"
+                                                        t-on-click.stop="() => openAdd(line.group)">
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                         stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                                </button>
                                             </t>
                                             <t t-elif="isSummed(column)">{{ sumText(column, line.group.sums) }}</t>
                                         </td>
                                         <td t-if="widths" class="o_list_filler"/>
                                     </tr>
+                                    <tr t-elif="line.kind === 'quick'" class="o_list_quick">
+                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)">
+                                            <form t-on-submit.prevent="(ev) => add(line.group, ev.target)">
+                                                <input type="text" class="o_input" autocomplete="off" placeholder="Title" aria-label="Title"
+                                                       t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; closeAdd()"/>
+                                                <button type="submit" class="o_button_primary">Add</button>
+                                                <button type="button" class="o_button_secondary" t-on-click="closeAdd">Close</button>
+                                            </form>
+                                        </td>
+                                    </tr>
                                     <tr t-elif="line.kind === 'loading'" class="o_list_empty">
                                         <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
                                     </tr>
-                                    <tr t-else="" t-att-class="rowClass(line.record)" t-on-click="() => choose(line.record)">
+                                    <tr t-else="" t-att-class="rowClass(line.record)" t-att-data-id="line.record.id" tabindex="-1"
+                                        t-on-click="() => choose(line.record)">
                                         <td class="o_list_select" t-on-click.stop="() => {}">
                                             <input type="checkbox" aria-label="Select this row"
                                                    t-att-checked="selected.has(idOf(line.record))"
@@ -148,6 +166,7 @@
                     </div>
                 </div>
             </div>
+            <FormDialog t-if="completing" model="props.resModel" defaults="completing" onCreated="completed" onClose="closeForm"/>
         </div>
     </t>
 </templates>

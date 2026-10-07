@@ -4,6 +4,8 @@ import { state } from "trame";
  * Where the user is: the action open, the kind of its view shown, the record, if one, and the
  * entry of the menu it was opened from — an action two modules share shows under the one chosen.
  * `ids` narrows the action to some of its records: the deliveries of an order, opened from it.
+ * `by` narrows it to those of one record, as `field:id` — `project:5`, the tasks of a project —
+ * and a record created there starts as one of them.
  */
 export interface Route {
     action: string | null;
@@ -11,6 +13,14 @@ export interface Route {
     id: number | null;
     menu?: number | null;
     ids?: readonly number[] | null;
+    by?: string | null;
+}
+
+/** What a route's `by` says: the field, and the record it points to. */
+export function byOf(route: Route): { field: string; id: number } | null {
+    const [field, id] = (route.by ?? "").split(":");
+    const number = Number(id);
+    return field && Number.isInteger(number) && number > 0 ? { field, id: number } : null;
 }
 
 /** A route as the address writes it: `#action=base.action_users&view=form&id=3`. */
@@ -28,6 +38,7 @@ export function readRoute(hash: string): Route {
         id: Number.isInteger(id) && id > 0 ? id : null,
         menu: Number.isInteger(menu) && menu > 0 ? menu : null,
         ids: ids.length ? ids : null,
+        by: params.get("by"),
     };
 }
 
@@ -41,6 +52,9 @@ export function writeRoute(route: Route): string {
     }
     if (route.ids) {
         params.set("ids", route.ids.join(","));
+    }
+    if (route.by) {
+        params.set("by", route.by);
     }
     if (route.id !== null) {
         params.set("id", String(route.id));
@@ -56,7 +70,9 @@ export function listKey(route: Route): string | null {
     if (route.action === null) {
         return null;
     }
-    return route.ids ? `${route.action}#${route.ids.join(",")}` : route.action;
+    const ids = route.ids ? `#${route.ids.join(",")}` : "";
+    const by = route.by ? `@${route.by}` : "";
+    return `${route.action}${ids}${by}`;
 }
 
 /**

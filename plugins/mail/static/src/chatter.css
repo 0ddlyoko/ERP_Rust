@@ -144,3 +144,21 @@
     font-size: 12px;
     font-weight: 400;
 }
+
+.o_statusbar_durations .o_statusbar_pickable {
+    border-radius: var(--o-radius-row);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.o_statusbar_durations .o_statusbar_pickable:hover,
+.o_statusbar_durations .o_statusbar_pickable:focus-visible {
+    --o-step-hover: color-mix(in oklch, var(--o-accent) 8%, white);
+    background: var(--o-step-hover);
+    box-shadow: 0 0 0 6px var(--o-step-hover);
+    outline: none;
+}
+
+.o_statusbar_durations .o_statusbar_pickable:hover .o_statusbar_label {
+    color: var(--o-accent-strong);
+}

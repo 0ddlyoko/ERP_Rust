@@ -115,6 +115,12 @@
                     </div>
                 </div>
 
+                <div t-if="tray.length" class="o_sidebar_tray">
+                    <t t-foreach="tray" t-as="item" t-key="item[0]">
+                        <t t-component="item[1]" wide="wide"/>
+                    </t>
+                </div>
+
                 <div class="o_sidebar_user">
                     <span class="o_user_avatar" t-att-title="wide ? null : session.name">{{ initials }}</span>
                     <span class="o_user_who">

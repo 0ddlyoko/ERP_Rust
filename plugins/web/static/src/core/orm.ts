@@ -1,4 +1,4 @@
-import { inject } from "trame";
+import { inject, state } from "trame";
 import { Rpc } from "./rpc";
 
 /** A search domain, as the server reads it: `[["name", "=", "Blue"], ...]`. */
@@ -68,6 +68,26 @@ export interface OnchangeAnswer {
 /** The records of any model, through the operations the protocol answers on every one of them. */
 export class Orm {
     @inject(Rpc) rpc!: Rpc;
+
+    @state accessor versions: Record<string, number> = {};
+
+    /** Say records of a model changed out of the views' sight — a timer logged time — for those showing them to read them again. */
+    touch(model: string): void {
+        this.versions = { ...this.versions, [model]: this.versionOf(model) + 1 };
+    }
+
+    /** The records last saved from a view, for the others showing them to read them again. */
+    @state accessor saved: { model: string; ids: number[]; at: number } | null = null;
+
+    /** Say records were saved from a view: those showing them read them again, alone. */
+    touchRecords(model: string, ids: number[]): void {
+        this.saved = { model, ids, at: (this.saved?.at ?? 0) + 1 };
+    }
+
+    /** How many times records of the model were said to change; reading it follows the changes. */
+    versionOf(model: string): number {
+        return this.versions[model] ?? 0;
+    }
 
     search(model: string, domain: Domain = [], paging: Paging = {}): Promise<number[]> {
         return this.rpc.call(`${model}.search`, { domain, ...paging });

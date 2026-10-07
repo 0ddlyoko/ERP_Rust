@@ -28,6 +28,9 @@
     --o-accent: #4b3fe0;
     --o-accent-strong: #2a2190;
     --o-danger: #b42318;
+    --o-warning: #d97706;
+    --o-success: #12946f;
+    --o-info: #2f6fe4;
     --o-side: #1a1838;
     --o-side-raised: rgb(255 255 255 / 0.08);
     --o-side-line: rgb(255 255 255 / 0.12);
@@ -396,6 +399,13 @@ button {
     opacity: 1;
     outline: 2px solid #ffffff;
     outline-offset: 2px;
+}
+
+.o_sidebar_tray {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
 }
 
 .o_sidebar_user {

@@ -116,9 +116,10 @@ export class ListWidget extends X2ManyWidget {
             return [];
         }
         const root = new DOMParser().parseFromString(this.arch, "text/xml").documentElement;
-        return Array.from(root.getElementsByTagName("field"), (element) => columnOf(element, fields, this.model)).filter(
-            (column) => column.name !== this.props.field.inverse,
-        );
+        return Array.from(root.children)
+            .filter((element) => element.tagName === "field")
+            .map((element) => columnOf(element, fields, this.model))
+            .filter((column) => column.name !== this.props.field.inverse);
     }
 
     /** The rows as read, of every record held that exists; one added is read when it is. */

@@ -21,8 +21,8 @@ export const viewProps = {
     embedded: t.boolean().default(false),
 };
 
-/** The cards a list lays its records out in besides its columns. */
-const CARDS = "compact, folded, preview";
+/** The cards a list or a kanban lays its records out in besides its columns. */
+const CARDS = "compact, folded, preview, card";
 
 /** Views by kind: `list`, `form`. A plugin adds a kind of its own here, or replaces one. */
 export const viewKinds = registry.category<ComponentClass>("views");

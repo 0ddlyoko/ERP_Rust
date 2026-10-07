@@ -2,7 +2,7 @@
     <t t-name="web.TagsWidget">
         <div t-att-class="className + ' o_tags' + (editable ? ' o_tags_editable' : '')"
              t-on-click="(ev) => editable &amp;&amp; ev.currentTarget.querySelector('input')?.focus()">
-            <span t-foreach="entries" t-as="tag" t-key="tag.key" class="o_tag">
+            <span t-foreach="entries" t-as="tag" t-key="tag.key" t-att-class="tagClass(tag)">
                 {{ nameOf(tag) }}
                 <button t-if="editable" type="button" class="o_tag_remove" t-on-click="() => remove(tag.key)"
                         t-att-aria-label="'Remove ' + nameOf(tag)">

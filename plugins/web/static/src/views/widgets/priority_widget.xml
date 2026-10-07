@@ -1,0 +1,21 @@
+<templates>
+    <t t-name="web.PriorityWidget">
+        <span t-att-class="className + ' o_priority'" t-att-title="text">
+            <t t-foreach="stars" t-as="star" t-key="star.key">
+                <button t-if="editable" type="button" t-att-class="{ o_priority_star: true, o_priority_lit: star.lit }"
+                        t-att-aria-label="star.label" t-att-aria-pressed="star.lit ? 'true' : 'false'"
+                        t-on-click.stop="() => press(star.key)">
+                    <t t-call="web.PriorityStar"/>
+                </button>
+                <span t-elif="star.lit" class="o_priority_star o_priority_lit"><t t-call="web.PriorityStar"/></span>
+            </t>
+        </span>
+    </t>
+
+    <t t-name="web.PriorityStar">
+        <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+             stroke-linejoin="round" aria-hidden="true">
+            <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>
+        </svg>
+    </t>
+</templates>

@@ -11,53 +11,162 @@
                     <t t-set-slot="fallback">
                         <label class="o_search"><input type="search" aria-label="Search" placeholder="Search…" disabled=""/></label>
                     </t>
-                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets"/>
+                    <SearchBar view="searchView" facets="currentFacets" onChange="setFacets" favorites="loadedFavorites"
+                               onSaveFavorite="saveFavorite" onForgetFavorite="forgetFavorite" onApplyFavorite="applyFavorite"/>
                 </Suspense>
             </div>
             <Suspense>
                 <t t-set-slot="fallback"/>
-                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"/>
+                <FilterChips model="props.resModel" domain="props.domain" view="searchView" facets="currentFacets" onChange="setFacets"
+                             added="added" favorites="loadedFavorites" onApplyFavorite="applyFavorite"/>
             </Suspense>
             <Suspense>
                 <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
-                <div t-if="grouped" class="o_kanban_lanes">
-                    <section t-foreach="lanes" t-as="lane" t-key="lane.key" class="o_kanban_lane">
-                        <header class="o_kanban_lane_header">
-                            <span class="o_kanban_lane_title">{{ lane.label }}</span>
+                <div t-if="grouped" class="o_kanban_lanes" t-on-dragover="(ev) => lanesDragOver(ev)"
+                     t-on-drop="(ev) => dropLane(ev)">
+                    <t t-foreach="lanes" t-as="lane" t-key="lane.key">
+                    <div t-if="draggingLane !== null &amp;&amp; laneDropBefore === lane.key" class="o_kanban_lane_drop"/>
+                    <section t-att-data-key="lane.key"
+                             t-att-class="{ o_kanban_lane: true, o_kanban_lane_folded: lane.folded, o_kanban_lane_target: dropAt !== null &amp;&amp; dropAt.lane === lane.key, o_kanban_dragging: draggingLane === lane.key, o_kanban_lane_leaving: leaving.has(lane.key) }"
+                             t-on-dragover="(ev) => dragOver(lane, ev)" t-on-dragleave="(ev) => dragLeave(lane, ev)"
+                             t-on-drop="(ev) => drop(lane, ev)">
+                        <button t-if="lane.folded" type="button" class="o_kanban_lane_unfold"
+                                t-att-title="'Unfold ' + lane.label" t-on-click="() => toggleFold(lane)">
                             <span class="o_list_group_count">{{ lane.count }}</span>
-                        </header>
-                        <t t-foreach="lane.records" t-as="record" t-key="record.id">
-                            <KanbanCard record="record" model="props.resModel" title="title" details="details"
-                                    widgetFor="cardWidget" onOpen="open"/>
+                            <span class="o_kanban_lane_vertical">{{ lane.label }}</span>
+                        </button>
+                        <t t-else="">
+                            <header class="o_kanban_lane_header" t-att-draggable="canEditColumns &amp;&amp; renaming !== lane.key ? 'true' : 'false'"
+                                    t-on-dragstart="(ev) => laneDragStart(lane, ev)" t-on-dragend="laneDragEnd">
+                                <form t-if="renaming === lane.key" class="o_kanban_lane_rename"
+                                      t-on-submit.prevent="(ev) => rename(lane, ev.target)">
+                                    <input type="text" class="o_input" t-att-value="lane.label" aria-label="Title of the column"
+                                           t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; stopRename()"
+                                           t-on-blur="(ev) => rename(lane, ev.target.form)"/>
+                                </form>
+                                <button t-elif="canEditColumns" type="button" class="o_kanban_lane_title o_kanban_lane_title_edit"
+                                        title="Rename the column" t-on-click="() => startRename(lane)">
+                                    <t t-if="lane.label">{{ lane.label }}</t>
+                                    <span t-else="" class="o_kanban_lane_unnamed">Name this column</span>
+                                </button>
+                                <span t-else="" class="o_kanban_lane_title">{{ lane.label }}</span>
+                                <span class="o_list_group_count">{{ lane.count }}</span>
+                                <span class="o_kanban_lane_spacer"/>
+                                <button t-if="quickCreate" type="button" class="o_kanban_lane_button" t-att-title="quickCreateString"
+                                        t-att-aria-label="quickCreateString" t-on-click="() => openAdd(lane, 'top')">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                </button>
+                                <button t-if="canEditColumns &amp;&amp; lane.value !== null &amp;&amp; lane.value !== false" type="button" class="o_kanban_lane_button"
+                                        title="Delete the column" aria-label="Delete the column" t-on-click="() => deleteColumn(lane)">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="o_kanban_lane_button" title="Fold the column"
+                                        aria-label="Fold the column" t-on-click="() => toggleFold(lane)">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>
+                                    </svg>
+                                </button>
+                            </header>
+                            <t t-if="adding !== null &amp;&amp; adding.lane === lane.key &amp;&amp; adding.at === 'top'" t-call="web.KanbanQuickCreate"/>
+                            <t t-foreach="lane.slots" t-as="slot" t-key="slot.key">
+                                <KanbanCard record="slot.record" model="props.resModel" card="card ?? undefined" host="this"
+                                            title="title" details="details" widgetFor="cardWidget" onOpen="open"
+                                            draggable="canDrag &amp;&amp; !slot.ghost" dragging="slot.hidden" ghost="slot.ghost"
+                                            decoration="cardDecoration(slot.record)"
+                                            onDragStart="dragStart" onDragEnd="dragEnd"/>
+                            </t>
+                            <t t-if="adding !== null &amp;&amp; adding.lane === lane.key &amp;&amp; adding.at === 'bottom'" t-call="web.KanbanQuickCreate"/>
+                            <button t-elif="quickCreate" type="button" class="o_kanban_lane_add"
+                                    t-on-click="() => openAdd(lane, 'bottom')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                {{ quickCreateString }}
+                            </button>
+                            <button t-if="lane.count > lane.records.length" type="button" class="o_kanban_more"
+                                    t-on-click="() => showMore(lane)">
+                                Show more · {{ lane.count - lane.records.length }} left
+                            </button>
                         </t>
-                        <p t-if="lane.count > lane.records.length" class="o_kanban_more">
-                            {{ lane.count - lane.records.length }} more in the list
-                        </p>
                     </section>
-                    <p t-if="lanes.length === 0" class="o_kanban_empty">No records.</p>
+                    </t>
+                    <div t-if="draggingLane !== null &amp;&amp; laneDropBefore === null" class="o_kanban_lane_drop"/>
+                    <section t-if="canEditColumns" class="o_kanban_lane o_kanban_add_column">
+                        <form t-if="addingColumn" class="o_kanban_quick" t-on-submit.prevent="(ev) => addColumn(ev.target)">
+                            <input type="text" class="o_input" autocomplete="off" placeholder="Title of the column"
+                                   aria-label="Title of the column" t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; closeAddColumn()"/>
+                            <div class="o_kanban_quick_actions">
+                                <button type="submit" class="o_button_primary">Add</button>
+                                <button type="button" class="o_button_secondary" t-on-click="closeAddColumn">Close</button>
+                            </div>
+                        </form>
+                        <button t-else="" type="button" class="o_kanban_lane_add" t-on-click="openAddColumn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            Add a column
+                        </button>
+                    </section>
+                    <p t-if="lanes.length === 0 &amp;&amp; !canEditColumns" class="o_kanban_empty">No records.</p>
                 </div>
                 <div t-else="" class="o_kanban_grid">
                     <t t-foreach="records" t-as="record" t-key="record.id">
-                        <KanbanCard record="record" model="props.resModel" title="title" details="details"
-                                    widgetFor="cardWidget" onOpen="open"/>
+                        <KanbanCard record="record" model="props.resModel" card="card ?? undefined" host="this"
+                                    title="title" details="details" widgetFor="cardWidget" onOpen="open"
+                                    decoration="cardDecoration(record)"/>
                     </t>
                     <p t-if="records.length === 0" class="o_kanban_empty">No records.</p>
                 </div>
             </Suspense>
+            <FormDialog t-if="completing" model="props.resModel" defaults="completing" onCreated="completed" onClose="closeForm"/>
+            <Portal t-if="quick" target="'body'">
+                <div class="o_quick_backdrop" t-on-mousedown.self="closeQuickEdit"/>
+                <div class="o_quick_popover" t-att-style="quick.place" role="dialog" t-att-aria-label="quick.column.label"
+                     t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; closeQuickEdit()">
+                    <span class="o_quick_label">{{ quick.column.label }}</span>
+                    <t t-component="quickWidget(quick.column)" record="quick.record" model="props.resModel"
+                       name="quick.column.name" field="quick.column.field" attrs="quickAttrs(quick.column)"
+                       readonly="false" onChange="quickChange"/>
+                </div>
+            </Portal>
         </div>
     </t>
 
+    <t t-name="web.KanbanQuickCreate">
+        <form class="o_kanban_quick" t-on-submit.prevent="(ev) => add(ev.target)">
+            <input type="text" class="o_input" name="title" autocomplete="off" placeholder="Title"
+                   aria-label="Title" t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; closeAdd()"/>
+            <div class="o_kanban_quick_actions">
+                <button type="submit" class="o_button_primary">Add</button>
+                <button type="button" class="o_button_secondary" t-on-click="closeAdd">Close</button>
+            </div>
+        </form>
+    </t>
+
     <t t-name="web.KanbanCard">
-        <article class="o_kanban_card" tabindex="0" t-on-click="() => props.onOpen(props.record)"
+        <article t-att-class="'o_kanban_card' + (props.dragging ? ' o_kanban_dragging' : '') + (props.ghost ? ' o_kanban_ghost' : '') + (props.decoration ? ' o_card_decoration_' + props.decoration : '')"
+                 t-att-tabindex="props.ghost ? null : '0'" t-att-data-id="props.ghost ? null : props.record.id"
+                 t-att-draggable="props.draggable ? 'true' : 'false'"
+                 t-on-dragstart="(ev) => props.onDragStart &amp;&amp; props.onDragStart(props.record, ev)"
+                 t-on-dragend="() => props.onDragEnd &amp;&amp; props.onDragEnd()"
+                 t-on-click="() => props.onOpen(props.record)"
                  t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; props.onOpen(props.record)">
-            <div t-if="props.title" class="o_kanban_card_title">
-                <t t-component="props.widgetFor(props.title)" record="props.record" model="props.model"
-                   name="props.title.name" field="props.title.field" attrs="props.title.attrs"/>
-            </div>
-            <div t-foreach="props.details" t-as="column" t-key="column.name" t-att-class="fieldClass(column)">
-                <t t-component="props.widgetFor(column)" record="props.record" model="props.model" name="column.name"
-                   field="column.field" attrs="column.attrs"/>
-            </div>
+            <t t-if="props.card">
+                <t t-component="props.card.body" strip="props.host" record="props.record" card="props.card"/>
+            </t>
+            <t t-else="">
+                <div t-if="props.title" class="o_kanban_card_title">
+                    <t t-component="props.widgetFor(props.title)" record="props.record" model="props.model"
+                       name="props.title.name" field="props.title.field" attrs="props.title.attrs"/>
+                </div>
+                <div t-foreach="props.details" t-as="column" t-key="column.name" t-att-class="fieldClass(column)">
+                    <t t-component="props.widgetFor(column)" record="props.record" model="props.model" name="column.name"
+                       field="column.field" attrs="column.attrs"/>
+                </div>
+            </t>
         </article>
     </t>
 </templates>

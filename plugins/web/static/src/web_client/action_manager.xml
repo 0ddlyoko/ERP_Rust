@@ -7,16 +7,16 @@
                     <t t-if="isRecord || breadcrumb.trail.length">
                         <a href="#" class="o_breadcrumb_link" t-on-click.prevent="backToList">{{ rootAction }}</a>
                         <span aria-hidden="true">/</span>
-                        <t t-foreach="breadcrumb.trail" t-as="crumb" t-key="crumb_index">
-                            <a href="#" class="o_breadcrumb_link" t-on-click.prevent="() => backTo(crumb_index)">{{ crumb.name }}</a>
+                        <t t-foreach="crumbs" t-as="shown" t-key="shown.at">
+                            <a href="#" class="o_breadcrumb_link" t-on-click.prevent="() => backTo(shown.at)">{{ shown.crumb.name }}</a>
                             <span aria-hidden="true">/</span>
                         </t>
-                        <span class="o_breadcrumb_current">{{ isRecord ? (breadcrumb.record ?? "") : props.action.name }}</span>
+                        <span class="o_breadcrumb_current">{{ isRecord ? (breadcrumb.record ?? "") : listName }}</span>
                     </t>
-                    <span t-else="" class="o_breadcrumb_current">{{ props.action.name }}</span>
+                    <span t-else="" class="o_breadcrumb_current">{{ listName }}</span>
                 </nav>
                 <div t-if="!isRecord" class="o_action_title_row">
-                    <h1 class="o_action_title">{{ props.action.name }}</h1>
+                    <h1 class="o_action_title">{{ listName }}</h1>
                     <div t-if="switchable.length > 1" class="o_view_switcher" role="group" aria-label="Views">
                         <button t-foreach="switchable" t-as="option" t-key="option" type="button"
                                 t-att-class="{ o_view_switch: true, active: option === kind }"
@@ -41,17 +41,17 @@
                 <div class="o_split_main">
                     <t t-if="isRecord">
                         <t t-component="view" t-key="viewKey" resModel="props.action.model" domain="domain"
-                           defaults="props.action.defaults" resId="props.resId ?? undefined" besideList="true"/>
+                           defaults="defaults" resId="props.resId ?? undefined" besideList="true"/>
                     </t>
                     <t t-else="">
                         <t t-component="view" t-key="viewKey" resModel="props.action.model" domain="domain"
-                           defaults="props.action.defaults"/>
+                           defaults="defaults"/>
                     </t>
                 </div>
             </div>
             <t t-elif="view">
                 <t t-component="view" t-key="viewKey" resModel="props.action.model"
-                   domain="domain" defaults="props.action.defaults" resId="props.resId ?? undefined"/>
+                   domain="domain" defaults="defaults" resId="props.resId ?? undefined"/>
             </t>
             <p t-else="" class="o_view_error">No view can show {{ props.action.views.join(", ") }}.</p>
         </section>

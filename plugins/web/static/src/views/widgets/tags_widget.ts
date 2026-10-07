@@ -1,5 +1,6 @@
 import { inject, props, state } from "trame";
 import { Models } from "@web/core/models";
+import { RecordColors } from "@web/core/record_colors";
 import { Orm, type Values } from "@web/core/orm";
 import { FormDialog } from "@web/views/form/form_dialog";
 import { createByName, nameDefaults } from "./record_creation";
@@ -8,7 +9,8 @@ import { widgetProps, widgets } from "./widget";
 import { X2ManyWidget } from "./x2many_widget";
 
 /**
- * The records of a one2many or a many2many as tags, one per record, by name.
+ * The records of a one2many or a many2many as tags, one per record, by name — in the colour
+ * the record has, when its model gives one.
  *
  * Where a view edits it, a tag is removed with its cross, and one added by searching. A name
  * matching nothing can become a new record, unless the field's element says `no_create="1"`: for
@@ -23,12 +25,19 @@ export class TagsWidget extends X2ManyWidget {
 
     @inject(Orm) orm!: Orm;
     @inject(Models) models!: Models;
+    @inject(RecordColors) colors!: RecordColors;
 
     /** What the dialog creating a record starts with, while it is open. */
     @state accessor creating: Values | null = null;
 
     override get text(): string {
         return this.entries.map((entry) => this.nameOf(entry)).join(", ");
+    }
+
+    /** The class of a tag: the colour its record has, if its model gives one. */
+    tagClass(entry: { id: number | null }): string {
+        const color = entry.id === null ? null : this.colors.colorOf(this.relation, entry.id);
+        return color === null ? "o_tag" : `o_tag o_tag_color_${color}`;
     }
 
     get relation(): string {

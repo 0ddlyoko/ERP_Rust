@@ -1,0 +1,9 @@
+<templates>
+    <t t-name="web.ProgressWidget">
+        <span t-att-class="'o_progress o_progress_' + level" role="progressbar" t-att-aria-valuenow="percent"
+              aria-valuemin="0" aria-valuemax="100">
+            <span class="o_progress_track"><span class="o_progress_bar" t-att-style="width"/></span>
+            <span class="o_progress_text">{{ percent }} %</span>
+        </span>
+    </t>
+</templates>

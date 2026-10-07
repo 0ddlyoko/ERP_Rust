@@ -1,4 +1,4 @@
-import { computed, effect, load, loading, props, resource, state, t } from "trame";
+import { computed, effect, load, loading, props, resource, state, t, untrack } from "trame";
 import { decorationNames, decorationOf, evaluate } from "@web/core/expression";
 import { listMemory } from "@web/core/list_memory";
 import type { ActionDescription } from "@web/core/menus";
@@ -282,6 +282,7 @@ export class RecordStrip extends View {
                 domain: memory?.domain ?? this.props.domain,
                 fields: loading(() => this.fields) || loading(() => this.arch) ? null : this.readNames,
                 order: grouping === null ? (order.length ? order : undefined) : [grouping.field, ...order],
+                version: this.orm.versionOf(this.props.resModel),
             };
         },
         ({ model, domain, fields, order }) =>
@@ -290,12 +291,40 @@ export class RecordStrip extends View {
                 : this.orm.searchRead(model, [...domain], fields, { limit: LIMIT, order, names: true }),
     );
 
+    /** The records last read, shown while they are read again. */
+    @state accessor shownRecords: Values[] = [];
+
+    @effect keepShown(): void {
+        if (!loading(() => this.records)) {
+            this.shownRecords = this.records ?? [];
+        }
+    }
+
+    /** A record saved from the form beside the list is read again, alone, and shown as saved. */
+    @effect followSaved(): void {
+        const saved = this.orm.saved;
+        if (saved === null || saved.model !== this.props.resModel) {
+            return;
+        }
+        untrack(() => void this.readAgain(saved.ids));
+    }
+
+    private async readAgain(ids: number[]): Promise<void> {
+        const shown = this.shownRecords.filter((record) => ids.includes(record.id as number)).map((record) => record.id as number);
+        if (shown.length === 0) {
+            return;
+        }
+        const rows = await this.orm.read(this.props.resModel, shown, this.readNames, { names: true });
+        const byId = new Map(rows.map((row) => [row.id, row]));
+        this.shownRecords = this.shownRecords.map((record) => byId.get(record.id) ?? record);
+    }
+
     /**
      * The records under their groups' headings — a selection's in the order it lists its values,
      * as the list shows them; one group without a heading when not gathered.
      */
     @computed get groups(): StripGroup[] {
-        const records = loading(() => this.records) ? [] : (this.records ?? []);
+        const records = this.shownRecords;
         const grouping = this.grouping;
         const colour = this.colourColumn;
         const decorate = (record: Values): string | null => (colour === undefined ? null : decorationOf(colour.attrs, record));
@@ -343,7 +372,7 @@ export class RecordStrip extends View {
     }
 
     get count(): number {
-        return loading(() => this.records) ? 0 : (this.records?.length ?? 0);
+        return this.shownRecords.length;
     }
 
     isSelected(record: Values): boolean {

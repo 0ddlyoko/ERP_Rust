@@ -421,7 +421,7 @@ span.o_text {
 
 .o_record_search_results {
     position: fixed;
-    z-index: 60;
+    z-index: 90;
     min-width: 220px;
     max-height: 280px;
     overflow-y: auto;
@@ -723,6 +723,7 @@ select.o_input {
 }
 
 button.o_statusbar_label {
+    align-self: flex-start;
     padding: 0;
     border: 0;
     background: transparent;
@@ -1298,4 +1299,315 @@ button.o_statusbar_label:hover {
 .o_form_tab.active .o_form_tab_count {
     background: color-mix(in oklch, var(--o-accent) 14%, white);
     color: var(--o-accent-strong);
+}
+
+.o_priority {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+}
+
+.o_priority_star {
+    display: inline-flex;
+    padding: 1px;
+    border: 0;
+    background: none;
+    color: var(--o-muted);
+    fill: none;
+}
+
+button.o_priority_star {
+    cursor: pointer;
+}
+
+button.o_priority_star:hover,
+.o_priority_lit {
+    color: #d99a0b;
+}
+
+.o_priority_lit svg {
+    fill: currentColor;
+}
+
+.o_avatars {
+    display: inline-flex;
+    align-items: center;
+}
+
+.o_avatars .o_avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--o-surface);
+    font-size: 10px;
+}
+
+.o_avatars .o_avatar + .o_avatar {
+    margin-left: -6px;
+}
+
+.o_avatars_more {
+    background: var(--o-panel);
+    color: var(--o-muted);
+}
+
+/* A form in a dialog completes a record: its side column — status, thread — has no room there. */
+.o_form_dialog .o_form_side {
+    display: none;
+}
+
+.o_form_dialog .o_form_layout.o_form_with_side {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* A tag in the colour its record has. */
+
+.o_tag_color_red {
+    background: #fde4e1;
+    color: #a32012;
+}
+
+.o_tag_color_orange {
+    background: #fde9d4;
+    color: #9a4a08;
+}
+
+.o_tag_color_yellow {
+    background: #fbf2c7;
+    color: #7a5b00;
+}
+
+.o_tag_color_green {
+    background: #dcf4e8;
+    color: #0f6b4c;
+}
+
+.o_tag_color_teal {
+    background: #d6f3f1;
+    color: #0c6461;
+}
+
+.o_tag_color_blue {
+    background: #dde8fd;
+    color: #2348a8;
+}
+
+.o_tag_color_purple {
+    background: #ebe3fd;
+    color: #5b2fc0;
+}
+
+.o_tag_color_pink {
+    background: #fce1ee;
+    color: #a1205f;
+}
+
+.o_tag_color_grey {
+    background: #ecebf3;
+    color: #4a4866;
+}
+
+.o_filter_chip_saved svg {
+    color: #d99a0b;
+}
+
+/* A wizard: an assistant in a dialog, its fields under their labels, its buttons at the bottom */
+
+.o_dialog.o_wizard_dialog {
+    width: min(460px, 100%);
+}
+
+.o_wizard_dialog .o_form_view {
+    padding: 24px;
+}
+
+.o_wizard_dialog .o_form_layout,
+.o_wizard_dialog .o_form_main {
+    display: block;
+}
+
+.o_wizard_dialog .o_form_card {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.o_wizard_dialog .o_form_grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+}
+
+.o_wizard_dialog .o_form_field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+}
+
+.o_wizard_dialog .o_form_heading {
+    gap: 5px;
+    margin-bottom: 18px;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.o_wizard_dialog .o_form_heading_field {
+    flex-grow: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_form_footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+/* A field edited on the leader: on the dark band, without the white of a field, a frame showing
+   where it is once hovered or focused */
+
+.o_leader_edit .o_input,
+.o_leader_edit .o_record_search,
+.o_leader_edit .o_tags {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    color-scheme: dark;
+}
+
+.o_leader_edit .o_input {
+    min-height: 0;
+    height: auto;
+    padding: 2px 6px;
+    margin-inline: -6px;
+    font: inherit;
+}
+
+.o_leader_edit .o_input::placeholder {
+    color: rgb(255 255 255 / 0.45);
+}
+
+.o_leader_edit .o_input:hover,
+.o_leader_edit .o_tags:hover {
+    border-color: rgb(255 255 255 / 0.22);
+}
+
+.o_leader_edit .o_input:focus,
+.o_leader_edit .o_tags:focus-within {
+    border-color: rgb(255 255 255 / 0.45);
+    background: rgb(255 255 255 / 0.07);
+    outline: none;
+}
+
+.o_leader_edit .o_record_search_icon,
+.o_leader_edit .o_many2one_open {
+    color: rgb(255 255 255 / 0.55);
+}
+
+.o_leader_title.o_leader_edit .o_input {
+    width: 100%;
+    letter-spacing: inherit;
+    line-height: inherit;
+}
+
+.o_leader_edit.o_form_missing .o_input {
+    border-color: #f2a7a0;
+    background: rgb(242 167 160 / 0.12);
+}
+
+.o_leader_corner {
+    display: inline-flex;
+    align-items: center;
+    font-size: 18px;
+}
+
+.o_leader_corner .o_priority_star {
+    color: rgb(255 255 255 / 0.4);
+}
+
+.o_leader_corner .o_priority_lit {
+    color: #f5b301;
+}
+
+.o_leader_corner svg {
+    width: 20px;
+    height: 20px;
+}
+
+.o_leader_edit .o_tags {
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.o_leader_edit input[type="number"] {
+    appearance: textfield;
+}
+
+.o_leader_edit input[type="number"]::-webkit-inner-spin-button,
+.o_leader_edit input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+}
+
+.o_leader_edit .o_leader_tile_value {
+    overflow: visible;
+    white-space: normal;
+}
+
+.o_leader_edit .o_tags .o_record_search {
+    flex: 1 0 60px;
+}
+
+.o_avatars_editable {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.o_avatars_editable .o_avatar + .o_avatar {
+    margin-left: 0;
+}
+
+.o_avatar_removable {
+    position: relative;
+}
+
+.o_avatar_remove {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: none;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--o-ink);
+    color: #fff;
+    cursor: pointer;
+}
+
+.o_avatar_removable:hover .o_avatar_remove,
+.o_avatar_remove:focus-visible {
+    display: grid;
+}
+
+.o_avatar_add {
+    border: 1px dashed currentColor;
+    background: transparent;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+}
+
+.o_avatar_add:hover {
+    opacity: 1;
+}
+
+.o_avatars_add .o_record_search {
+    width: 170px;
+}
+
+.o_leader .o_avatars .o_avatar {
+    box-shadow: 0 0 0 2px var(--o-leader-bg, #1a1838);
 }

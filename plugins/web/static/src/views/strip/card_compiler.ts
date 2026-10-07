@@ -33,8 +33,12 @@ const bodies = new Map<string, ComponentClass>();
  * `<spacer/>` pushing what follows to the end of a row. A `<field>` shows its value with its widget,
  * never edited; text between fields is kept. Any of them may be `invisible`, as a condition on the
  * record. A card's template is made once, however many records it shows.
+ *
+ * Where the card is shown by a view that edits from it — a kanban — a field saying
+ * `quick_edit="1"` is changed there: stars or a check box at once, anything else in a small
+ * editor opened by a click on it, the rest of the card still opening the record.
  */
-export function compileCard(root: Element, columnOf: (element: Element) => Column): CompiledCard {
+export function compileCard(root: Element, columnOf: (element: Element) => Column, quickEdits = false): CompiledCard {
     const columns: Column[] = [];
 
     const node = (child: ChildNode): string => {
@@ -44,12 +48,26 @@ export function compileCard(root: Element, columnOf: (element: Element) => Colum
         const invisible = child.getAttribute("invisible");
         const shown = invisible === null ? "" : ` t-if="${escape(`!__strip.holds(props.record, ${JSON.stringify(invisible)})`)}"`;
         if (child.tagName === "field") {
-            columns.push(columnOf(child));
+            const described = columnOf(child);
+            columns.push(described);
             const column = `props.card.columns[${columns.length - 1}]`;
-            return (
-                `<t${shown}><t t-component="__strip.widgetFor(${column})" record="props.record" ` +
-                `model="__strip.props.resModel" name="${column}.name" field="${column}.field" attrs="${column}.attrs"/></t>`
-            );
+            const widget =
+                `<t t-component="__strip.widgetFor(${column})" record="props.record" ` +
+                `model="__strip.props.resModel" name="${column}.name" field="${column}.field" attrs="${column}.attrs"`;
+            if (quickEdits && child.getAttribute("quick_edit") === "1") {
+                const inline = described.widget === "priority" || described.field.type === "bool";
+                if (inline) {
+                    return (
+                        `<span class="o_card_quick"${shown} t-on-click.stop="() => {}">${widget} readonly="false" ` +
+                        `onChange="(value) => __strip.quickEdit(props.record, ${column}, value)"/></span>`
+                    );
+                }
+                return (
+                    `<button type="button" class="o_card_quick o_card_quick_open"${shown} title="Change" ` +
+                    `t-on-click.stop="(ev) => __strip.openQuickEdit(props.record, ${column}, ev)">${widget}/></button>`
+                );
+            }
+            return `<t${shown}>${widget}/></t>`;
         }
         if (child.tagName === "spacer") {
             return `<span class="o_card_spacer"${shown}/>`;

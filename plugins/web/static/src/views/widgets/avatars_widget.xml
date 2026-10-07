@@ -1,0 +1,29 @@
+<templates>
+    <t t-name="web.AvatarsWidget">
+        <span t-if="editable" t-att-class="className + ' o_avatars o_avatars_editable'">
+            <span t-foreach="people" t-as="person" t-key="person.id" class="o_avatar o_avatar_removable"
+                  t-att-style="person.style" t-att-title="person.name">
+                {{ person.initials }}
+                <button type="button" class="o_avatar_remove" t-att-aria-label="'Remove ' + person.name"
+                        t-on-click.stop="() => remove(person.id)">
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
+            </span>
+            <span class="o_avatars_add">
+                <button t-if="!adding" type="button" class="o_avatar o_avatar_add" title="Add someone"
+                        aria-label="Add someone" t-on-click="() => adding = true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <RecordSearch t-else="" model="props.field.relation" exclude="people.map((person) => person.id)"
+                              domain="domain" placeholder="'Add someone…'" onPick="add" onEmpty="() => adding = false"/>
+            </span>
+        </span>
+        <span t-else="" t-att-class="className + ' o_avatars'" t-att-title="text">
+            <span t-foreach="shown" t-as="person" t-key="person_index" class="o_avatar" t-att-style="person.style"
+                  role="img" t-att-aria-label="person.name">{{ person.initials }}</span>
+            <span t-if="more" class="o_avatar o_avatars_more">+{{ more }}</span>
+        </span>
+    </t>
+</templates>

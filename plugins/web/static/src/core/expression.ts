@@ -1,8 +1,18 @@
-/** Names an expression may read without being fields: the language's own, and a few globals. */
+/**
+ * Names an expression may read without being fields: the language's own, and a few globals —
+ * `today`, the day as `YYYY-MM-DD`.
+ */
 const EXPRESSION_WORDS = new Set([
     "true", "false", "null", "undefined", "typeof", "instanceof", "in", "of", "new", "void",
-    "NaN", "Infinity", "Math", "Number", "String", "Boolean", "Array", "Date", "JSON", "Object",
+    "NaN", "Infinity", "Math", "Number", "String", "Boolean", "Array", "Date", "JSON", "Object", "today",
 ]);
+
+/** The day, as a date field holds it: `2026-10-07`, compared with one as text. */
+function todayText(): string {
+    const now = new Date();
+    const pad = (value: number): string => String(value).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
 
 /**
  * The names a condition reads: what is left once strings, numbers, properties (`.includes`), the
@@ -42,7 +52,7 @@ export function evaluate(expression: string, values: Record<string, unknown>): u
     const names = namesRead(expression);
     const read = names.map((name) => idsOf(values[name]));
     try {
-        return new Function(...names, `return (${expression});`)(...read);
+        return new Function(...names, "today", `return (${expression});`)(...read, todayText());
     } catch {
         return false;
     }

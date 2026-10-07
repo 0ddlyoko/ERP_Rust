@@ -1,5 +1,4 @@
-import { inject, load, props, resource } from "trame";
-import { Orm } from "@web/core/orm";
+import { computed, load, loading, props, resource } from "trame";
 import { widgetProps, widgets } from "@web/views/widgets/widget";
 import { type Choice } from "@web/views/widgets/selection_widget";
 import { StatusbarWidget } from "@web/views/widgets/statusbar_widget";
@@ -28,7 +27,7 @@ interface Period {
  * A status bar that also says how long the record spent at each step, and since when it is at
  * the current one, from the changes its thread noted: `message.thread` asked for this field only.
  *
- * Works for any field holding an enum that is tracked. A record created before its creation was
+ * Works for any tracked field holding an enum, or a record — the column of a task. A record created before its creation was
  * noted starts at its creation date, if it has one, else at no known time.
  */
 export class StatusbarDurationsWidget extends StatusbarWidget {
@@ -36,16 +35,26 @@ export class StatusbarDurationsWidget extends StatusbarWidget {
 
     override props = props({ ...widgetProps });
 
-    @inject(Orm) orm!: Orm;
-
     get recordId(): number | null {
         const id = this.props.record.id;
         return typeof id === "number" ? id : null;
     }
 
+    /**
+     * Whose history is read — the record, the field and the value it holds — as text: the same
+     * while the user changes other fields, so the history is not read again then.
+     */
+    @computed get historyAsked(): string {
+        return JSON.stringify({ model: this.props.model, record: this.recordId, field: this.props.name, value: this.key });
+    }
+
+    /** The history last read, shown while it is read again. */
+    private shownHistory: { messages: Message[]; created: string | null } | null = null;
+
     @resource accessor history: { messages: Message[]; created: string | null } | null = load(
-        () => ({ model: this.props.model, record: this.recordId, field: this.props.name, value: this.value }),
-        async ({ model, record, field }) => {
+        () => this.historyAsked,
+        async (text) => {
+            const { model, record, field } = JSON.parse(text) as { model?: string; record: number | null; field: string };
             if (model === undefined || record === null) {
                 return null;
             }
@@ -57,10 +66,18 @@ export class StatusbarDurationsWidget extends StatusbarWidget {
         },
     );
 
+    /** Whether the user may move the record to the step: the field is edited here, and it is not the current one. */
+    pickable(step: [string, string]): boolean {
+        return this.clickable && this.stateOf(step) !== "current";
+    }
+
     /** What the field held and when, oldest first. */
     get periods(): Period[] {
-        const history = this.history;
-        if (history === null || history === undefined) {
+        if (!loading(() => this.history)) {
+            this.shownHistory = this.history ?? null;
+        }
+        const history = this.shownHistory;
+        if (history === null) {
             return [];
         }
         const changes = [...history.messages]
@@ -75,8 +92,8 @@ export class StatusbarDurationsWidget extends StatusbarWidget {
         const periods: Period[] = [];
         let current: Period | null = null;
         if (first === undefined) {
-            if (typeof this.value === "string") {
-                current = { key: this.value, start: created, end: null };
+            if (this.key !== null) {
+                current = { key: this.key, start: created, end: null };
             }
         } else if (first.kind !== "creation" && first.change.old_value !== null) {
             current = { key: first.change.old_value, start: created, end: null };

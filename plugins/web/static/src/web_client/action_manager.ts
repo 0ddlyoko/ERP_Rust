@@ -1,9 +1,10 @@
-import { Component, type ComponentClass, computed, effect, inject, load, props, resource, t } from "trame";
-import { Breadcrumb, listOf } from "@web/core/breadcrumb";
+import { Component, type ComponentClass, computed, effect, inject, load, loading, props, resource, t } from "trame";
+import { Breadcrumb, type Crumb, listOf } from "@web/core/breadcrumb";
 import { and } from "@web/core/domain";
 import type { ActionDescription } from "@web/core/menus";
 import { type Domain, Orm } from "@web/core/orm";
-import { listKey, type Route, Router } from "@web/core/router";
+import { Models } from "@web/core/models";
+import { byOf, listKey, type Route, Router } from "@web/core/router";
 import { RecordStrip } from "@web/views/strip/record_strip";
 import { viewKinds } from "@web/views/view";
 
@@ -38,10 +39,53 @@ export class ActionManager extends Component {
     @inject(Breadcrumb) breadcrumb!: Breadcrumb;
     @inject(Router) router!: Router;
     @inject(Orm) orm!: Orm;
+    @inject(Models) models!: Models;
 
-    /** The records the view shows: the action's, narrowed to the route's `ids`. */
+    /** The records the view shows: the action's, narrowed to the route's `ids` or `by`. */
     get domain(): Domain {
         return narrowed(this.props.action.domain, this.router.route);
+    }
+
+    /** What a record created here starts with: the action's defaults, and the record of `by`. */
+    get defaults(): Record<string, unknown> {
+        const by = byOf(this.router.route);
+        return by === null ? { ...this.props.action.defaults } : { ...this.props.action.defaults, [by.field]: by.id };
+    }
+
+    /** The name of the record of `by`, which names the list: the project of a board. */
+    @resource accessor byName: string | null = load(
+        () => ({ by: this.router.route.by ?? null, model: this.props.action.model }),
+        async ({ by, model }) => {
+            const of = byOf({ action: null, view: null, id: null, by });
+            if (of === null) {
+                return null;
+            }
+            const relation = (await this.models.fields(model))[of.field]?.relation;
+            if (!relation) {
+                return null;
+            }
+            const [[, name] = [of.id, null]] = await this.orm.names(relation, [of.id]);
+            return name;
+        },
+    );
+
+    /** What the list shown is called: the record of `by`, else the action. */
+    get listName(): string {
+        return (loading(() => this.byName) ? null : this.byName) ?? this.props.action.name;
+    }
+
+    @effect nameListInBreadcrumb(): () => void {
+        this.breadcrumb.nameList(this.isRecord ? null : this.listName);
+        return () => {
+            this.breadcrumb.nameList(null);
+        };
+    }
+
+    /** The crumbs shown, by position: a first one of the action's whole list is the root link. */
+    get crumbs(): { crumb: Crumb; at: number }[] {
+        return this.breadcrumb.trail
+            .map((crumb, at) => ({ crumb, at }))
+            .filter(({ crumb, at }) => !(at === 0 && crumb.route.id === null && !crumb.route.ids && !crumb.route.by));
     }
 
     /** The list shown beside the view, if one. */
@@ -136,5 +180,13 @@ export class ActionManager extends Component {
 
 /** An action's domain, narrowed to the records a route names, if it does. */
 function narrowed(domain: readonly unknown[], route: Route): Domain {
-    return route.ids ? and([[...domain], [["id", "in", route.ids]]]) : [...domain];
+    const by = byOf(route);
+    const terms: Domain[] = [[...domain]];
+    if (route.ids) {
+        terms.push([["id", "in", route.ids]]);
+    }
+    if (by !== null) {
+        terms.push([[by.field, "=", by.id]]);
+    }
+    return and(terms);
 }
