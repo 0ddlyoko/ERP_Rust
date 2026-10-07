@@ -1,0 +1,148 @@
+<erp>
+    <view id="view_task_kanban" name="project_task.kanban" model="project_task">
+        <kanban default_group_by="stage" expand="1" group_fold="fold" group_create="stage,project,priority" quick_create="name" quick_create_string="Add a task"
+                group_edit="project.group_project_manager">
+            <card decoration-danger="status === 'blocked'"
+                  decoration-warning="status === 'waiting' || (!is_closed &amp;&amp; date_deadline &amp;&amp; date_deadline &lt; today)"
+                  decoration-success="status === 'ready' || is_closed"
+                  decoration-info="status === 'in_progress'">
+                <row>
+                    <muted><field name="number"/></muted>
+                    <spacer/>
+                    <field name="priority" widget="priority" quick_edit="1"/>
+                </row>
+                <title><field name="name"/></title>
+                <field name="tags" widget="tags" invisible="!tags.length" quick_edit="1"/>
+                <row invisible="status !== 'blocked' || !depends_on.length"><muted>Waiting for <field name="depends_on"/></muted></row>
+                <row invisible="!checklist_done"><muted><field name="checklist_done"/> checked</muted></row>
+                <row>
+                    <muted invisible="!date_deadline"><field name="date_deadline" quick_edit="1"/></muted>
+                    <muted name="subtasks" invisible="!subtasks_done"><field name="subtasks_done"/></muted>
+                    <spacer/>
+                    <field name="assignees" widget="avatars" quick_edit="1"/>
+                </row>
+            </card>
+        </kanban>
+    </view>
+    <view id="view_task_list" name="project_task.list" model="project_task">
+        <list group_create="stage,project,priority">
+            <field name="number"/>
+            <field name="name"/>
+            <field name="project"/>
+            <field name="assignees" widget="avatars"/>
+            <field name="date_deadline"/>
+            <field name="priority" widget="priority"/>
+            <field name="stage"/>
+            <field name="status" widget="badge" decoration-danger="status === 'blocked'" decoration-warning="status === 'waiting'"
+                   decoration-info="status === 'in_progress'" decoration-success="status === 'ready'"/>
+            <field name="tags"/>
+            <compact>
+                <row>
+                    <column>
+                        <title><field name="name"/></title>
+                        <muted><field name="number"/> · <field name="project"/></muted>
+                    </column>
+                    <spacer/>
+                    <field name="assignees" widget="avatars"/>
+                </row>
+            </compact>
+            <preview>
+                <title><field name="name"/></title>
+                <subtitle><field name="project"/></subtitle>
+                <row><muted>Column</muted><spacer/><field name="stage"/></row>
+                <row invisible="!date_deadline"><muted>Deadline</muted><spacer/><field name="date_deadline"/></row>
+                <field name="tags" widget="tags"/>
+            </preview>
+        </list>
+    </view>
+    <view id="view_task_form" name="project_task.form" model="project_task">
+        <form>
+            <leader>
+                <field name="stage" role="status"/>
+                <field name="priority" role="corner" widget="priority" edit="1"/>
+                <field name="name" role="title" edit="1"/>
+                <field name="number" role="subtitle"/>
+                <field name="project" edit="1" no_create="1"/>
+                <field name="assignees" widget="avatars" edit="1" no_create="1"/>
+                <field name="date_deadline" edit="1"/>
+                <field name="planned_hours" edit="1"/>
+            </leader>
+            <block>
+                <block string="Task">
+                    <field name="assignees" no_create="1"/>
+                    <field name="parent" no_create="1"/>
+                    <field name="tags"/>
+                    <field name="customer" readonly="1"/>
+                </block>
+                <block string="Planning">
+                    <field name="stage" no_create="1" domain="project ? [['project', '=', project]] : []"/>
+                    <field name="status" widget="badge" choices="in_progress,waiting,ready"
+                           readonly="status === 'blocked'" decoration-danger="status === 'blocked'"
+                           decoration-warning="status === 'waiting'" decoration-info="status === 'in_progress'"
+                           decoration-success="status === 'ready'"/>
+                </block>
+            </block>
+            <pages>
+                <page name="description" string="Description">
+                    <field name="description" widget="text" nolabel="1"/>
+                </page>
+                <page name="checklist" string="Checklist">
+                    <field name="checklist" widget="list" nolabel="1"/>
+                </page>
+                <page name="subtasks" string="Subtasks">
+                    <field name="children" widget="list" nolabel="1"/>
+                </page>
+                <page name="dependencies" string="Dependencies">
+                    <field name="depends_on" no_create="1"/>
+                    <field name="blocking" readonly="1"/>
+                </page>
+            </pages>
+            <side>
+                <block string="Progress">
+                    <field name="stage" widget="statusbar_durations" by="project" clickable="1" nolabel="1"
+                           domain='[["in_progress", "=", true]]'/>
+                </block>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_task_search" name="project_task.search" model="project_task">
+        <search>
+            <field name="name"/>
+            <field name="number"/>
+            <field name="project"/>
+            <field name="assignees"/>
+            <field name="tags"/>
+            <filter name="mine" string="My tasks" domain='[["assignees", "in", ["$uid"]]]'/>
+            <filter name="open" string="Open" domain='[["is_closed", "=", false]]'/>
+            <filter name="late" string="Late" domain='[["is_closed", "=", false], ["date_deadline", "&lt;", "$today"]]'/>
+            <filter name="urgent" string="Urgent" domain='[["priority", "=", "urgent"]]'/>
+            <filter name="blocked" string="Blocked" domain='[["status", "=", "blocked"]]'/>
+            <filter name="by_project" string="Project" group_by="project"/>
+            <filter name="by_stage" string="Stage" group_by="stage"/>
+            <filter name="by_deadline" string="Deadline" group_by="date_deadline:week"/>
+        </search>
+    </view>
+    <action id="action_tasks" name="Tasks" model="project_task" views="kanban,list,form"
+            domain='[["on_board", "=", true]]'/>
+    <view id="view_checklist_item_list" name="project_checklist_item.list" model="project_checklist_item">
+        <list>
+            <field name="done"/>
+            <field name="name"/>
+        </list>
+    </view>
+    <view id="view_checklist_item_form" name="project_checklist_item.form" model="project_checklist_item">
+        <form>
+            <block>
+                <block string="Step">
+                    <field name="name"/>
+                    <field name="done"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <action id="action_my_tasks" name="My tasks" model="project_task" views="list,kanban,form"
+            domain='[["assignees", "in", ["$uid"]], ["is_closed", "=", false], ["project.is_template", "=", false]]'/>
+    <action id="action_all_tasks" name="All tasks" model="project_task" views="list,kanban,form"
+            domain='[["project.is_template", "=", false]]'/>
+</erp>

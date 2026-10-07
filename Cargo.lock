@@ -747,10 +747,12 @@ dependencies = [
  "l10n_be",
  "mail",
  "product",
+ "project",
  "purchase",
  "purchase_stock",
  "reqwest",
  "sale",
+ "sale_project",
  "sale_stock",
  "sequence",
  "serde_json",
@@ -758,6 +760,7 @@ dependencies = [
  "stock_account",
  "test_plugin",
  "test_utilities",
+ "timesheet",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1933,6 +1936,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "project"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "sequence",
+ "serde_json",
+ "web",
+]
+
+[[package]]
 name = "purchase"
 version = "0.1.0"
 dependencies = [
@@ -2252,6 +2271,31 @@ dependencies = [
  "product",
  "sequence",
  "serde_json",
+ "uom",
+ "web",
+]
+
+[[package]]
+name = "sale_project"
+version = "0.1.0"
+dependencies = [
+ "account",
+ "base",
+ "chrono",
+ "code_gen",
+ "contacts",
+ "currency",
+ "erp",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "product",
+ "project",
+ "sale",
+ "sequence",
+ "serde_json",
+ "timesheet",
  "uom",
  "web",
 ]
@@ -3625,6 +3669,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad99c4c6d32803332c548b1af0540b357b3f5fc0be8f6c6bfe8b2e6ae784070"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "timesheet"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "code_gen",
+ "erp",
+ "erp_assets_build",
+ "erp_search",
+ "erp_search_code_gen",
+ "erp_test_support",
+ "mail",
+ "project",
+ "sequence",
+ "serde_json",
+ "web",
 ]
 
 [[package]]

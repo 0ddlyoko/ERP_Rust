@@ -1,0 +1,40 @@
+<templates>
+    <t t-name="timesheet.TimerTray">
+        <div t-att-class="{ o_timer_tray: true, o_timer_running: clock.status.running, o_timer_narrow: !props.wide }">
+            <button t-if="clock.status.running" type="button" class="o_timer_open" t-att-title="'Stop the timer: ' + on"
+                    t-att-disabled="clock.busy" t-on-click="() => clock.stop()">
+                <span class="o_timer_dot" aria-hidden="true"/>
+                <span class="o_timer_what">
+                    <span class="o_timer_elapsed">{{ elapsed }}</span>
+                    <span t-if="props.wide" class="o_timer_task">{{ on }}</span>
+                </span>
+                <span class="o_timer_button" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>
+                </span>
+            </button>
+            <button t-else="" type="button" class="o_timer_start" title="Start a timer" aria-label="Start a timer"
+                    t-att-disabled="clock.busy" t-on-click="() => clock.start(null)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>
+                </svg>
+                <span t-if="props.wide">Start a timer</span>
+            </button>
+        </div>
+        <FormDialog t-if="clock.choosing" model="'timesheet_timer_stop'" wizard="true" onDone="done" onClose="close"/>
+    </t>
+
+    <t t-name="timesheet.TimerWidget">
+        <button t-if="task !== null" type="button" t-att-class="{ o_timer_widget: true, o_timer_running: runs }"
+                t-att-disabled="clock.busy" t-on-click="(ev) => toggle(ev)">
+            <t t-if="runs">
+                <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>
+                Stop · {{ elapsed }}
+            </t>
+            <t t-else="">
+                <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7z" fill="currentColor"/></svg>
+                Start
+            </t>
+        </button>
+    </t>
+</templates>

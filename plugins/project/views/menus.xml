@@ -1,0 +1,15 @@
+<erp>
+    <menu id="menu_project" icon="folder-kanban" name="Projects" sequence="40" groups="group_project_user">
+        <menu id="menu_work" icon="kanban" name="Projects" sequence="10">
+            <menu id="menu_projects" name="Projects" sequence="10" action="action_projects"/>
+        </menu>
+        <menu id="menu_tasks" icon="list-checks" name="Tasks" sequence="20">
+            <menu id="menu_my_tasks" name="My tasks" sequence="10" action="action_my_tasks"/>
+            <menu id="menu_all_tasks" name="All tasks" sequence="20" action="action_all_tasks"/>
+        </menu>
+        <menu id="menu_project_configuration" icon="settings" name="Configuration" sequence="90" groups="group_project_manager">
+            <menu id="menu_templates" name="Project templates" sequence="5" action="action_templates"/>
+            <menu id="menu_tags" name="Tags" sequence="10" action="action_tags"/>
+        </menu>
+    </menu>
+</erp>

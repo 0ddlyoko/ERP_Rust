@@ -1,0 +1,138 @@
+<erp>
+    <view id="view_project_kanban" name="project_project.kanban" model="project_project">
+        <kanban open_action="project.action_tasks" open_by="project">
+            <card>
+                <row>
+                    <column>
+                        <title><field name="name"/></title>
+                        <subtitle><field name="customer"/></subtitle>
+                    </column>
+                    <spacer/>
+                    <field name="manager" widget="avatar"/>
+                </row>
+                <row>
+                    <muted name="tasks"><field name="closed_task_count"/> / <field name="task_count"/> tasks done</muted>
+                    <spacer/>
+                    <muted invisible="!date_deadline">Due <field name="date_deadline"/></muted>
+                </row>
+            </card>
+        </kanban>
+    </view>
+    <view id="view_project_list" name="project_project.list" model="project_project">
+        <list>
+            <field name="name"/>
+            <field name="customer"/>
+            <field name="manager"/>
+            <field name="date_deadline"/>
+            <field name="task_count"/>
+            <field name="closed_task_count"/>
+        </list>
+    </view>
+    <view id="view_project_form" name="project_project.form" model="project_project">
+        <form>
+            <leader>
+                <field name="customer" role="avatar"/>
+                <field name="name" role="title"/>
+                <field name="customer" role="subtitle"/>
+                <field name="task_count" role="figure"/>
+                <field name="closed_task_count" role="note"/>
+                <field name="manager"/>
+                <field name="date_deadline"/>
+                <field name="planned_hours"/>
+            </leader>
+            <related>
+                <link name="tasks" action="project.action_tasks" by="project" icon="kanban"/>
+            </related>
+            <block>
+                <block string="Project">
+                    <field name="name"/>
+                    <field name="customer"/>
+                    <field name="manager"/>
+                    <field name="template" invisible="is_template" no_create="1"/>
+                </block>
+                <block string="Planning">
+                    <field name="date_deadline"/>
+                    <field name="planned_hours"/>
+                    <field name="show_subtasks"/>
+                    <field name="is_template"/>
+                    <field name="active"/>
+                </block>
+            </block>
+            <pages>
+                <page name="tasks" string="Tasks">
+                    <field name="tasks" widget="list" nolabel="1"/>
+                </page>
+                <page name="stages" string="Columns">
+                    <field name="stages" widget="list" nolabel="1"/>
+                </page>
+                <page name="description" string="Description">
+                    <field name="description" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+            <side>
+                <chatter/>
+            </side>
+        </form>
+    </view>
+    <view id="view_project_search" name="project_project.search" model="project_project">
+        <search>
+            <field name="name"/>
+            <field name="customer"/>
+            <field name="manager"/>
+            <filter name="mine" string="My projects" domain='[["manager", "=", "$uid"]]'/>
+            <filter name="archived" string="Archived" domain='[["active", "=", false]]'/>
+            <filter name="by_customer" string="Customer" group_by="customer"/>
+            <filter name="by_manager" string="Project manager" group_by="manager"/>
+        </search>
+    </view>
+    <action id="action_projects" name="Projects" model="project_project" views="kanban,list,form"
+            domain='[["active", "=", true], ["is_template", "=", false]]'/>
+    <action id="action_templates" name="Project templates" model="project_project" views="kanban,list,form"
+            domain='[["is_template", "=", true]]' defaults='{"is_template": true}'/>
+
+    <view id="view_stage_list" name="project_stage.list" model="project_stage">
+        <list>
+            <field name="sequence"/>
+            <field name="name"/>
+            <field name="fold"/>
+            <field name="is_closed"/>
+            <field name="unlocks"/>
+            <field name="in_progress"/>
+        </list>
+    </view>
+    <view id="view_stage_form" name="project_stage.form" model="project_stage">
+        <form>
+            <block>
+                <block string="Stage">
+                    <field name="name"/>
+                    <field name="project"/>
+                    <field name="sequence"/>
+                </block>
+                <block string="Behaviour">
+                    <field name="fold"/>
+                    <field name="is_closed"/>
+                    <field name="unlocks"/>
+                    <field name="in_progress"/>
+                </block>
+            </block>
+        </form>
+    </view>
+
+    <view id="view_tag_list" name="project_tag.list" model="project_tag">
+        <list>
+            <field name="name"/>
+            <field name="color"/>
+        </list>
+    </view>
+    <view id="view_tag_form" name="project_tag.form" model="project_tag">
+        <form>
+            <block>
+                <block string="Tag">
+                    <field name="name"/>
+                    <field name="color"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <action id="action_tags" name="Tags" model="project_tag" views="list,form"/>
+</erp>

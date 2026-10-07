@@ -35,6 +35,9 @@ stock = { path = "../plugins/stock" }
 sale_stock = { path = "../plugins/sale_stock" }
 purchase_stock = { path = "../plugins/purchase_stock" }
 stock_account = { path = "../plugins/stock_account" }
+project = { path = "../plugins/project" }
+timesheet = { path = "../plugins/timesheet" }
+sale_project = { path = "../plugins/sale_project" }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }

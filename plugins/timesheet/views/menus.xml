@@ -1,0 +1,7 @@
+<erp>
+    <menu id="menu_timesheets" icon="clock" name="Timesheets" sequence="30" parent="project.menu_project">
+        <menu id="menu_my_timesheets" name="My timesheets" sequence="10" action="action_my_timesheets"/>
+        <menu id="menu_all_timesheets" name="All timesheets" sequence="20" action="action_timesheets"
+              groups="project.group_project_manager"/>
+    </menu>
+</erp>

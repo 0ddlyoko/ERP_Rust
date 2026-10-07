@@ -1,0 +1,128 @@
+<erp>
+    <access_rule id="access_project_project_user">
+        <name>project_project: user</name>
+        <model>project_project</model>
+        <group ref="group_project_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_project_stage_user">
+        <name>project_stage: user</name>
+        <model>project_stage</model>
+        <group ref="group_project_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_project_tag_user">
+        <name>project_tag: user</name>
+        <model>project_tag</model>
+        <group ref="group_project_user"/>
+        <domain_read>[]</domain_read>
+    </access_rule>
+    <access_rule id="access_project_task_user">
+        <name>project_task: user</name>
+        <model>project_task</model>
+        <group ref="group_project_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_project_manager">
+        <name>project_project: manager</name>
+        <model>project_project</model>
+        <group ref="group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_project_admin">
+        <name>project_project: admin</name>
+        <model>project_project</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_stage_manager">
+        <name>project_stage: manager</name>
+        <model>project_stage</model>
+        <group ref="group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_stage_admin">
+        <name>project_stage: admin</name>
+        <model>project_stage</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_tag_manager">
+        <name>project_tag: manager</name>
+        <model>project_tag</model>
+        <group ref="group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_tag_admin">
+        <name>project_tag: admin</name>
+        <model>project_tag</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_task_manager">
+        <name>project_task: manager</name>
+        <model>project_task</model>
+        <group ref="group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_task_admin">
+        <name>project_task: admin</name>
+        <model>project_task</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_checklist_item_user">
+        <name>project_checklist_item: user</name>
+        <model>project_checklist_item</model>
+        <group ref="group_project_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_checklist_item_manager">
+        <name>project_checklist_item: manager</name>
+        <model>project_checklist_item</model>
+        <group ref="group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_project_checklist_item_admin">
+        <name>project_checklist_item: admin</name>
+        <model>project_checklist_item</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

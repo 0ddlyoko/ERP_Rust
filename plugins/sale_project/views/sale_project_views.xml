@@ -1,0 +1,29 @@
+<erp>
+    <view id="view_product_form_project" name="product.form.project" inherit="product.view_product_form">
+        <xpath expr="//page[@name='sales']" position="inside">
+            <field name="service_tracking" invisible="product_type !== 'service'"/>
+            <field name="service_project" no_create="1"
+                   invisible="product_type !== 'service' || service_tracking !== 'task'"/>
+            <field name="service_template" no_create="1"
+                   invisible="product_type !== 'service' || service_tracking !== 'project'"/>
+        </xpath>
+    </view>
+    <view id="view_sale_order_form_project" name="sale_order.form.project" inherit="sale.view_sale_order_form">
+        <xpath expr="//related" position="inside">
+            <link name="projects" action="project.action_projects" icon="folder-kanban"/>
+            <link name="tasks" action="project.action_all_tasks" icon="list-checks"/>
+        </xpath>
+    </view>
+    <view id="view_project_form_sale" name="project_project.form.sale" inherit="project.view_project_form">
+        <xpath expr="//field[@name='customer'][3]" position="after">
+            <field name="sale_order" no_create="1"/>
+        </xpath>
+    </view>
+    <view id="view_task_form_sale" name="project_task.form.sale" inherit="project.view_task_form">
+        <xpath expr="//pages" position="inside">
+            <page name="configuration" string="Configuration">
+                <field name="sale_line" readonly="1"/>
+            </page>
+        </xpath>
+    </view>
+</erp>

@@ -1,0 +1,92 @@
+<erp>
+    <users id="demo_user_julie" login="julie" name="Julie Renard" groups="base.group_user,group_project_user"/>
+    <users id="demo_user_thomas" login="thomas" name="Thomas Lejeune" groups="base.group_user,group_project_user"/>
+
+    <project_tag id="demo_tag_migration" name="Migration" color="blue"/>
+    <project_tag id="demo_tag_data" name="Data" color="teal"/>
+    <project_tag id="demo_tag_design" name="Design" color="purple"/>
+    <project_tag id="demo_tag_bug" name="Bug" color="red"/>
+    <project_tag id="demo_tag_training" name="Training" color="orange"/>
+
+    <project_project id="demo_project_migration" name="ERP migration — Brasserie du Val" customer="base.demo_brasserie"
+                     manager="base.user_admin" date_deadline="2026-11-15" planned_hours="68"/>
+    <project_project id="demo_project_website" name="Website redesign" customer="base.demo_imprimerie"
+                     manager="demo_user_julie" date_deadline="2026-12-04" planned_hours="40"/>
+    <project_project id="demo_project_internal" name="Internal tools" manager="base.user_admin"/>
+
+    <project_project id="demo_template_website" name="Website (template)" is_template="1" planned_hours="40"/>
+    <project_stage id="demo_stage_migration_todo" project="demo_project_migration" name="To do" sequence="10"/>
+    <project_stage id="demo_stage_migration_progress" project="demo_project_migration" name="In progress" sequence="20"/>
+    <project_stage id="demo_stage_migration_review" project="demo_project_migration" name="Review" sequence="30"/>
+    <project_stage id="demo_stage_migration_done" project="demo_project_migration" name="Done" sequence="40" is_closed="1" unlocks="1"/>
+
+    <project_stage id="demo_stage_website_todo" project="demo_project_website" name="To do" sequence="10"/>
+    <project_stage id="demo_stage_website_progress" project="demo_project_website" name="In progress" sequence="20"/>
+    <project_stage id="demo_stage_website_review" project="demo_project_website" name="Review" sequence="30"/>
+    <project_stage id="demo_stage_website_done" project="demo_project_website" name="Done" sequence="40" is_closed="1" unlocks="1"/>
+
+    <project_stage id="demo_stage_internal_todo" project="demo_project_internal" name="To do" sequence="10"/>
+    <project_stage id="demo_stage_internal_progress" project="demo_project_internal" name="In progress" sequence="20"/>
+    <project_stage id="demo_stage_internal_review" project="demo_project_internal" name="Review" sequence="30"/>
+    <project_stage id="demo_stage_internal_done" project="demo_project_internal" name="Done" sequence="40" is_closed="1" unlocks="1"/>
+
+    <project_stage id="demo_stage_template_website_todo" project="demo_template_website" name="To do" sequence="10"/>
+    <project_stage id="demo_stage_template_website_progress" project="demo_template_website" name="In progress" sequence="20"/>
+    <project_stage id="demo_stage_template_website_review" project="demo_template_website" name="Review" sequence="30"/>
+    <project_stage id="demo_stage_template_website_done" project="demo_template_website" name="Done" sequence="40" is_closed="1" unlocks="1"/>
+
+    <project_task id="demo_template_task_brief" project="demo_template_website" name="Gather the brief"
+                  planned_hours="3" sequence="10"/>
+    <project_task id="demo_template_task_design" project="demo_template_website" name="Design the pages"
+                  tags="demo_tag_design" planned_hours="12" sequence="20" depends_on="demo_template_task_brief"/>
+    <project_task id="demo_template_task_build" project="demo_template_website" name="Build the site"
+                  planned_hours="20" sequence="30" depends_on="demo_template_task_design"/>
+    <project_task id="demo_template_task_launch" project="demo_template_website" name="Launch"
+                  priority="high" planned_hours="5" sequence="40" depends_on="demo_template_task_build"/>
+    <project_checklist_item id="demo_template_step_domain" task="demo_template_task_launch" name="Point the domain" sequence="10"/>
+    <project_checklist_item id="demo_template_step_analytics" task="demo_template_task_launch" name="Set up the analytics" sequence="20"/>
+
+    <project_task id="demo_task_kickoff" project="demo_project_migration" name="Kick-off meeting with the customer"
+                  assignees="base.user_admin,demo_user_julie" planned_hours="2" date_deadline="2026-09-26" sequence="10"/>
+    <project_task id="demo_task_mapping" project="demo_project_migration" name="Map the chart of accounts"
+                  assignees="demo_user_thomas" tags="demo_tag_migration" planned_hours="6" date_deadline="2026-09-30" sequence="20"/>
+    <project_task id="demo_task_customers" project="demo_project_migration" name="Migrate customer data"
+                  assignees="base.user_admin,demo_user_julie" tags="demo_tag_migration,demo_tag_data" priority="high"
+                  planned_hours="16" date_deadline="2026-10-05" sequence="30"
+                  description="Import the customers from the old system, merge the duplicates, check the delivery addresses."/>
+    <project_task id="demo_task_customers_dedupe" project="demo_project_migration" parent="demo_task_customers"
+                  name="Merge the duplicate customers" assignees="demo_user_julie" planned_hours="4"/>
+    <project_task id="demo_task_customers_addresses" project="demo_project_migration" parent="demo_task_customers"
+                  name="Check the delivery addresses" assignees="demo_user_julie" planned_hours="3"/>
+    <project_task id="demo_task_products" project="demo_project_migration" name="Migrate products and prices"
+                  assignees="demo_user_thomas" tags="demo_tag_data" planned_hours="10" date_deadline="2026-10-12" sequence="40"/>
+    <project_task id="demo_task_invoices" project="demo_project_migration" name="Open invoices and balances"
+                  assignees="base.user_admin" tags="demo_tag_migration" priority="urgent" planned_hours="8"
+                  date_deadline="2026-10-02" sequence="50"/>
+    <project_task id="demo_task_training" project="demo_project_migration" name="Train the sales team"
+                  depends_on="demo_task_products"
+                  assignees="demo_user_julie" tags="demo_tag_training" planned_hours="6" date_deadline="2026-11-05" sequence="60"/>
+    <project_task id="demo_task_golive" project="demo_project_migration" name="Go live"
+                  depends_on="demo_task_customers,demo_task_products,demo_task_invoices"
+                  assignees="base.user_admin,demo_user_thomas" planned_hours="4" date_deadline="2026-11-15" sequence="70"/>
+
+    <project_task id="demo_task_wireframes" project="demo_project_website" name="Wireframes of the home page"
+                  assignees="demo_user_julie" tags="demo_tag_design" planned_hours="8" date_deadline="2026-10-09" sequence="10"/>
+    <project_task id="demo_task_palette" project="demo_project_website" name="Colours and fonts"
+                  assignees="demo_user_julie" tags="demo_tag_design" planned_hours="4" sequence="20"/>
+    <project_task id="demo_task_catalogue" project="demo_project_website" name="Online catalogue"
+                  assignees="demo_user_thomas" priority="high" planned_hours="16" date_deadline="2026-11-20" sequence="30"/>
+    <project_task id="demo_task_contact_form" project="demo_project_website" name="Contact form sends no mail"
+                  assignees="demo_user_thomas" tags="demo_tag_bug" priority="urgent" planned_hours="2" sequence="40"/>
+
+    <project_task id="demo_task_backup" project="demo_project_internal" name="Nightly backups of the server"
+                  assignees="base.user_admin" planned_hours="3" sequence="10"/>
+    <project_task id="demo_task_onboarding" project="demo_project_internal" name="Onboarding checklist for newcomers"
+                  assignees="demo_user_julie" planned_hours="2" sequence="20"/>
+
+    <function model="project_task" name="action_next_stage"
+              ref="demo_task_kickoff,demo_task_mapping,demo_task_customers,demo_task_invoices,demo_task_wireframes,demo_task_palette,demo_task_customers_dedupe,demo_task_backup"/>
+    <function model="project_task" name="action_next_stage"
+              ref="demo_task_kickoff,demo_task_mapping,demo_task_palette,demo_task_customers_dedupe"/>
+    <function model="project_task" name="action_next_stage" ref="demo_task_kickoff,demo_task_mapping,demo_task_palette,demo_task_customers_dedupe"/>
+</erp>

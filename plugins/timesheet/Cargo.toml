@@ -1,0 +1,26 @@
+[package]
+name = "timesheet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+erp = { path = "../../erp" }
+code_gen = { path = "../../code_gen" }
+erp_search = { path = "../../erp_search" }
+erp_search_code_gen = { path = "../../erp_search_code_gen" }
+
+base = { path = "../base" }
+web = { path = "../web" }
+mail = { path = "../mail" }
+sequence = { path = "../sequence" }
+project = { path = "../project" }
+
+[build-dependencies]
+erp_assets_build = { path = "../../erp/erp_assets_build" }
+
+[lib]
+crate-type = ["dylib"]
+
+[dev-dependencies]
+serde_json.workspace = true
+erp_test_support = { path = "../test_support" }

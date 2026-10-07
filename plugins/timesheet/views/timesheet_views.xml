@@ -1,0 +1,118 @@
+<erp>
+    <view id="view_timesheet_list" name="timesheet.list" model="timesheet">
+        <list>
+            <field name="date"/>
+            <field name="user"/>
+            <field name="project"/>
+            <field name="task"/>
+            <field name="name"/>
+            <field name="hours" sum="1"/>
+        </list>
+    </view>
+    <view id="view_timesheet_form" name="timesheet.form" model="timesheet">
+        <form>
+            <block>
+                <block string="Time">
+                    <field name="date"/>
+                    <field name="user" no_create="1"/>
+                    <field name="hours"/>
+                </block>
+                <block string="On">
+                    <field name="project" no_create="1"/>
+                    <field name="task" no_create="1"/>
+                    <field name="name"/>
+                </block>
+            </block>
+        </form>
+    </view>
+    <view id="view_timesheet_search" name="timesheet.search" model="timesheet">
+        <search>
+            <field name="name"/>
+            <field name="user"/>
+            <field name="project"/>
+            <field name="task"/>
+            <filter name="mine" string="Mine" domain='[["user", "=", "$uid"]]'/>
+            <filter name="today" string="Today" domain='[["date", "=", "$today"]]'/>
+            <filter name="by_user" string="Employee" group_by="user"/>
+            <filter name="by_project" string="Project" group_by="project"/>
+            <filter name="by_task" string="Task" group_by="task"/>
+            <filter name="by_week" string="Week" group_by="date:week"/>
+        </search>
+    </view>
+    <action id="action_my_timesheets" name="My timesheets" model="timesheet" views="list,form"
+            domain='[["user", "=", "$uid"]]'/>
+    <action id="action_timesheets" name="All timesheets" model="timesheet" views="list,form"/>
+
+    <view id="view_task_form_timesheet" name="project_task.form.timesheet" inherit="project.view_task_form">
+        <xpath expr="//field[@name='planned_hours'][1]" position="after">
+            <field name="spent_hours"/>
+            <field name="timer_running" string="Timer" widget="timer"/>
+        </xpath>
+        <xpath expr="//page[@name='subtasks']" position="before">
+            <page name="timesheets" string="Timesheets">
+                <field name="timesheets" widget="list" nolabel="1"/>
+            </page>
+        </xpath>
+        <xpath expr="//block[@string='Planning']" position="inside">
+            <field name="spent_hours" readonly="1"/>
+            <field name="remaining_hours" readonly="1"/>
+            <field name="progress" readonly="1"/>
+        </xpath>
+    </view>
+    <view id="view_task_kanban_timesheet" name="project_task.kanban.timesheet" inherit="project.view_task_kanban">
+        <xpath expr="//muted[@name='subtasks']" position="after">
+            <muted invisible="!(planned_hours &gt; 0)"><field name="spent_hours"/> / <field name="planned_hours"/> h</muted>
+        </xpath>
+    </view>
+    <view id="view_task_list_timesheet" name="project_task.list.timesheet" inherit="project.view_task_list">
+        <xpath expr="//field[@name='date_deadline'][1]" position="after">
+            <field name="planned_hours"/>
+            <field name="spent_hours"/>
+            <field name="progress"/>
+        </xpath>
+    </view>
+    <view id="view_project_form_timesheet" name="project_project.form.timesheet" inherit="project.view_project_form">
+        <xpath expr="//field[@name='planned_hours'][1]" position="after">
+            <field name="spent_hours"/>
+            <field name="remaining_hours"/>
+            <field name="progress" widget="progress"/>
+        </xpath>
+        <xpath expr="//related" position="inside">
+            <link name="timesheets" action="timesheet.action_timesheets" icon="clock"/>
+        </xpath>
+        <xpath expr="//page[@name='tasks']" position="after">
+            <page name="timesheets" string="Timesheets">
+                <field name="timesheets" widget="list" nolabel="1"/>
+            </page>
+        </xpath>
+    </view>
+    <view id="view_project_kanban_timesheet" name="project_project.kanban.timesheet" inherit="project.view_project_kanban">
+        <xpath expr="//card" position="inside">
+            <row invisible="!(planned_hours &gt; 0)">
+                <field name="progress" widget="progress"/>
+            </row>
+            <row invisible="!(planned_hours &gt; 0)">
+                <muted><field name="spent_hours"/> / <field name="planned_hours"/> h spent</muted>
+                <spacer/>
+                <muted><field name="remaining_hours"/> h left</muted>
+            </row>
+        </xpath>
+    </view>
+    <view id="view_timer_stop_form" name="timesheet_timer_stop.form" model="timesheet_timer_stop">
+        <form>
+            <h2>Log the time</h2>
+            <block>
+                <field name="elapsed" placeholder="1:30"/>
+                <field name="project" no_create="1" placeholder="Search a project…"/>
+                <field name="task" string="Task — optional" no_create="1" placeholder="Search a task of the project…"
+                       domain="project ? [['project', '=', project]] : []"/>
+                <field name="name"/>
+            </block>
+            <footer>
+                <button name="action_log" type="method" string="Log the time" highlight="1"/>
+                <button name="action_discard" type="method" string="Discard"/>
+                <button name="action_keep" type="method" string="Keep running"/>
+            </footer>
+        </form>
+    </view>
+</erp>

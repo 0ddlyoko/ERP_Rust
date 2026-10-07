@@ -1,0 +1,11 @@
+<erp>
+    <product id="demo_consulting" name="Consulting" default_code="SRV-CONS" category="product.category_services"
+             product_type="service" list_price="95" standard_price="0" uom="uom.uom_hour" purchase_uom="uom.uom_hour"
+             purchase_ok="false" invoice_policy="delivery" service_tracking="project"/>
+    <sale_order id="demo_order_consulting" partner="base.demo_techno" date_order="2026-10-02" user="base.user_admin"/>
+    <sale_order_line id="demo_order_consulting_line_1" order="demo_order_consulting" sequence="10"
+                     product="demo_consulting" product_uom_qty="24" name="Analysis of the sales process"/>
+    <sale_order_line id="demo_order_consulting_line_2" order="demo_order_consulting" sequence="20"
+                     product="demo_consulting" product_uom_qty="12" name="Workshops with the sales team"/>
+    <function model="sale_order" name="action_confirm" ref="demo_order_consulting"/>
+</erp>

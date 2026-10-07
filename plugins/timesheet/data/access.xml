@@ -1,0 +1,47 @@
+<erp>
+    <access_rule id="access_timesheet_user">
+        <name>timesheet: user</name>
+        <model>timesheet</model>
+        <group ref="project.group_project_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_timesheet_manager">
+        <name>timesheet: manager</name>
+        <model>timesheet</model>
+        <group ref="project.group_project_manager"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_timesheet_admin">
+        <name>timesheet: admin</name>
+        <model>timesheet</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_timesheet_timer_stop_user">
+        <name>timesheet_timer_stop: user</name>
+        <model>timesheet_timer_stop</model>
+        <group ref="project.group_project_user"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+    <access_rule id="access_timesheet_timer_stop_admin">
+        <name>timesheet_timer_stop: admin</name>
+        <model>timesheet_timer_stop</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

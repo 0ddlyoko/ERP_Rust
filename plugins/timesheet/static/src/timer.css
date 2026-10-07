@@ -1,0 +1,145 @@
+.o_timer_tray {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    white-space: nowrap;
+}
+
+.o_timer_running.o_timer_tray {
+    padding: 4px 6px 4px 10px;
+    border-radius: var(--o-radius-row);
+    background: var(--o-side-raised);
+}
+
+.o_timer_narrow.o_timer_tray {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0;
+}
+
+.o_timer_dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--o-danger);
+    animation: o_timer_pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes o_timer_pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.o_timer_what {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.o_timer_elapsed {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.o_timer_narrow .o_timer_elapsed {
+    font-size: 11px;
+}
+
+.o_timer_task {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--o-side-muted);
+}
+
+.o_timer_button,
+.o_timer_start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.o_timer_button {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    color: var(--o-danger);
+}
+
+.o_timer_start {
+    width: 100%;
+    padding: 8px 10px;
+    color: var(--o-side-muted);
+}
+
+.o_timer_narrow .o_timer_start {
+    padding: 8px 0;
+}
+
+.o_timer_button:hover,
+.o_timer_start:hover {
+    background: var(--o-side-raised);
+    color: var(--o-side-ink);
+}
+
+
+
+.o_timer_widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.14);
+    color: inherit;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.o_timer_widget:hover {
+    background: rgb(255 255 255 / 0.24);
+}
+
+.o_timer_widget.o_timer_running {
+    background: var(--o-danger);
+    color: #fff;
+}
+
+
+.o_timer_open {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_timer_narrow .o_timer_open {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.o_timer_running.o_timer_tray:hover {
+    background: color-mix(in oklch, var(--o-side-raised) 100%, white 6%);
+}
