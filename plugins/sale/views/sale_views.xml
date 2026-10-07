@@ -122,7 +122,7 @@
             </pages>
             <side>
                 <block string="Status">
-                    <field name="state" widget="statusbar" visible="draft,sent,sale" nolabel="1" readonly="1"/>
+                    <field name="state" widget="statusbar_durations" visible="draft,sent,sale" nolabel="1" readonly="1"/>
                     <field name="invoice_status" readonly="1" invisible="state !== 'sale'"/>
                 </block>
                 <chatter/>

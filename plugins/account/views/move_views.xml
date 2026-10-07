@@ -135,7 +135,7 @@
             </pages>
             <side>
                 <block string="Status">
-                    <field name="state" widget="statusbar" visible="draft,posted" nolabel="1" readonly="1"/>
+                    <field name="state" widget="statusbar_durations" visible="draft,posted" nolabel="1" readonly="1"/>
                     <field name="payment_state" readonly="1" invisible="move_type === 'entry'"/>
                 </block>
                 <block string="Amounts" invisible="move_type !== 'entry'">
