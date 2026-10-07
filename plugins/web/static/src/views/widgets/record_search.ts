@@ -16,7 +16,8 @@ export type Entry = { kind: "pick"; choice: Choice } | { kind: "create" | "creat
  * Entering it lists the first records at once; typing searches them by name, once typing pauses.
  * One is chosen with the mouse, or the arrows and Enter. Shows `text` while the user is not
  * typing; `onEmpty` is called as soon as they empty it. With `onCreate` or `onCreateEdit`, what
- * is typed can also become a new record: created at once, or in a form first.
+ * is typed can also become a new record: created at once, or in a form first. `onBackspace` is
+ * called on Backspace in an empty input: a tags field removes its last tag.
  */
 export class RecordSearch extends Component {
     static template = "web.RecordSearch";
@@ -33,6 +34,7 @@ export class RecordSearch extends Component {
         onEmpty: t.func<() => void>().optional(),
         onCreate: t.func<(name: string) => void>().optional(),
         onCreateEdit: t.func<(name: string) => void>().optional(),
+        onBackspace: t.func<() => void>().optional(),
     });
 
     @inject(Orm) orm!: Orm;
@@ -133,6 +135,15 @@ export class RecordSearch extends Component {
         void this.search("");
     }
 
+    /** A click on the input still focused after a pick lists the records again. */
+    reopen(): void {
+        if (this.isOpen) {
+            return;
+        }
+        this.isOpen = true;
+        void this.search("");
+    }
+
     /** Typing searches once it pauses; emptying the input says so at once. */
     type(text: string): void {
         this.query = text;
@@ -201,6 +212,8 @@ export class RecordSearch extends Component {
             if (entry !== undefined) {
                 this.choose(entry);
             }
+        } else if (event.key === "Backspace" && this.inputText === "") {
+            this.props.onBackspace?.();
         } else if (event.key === "Escape" && this.isOpen) {
             event.preventDefault();
             this.close();

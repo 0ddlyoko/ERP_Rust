@@ -8,7 +8,7 @@
             <input type="text" class="o_input" role="combobox" aria-autocomplete="list" t-ref="input"
                    t-att-aria-expanded="isOpen ? 'true' : 'false'" t-att-value="inputText"
                    t-att-placeholder="props.placeholder"
-                   t-on-focus="(ev) => enter(ev.target)"
+                   t-on-focus="(ev) => enter(ev.target)" t-on-click="reopen"
                    t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
                    t-on-blur="close"/>
             <Portal t-if="isOpen" target="'body'">

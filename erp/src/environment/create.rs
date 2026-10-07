@@ -1,7 +1,7 @@
 //! Creating records and applying default values.
 use super::*;
 use crate::access::{Access, AccessDenied, Operation};
-use crate::model::{CREATE, CreateArgs};
+use crate::model::{CREATE, CreateArgs, DEFAULT_GET, DefaultGetArgs};
 use crate::model::{CREATE_DATE, CREATE_UID, WRITE_DATE, WRITE_UID};
 use chrono::Utc;
 use erp_internal_types::{FinalInternalField, FinalInternalModel};
@@ -37,18 +37,51 @@ impl<'mm> Environment<'mm> {
     /// A one2many or a many2many may be given commands: its lines are created once the record
     /// exists, pointing back to it.
     ///
-    /// Goes through the model's `create`, so what a plugin overrode there runs.
+    /// Goes through the model's `default_get` for the fields left out that declare no default and
+    /// are not computed, then its `create`, so what a plugin overrode there runs. A declared
+    /// default is filled after `create`, as before: an override still sees what was left out.
     pub fn create_records(
         &mut self,
         model_name: &str,
         data: Vec<MapOfFields>,
     ) -> Result<MultipleIds> {
-        self.model_manager.try_get_model(model_name)?;
+        let model = self.model_manager.try_get_model(model_name)?;
+        let all: Vec<String> = model
+            .fields
+            .iter()
+            .filter(|(_, field)| field.compute.is_none() && field.default_value.is_none())
+            .map(|(name, _)| name.clone())
+            .collect();
+        let mut data = data;
+        for values in &mut data {
+            let missing: Vec<String> = all
+                .iter()
+                .filter(|name| !values.contains_key(name))
+                .cloned()
+                .collect();
+            for (name, value) in self.default_get(model_name, missing)?.fields {
+                if value.is_some() {
+                    values.insert_option(&name, value);
+                }
+            }
+        }
         self.call_method::<CreateArgs, MultipleIds>(
             model_name,
             CREATE,
             &MultipleIds::default(),
             &(data,),
+        )
+    }
+
+    /// What a new record of the model starts with, for these fields: through the model's
+    /// `default_get`, so a plugin may give a starting value no field can declare, such as today.
+    pub fn default_get(&mut self, model_name: &str, fields: Vec<String>) -> Result<MapOfFields> {
+        self.model_manager.try_get_model(model_name)?;
+        self.call_method::<DefaultGetArgs, MapOfFields>(
+            model_name,
+            DEFAULT_GET,
+            &MultipleIds::default(),
+            &(fields,),
         )
     }
 

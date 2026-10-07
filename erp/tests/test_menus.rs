@@ -119,6 +119,7 @@ fn test_the_administrator_sees_the_settings() -> Result<()> {
             "model": "users",
             "views": ["list", "form"],
             "domain": [],
+            "defaults": {},
             "res_id": null,
         })
     );

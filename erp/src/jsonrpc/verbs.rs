@@ -37,6 +37,7 @@ pub enum Verb {
     Write,
     Delete,
     FieldsGet,
+    DefaultGet,
     Names,
     NameSearch,
     NameCreate,
@@ -56,6 +57,7 @@ impl Verb {
         Verb::Write,
         Verb::Delete,
         Verb::FieldsGet,
+        Verb::DefaultGet,
         Verb::Names,
         Verb::NameSearch,
         Verb::NameCreate,
@@ -74,6 +76,7 @@ impl Verb {
             Verb::Write => "write",
             Verb::Delete => "delete",
             Verb::FieldsGet => "fields_get",
+            Verb::DefaultGet => "default_get",
             Verb::Names => "names",
             Verb::NameSearch => "name_search",
             Verb::NameCreate => "name_create",
@@ -103,6 +106,7 @@ impl Verb {
             Verb::Write => |env, model, params| dispatch(env, model, Verb::Write, params),
             Verb::Delete => |env, model, params| dispatch(env, model, Verb::Delete, params),
             Verb::FieldsGet => |env, model, params| dispatch(env, model, Verb::FieldsGet, params),
+            Verb::DefaultGet => |env, model, params| dispatch(env, model, Verb::DefaultGet, params),
             Verb::Names => |env, model, params| dispatch(env, model, Verb::Names, params),
             Verb::NameSearch => |env, model, params| dispatch(env, model, Verb::NameSearch, params),
             Verb::NameCreate => |env, model, params| dispatch(env, model, Verb::NameCreate, params),
@@ -611,6 +615,10 @@ fn dispatch(env: &mut Environment, model_name: &str, verb: Verb, params: &Value)
             let FieldsGetParams { fields } = parse(params)?;
             fields_get(env, model_name, &fields)
         }
+        Verb::DefaultGet => {
+            let FieldsGetParams { fields } = parse(params)?;
+            default_get(env, model_name, &fields)
+        }
         Verb::NameSearch => {
             let NameSearchParams {
                 text,
@@ -691,6 +699,22 @@ fn fields_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Resu
         described.insert(name, description);
     }
     Ok(Value::Object(described))
+}
+
+/// What a new record starts with, for the fields asked that are not private: a record pointed to
+/// as `[id, name]`. Only for a caller who may create one.
+fn default_get(env: &mut Environment, model_name: &str, asked: &[String]) -> Result<Value> {
+    env.check_model_access(model_name, Operation::Create)?;
+    let model = env.model_manager.try_get_model(model_name)?;
+    let fields: Vec<String> = asked
+        .iter()
+        .filter(|name| model.fields.get(*name).is_some_and(|field| !field.private))
+        .cloned()
+        .collect();
+    let defaults = env.default_get(model_name, fields.clone())?;
+    let mut rows = json!([serde_json::to_value(defaults)?]);
+    name_references(env, model_name, &fields, &mut rows)?;
+    Ok(rows[0].take())
 }
 
 /// Write every record these rows point to as `[id, name]`, the name `null` when the caller may

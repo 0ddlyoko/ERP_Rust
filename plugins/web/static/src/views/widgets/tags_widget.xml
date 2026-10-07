@@ -1,6 +1,7 @@
 <templates>
     <t t-name="web.TagsWidget">
-        <div t-att-class="className + ' o_tags'">
+        <div t-att-class="className + ' o_tags' + (editable ? ' o_tags_editable' : '')"
+             t-on-click="(ev) => editable &amp;&amp; ev.currentTarget.querySelector('input')?.focus()">
             <span t-foreach="entries" t-as="tag" t-key="tag.key" class="o_tag">
                 {{ nameOf(tag) }}
                 <button t-if="editable" type="button" class="o_tag_remove" t-on-click="() => remove(tag.key)"
@@ -9,7 +10,8 @@
                          stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
                 </button>
             </span>
-            <RecordSearch t-if="editable" model="relation" exclude="ids" domain="domain" onPick="add" placeholder="'Add…'"
+            <RecordSearch t-if="editable" model="relation" exclude="ids" domain="domain" onPick="add" placeholder="entries.length ? '' : 'Add…'"
+                          onBackspace="removeLast"
                           onCreate="canCreate ? create : undefined"
                           onCreateEdit="canCreate &amp;&amp; !isOne2Many ? createEdit : undefined"/>
             <FormDialog t-if="creating" model="relation" defaults="creating" onCreated="created" onClose="closeDialog"/>

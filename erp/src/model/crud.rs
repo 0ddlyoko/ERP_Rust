@@ -1,6 +1,6 @@
-//! `create`, `write` and `delete`, overridable on every model.
+//! `default_get`, `create`, `write` and `delete`, overridable on every model.
 //!
-//! Every model gets the three at the bottom of its chains, doing what the ORM does; a plugin
+//! Every model gets the four at the bottom of its chains, doing what the ORM does; a plugin
 //! overrides them like any method of an `#[erp_methods]` block, reaching the implementation below
 //! through `sup` — to change the values before, or act on the records after.
 
@@ -14,10 +14,14 @@ use std::error::Error;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+pub const DEFAULT_GET: &str = "default_get";
 pub const CREATE: &str = "create";
 pub const WRITE: &str = "write";
 pub const DELETE: &str = "delete";
 
+/// What `default_get` takes: the fields whose starting values are asked. It answers those that
+/// have one.
+pub type DefaultGetArgs = (Vec<String>,);
 /// What `create` takes: the values of each record to create. It answers the records created.
 pub type CreateArgs = (Vec<MapOfFields>,);
 /// What `write` takes: the values to write to every record.
@@ -25,7 +29,8 @@ pub type WriteArgs = (MapOfFields,);
 /// What `delete` takes: nothing but the records. It answers how many went.
 pub type DeleteArgs = ();
 
-/// Put the ORM's own `create`, `write` and `delete` at the bottom of a model's chains, once.
+/// Put the ORM's own `default_get`, `create`, `write` and `delete` at the bottom of a model's
+/// chains, once.
 pub(crate) fn register_crud<M>(model_manager: &mut ModelManager)
 where
     M: Model<MultipleIds> + 'static,
@@ -37,6 +42,13 @@ where
     if registered {
         return;
     }
+    model_manager.register_method::<DefaultGetArgs, MapOfFields>(
+        model_name,
+        DEFAULT_GET,
+        base_default_get::<M>,
+        Receiver::Model,
+        "erp",
+    );
     model_manager.register_method::<CreateArgs, MultipleIds>(
         model_name,
         CREATE,
@@ -58,6 +70,27 @@ where
         Receiver::Records,
         "erp",
     );
+}
+
+/// The defaults the fields declare: `#[erp(default = …)]`.
+fn base_default_get<M>(
+    _: MultipleIds,
+    env: &mut dyn ErasedEnvironment,
+    args: &DefaultGetArgs,
+    _: Super<'_, DefaultGetArgs, MapOfFields>,
+) -> Result<MapOfFields>
+where
+    M: Model<MultipleIds>,
+{
+    let env = Environment::from_erased(env);
+    let model = env.model_manager.try_get_model(M::_get_model_name())?;
+    let mut defaults = MapOfFields::default();
+    for name in &args.0 {
+        if let Some(value) = model.fields.get(name).and_then(|field| field.default_value.clone()) {
+            defaults.insert_field_type(name, value);
+        }
+    }
+    Ok(defaults)
 }
 
 fn base_create<M>(

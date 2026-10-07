@@ -45,7 +45,13 @@ pub struct SaleOrder<Mode: IdMode> {
     partner: Reference<BaseContact, SingleId>,
     #[erp(label = "Order date", tracking, index)]
     date_order: NaiveDate,
-    #[erp(label = "Valid until")]
+    #[erp(
+        label = "Valid until",
+        compute = "compute_validity_date",
+        depends = ["date_order"],
+        stored,
+        editable
+    )]
     validity_date: Option<NaiveDate>,
     #[erp(label = "Status", tracking, index)]
     state: SaleState,
@@ -215,6 +221,15 @@ impl SaleOrder<SingleId> {
 
 #[erp_methods]
 impl SaleOrder<MultipleIds> {
+    /// A quotation is valid a month from its date.
+    pub fn compute_validity_date(&self, env: &mut Environment) -> Result<()> {
+        for order in self {
+            let date = *order.get_date_order(env)?;
+            order.set_validity_date(Some(date + TimeDelta::days(30)), env)?;
+        }
+        Ok(())
+    }
+
     /// The customer's pricelist.
     pub fn compute_pricelist(&self, env: &mut Environment) -> Result<()> {
         for order in self {
@@ -345,26 +360,39 @@ impl SaleOrder<MultipleIds> {
         Ok(())
     }
 
-    /// A quotation is numbered when created, dated today, valid a month, and made by its
-    /// creator.
+    /// A quotation starts dated today, and made by whoever creates it.
+    pub fn default_get(
+        env: &mut Environment,
+        fields: Vec<String>,
+        sup: Super,
+    ) -> Result<MapOfFields> {
+        let mut defaults = sup.call_with(fields.clone(), env)?;
+        let today = Utc::now().date_naive();
+        let asked = |name: &str| fields.iter().any(|field| field == name);
+        if asked("date_order") {
+            defaults.insert("date_order", today);
+        }
+        if asked("user")
+            && let Some(uid) = env.uid()
+        {
+            defaults.insert("user", uid);
+        }
+        Ok(defaults)
+    }
+
+    /// A quotation is numbered when created, in the sequence of the year it is dated.
     pub fn create(
         &self,
         env: &mut Environment,
         values: Vec<MapOfFields>,
         sup: Super,
     ) -> Result<MultipleIds> {
-        let today = Utc::now().date_naive();
         let mut values = values;
         for order in &mut values {
-            if order.get_option::<&NaiveDate>("date_order").is_none() {
-                order.insert("date_order", today);
-            }
-            let date = *order
+            let date = order
                 .get_option::<&NaiveDate>("date_order")
-                .expect("just set");
-            if !order.contains_key("validity_date") {
-                order.insert("validity_date", date + TimeDelta::days(30));
-            }
+                .copied()
+                .unwrap_or_else(|| Utc::now().date_naive());
             if order
                 .get_option::<&String>("name")
                 .is_none_or(|name| name == "New")
@@ -373,11 +401,6 @@ impl SaleOrder<MultipleIds> {
                     "name",
                     Sequence::next_by_code(env, "sale.order".to_string(), date)?,
                 );
-            }
-            if !order.contains_key("user")
-                && let Some(uid) = env.uid()
-            {
-                order.insert("user", uid);
             }
         }
         sup.call_with(values, env)

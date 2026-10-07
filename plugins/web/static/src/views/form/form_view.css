@@ -283,26 +283,55 @@
 }
 
 .o_many2one {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 6px;
 }
 
 .o_many2one .o_record_search {
     flex-grow: 1;
 }
 
+.o_many2one_openable .o_record_search .o_input {
+    padding-right: 36px;
+}
+
 .o_many2one_open {
+    position: absolute;
+    right: 6px;
+    top: 50%;
     display: flex;
-    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: var(--o-control-height);
-    height: var(--o-control-height);
-    border: 1px solid var(--o-input-border);
-    border-radius: var(--o-radius-control);
-    background: var(--o-surface);
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: var(--o-muted);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.o_many2one_link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--o-accent);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_many2one_link:hover {
+    text-decoration: underline;
+}
+
+.o_many2one_open:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+    color: var(--o-accent);
 }
 
 .o_contact {
@@ -465,6 +494,38 @@ span.o_text {
 
 .o_tags .o_record_search {
     flex: 1 0 160px;
+}
+
+.o_tags_editable {
+    box-sizing: border-box;
+    min-height: var(--o-control-height);
+    padding: 4px 6px 4px 8px;
+    gap: 4px;
+    border: 1px solid var(--o-input-border);
+    border-radius: var(--o-radius-control);
+    background: var(--o-surface);
+    cursor: text;
+}
+
+.o_tags_editable:focus-within {
+    border-color: var(--o-accent);
+    outline: 2px solid color-mix(in oklch, var(--o-accent) 25%, white);
+}
+
+.o_tags_editable .o_record_search {
+    flex: 1 0 80px;
+}
+
+.o_tags_editable .o_record_search_icon {
+    display: none;
+}
+
+.o_tags_editable .o_record_search .o_input {
+    height: 28px;
+    padding: 0 4px;
+    border: 0;
+    outline: none;
+    background: transparent;
 }
 
 .o_x2many_list {
@@ -1050,6 +1111,10 @@ button.o_statusbar_label:hover {
 .o_leader_tile_value .o_widget {
     display: block;
     min-height: 0;
+}
+
+.o_leader_tile_value .o_many2one_link {
+    color: inherit;
 }
 
 .o_leader_tiles {

@@ -6,7 +6,9 @@ mod rpc;
 mod selections;
 
 pub(crate) use crud::register_crud;
-pub use crud::{CREATE, CreateArgs, DELETE, DeleteArgs, ModelVerbs, WRITE, WriteArgs};
+pub use crud::{
+    CREATE, CreateArgs, DEFAULT_GET, DELETE, DefaultGetArgs, DeleteArgs, ModelVerbs, WRITE, WriteArgs,
+};
 pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;

@@ -43,6 +43,14 @@ export class TagsWidget extends X2ManyWidget {
         return this.props.field.relation_kind === "one2many";
     }
 
+    /** Backspace in the empty search removes the last tag, as in a mail's recipients. */
+    readonly removeLast = (): void => {
+        const last = this.entries.at(-1);
+        if (last !== undefined) {
+            this.remove(last.key);
+        }
+    };
+
     readonly create = async (name: string): Promise<void> => {
         if (this.isOne2Many) {
             this.addDraft(await nameDefaults(this.models, this.relation, name));

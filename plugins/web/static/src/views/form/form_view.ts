@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state, t } from "trame";
+import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, registry, resource, state, t, untrack } from "trame";
 import { avatarStyleOf, initialsOf } from "@web/core/avatar";
 import { listMemory } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
@@ -86,7 +86,7 @@ export class FormView extends View {
     /** The form's body, set by its template. */
     element: HTMLElement | null = null;
 
-    /** The record as read, or its fields' defaults for one not created yet. */
+    /** The record as read, or what the server says one not created yet starts with. */
     @resource accessor record: Values = load(
         () => ({
             model: this.props.resModel,
@@ -95,9 +95,9 @@ export class FormView extends View {
             fields: this.fields,
             defaults: this.props.defaults,
         }),
-        async ({ model, id, names, fields, defaults }) =>
+        async ({ model, id, names, defaults }) =>
             id === undefined
-                ? { ...defaultsOf(fields, names), ...defaults }
+                ? { ...(await this.orm.defaultGet(model, names.filter((name) => name !== "id"))), ...defaults }
                 : this.read(model, id, names),
     );
 
@@ -200,6 +200,13 @@ export class FormView extends View {
         return () => {
             this.breadcrumb.record = null;
         };
+    }
+
+    /** A new record shows at once what the server computes from what it starts with. */
+    @effect computeNew(): void {
+        if (this.isNew && this.record !== undefined && this.fields !== undefined) {
+            untrack(() => void this.onchange());
+        }
     }
 
     /** While changes are not saved, closing or reloading the page asks the browser to confirm. */
@@ -683,13 +690,6 @@ function asSent(value: unknown): unknown {
         return value.map((item) => (item as [number, unknown])[0]);
     }
     return value;
-}
-
-/** A new record's values: each field's default, for the fields the form shows. */
-function defaultsOf(fields: Fields, names: string[]): Values {
-    return Object.fromEntries(
-        names.filter((name) => name !== "id" && fields[name]?.default !== undefined).map((name) => [name, fields[name].default]),
-    );
 }
 
 viewKinds.add("form", FormView);

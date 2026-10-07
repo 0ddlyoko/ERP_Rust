@@ -1,17 +1,19 @@
 <templates>
     <t t-name="web.Many2OneWidget">
-        <div t-if="editable" t-att-class="className + ' o_many2one'">
+        <div t-if="editable" t-att-class="className + ' o_many2one' + (canOpen ? ' o_many2one_openable' : '')">
             <RecordSearch model="relation" text="text" domain="domain" onPick="pick" onEmpty="clear"
                           onCreate="canCreate ? create : undefined" onCreateEdit="canCreate ? createEdit : undefined"/>
             <FormDialog t-if="creating" model="relation" defaults="creating" onCreated="created" onClose="closeDialog"/>
-            <button t-if="openAction !== null &amp;&amp; id !== null" type="button" class="o_many2one_open"
+            <button t-if="canOpen" type="button" class="o_many2one_open"
                     aria-label="Open the record" title="Open the record" t-on-click="openRecord">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
                 </svg>
             </button>
         </div>
+        <button t-elif="props.linksRecord &amp;&amp; canOpen" type="button" t-att-class="className + ' o_many2one_link'"
+                t-on-click="openRecord">{{ text }}</button>
         <span t-else="" t-att-class="className">{{ text }}</span>
     </t>
 </templates>

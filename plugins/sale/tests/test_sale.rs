@@ -705,3 +705,21 @@ fn test_a_new_record_starts_with_its_action_defaults() -> Result<()> {
     assert_eq!(orders["defaults"], json!({}));
     Ok(())
 }
+
+/// A new quotation starts dated today and made by whoever opens it: what a form shows before
+/// saving, and what a quotation created without them gets.
+#[test]
+fn test_a_new_quotation_starts_today() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let today = erp::types::field::Utc::now().date_naive();
+    let defaults = env.call_rpc(
+        "sale_order",
+        "default_get",
+        &json!({"fields": ["date_order", "user", "state"]}),
+    )?;
+    assert_eq!(defaults["date_order"], json!(today.to_string()));
+    assert_eq!(defaults["user"][0], json!(env.uid()));
+    assert_eq!(defaults["state"], json!("draft"));
+    Ok(())
+}

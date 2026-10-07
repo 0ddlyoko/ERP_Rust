@@ -15,6 +15,8 @@ export const widgetProps = {
     attrs: t.object().default({}),
     /** Shown only; editing is for views that edit, such as a form. */
     readonly: t.boolean().default(true),
+    /** Shown only, a record the field points to opens on a click: in a form, not in a list's row. */
+    linksRecord: t.boolean().default(false),
     /** Called with the new value when the user changes it. */
     onChange: t.func<(value: unknown) => void>().optional(),
     /** What the server computed for the records the field holds, by their key, before saving. */

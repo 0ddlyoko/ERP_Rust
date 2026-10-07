@@ -93,7 +93,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         const editable = readonly === null ? `${column}.field.readonly` : `${column}.field.readonly || !!(${readonly})`;
         return (
             `<t t-component="__form.widgetFor(${column})" record="__form.current" model="__form.props.resModel" name="${column}.name" ` +
-            `field="${column}.field" attrs="${column}.attrs" readonly="${escape(editable)}" ` +
+            `field="${column}.field" attrs="${column}.attrs" readonly="${escape(editable)}" linksRecord="true" ` +
             `onChange="__form.changer(${column}.name)" computed="__form.computedLines[${column}.name] ?? {}" ` +
             `computeErrors="__form.lineErrors[${column}.name] ?? {}"/>`
         );

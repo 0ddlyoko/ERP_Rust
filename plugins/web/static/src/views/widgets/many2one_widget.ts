@@ -9,13 +9,14 @@ import { type Choice, RecordSearch } from "./record_search";
 import { Widget, widgetProps, widgets } from "./widget";
 
 /**
- * The record a many2one points to: its name when the view read it with names, as `[id, name]`;
- * its id otherwise, or when the user may not read it.
+ * The record a many2one points to: its name when the view read it with names, as `[id, name]`; its
+ * id otherwise, or when the user may not read it.
  *
- * Where a view edits it, it is chosen by searching ([`RecordSearch`](./record_search.ts));
- * emptying it clears it. Its record opens in a form when a menu leads to its model, the record
- * left in the breadcrumb. A name matching nothing can become a new record — at once, or through a
- * form in a dialog — unless the field's element says `no_create="1"`.
+ * Where a view edits it, it is chosen by searching ([`RecordSearch`](./record_search.ts)); emptying
+ * it clears it. Its record opens in a form when a menu leads to its model, the record left in the
+ * breadcrumb — from a form, a click on it opens it too when shown only. A name matching nothing can
+ * become a new record — at once, or through a form in a dialog — unless the field's element says
+ * `no_create="1"`.
  */
 export class Many2OneWidget extends Widget {
     static override template = "web.Many2OneWidget";
@@ -52,6 +53,10 @@ export class Many2OneWidget extends Widget {
     /** The action a menu opens on the model pointed to, to open its record with. */
     get openAction(): string | null {
         return actionFor(this.menus.tree ?? [], this.props.field.relation);
+    }
+
+    get canOpen(): boolean {
+        return this.openAction !== null && this.id !== null;
     }
 
     readonly pick = (choice: Choice): void => {

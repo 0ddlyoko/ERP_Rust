@@ -109,6 +109,14 @@ export class Orm {
         return this.rpc.call(`${model}.read_group`, { domain, group_by: groupBy ?? undefined, sums });
     }
 
+    /**
+     * What a new record starts with, for these fields: those its model gives a value, a record
+     * pointed to as `[id, name]`.
+     */
+    defaultGet(model: string, fields: string[]): Promise<Values> {
+        return this.rpc.call(`${model}.default_get`, { fields });
+    }
+
     /** Create one record, or several; resolves with their ids. */
     create(model: string, values: Values | Values[]): Promise<number[]> {
         return this.rpc.call(`${model}.create`, { values });
