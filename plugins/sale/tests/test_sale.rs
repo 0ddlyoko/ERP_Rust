@@ -688,3 +688,20 @@ fn test_loading_again() -> Result<()> {
     assert!(arch.contains("pricelist"), "{arch}");
     Ok(())
 }
+
+/// A record created from an action starts with what the action declares, not with what its domain
+/// filters on: a new customer invoice is one, a new order opened from the confirmed ones a quotation.
+#[test]
+fn test_a_new_record_starts_with_its_action_defaults() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let load = |env: &mut Environment, xml_id: &str| {
+        env.call_rpc("action", "load", &json!({ "ids": [], "args": { "xml_id": xml_id } }))
+    };
+    let invoices = load(&mut env, "account.action_move_out_invoice")?;
+    assert_eq!(invoices["defaults"], json!({"move_type": "out_invoice"}));
+    let orders = load(&mut env, "sale.action_orders")?;
+    assert_eq!(orders["domain"], json!([["state", "=", "sale"]]));
+    assert_eq!(orders["defaults"], json!({}));
+    Ok(())
+}

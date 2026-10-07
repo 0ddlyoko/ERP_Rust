@@ -164,15 +164,20 @@
         </search>
     </view>
     <action id="action_move_out_invoice" name="Invoices" model="account_move" views="list,form"
-            domain='[["move_type", "=", "out_invoice"]]'/>
+            domain='[["move_type", "=", "out_invoice"]]'
+            defaults='{"move_type": "out_invoice"}'/>
     <action id="action_move_out_refund" name="Credit notes" model="account_move" views="list,form"
-            domain='[["move_type", "=", "out_refund"]]'/>
+            domain='[["move_type", "=", "out_refund"]]'
+            defaults='{"move_type": "out_refund"}'/>
     <action id="action_move_in_invoice" name="Bills" model="account_move" views="list,form"
-            domain='[["move_type", "=", "in_invoice"]]'/>
+            domain='[["move_type", "=", "in_invoice"]]'
+            defaults='{"move_type": "in_invoice"}'/>
     <action id="action_move_in_refund" name="Refunds" model="account_move" views="list,form"
-            domain='[["move_type", "=", "in_refund"]]'/>
+            domain='[["move_type", "=", "in_refund"]]'
+            defaults='{"move_type": "in_refund"}'/>
     <action id="action_move_journal_entries" name="Journal entries" model="account_move" views="list,form"
-            domain='[["move_type", "=", "entry"]]'/>
+            domain='[["move_type", "=", "entry"]]'
+            defaults='{"move_type": "entry"}'/>
 
     <view id="view_invoice_line_list" name="account_invoice_line.list" model="account_invoice_line">
         <list>

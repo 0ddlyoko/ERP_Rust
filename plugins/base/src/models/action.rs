@@ -10,8 +10,10 @@ use std::collections::HashMap;
 /// What opening something in a client does: show a model's records.
 ///
 /// `views` lists the kinds of views a client offers, the first one shown: `list,form`. `domain`
-/// narrows the records, as JSON in the form a caller sends; all of them when left out. `record`
-/// names, by its external identifier, the one record it opens, such as the settings.
+/// narrows the records, as JSON in the form a caller sends; all of them when left out. `defaults`
+/// gives, as a JSON object, the values a record created from it starts with: the `move_type` of a
+/// customer invoice. `record` names, by its external identifier, the one record it opens, such as
+/// the settings.
 #[derive(Model)]
 #[erp(id = "action", methods)]
 #[allow(dead_code)]
@@ -22,13 +24,15 @@ pub struct Action<Mode: IdMode> {
     #[erp(default = "list,form")]
     views: String,
     domain: Option<String>,
+    defaults: Option<String>,
     record: Option<String>,
 }
 
 #[erp_methods]
 impl Action<SingleId> {
     /// What a client needs to open it: its external identifier — what a link names it by — its
-    /// model, its kinds of views in order, its domain, and the record it opens, if one.
+    /// model, its kinds of views in order, its domain, the values a record created from it starts
+    /// with, and the record it opens, if one.
     pub fn describe(&self, env: &mut Environment) -> Result<Value> {
         let xml_id = data::external_id_of(env, "action", self.get_id())?;
         self.describe_as(env, xml_id)
@@ -43,6 +47,18 @@ impl Action<SingleId> {
                 )
             })?,
             None => json!([]),
+        };
+        let defaults: Value = match self.get_defaults(env)? {
+            Some(defaults) => erp::serde_json::from_str(defaults)
+                .ok()
+                .filter(Value::is_object)
+                .ok_or_else(|| {
+                    format!(
+                        "Action {} has defaults that are not a JSON object",
+                        self.get_id()
+                    )
+                })?,
+            None => json!({}),
         };
         let views: Vec<String> = self
             .get_views(env)?
@@ -63,6 +79,7 @@ impl Action<SingleId> {
             "model": self.get_model(env)?,
             "views": views,
             "domain": domain,
+            "defaults": defaults,
         }))
     }
 }

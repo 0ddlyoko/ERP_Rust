@@ -10,6 +10,8 @@ export interface ActionDescription {
     readonly model: string;
     readonly views: readonly string[];
     readonly domain: readonly unknown[];
+    /** What a record created from it starts with: `{ move_type: "out_invoice" }`. */
+    readonly defaults: Readonly<Record<string, unknown>>;
     /** The one record it opens, such as the settings; `null` for an action on several. */
     readonly res_id: number | null;
 }

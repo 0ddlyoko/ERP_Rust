@@ -13,6 +13,8 @@ export const viewProps = {
     resModel: t.string(),
     /** Which records: a search domain, all of them when empty. */
     domain: t.array(t.any()).default([]),
+    /** What a record created from the view starts with, over its fields' defaults. */
+    defaults: t.object().default({}),
     /** The record shown, by a view showing one; a new one when left out. */
     resId: t.number().optional(),
     /** Shown within another view, as in a dialog: the address and the breadcrumb stay its host's. */

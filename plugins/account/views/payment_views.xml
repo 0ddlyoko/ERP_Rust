@@ -66,7 +66,9 @@
         </search>
     </view>
     <action id="action_payments_received" name="Payments received" model="account_payment" views="list,form"
-            domain='[["partner_type", "=", "customer"]]'/>
+            domain='[["partner_type", "=", "customer"]]'
+            defaults='{"partner_type": "customer"}'/>
     <action id="action_payments_sent" name="Payments sent" model="account_payment" views="list,form"
-            domain='[["partner_type", "=", "supplier"]]'/>
+            domain='[["partner_type", "=", "supplier"]]'
+            defaults='{"partner_type": "supplier"}'/>
 </erp>

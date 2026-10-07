@@ -40,12 +40,12 @@
                              embedded="true" action="props.action" selected="props.resId"/>
                 <div class="o_split_main">
                     <t t-component="view" t-key="viewKey" resModel="props.action.model"
-                       domain="props.action.domain" resId="props.resId ?? undefined" besideList="true"/>
+                       domain="props.action.domain" defaults="props.action.defaults" resId="props.resId ?? undefined" besideList="true"/>
                 </div>
             </div>
             <t t-elif="view">
                 <t t-component="view" t-key="viewKey" resModel="props.action.model"
-                   domain="props.action.domain" resId="props.resId ?? undefined"/>
+                   domain="props.action.domain" defaults="props.action.defaults" resId="props.resId ?? undefined"/>
             </t>
             <p t-else="" class="o_view_error">No view can show {{ props.action.views.join(", ") }}.</p>
         </section>
