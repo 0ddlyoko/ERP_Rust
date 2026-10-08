@@ -36,7 +36,9 @@ const bodies = new Map<string, ComponentClass>();
  *
  * Where the card is shown by a view that edits from it — a kanban — a field saying
  * `quick_edit="1"` is changed there: stars or a check box at once, anything else in a small
- * editor opened by a click on it, the rest of the card still opening the record.
+ * editor opened by a click on it, the rest of the card still opening the record. There too, an
+ * `<open_form/>` is a small button opening the record's form — `string` saying what it is, `Settings`
+ * by default — for a card that opens something else: a project its tasks.
  */
 export function compileCard(root: Element, columnOf: (element: Element) => Column, quickEdits = false): CompiledCard {
     const columns: Column[] = [];
@@ -68,6 +70,24 @@ export function compileCard(root: Element, columnOf: (element: Element) => Colum
                 );
             }
             return `<t${shown}>${widget}/></t>`;
+        }
+        if (child.tagName === "open_form") {
+            if (!quickEdits) {
+                return "";
+            }
+            const label = escape(child.getAttribute("string") ?? "Settings");
+            return (
+                `<button type="button" class="o_card_open_form"${shown} title="${label}" aria-label="${label}" ` +
+                `t-on-click.stop="() => __strip.openForm?.(props.record)">` +
+                `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ` +
+                `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/>` +
+                `<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 ` +
+                `1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83` +
+                `l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82` +
+                `l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 ` +
+                `1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 ` +
+                `1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>`
+            );
         }
         if (child.tagName === "spacer") {
             return `<span class="o_card_spacer"${shown}/>`;

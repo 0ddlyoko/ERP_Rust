@@ -57,11 +57,17 @@
     </view>
     <view id="view_contact_kanban" name="contact.kanban" model="contact">
         <kanban>
-            <field name="complete_name"/>
-            <field name="function"/>
-            <field name="email"/>
-            <field name="phone"/>
-            <field name="city"/>
+            <card>
+                <title><field name="complete_name"/></title>
+                <muted invisible="!function"><field name="function"/></muted>
+                <muted invisible="!email"><field name="email"/></muted>
+                <row>
+                    <muted invisible="!phone"><field name="phone"/></muted>
+                    <spacer/>
+                    <muted invisible="!city"><field name="city"/></muted>
+                </row>
+                <field name="tags" widget="tags" quick_edit="1"/>
+            </card>
         </kanban>
     </view>
     <view id="view_contact_search" name="contact.search" model="contact">

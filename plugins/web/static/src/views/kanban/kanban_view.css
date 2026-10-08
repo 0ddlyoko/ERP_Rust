@@ -432,3 +432,29 @@
 .o_kanban_card:focus-within .o_card_quick .o_priority_star {
     opacity: 1;
 }
+
+.o_card_open_form {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--o-muted);
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.o_kanban_card:hover .o_card_open_form,
+.o_card_open_form:focus-visible {
+    opacity: 1;
+}
+
+.o_card_open_form:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+    color: var(--o-accent-strong);
+}

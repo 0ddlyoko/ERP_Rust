@@ -74,11 +74,11 @@
                 <field name="partner" role="avatar"/>
                 <field name="partner" role="title"/>
                 <field name="name" role="subtitle"/>
-                <field name="picking_type"/>
-                <field name="scheduled_date"/>
-                <field name="origin"/>
-                <field name="location"/>
-                <field name="location_dest"/>
+                <field name="picking_type" edit="1" no_create="1" readonly="state !== 'draft'"/>
+                <field name="scheduled_date" edit="1" readonly="state === 'done' || state === 'cancel'"/>
+                <field name="origin" edit="1" readonly="state === 'done' || state === 'cancel'"/>
+                <field name="location" edit="1" no_create="1" readonly="state === 'done' || state === 'cancel'"/>
+                <field name="location_dest" edit="1" no_create="1" readonly="state === 'done' || state === 'cancel'"/>
             </leader>
             <block>
                 <block string="Transfer">
@@ -113,12 +113,22 @@
     </view>
     <view id="view_picking_kanban" name="stock_picking.kanban" model="stock_picking">
         <kanban default_group_by="state">
-            <field name="name"/>
-            <field name="partner"/>
-            <field name="scheduled_date"/>
-            <field name="origin"/>
-            <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
-                   decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+            <card>
+                <row>
+                    <column>
+                        <title><field name="name"/></title>
+                        <subtitle><field name="partner"/></subtitle>
+                    </column>
+                    <spacer/>
+                    <field name="state" widget="badge" decoration-muted="state === 'cancel'" decoration-warning="state === 'confirmed'"
+                           decoration-info="state === 'assigned'" decoration-success="state === 'done'"/>
+                </row>
+                <row>
+                    <muted><field name="scheduled_date" quick_edit="1"/></muted>
+                    <spacer/>
+                    <muted invisible="!origin"><field name="origin"/></muted>
+                </row>
+            </card>
         </kanban>
     </view>
     <view id="view_picking_search" name="stock_picking.search" model="stock_picking">

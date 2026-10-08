@@ -1,6 +1,6 @@
 <erp>
     <view id="view_project_kanban" name="project_project.kanban" model="project_project">
-        <kanban open_action="project.action_tasks" open_by="project">
+        <kanban open_action="project.action_tasks" open_by="project" open_form="is_template">
             <card>
                 <row>
                     <column>
@@ -8,12 +8,13 @@
                         <subtitle><field name="customer"/></subtitle>
                     </column>
                     <spacer/>
-                    <field name="manager" widget="avatar"/>
+                    <field name="manager" widget="avatar" quick_edit="1"/>
+                    <open_form invisible="is_template"/>
                 </row>
                 <row>
                     <muted name="tasks"><field name="closed_task_count"/> / <field name="task_count"/> tasks done</muted>
                     <spacer/>
-                    <muted invisible="!date_deadline">Due <field name="date_deadline"/></muted>
+                    <muted invisible="!date_deadline">Due <field name="date_deadline" quick_edit="1"/></muted>
                 </row>
             </card>
         </kanban>
@@ -32,13 +33,13 @@
         <form>
             <leader>
                 <field name="customer" role="avatar"/>
-                <field name="name" role="title"/>
+                <field name="name" role="title" edit="1"/>
                 <field name="customer" role="subtitle"/>
                 <field name="task_count" role="figure"/>
                 <field name="closed_task_count" role="note"/>
-                <field name="manager"/>
-                <field name="date_deadline"/>
-                <field name="planned_hours"/>
+                <field name="manager" edit="1" no_create="1"/>
+                <field name="date_deadline" edit="1"/>
+                <field name="planned_hours" widget="hours" edit="1"/>
             </leader>
             <related>
                 <link name="tasks" action="project.action_tasks" by="project" icon="kanban"/>
@@ -52,7 +53,7 @@
                 </block>
                 <block string="Planning">
                     <field name="date_deadline"/>
-                    <field name="planned_hours"/>
+                    <field name="planned_hours" widget="hours"/>
                     <field name="show_subtasks"/>
                     <field name="is_template"/>
                     <field name="active"/>

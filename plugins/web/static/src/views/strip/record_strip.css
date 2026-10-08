@@ -341,6 +341,11 @@
     flex-grow: 1;
 }
 
+.o_card_spacer ~ .o_card_muted {
+    flex-shrink: 0;
+    overflow: visible;
+}
+
 .o_card .o_widget {
     min-height: 0;
 }

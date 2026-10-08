@@ -34,6 +34,18 @@ export class TagsWidget extends X2ManyWidget {
         return this.entries.map((entry) => this.nameOf(entry)).join(", ");
     }
 
+    /** The tags shown: with `limit="2"`, where the view only shows them, the first few. */
+    get shownEntries(): TagsWidget["entries"] {
+        const limit = Number((this.props.attrs as Record<string, string>).limit);
+        const entries = this.entries;
+        return this.editable || !Number.isInteger(limit) || limit <= 0 ? entries : entries.slice(0, limit);
+    }
+
+    /** How many tags are left out of those shown. */
+    get more(): number {
+        return this.entries.length - this.shownEntries.length;
+    }
+
     /** The class of a tag: the colour its record has, if its model gives one. */
     tagClass(entry: { id: number | null }): string {
         const color = entry.id === null ? null : this.colors.colorOf(this.relation, entry.id);

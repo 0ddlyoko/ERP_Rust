@@ -6,7 +6,7 @@
             <field name="project"/>
             <field name="task"/>
             <field name="name"/>
-            <field name="hours" sum="1"/>
+            <field name="hours" widget="hours" sum="1"/>
         </list>
     </view>
     <view id="view_timesheet_form" name="timesheet.form" model="timesheet">
@@ -15,7 +15,7 @@
                 <block string="Time">
                     <field name="date"/>
                     <field name="user" no_create="1"/>
-                    <field name="hours"/>
+                    <field name="hours" widget="hours"/>
                 </block>
                 <block string="On">
                     <field name="project" no_create="1"/>
@@ -45,7 +45,7 @@
 
     <view id="view_task_form_timesheet" name="project_task.form.timesheet" inherit="project.view_task_form">
         <xpath expr="//field[@name='planned_hours'][1]" position="after">
-            <field name="spent_hours"/>
+            <field name="spent_hours" widget="hours"/>
             <field name="timer_running" string="Timer" widget="timer"/>
         </xpath>
         <xpath expr="//page[@name='subtasks']" position="before">
@@ -54,27 +54,27 @@
             </page>
         </xpath>
         <xpath expr="//block[@string='Planning']" position="inside">
-            <field name="spent_hours" readonly="1"/>
-            <field name="remaining_hours" readonly="1"/>
+            <field name="spent_hours" widget="hours" readonly="1"/>
+            <field name="remaining_hours" widget="hours" readonly="1"/>
             <field name="progress" readonly="1"/>
         </xpath>
     </view>
     <view id="view_task_kanban_timesheet" name="project_task.kanban.timesheet" inherit="project.view_task_kanban">
         <xpath expr="//muted[@name='subtasks']" position="after">
-            <muted invisible="!(planned_hours &gt; 0)"><field name="spent_hours"/> / <field name="planned_hours"/> h</muted>
+            <muted invisible="!(planned_hours &gt; 0)"><field name="spent_hours" widget="hours"/> / <field name="planned_hours" widget="hours"/></muted>
         </xpath>
     </view>
     <view id="view_task_list_timesheet" name="project_task.list.timesheet" inherit="project.view_task_list">
         <xpath expr="//field[@name='date_deadline'][1]" position="after">
-            <field name="planned_hours"/>
-            <field name="spent_hours"/>
+            <field name="planned_hours" widget="hours"/>
+            <field name="spent_hours" widget="hours"/>
             <field name="progress"/>
         </xpath>
     </view>
     <view id="view_project_form_timesheet" name="project_project.form.timesheet" inherit="project.view_project_form">
         <xpath expr="//field[@name='planned_hours'][1]" position="after">
-            <field name="spent_hours"/>
-            <field name="remaining_hours"/>
+            <field name="spent_hours" widget="hours"/>
+            <field name="remaining_hours" widget="hours"/>
             <field name="progress" widget="progress"/>
         </xpath>
         <xpath expr="//related" position="inside">
@@ -92,9 +92,9 @@
                 <field name="progress" widget="progress"/>
             </row>
             <row invisible="!(planned_hours &gt; 0)">
-                <muted><field name="spent_hours"/> / <field name="planned_hours"/> h spent</muted>
+                <muted><field name="spent_hours" widget="hours"/> / <field name="planned_hours" widget="hours"/> spent</muted>
                 <spacer/>
-                <muted><field name="remaining_hours"/> h left</muted>
+                <muted><field name="remaining_hours" widget="hours"/> left</muted>
             </row>
         </xpath>
     </view>
@@ -104,8 +104,7 @@
             <block>
                 <field name="elapsed" placeholder="1:30"/>
                 <field name="project" no_create="1" placeholder="Search a project…"/>
-                <field name="task" string="Task — optional" no_create="1" placeholder="Search a task of the project…"
-                       domain="project ? [['project', '=', project]] : []"/>
+                <field name="task" string="Task — optional" no_create="1" placeholder="Search a task of the project…"/>
                 <field name="name"/>
             </block>
             <footer>

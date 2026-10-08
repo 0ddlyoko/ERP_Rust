@@ -12,9 +12,10 @@ export interface Crumb {
     strip: Route | null;
 }
 
-/** The list a route is in: its action, narrowed as it is, no record. */
+/** The list a route is in: its action, narrowed as it is, in the view of several it shows — list or board — no record. */
 export function listOf(route: Route): Route {
-    return { action: route.action, view: null, id: null, ids: route.ids ?? null, by: route.by ?? null, menu: route.menu };
+    const view = route.view === "form" ? null : route.view;
+    return { action: route.action, view, id: null, ids: route.ids ?? null, by: route.by ?? null, menu: route.menu };
 }
 
 /**

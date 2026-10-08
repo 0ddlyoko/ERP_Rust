@@ -673,3 +673,82 @@ fn test_status() -> Result<()> {
     assert_eq!(status(&mut env, parent)?, json!("in_progress"));
     Ok(())
 }
+
+/// A task taken out of its project's list goes: it cannot be without its project, which deletes
+/// its tasks with it.
+#[test]
+fn test_a_task_taken_out_of_its_project_goes() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let project = new_project(&mut env, json!({"name": "Site"}))?;
+    let kept = create(
+        &mut env,
+        "project_task",
+        json!({"name": "Kept", "project": project}),
+    )?;
+    let gone = create(
+        &mut env,
+        "project_task",
+        json!({"name": "Gone", "project": project}),
+    )?;
+    env.call_rpc(
+        "project_project",
+        "write",
+        &json!({"ids": [project], "values": {"tasks": {"unlink": [gone]}}}),
+    )?;
+    let left = env.call_rpc(
+        "project_task",
+        "search",
+        &json!({"domain": [["id", "in", [kept, gone]]]}),
+    )?;
+    assert_eq!(left, json!([kept]));
+    Ok(())
+}
+
+/// A task's column is one of its project's: another project's is refused, and the task of a
+/// project moved to another starts on that one's board.
+#[test]
+fn test_a_task_stays_on_its_project_board() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let mine = new_project(&mut env, json!({"name": "Mine"}))?;
+    let other = new_project(&mut env, json!({"name": "Other"}))?;
+    let task = create(
+        &mut env,
+        "project_task",
+        json!({"name": "Here", "project": mine}),
+    )?;
+    let elsewhere = columns(&mut env, other)?[1].0;
+    let refused = env.call_rpc(
+        "project_task",
+        "write",
+        &json!({"ids": [task], "values": {"stage": elsewhere}}),
+    );
+    assert!(refused.is_err(), "a column of another project");
+    env.call_rpc(
+        "project_task",
+        "write",
+        &json!({"ids": [task], "values": {"project": other}}),
+    )?;
+    let row = read(&mut env, "project_task", task, &["stage"])?;
+    assert_eq!(
+        row["stage"],
+        json!(columns(&mut env, other)?[0].0),
+        "the new board's first"
+    );
+    Ok(())
+}
+
+/// A task's stage offers its project's columns, as the field itself says — whatever view shows
+/// it: an expression of the record the client works out.
+#[test]
+fn test_the_stage_offers_its_project_columns() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let fields = env.call_rpc("project_task", "fields_get", &json!({}))?;
+    assert_eq!(
+        fields["stage"]["domain"],
+        json!("[['project', '=', project]]")
+    );
+    Ok(())
+}

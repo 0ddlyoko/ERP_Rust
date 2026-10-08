@@ -81,10 +81,10 @@
                 <field name="amount_total" role="figure" widget="monetary"/>
                 <field name="amount_untaxed" role="note" widget="monetary"/>
                 <field name="amount_tax" role="note" widget="monetary"/>
-                <field name="date_order"/>
-                <field name="validity_date" invisible="state === 'sale' || state === 'cancel'"/>
-                <field name="payment_term"/>
-                <field name="user"/>
+                <field name="date_order" edit="1"/>
+                <field name="validity_date" invisible="state === 'sale' || state === 'cancel'" edit="1"/>
+                <field name="payment_term" edit="1" no_create="1"/>
+                <field name="user" edit="1" no_create="1"/>
             </leader>
             <related>
                 <link name="invoices" action="account.action_move_out_invoice" icon="receipt"/>

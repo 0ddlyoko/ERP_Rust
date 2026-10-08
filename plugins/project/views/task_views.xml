@@ -13,7 +13,7 @@
                 </row>
                 <title><field name="name"/></title>
                 <field name="tags" widget="tags" invisible="!tags.length" quick_edit="1"/>
-                <row invisible="status !== 'blocked' || !depends_on.length"><muted>Waiting for <field name="depends_on"/></muted></row>
+                <row invisible="status !== 'blocked' || !depends_on.length"><muted>Waiting for <field name="depends_on" limit="2"/></muted></row>
                 <row invisible="!checklist_done"><muted><field name="checklist_done"/> checked</muted></row>
                 <row>
                     <muted invisible="!date_deadline"><field name="date_deadline" quick_edit="1"/></muted>
@@ -49,7 +49,7 @@
             <preview>
                 <title><field name="name"/></title>
                 <subtitle><field name="project"/></subtitle>
-                <row><muted>Column</muted><spacer/><field name="stage"/></row>
+                <row><muted>Stage</muted><spacer/><field name="stage"/></row>
                 <row invisible="!date_deadline"><muted>Deadline</muted><spacer/><field name="date_deadline"/></row>
                 <field name="tags" widget="tags"/>
             </preview>
@@ -65,7 +65,7 @@
                 <field name="project" edit="1" no_create="1"/>
                 <field name="assignees" widget="avatars" edit="1" no_create="1"/>
                 <field name="date_deadline" edit="1"/>
-                <field name="planned_hours" edit="1"/>
+                <field name="planned_hours" widget="hours" edit="1"/>
             </leader>
             <block>
                 <block string="Task">
@@ -75,7 +75,7 @@
                     <field name="customer" readonly="1"/>
                 </block>
                 <block string="Planning">
-                    <field name="stage" no_create="1" domain="project ? [['project', '=', project]] : []"/>
+                    <field name="stage" no_create="1"/>
                     <field name="status" widget="badge" choices="in_progress,waiting,ready"
                            readonly="status === 'blocked'" decoration-danger="status === 'blocked'"
                            decoration-warning="status === 'waiting'" decoration-info="status === 'in_progress'"

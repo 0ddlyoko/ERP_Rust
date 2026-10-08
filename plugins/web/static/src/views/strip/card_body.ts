@@ -12,6 +12,8 @@ export interface CardHost {
     quickEdit?(record: Values, column: Column, value: unknown): void;
     /** Open the editor of such a field, under what was clicked. */
     openQuickEdit?(record: Values, column: Column, event: MouseEvent): void;
+    /** Open a card's record in its form: a card's `<open_form/>` button. */
+    openForm?(record: Values): void;
 }
 
 /** What the template of a card reads: the view showing it, the record and the card's fields. */

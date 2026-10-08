@@ -2,7 +2,7 @@
     <t t-name="web.TagsWidget">
         <div t-att-class="className + ' o_tags' + (editable ? ' o_tags_editable' : '')"
              t-on-click="(ev) => editable &amp;&amp; ev.currentTarget.querySelector('input')?.focus()">
-            <span t-foreach="entries" t-as="tag" t-key="tag.key" t-att-class="tagClass(tag)">
+            <span t-foreach="shownEntries" t-as="tag" t-key="tag.key" t-att-class="tagClass(tag)">
                 {{ nameOf(tag) }}
                 <button t-if="editable" type="button" class="o_tag_remove" t-on-click="() => remove(tag.key)"
                         t-att-aria-label="'Remove ' + nameOf(tag)">
@@ -10,6 +10,7 @@
                          stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
                 </button>
             </span>
+            <span t-if="more" class="o_tags_more" t-att-title="text">+{{ more }} more</span>
             <RecordSearch t-if="editable" model="relation" exclude="ids" domain="domain" onPick="add" placeholder="entries.length ? '' : 'Add…'"
                           onBackspace="removeLast"
                           onCreate="canCreate ? create : undefined"

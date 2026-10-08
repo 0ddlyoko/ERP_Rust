@@ -15,7 +15,7 @@ import {
     untrack,
 } from "trame";
 import { and } from "@web/core/domain";
-import { decorationNames, decorationOf, evaluate } from "@web/core/expression";
+import { decorationNames, decorationOf, evaluate, namesRead } from "@web/core/expression";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
 import { Session } from "@web/core/session";
@@ -231,7 +231,8 @@ export class KanbanCard extends Component {
  * Gathered in columns by the field `default_group_by` names, or the one the search groups by —
  * a value each, not a date's period — each column saying how many records it holds; otherwise
  * laid out side by side. Choosing a card opens its record; with `open_action` and `open_by`, it
- * opens instead that action's records belonging to it — a project's board of tasks.
+ * opens instead that action's records belonging to it — a project's board of tasks — unless
+ * `open_form`, an expression of the record, holds: a project template opens in its form.
  *
  * Gathered by a field `group_create` lists, a card is dragged to another column to change it, and
  * within a column to reorder the cards, when the records have a `sequence`. With `expand="1"`,
@@ -431,6 +432,7 @@ export class KanbanView extends View implements CardHost {
             ...new Set([
                 ...shown.map((column) => column.name),
                 ...decorationNames(this.cardAttrs).filter((name) => name in fields),
+                ...namesRead(this.attribute("open_form") ?? "").filter((name) => name in fields),
                 ...(this.groupField === null ? [] : [this.groupField]),
                 ...(this.hasSequence ? ["sequence"] : []),
                 ...companionFields(shown, this.fields ?? {}),
@@ -950,10 +952,20 @@ export class KanbanView extends View implements CardHost {
     readonly open = (record: Values): void => {
         const action = this.attribute("open_action");
         const by = this.attribute("open_by");
+        const formFirst = this.attribute("open_form");
+        if (formFirst !== null && evaluate(formFirst, record)) {
+            this.openForm(record);
+            return;
+        }
         if (action !== null && by !== null) {
             void this.breadcrumb.openBy(action, by, record.id as number);
             return;
         }
+        this.router.go({ ...this.router.route, view: "form", id: record.id as number });
+    };
+
+    /** Open a card's record in its form, whatever the card opens otherwise. */
+    readonly openForm = (record: Values): void => {
         this.router.go({ ...this.router.route, view: "form", id: record.id as number });
     };
 

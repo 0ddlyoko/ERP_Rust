@@ -132,9 +132,10 @@ export class ActionManager extends Component {
         return this.breadcrumb.trail[0]?.action ?? this.props.action.name;
     }
 
+    /** Back to the list the trail starts from, in the view it was left in — list or board. */
     backToList(): void {
-        const first = this.breadcrumb.trail[0];
-        this.router.go({ ...(first?.route ?? this.router.route), view: null, id: null });
+        const back = this.breadcrumb.trail[0]?.route ?? this.breadcrumb.strip ?? listOf(this.router.route);
+        this.router.go({ ...back, view: back.view === "form" ? null : back.view, id: null });
     }
 
     backTo(index: number): void {
@@ -166,6 +167,19 @@ export class ActionManager extends Component {
 
     switchTo(kind: string): void {
         this.router.go({ ...this.router.route, view: kind, id: null });
+    }
+
+    /** Whether the action also shows its records one by one, to switch to from its lists. */
+    get offersForm(): boolean {
+        return this.props.action.views.includes("form") && viewKinds.has("form");
+    }
+
+    /** Switch to the form: the first record of the list shown, the list beside it. */
+    async switchToForm(): Promise<void> {
+        const [first] = await this.orm.search(this.props.action.model, this.domain, { limit: 1 });
+        if (first !== undefined) {
+            await this.router.go({ ...this.router.route, view: "form", id: first });
+        }
     }
 
     @computed get view(): ComponentClass | null {

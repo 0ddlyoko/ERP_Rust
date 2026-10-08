@@ -17,7 +17,7 @@
                 </nav>
                 <div t-if="!isRecord" class="o_action_title_row">
                     <h1 class="o_action_title">{{ listName }}</h1>
-                    <div t-if="switchable.length > 1" class="o_view_switcher" role="group" aria-label="Views">
+                    <div t-if="switchable.length > 1 || (switchable.length &amp;&amp; offersForm)" class="o_view_switcher" role="group" aria-label="Views">
                         <button t-foreach="switchable" t-as="option" t-key="option" type="button"
                                 t-att-class="{ o_view_switch: true, active: option === kind }"
                                 t-att-aria-pressed="option === kind ? 'true' : 'false'"
@@ -30,6 +30,13 @@
                             <svg t-else="" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2" stroke-linecap="round" aria-hidden="true">
                                 <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                            </svg>
+                        </button>
+                        <button t-if="offersForm" type="button" class="o_view_switch" title="Form"
+                                aria-label="Form" t-on-click="switchToForm">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>
                             </svg>
                         </button>
                     </div>

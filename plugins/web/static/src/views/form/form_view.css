@@ -1500,9 +1500,16 @@ button.o_priority_star:hover,
     outline: none;
 }
 
-.o_leader_edit .o_record_search_icon,
 .o_leader_edit .o_many2one_open {
     color: rgb(255 255 255 / 0.55);
+}
+
+.o_leader_edit .o_record_search_icon {
+    display: none;
+}
+
+.o_leader_edit .o_record_search .o_input {
+    padding-left: 6px;
 }
 
 .o_leader_title.o_leader_edit .o_input {

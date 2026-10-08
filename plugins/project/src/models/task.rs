@@ -50,7 +50,13 @@ pub struct Task<Mode: IdMode> {
     active: bool,
     #[erp(required, ondelete = "cascade", tracking, index)]
     project: Reference<BaseProjectProject, SingleId>,
-    #[erp(label = "Stage", ondelete = "set_null", tracking, index)]
+    #[erp(
+        label = "Stage",
+        ondelete = "set_null",
+        tracking,
+        index,
+        domain = "[['project', '=', project]]"
+    )]
     stage: Reference<BaseProjectStage, SingleId>,
     #[erp(default = 10)]
     sequence: i32,
@@ -65,7 +71,12 @@ pub struct Task<Mode: IdMode> {
     #[erp(label = "Planned hours", default = 0.0, tracking)]
     planned_hours: Decimal,
     description: Option<String>,
-    #[erp(label = "Parent task", ondelete = "cascade", index)]
+    #[erp(
+        label = "Parent task",
+        ondelete = "cascade",
+        index,
+        domain = "[['project', '=', project], ['id', '!=', id]]"
+    )]
     parent: Reference<BaseProjectTask, SingleId>,
     #[erp(label = "Subtasks", inverse = "parent")]
     children: Reference<BaseProjectTask, MultipleIds>,
@@ -78,7 +89,8 @@ pub struct Task<Mode: IdMode> {
     #[erp(
         label = "Waiting for",
         relation = "project_task_dependency_rel",
-        relation_columns = "task_id,depends_on_id"
+        relation_columns = "task_id,depends_on_id",
+        domain = "[['project', '=', project], ['id', '!=', id]]"
     )]
     depends_on: Reference<BaseProjectTask, MultipleIds>,
     #[erp(
@@ -138,6 +150,23 @@ impl Task<SingleId> {
 
 #[erp_methods]
 impl Task<MultipleIds> {
+    /// A task's column is one of its project's board — none without a project.
+    pub fn check_stages(&self, env: &mut Environment) -> Result<()> {
+        for task in self {
+            let stage: Stage<SingleId> = task.get_stage(env)?;
+            if stage.is_empty() {
+                continue;
+            }
+            let project: Project<SingleId> = task.get_project(env)?;
+            let board: Project<SingleId> = stage.get_project(&mut env.sudo())?;
+            if board.get_optional_id() != project.get_optional_id() {
+                let name = stage.get_name(&mut env.sudo())?.clone();
+                return Err(format!("The column {name} is not one of the task's project").into());
+            }
+        }
+        Ok(())
+    }
+
     /// The customer of the project.
     pub fn compute_customer(&self, env: &mut Environment) -> Result<()> {
         for task in self {
@@ -273,6 +302,7 @@ impl Task<MultipleIds> {
             .map(|task| task.contains_key("depends_on") || task.contains_key("parent"))
             .collect();
         let created = sup.call_with(values, env)?;
+        Task::<MultipleIds>::from_ids(created.get_ids_ref().clone(), env).check_stages(env)?;
         let linked: Vec<u32> = created
             .get_ids_ref()
             .iter()
@@ -305,7 +335,11 @@ impl Task<MultipleIds> {
         } else {
             Vec::new()
         };
+        let placed = moved || values.contains_key("project");
         sup.call_with(values, env)?;
+        if placed {
+            self.check_stages(env)?;
+        }
         if moved {
             for task in self {
                 if !matches!(

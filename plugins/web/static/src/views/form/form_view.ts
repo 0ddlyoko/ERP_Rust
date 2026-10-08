@@ -16,6 +16,8 @@ const ONCHANGE_AFTER = 250;
 /** How far down the page is scrolled when the leader shrinks, and how far up when it grows again. */
 const LEADER_SHRINKS_PAST = 160;
 const LEADER_GROWS_BEFORE = 40;
+/** How much of its height the leader loses at most when it keeps to one line. */
+const LEADER_SHRINKS_BY = 0.7;
 
 /**
  * Parts of a form other plugins provide: `chatter`, the record's thread, takes `model`, `record`
@@ -260,14 +262,19 @@ export class FormView extends View {
 
     /**
      * Once the page is scrolled past the leader, it keeps to one line, and grows back near the
-     * top. The two points are apart, so that its change of height cannot flip it back.
+     * top. The two points are apart, so that its change of height cannot flip it back — and it
+     * only shrinks on a page long enough to stay scrolled past it once shorter by what it loses:
+     * else the browser would scroll back up, the leader grow again, and so on without end.
      */
     @effect shrinkLeader(): (() => void) | void {
         if (!this.layout?.hasLeader || this.props.embedded) {
             return;
         }
         const follow = (): void => {
-            if (window.scrollY > LEADER_SHRINKS_PAST) {
+            const leader = this.element?.querySelector<HTMLElement>(".o_leader");
+            const loses = this.leaderCompact ? 0 : (leader?.offsetHeight ?? 0) * LEADER_SHRINKS_BY;
+            const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.scrollY > LEADER_SHRINKS_PAST && scrollable - loses > LEADER_SHRINKS_PAST) {
                 this.leaderCompact = true;
             } else if (window.scrollY < LEADER_GROWS_BEFORE) {
                 this.leaderCompact = false;
