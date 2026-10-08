@@ -761,3 +761,14 @@ body.o_resizing * {
 .o_progress_over .o_progress_text {
     color: var(--o-danger);
 }
+
+.o_hours {
+    font-variant-numeric: tabular-nums;
+}
+
+.o_tags_more {
+    align-self: center;
+    color: var(--o-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}

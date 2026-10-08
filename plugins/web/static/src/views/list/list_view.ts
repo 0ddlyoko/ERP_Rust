@@ -22,6 +22,7 @@ import {
 import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
 import { companionFields } from "@web/views/widgets/decimal_widget";
+import { hoursText } from "@web/views/widgets/hours_widget";
 import { listActions } from "./list_actions";
 
 /** Something the actions menu offers on the selection: a button of the view, or a list action. */
@@ -461,11 +462,14 @@ export class ListView extends View {
         return String(value);
     }
 
-    /** A sum as its column writes numbers: two decimals for amounts, none for counts. */
+    /** A sum as its column writes numbers: two decimals for amounts, none for counts, hours and minutes for hours. */
     sumText(column: Column, sums: Record<string, string>): string {
         const value = sums[column.name];
         if (value === undefined) {
             return "";
+        }
+        if (column.widget === "hours") {
+            return hoursText(Number(value));
         }
         const digits = column.field.type === "integer" ? 0 : Number(column.attrs.digits ?? 2);
         return Number(value).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });

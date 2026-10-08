@@ -1,0 +1,8 @@
+<templates>
+    <t t-name="web.HoursWidget">
+        <input t-if="editable" type="text" inputmode="decimal" t-att-class="className + ' o_input o_hours'"
+               placeholder="0:00" t-att-value="inputValue" t-on-input="(ev) => type(ev.target.value)"
+               t-on-blur="leave"/>
+        <span t-else="" t-att-class="className + ' o_hours'">{{ text }}</span>
+    </t>
+</templates>
