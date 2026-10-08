@@ -152,7 +152,15 @@ const HEADINGS: &[&str] = &["h1", "h2", "h3", "h4", "h5", "h6"];
 /// What lays out a record as a card — the list's `<compact>`, `<folded>` and `<preview>`, the
 /// kanban's `<card>`.
 const CARD: &[&str] = &[
-    "row", "column", "title", "subtitle", "figure", "muted", "spacer", "field",
+    "row",
+    "column",
+    "title",
+    "subtitle",
+    "figure",
+    "muted",
+    "spacer",
+    "field",
+    "open_form",
 ];
 /// What in a card may hold text between its fields: `<muted><field name="name"/> · …</muted>`.
 const CARD_TEXT: &[&str] = &["title", "subtitle", "figure", "muted"];
@@ -223,7 +231,7 @@ impl Arch<'_> {
         let conditions: &[&str] = match element.name.as_str() {
             "field" => &["invisible", "readonly", "required"],
             "block" | "page" | "pages" | "button" | "totals" | "related" | "link" | "row"
-            | "column" | "title" | "subtitle" | "figure" | "muted" => &["invisible"],
+            | "column" | "title" | "subtitle" | "figure" | "muted" | "open_form" => &["invisible"],
             heading if HEADINGS.contains(&heading) => &["invisible"],
             _ => &[],
         };
@@ -279,7 +287,7 @@ impl Arch<'_> {
             "related" => self.children(element, &["link"]),
             "compact" | "folded" | "preview" | "card" | "row" | "column" | "title" | "subtitle"
             | "figure" | "muted" => self.children(element, CARD),
-            "spacer" => self.children(element, &[]),
+            "spacer" | "open_form" => self.children(element, &[]),
             "link" => {
                 self.required(element, "action")?;
                 self.field(element)?;
@@ -442,14 +450,13 @@ impl Arch<'_> {
     }
 
     /// The records a relational field offers: a domain of the records it points to, as JSON —
-    /// whose fields are those of that model, not checked here — or an expression of the record.
+    /// whose fields are those of that model, not checked here — or else an expression of the
+    /// record giving one: `[['project', '=', project]]`.
     fn relation_domain(&self, domain: &str) -> std::result::Result<(), String> {
-        if !domain.trim_start().starts_with('[') {
-            return self.condition("domain", domain);
+        if erp::serde_json::from_str::<SearchType>(domain).is_ok() {
+            return Ok(());
         }
-        erp::serde_json::from_str::<SearchType>(domain)
-            .map(|_| ())
-            .map_err(|error| self.error(format!("domain {domain} is not one: {error}")))
+        self.condition("domain", domain)
     }
 
     fn error(&self, message: String) -> String {
@@ -482,6 +489,31 @@ const EXPRESSION_WORDS: &[&str] = &[
     "Object",
     "today",
 ];
+
+/// Refuse a relational field whose domain, written as an expression of the record, reads a field
+/// its model lacks: as a view's would be. Run once the plugins are loaded, every field known.
+pub fn check_field_domains(env: &mut Environment) -> Result<()> {
+    for model in env.model_manager.get_models().values() {
+        for field in model.fields.values() {
+            let Some(domain) = field.domain else {
+                continue;
+            };
+            if erp::serde_json::from_str::<SearchType>(domain).is_ok() {
+                continue;
+            }
+            for name in names_read(domain) {
+                if name != "id" && !model.fields.contains_key(&name) {
+                    return Err(format!(
+                        "{}.{}: domain {domain} reads \"{name}\", which model \"{}\" does not have",
+                        model.name, field.name, model.name
+                    )
+                    .into());
+                }
+            }
+        }
+    }
+    Ok(())
+}
 
 /// The names an expression reads: what is left once strings, numbers, properties (`.includes`),
 /// the language's words and the parameters of arrow functions (`x => x.id`) are set aside.

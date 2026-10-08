@@ -16,7 +16,11 @@ pub struct Timesheet<Mode: IdMode> {
     date: NaiveDate,
     #[erp(label = "Employee", ondelete = "restrict", index)]
     user: Reference<BaseUsers, SingleId>,
-    #[erp(ondelete = "cascade", index)]
+    #[erp(
+        ondelete = "cascade",
+        index,
+        domain = "project ? [['project', '=', project]] : []"
+    )]
     task: Reference<BaseProjectTask, SingleId>,
     #[erp(ondelete = "cascade", index)]
     project: Reference<BaseProjectProject, SingleId>,

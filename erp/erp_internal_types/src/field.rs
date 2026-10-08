@@ -61,8 +61,9 @@ pub struct FinalInternalField {
     /// What a many2one does when the record it points to is deleted: as the last struct saying
     /// so asked, so an extension may change it.
     pub on_delete: OnDelete,
-    /// Which records a relation offers to point to, as a JSON domain: as the last struct saying
-    /// so asked. Only what a client offers; nothing checks what is written against it.
+    /// Which records a relation offers to point to, as a JSON domain — or an expression of the
+    /// record giving one, `[['project', '=', project]]` — as the last struct saying so asked.
+    /// Only what a client offers; nothing checks what is written against it.
     pub domain: Option<&'static str>,
     /// How the column is indexed: as the last struct saying so asked.
     pub index: Option<FieldIndex>,

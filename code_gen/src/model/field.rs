@@ -232,12 +232,11 @@ impl FieldGen {
                     index = Some(key);
                 }
                 AllowedFieldAttrs::Domain(ident, value) => {
+                    // A JSON domain, or an expression of the record giving one, checked against
+                    // the model's fields once every plugin has loaded.
                     let text = value.value();
-                    if let Err(error) = serde_json::from_str::<erp_search::SearchType>(&text) {
-                        return Err(syn::Error::new(
-                            value.span(),
-                            format!("not a domain: {error}"),
-                        ));
+                    if text.trim().is_empty() {
+                        return Err(syn::Error::new(value.span(), "an empty domain"));
                     }
                     domain = Some((ident, text));
                 }

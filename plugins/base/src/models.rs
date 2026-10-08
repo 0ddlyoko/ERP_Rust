@@ -30,4 +30,4 @@ pub use plugin::{BasePlugin, Plugin, PluginState};
 pub use session::{BaseSession, OpenedSession, SESSIONS_CACHE, Session};
 pub use settings::{BaseSettings, Settings};
 pub use users::{Authenticated, BaseUsers, Users};
-pub use view::{BaseView, VIEWS_CACHE, View, names_read};
+pub use view::{BaseView, VIEWS_CACHE, View, check_field_domains, names_read};

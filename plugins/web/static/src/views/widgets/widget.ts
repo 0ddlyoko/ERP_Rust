@@ -42,20 +42,20 @@ export abstract class Widget extends Component {
 
     /**
      * The records the field offers to point to: as its `domain` attribute in the view says, else
-     * as the field declares, else all of them. The attribute is a domain as JSON, or an expression
-     * of the record giving one — `project ? [['project', '=', project]] : []`.
+     * as the field declares, else all of them. Either is a domain as JSON, or an expression of the
+     * record giving one — `[['project', '=', project]]`.
      */
     get domain(): Domain {
-        const domain = this.props.attrs.domain;
-        if (typeof domain === "string") {
-            try {
-                return JSON.parse(domain) as Domain;
-            } catch {
-                const evaluated = evaluate(domain, this.props.record);
-                return Array.isArray(evaluated) ? evaluated : [];
-            }
+        const domain: Domain | string | undefined = (this.props.attrs as Record<string, string>).domain ?? this.props.field.domain;
+        if (typeof domain !== "string") {
+            return [...(domain ?? [])];
         }
-        return [...(this.props.field.domain ?? [])];
+        try {
+            return JSON.parse(domain) as Domain;
+        } catch {
+            const evaluated = evaluate(domain, this.props.record);
+            return Array.isArray(evaluated) ? evaluated : [];
+        }
     }
 
     /** The value shown. */

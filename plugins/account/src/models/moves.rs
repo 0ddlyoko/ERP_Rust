@@ -108,7 +108,12 @@ pub struct Move<Mode: IdMode> {
     move_type: MoveType,
     #[erp(label = "Status", tracking, index)]
     state: MoveState,
-    #[erp(required, ondelete = "restrict", tracking)]
+    #[erp(
+        required,
+        ondelete = "restrict",
+        tracking,
+        domain = "move_type === 'entry' ? [] : [['journal_type', '=', move_type === 'out_invoice' || move_type === 'out_refund' ? 'sale' : 'purchase']]"
+    )]
     journal: Reference<BaseAccountJournal, SingleId>,
     #[erp(label = "Accounting date", tracking, index)]
     date: NaiveDate,

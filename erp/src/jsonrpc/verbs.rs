@@ -981,7 +981,7 @@ fn describe(field: &FinalInternalField, selections: &Selections) -> Result<Value
             described["inverse"] = json!(inverse_field);
         }
         if let Some(domain) = field.domain {
-            described["domain"] = serde_json::from_str(domain)?;
+            described["domain"] = serde_json::from_str(domain).unwrap_or_else(|_| json!(domain));
         }
     }
     if let Some(family) = field.selection {

@@ -73,6 +73,7 @@ impl Plugin for BasePlugin {
         model_manager
             .check_hooks
             .push(models::View::<SingleId>::check_all);
+        model_manager.check_hooks.push(models::check_field_domains);
         // What the core knows about identity is that something answers it. This is the something.
         model_manager
             .identities

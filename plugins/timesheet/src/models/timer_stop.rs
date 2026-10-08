@@ -20,7 +20,10 @@ pub struct TimerStop<Mode: IdMode> {
     elapsed: Option<String>,
     #[erp(ondelete = "cascade", domain = r#"[["is_template", "=", false]]"#)]
     project: Reference<BaseProjectProject, SingleId>,
-    #[erp(ondelete = "cascade")]
+    #[erp(
+        ondelete = "cascade",
+        domain = "project ? [['project', '=', project]] : []"
+    )]
     task: Reference<BaseProjectTask, SingleId>,
     #[erp(label = "What was done")]
     name: Option<String>,

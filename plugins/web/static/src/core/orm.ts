@@ -32,7 +32,7 @@ export interface FieldDescription {
     values?: [string, string][];
     inverse?: string;
     /** The records a relation offers to point to, as the field declares. */
-    domain?: Domain;
+    domain?: Domain | string;
     default?: unknown;
     /** Set on the field naming the model's records. */
     name_field?: boolean;
