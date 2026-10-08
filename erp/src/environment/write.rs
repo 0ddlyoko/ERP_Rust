@@ -6,7 +6,7 @@ use crate::model::{WRITE, WriteArgs};
 use crate::model::{WRITE_DATE, WRITE_UID};
 use chrono::Utc;
 use erp_internal_types::FinalInternalField;
-use erp_types::field::FieldKind;
+use erp_types::field::{FieldKind, OnDelete};
 
 impl<'mm> Environment<'mm> {
     /// Write field values onto records, addressing the model and its fields by name.
@@ -663,14 +663,26 @@ impl<'mm> Environment<'mm> {
                         );
                     }
 
-                    // Records the field owns go with it when removed, rather than being left
-                    // pointing nowhere; one moved to another record of this write stays.
-                    let deleted = field_info.owned && matches!(update_dirty, Dirty::UpdateDirty);
-                    if deleted {
-                        let moved: HashSet<u32> = ids_added.values().flatten().copied().collect();
-                        let mut seen = HashSet::new();
-                        ids_removed.retain(|id| !moved.contains(id) && seen.insert(*id));
+                    // Records taken out follow what their many2one says of a deleted record:
+                    // `cascade` — or a field owning them — deletes them, `restrict` refuses, and
+                    // `set_null` lets them go. One moved to another record of this write stays.
+                    let on_delete = self
+                        .model_manager
+                        .try_get_model(target_model)?
+                        .try_get_internal_field(inverse_field)?
+                        .on_delete;
+                    let moved: HashSet<u32> = ids_added.values().flatten().copied().collect();
+                    let mut seen = HashSet::new();
+                    ids_removed.retain(|id| !moved.contains(id) && seen.insert(*id));
+                    let checked = matches!(update_dirty, Dirty::UpdateDirty);
+                    if checked && on_delete == OnDelete::Restrict && !ids_removed.is_empty() {
+                        return Err(format!(
+                            "{target_model} records cannot be taken out of {model_name}.{field_name}: \
+                             their {inverse_field} restricts it"
+                        )
+                        .into());
                     }
+                    let deleted = checked && (field_info.owned || on_delete == OnDelete::Cascade);
                     if !ids_removed.is_empty() && !deleted {
                         self.save_field_to_cache::<MultipleIds>(
                             target_model,
