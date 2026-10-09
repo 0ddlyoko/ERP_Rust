@@ -58,11 +58,12 @@
     <view id="view_contact_kanban" name="contact.kanban" model="contact">
         <kanban>
             <card>
-                <title><field name="complete_name"/></title>
+                <title><field name="name" quick_edit="1"/></title>
+                <muted invisible="!parent"><field name="parent"/></muted>
                 <muted invisible="!function"><field name="function"/></muted>
-                <muted invisible="!email"><field name="email"/></muted>
+                <muted invisible="!email"><field name="email" quick_edit="1"/></muted>
                 <row>
-                    <muted invisible="!phone"><field name="phone"/></muted>
+                    <muted invisible="!phone"><field name="phone" quick_edit="1"/></muted>
                     <spacer/>
                     <muted invisible="!city"><field name="city"/></muted>
                 </row>
