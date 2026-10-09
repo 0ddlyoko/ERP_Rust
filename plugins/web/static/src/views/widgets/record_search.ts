@@ -5,6 +5,9 @@ import { SearchMoreDialog } from "./search_more_dialog";
 /** How many records the list offers; past them, the user types or searches more. */
 const OFFERED = 8;
 
+/** The height the list is given at least, in pixels, however little room is left under its input. */
+const MINIMUM_ROOM = 240;
+
 /** How long typing has to pause before the records are searched, in milliseconds. */
 const SEARCH_AFTER = 250;
 
@@ -80,7 +83,8 @@ export class RecordSearch extends Component {
 
     /**
      * While open, the list follows its input when the page or a box around it scrolls. It is
-     * shown over the page rather than inside the input's box, which could clip it.
+     * shown over the page rather than inside the input's box, which could clip it, and as tall as
+     * the room left under its input: everything offered is seen without scrolling, when it fits.
      */
     @effect followInput(): (() => void) | void {
         if (!this.isOpen) {
@@ -89,7 +93,8 @@ export class RecordSearch extends Component {
         const follow = (): void => {
             const box = this.input?.getBoundingClientRect();
             if (box !== undefined) {
-                this.place = `top: ${box.bottom + 4}px; left: ${box.left}px; width: ${box.width}px`;
+                const room = Math.max(MINIMUM_ROOM, window.innerHeight - box.bottom - 16);
+                this.place = `top: ${box.bottom + 4}px; left: ${box.left}px; width: ${box.width}px; max-height: ${room}px`;
             }
         };
         follow();

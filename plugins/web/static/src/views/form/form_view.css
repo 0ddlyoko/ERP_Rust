@@ -483,7 +483,6 @@ span.o_text {
     position: fixed;
     z-index: 90;
     min-width: 220px;
-    max-height: 280px;
     overflow-y: auto;
     margin: 0;
     padding: 6px;
