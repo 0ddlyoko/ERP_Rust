@@ -1,6 +1,6 @@
 import { computed, effect, load, loading, props, resource, state, t, untrack } from "trame";
 import { decorationNames, decorationOf, evaluate } from "@web/core/expression";
-import { listMemory } from "@web/core/list_memory";
+import { listMemory, searchMemory } from "@web/core/list_memory";
 import type { ActionDescription } from "@web/core/menus";
 import { listKey, type Route } from "@web/core/router";
 import type { Values } from "@web/core/orm";
@@ -69,7 +69,8 @@ function periodStart(day: string, period: string): string {
  * with their contact.
  *
  * It follows the list as the user left it: the same search, order and groups, each heading
- * coloured as the list colours the value. Everything a card or a preview shows is read at once,
+ * coloured as the list colours the value. Opened from a board — a kanban — it is that board
+ * narrowed: its `<card>`s, gathered in its columns. Everything a card or a preview shows is read at once,
  * with the records: resting on one asks the server nothing.
  *
  * Folded or open, and how wide, is kept per action by the browser; on a narrow screen it keeps
@@ -90,8 +91,22 @@ export class RecordStrip extends View {
         selected: t.number().orNull().default(null),
     });
 
+    /** The view the strip shows the records as: the board they were opened from, else the list. */
     override get kind(): string {
-        return "list";
+        const view = this.props.listRoute.view ?? this.props.action.views.find((kind: string) => kind !== "form");
+        return view === "kanban" ? "kanban" : "list";
+    }
+
+    /** The views of several records the action offers, to show the strip as: list, kanban. */
+    get switchable(): string[] {
+        return this.props.action.views.filter((kind: string) => kind === "list" || kind === "kanban");
+    }
+
+    /** Show the strip as another view of the records, the record beside staying open. */
+    switchTo(kind: string): void {
+        if (kind !== this.kind) {
+            this.breadcrumb.stripAs(kind);
+        }
     }
 
     @state accessor layout: StripLayout = readLayout(this.props.listRoute.action);
@@ -198,9 +213,11 @@ export class RecordStrip extends View {
         return listMemory(listKey(this.props.listRoute));
     }
 
-    /** What the records are gathered by: the field, and the period of a date. */
+    /** What the records are gathered by — as their list or their board last gathered them — the field, and the period of a date. */
     get grouping(): { field: string; period: string | null } | null {
-        const groupBy = this.memory?.groupBy ?? null;
+        const board = this.kind === "kanban" ? (this.archRoot?.getAttribute("default_group_by") ?? null) : null;
+        const search = searchMemory(listKey(this.props.listRoute));
+        const groupBy = (search === undefined ? this.memory?.groupBy : search.grouping?.groupBy) ?? board;
         if (groupBy === null) {
             return null;
         }
@@ -229,7 +246,8 @@ export class RecordStrip extends View {
         if (root === undefined || fields === undefined) {
             return null;
         }
-        const declared = Array.from(root.children).find((element) => element.tagName === tag);
+        const own = this.kind === "kanban" && tag !== "folded" ? "card" : tag;
+        const declared = Array.from(root.children).find((element) => element.tagName === own);
         const element = declared ?? this.defaultCard(tag);
         return compileCard(element, (child) => this.columnOf(child, fields));
     }
@@ -279,7 +297,7 @@ export class RecordStrip extends View {
             const order = memory?.order ?? [];
             return {
                 model: this.props.resModel,
-                domain: memory?.domain ?? this.props.domain,
+                domain: searchMemory(listKey(this.props.listRoute))?.domain ?? memory?.domain ?? this.props.domain,
                 fields: loading(() => this.fields) || loading(() => this.arch) ? null : this.readNames,
                 order: grouping === null ? (order.length ? order : undefined) : [grouping.field, ...order],
                 version: this.orm.versionOf(this.props.resModel),
@@ -341,13 +359,42 @@ export class RecordStrip extends View {
                 groups.set(key, { key, label, decoration: decorate(record), records: [record] });
             }
         }
-        const order = (this.fields?.[grouping.field]?.values ?? []).map(([key]) => key);
+        const ordered = loading(() => this.groupOrder) ? null : this.groupOrder;
+        const order = ordered ?? (this.fields?.[grouping.field]?.values ?? []).map(([key]) => key);
         const rank = (group: StripGroup): number => {
             const at = order.indexOf(group.key);
             return at < 0 ? order.length : at;
         };
         return [...groups.values()].sort((left, right) => rank(left) - rank(right));
     }
+
+    /**
+     * The records the strip is gathered by, when it is by a many2one, in their model's order — by
+     * `sequence` when they have one: the columns of a board, left to right.
+     */
+    @resource accessor groupOrder: string[] | null = load(
+        () => {
+            const grouping = this.grouping;
+            const field = grouping === null ? undefined : this.fields?.[grouping.field];
+            if (grouping === null || field?.type !== "ref" || field.relation === undefined) {
+                return null;
+            }
+            const ids = [...new Set(this.shownRecords.map((record) => record[grouping.field]))]
+                .map((value) => (Array.isArray(value) ? Number(value[0]) : null))
+                .filter((id): id is number => id !== null);
+            return JSON.stringify({ relation: field.relation, ids: ids.sort((a, b) => a - b) });
+        },
+        async (asked) => {
+            if (asked === null) {
+                return null;
+            }
+            const { relation, ids } = JSON.parse(asked) as { relation: string; ids: number[] };
+            const fields = await this.models.fields(relation);
+            const order = "sequence" in fields ? ["sequence", "id"] : ["id"];
+            const sorted = await this.orm.search(relation, [["id", "in", ids]], { order });
+            return sorted.map(String);
+        },
+    );
 
     private groupOf(record: Values, name: string, period: string | null): { key: string; label: string } {
         const value = record[name];
@@ -373,6 +420,11 @@ export class RecordStrip extends View {
 
     get count(): number {
         return this.shownRecords.length;
+    }
+
+    /** Whether its records are being read for the first time: none to show yet. */
+    get firstReading(): boolean {
+        return this.shownRecords.length === 0 && loading(() => this.records);
     }
 
     isSelected(record: Values): boolean {
@@ -437,11 +489,39 @@ export class RecordStrip extends View {
         return `left: ${preview.left}px; ${preview.above ? "bottom" : "top"}: ${preview.top}px`;
     }
 
-    /** The record open shows in the strip, scrolled to if it has to be. */
+    /** The column of the board shown, one at a time, by its position. */
+    @state accessor laneAt = 0;
+
+    /** Whether the strip shows a board's columns one at a time, side by side to slide between. */
+    get board(): boolean {
+        return this.kind === "kanban" && !this.narrow && this.grouping !== null;
+    }
+
+    /** The column shown is the one scrolled to. */
+    followLanes(lanes: HTMLElement): void {
+        const at = Math.round(lanes.scrollLeft / Math.max(1, lanes.clientWidth));
+        if (at !== this.laneAt) {
+            this.laneAt = at;
+        }
+    }
+
+    /** Slide to the previous or the next column. */
+    slide(by: number): void {
+        const lanes = this.element?.querySelector<HTMLElement>(".o_strip_lanes");
+        if (lanes === null || lanes === undefined) {
+            return;
+        }
+        const at = Math.min(Math.max(this.laneAt + by, 0), this.groups.length - 1);
+        lanes.scrollTo({ left: at * lanes.clientWidth, behavior: "smooth" });
+    }
+
+    /** The record open shows in the strip, scrolled to if it has to be — its column, on a board. */
     @effect showSelected(): void {
         if (loading(() => this.records) || this.records === undefined || this.props.selected === null) {
             return;
         }
-        queueMicrotask(() => this.element?.querySelector(".o_strip_item.selected")?.scrollIntoView({ block: "nearest" }));
+        queueMicrotask(() =>
+            this.element?.querySelector(".o_strip_item.selected")?.scrollIntoView({ block: "nearest", inline: "start" }),
+        );
     }
 }

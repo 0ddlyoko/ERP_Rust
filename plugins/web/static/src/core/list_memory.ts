@@ -42,3 +42,54 @@ export function rememberList(key: string | null, memory: ListMemory): void {
         memories.set(key, memory);
     }
 }
+
+/** How some records were last searched and gathered, by their list or their board alike. */
+export interface SearchMemory {
+    facets: Facet[];
+    /** The records the search found. */
+    domain: Domain;
+    /** What they were gathered by — a board always gathers them, by its `default_group_by` at least. */
+    grouping: { groupBy: string; label: string } | null;
+}
+
+const searches = new Map<string, SearchMemory>();
+
+/** How the records of a list key were last searched, in whichever of their views. */
+export function searchMemory(key: string | null): SearchMemory | undefined {
+    return key === null ? undefined : searches.get(key);
+}
+
+export function rememberSearch(key: string | null, memory: SearchMemory): void {
+    if (key !== null) {
+        searches.set(key, memory);
+    }
+}
+
+/** The search another view of the records left, for a view to open with: gathered as they were. */
+export function searchFacets(key: string | null): Facet[] | undefined {
+    const memory = searchMemory(key);
+    if (memory === undefined) {
+        return undefined;
+    }
+    const others = memory.facets.filter((facet) => facet.kind !== "groupby");
+    return memory.grouping === null ? others : [...others, { kind: "groupby", ...memory.grouping }];
+}
+
+const openings = new Map<string, Facet[]>();
+
+/** Open a list searched this way, once — the records a dashboard's figure stands for — over how it was left. */
+export function openWith(key: string | null, facets: Facet[]): void {
+    if (key !== null) {
+        openings.set(key, facets);
+    }
+}
+
+/** The search a list is opened with, if one was asked: given once, then forgotten. */
+export function takeOpening(key: string | null): Facet[] | undefined {
+    if (key === null) {
+        return undefined;
+    }
+    const facets = openings.get(key);
+    openings.delete(key);
+    return facets;
+}

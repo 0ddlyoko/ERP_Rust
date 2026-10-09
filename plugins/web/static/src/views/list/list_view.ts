@@ -1,7 +1,7 @@
 import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, refresh, resource, state, t } from "trame";
 import { and } from "@web/core/domain";
 import { decorationNames, decorationOf } from "@web/core/expression";
-import { listMemory, rememberList, type Sort } from "@web/core/list_memory";
+import { listMemory, rememberList, rememberSearch, searchFacets, type Sort, takeOpening } from "@web/core/list_memory";
 import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
@@ -82,7 +82,8 @@ export class ListView extends View {
     @state accessor offset = listMemory(listKey(this.router.route))?.offset ?? 0;
     @state accessor selected = new Set<number>(listMemory(listKey(this.router.route))?.selected ?? []);
     /** The search as the user left it; until they touch it, the view's default filters. */
-    @state accessor facets: Facet[] | null = listMemory(listKey(this.router.route))?.facets ?? null;
+    @state accessor facets: Facet[] | null =
+        takeOpening(listKey(this.router.route)) ?? searchFacets(listKey(this.router.route)) ?? listMemory(listKey(this.router.route))?.facets ?? null;
     @state accessor sort: Sort | null = listMemory(listKey(this.router.route))?.sort ?? null;
     @state accessor actionsOpen = false;
     @state accessor confirming: Confirming | null = null;
@@ -145,6 +146,14 @@ export class ListView extends View {
         ]
             .filter(Boolean)
             .join(" ");
+    }
+
+    /** Leave the search as it stands for the records' other views — their board — to open with. */
+    @effect shareSearch(): void {
+        if (loading(() => this.searchView) || loading(() => this.favorites)) {
+            return;
+        }
+        rememberSearch(listKey(this.router.route), { facets: this.currentFacets, domain: this.domain, grouping: this.grouping });
     }
 
     /** Remember the list once its rows are there; reading them sooner would hold the view back. */

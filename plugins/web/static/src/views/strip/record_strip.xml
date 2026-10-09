@@ -1,7 +1,7 @@
 <templates>
     <t t-name="web.RecordStrip">
         <div t-att-class="{ o_strip_slot: true, o_strip_slot_folded: folded }" t-att-style="folded ? '' : panelStyle">
-            <section t-att-class="{ o_strip: true, o_strip_narrow: narrow, o_strip_peek: peeking }" t-att-style="panelStyle"
+            <section t-att-class="{ o_strip: true, o_strip_narrow: narrow, o_strip_peek: peeking, o_strip_board: kind === 'kanban' }" t-att-style="panelStyle"
                      t-ref="element" t-att-aria-label="props.action.name"
                      t-on-mouseenter="() => peek()" t-on-mouseleave="() => leave()">
                 <div t-if="narrow" class="o_strip_top">
@@ -14,7 +14,24 @@
                     <span class="o_strip_caption">{{ props.action.name }}</span>
                 </div>
                 <header t-else="" class="o_strip_head">
-                    <h2 class="o_strip_title">{{ props.action.name }}<span class="o_strip_count">{{ count }}</span></h2>
+                    <h2 class="o_strip_title">{{ props.action.name }}<span t-if="!firstReading" class="o_strip_count">{{ count }}</span></h2>
+                    <div t-if="!folded &amp;&amp; switchable.length > 1" class="o_strip_views" role="group" aria-label="Views">
+                        <button t-foreach="switchable" t-as="option" t-key="option" type="button"
+                                t-att-class="{ o_strip_view: true, active: option === kind }"
+                                t-att-aria-pressed="option === kind ? 'true' : 'false'"
+                                t-att-title="option === 'kanban' ? 'Kanban' : 'List'"
+                                t-att-aria-label="option === 'kanban' ? 'Kanban' : 'List'" t-on-click="() => switchTo(option)">
+                            <svg t-if="option === 'kanban'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/>
+                                <rect x="17" y="4" width="4" height="13" rx="1"/>
+                            </svg>
+                            <svg t-else="" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                            </svg>
+                        </button>
+                    </div>
                     <button t-if="folded &amp;&amp; !narrowScreen" type="button" class="o_strip_button" title="Keep the list open"
                             aria-label="Keep the list open" t-on-click="unfold">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -30,7 +47,35 @@
                              stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                 </header>
-                <div class="o_strip_list">
+                <t t-if="board">
+                    <div class="o_strip_lanes_head">
+                        <button type="button" class="o_strip_button" title="Previous column" aria-label="Previous column"
+                                t-att-disabled="laneAt === 0" t-on-click="() => slide(-1)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                        </button>
+                        <span t-if="groups[laneAt]" t-att-class="'o_strip_group_label o_strip_tone_' + (groups[laneAt].decoration ?? 'none')">
+                            <span class="o_strip_dot"/>{{ groups[laneAt].label || "None" }} · {{ groups[laneAt].records.length }}
+                        </span>
+                        <span class="o_strip_lanes_place">{{ laneAt + 1 }} / {{ groups.length }}</span>
+                        <button type="button" class="o_strip_button" title="Next column" aria-label="Next column"
+                                t-att-disabled="laneAt >= groups.length - 1" t-on-click="() => slide(1)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                        </button>
+                    </div>
+                    <div class="o_strip_lanes" t-on-scroll="(ev) => followLanes(ev.currentTarget)">
+                        <div t-foreach="groups" t-as="group" t-key="group.key" class="o_strip_lane">
+                            <button t-foreach="group.records" t-as="record" t-key="record.id" type="button"
+                                    t-att-class="edgeClass(record)" t-att-aria-current="isSelected(record) ? 'true' : null"
+                                    t-on-click="() => open(record)" t-on-mouseenter="(ev) => hover(record, ev)"
+                                    t-on-mouseleave="() => hidePreview()">
+                                <t t-if="compact" t-component="compact.body" strip="this" record="record" card="compact"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+                <div t-else="" class="o_strip_list">
                     <div t-foreach="groups" t-as="group" t-key="group.key" class="o_strip_group">
                         <span t-if="group.label" t-att-class="'o_strip_group_label o_strip_tone_' + (group.decoration ?? 'none')">
                             <span class="o_strip_dot"/>{{ group.label }} · {{ group.records.length }}
@@ -47,7 +92,12 @@
                             </t>
                         </button>
                     </div>
-                    <p t-if="count === 0 &amp;&amp; !narrow" class="o_strip_empty">No records.</p>
+                    <t t-if="firstReading">
+                        <div t-foreach="[1, 2, 3, 4, 5, 6]" t-as="placeholder" t-key="placeholder" class="o_strip_placeholder" aria-hidden="true">
+                            <span/><span/>
+                        </div>
+                    </t>
+                    <p t-elif="count === 0 &amp;&amp; !narrow" class="o_strip_empty">No records.</p>
                 </div>
             </section>
             <div t-if="!folded" class="o_strip_resize" role="separator" aria-orientation="vertical"

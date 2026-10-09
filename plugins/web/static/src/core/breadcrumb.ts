@@ -110,6 +110,11 @@ export class Breadcrumb {
         await this.leave(here, go, () => writeRoute(this.router.route) !== writeRoute(here));
     }
 
+    /** Show the list beside the record as another of its views — its board rather than its rows — the record staying open. */
+    stripAs(view: string): void {
+        this.strip = { ...(this.strip ?? listOf(this.router.route)), view };
+    }
+
     /** Open a record of the list beside, or a new one: the trail goes back to that list. */
     async pick(id: number | null): Promise<void> {
         const strip = this.strip ?? listOf(this.router.route);

@@ -16,8 +16,10 @@ import {
 } from "trame";
 import { and } from "@web/core/domain";
 import { decorationNames, decorationOf, evaluate, namesRead } from "@web/core/expression";
+import { rememberSearch, searchFacets, takeOpening } from "@web/core/list_memory";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
+import { listKey } from "@web/core/router";
 import { Session } from "@web/core/session";
 import { FormDialog } from "@web/views/form/form_dialog";
 import { favoritesOf, forgetFavorite, saveFavorite } from "@web/views/search/favorites";
@@ -109,6 +111,18 @@ function namedOfValue(value: unknown): unknown[] {
 
 /** How many cards a column shows, then as many more each time more are asked for. */
 const LANE_LIMIT = 100;
+/** Where the browser remembers the size of the cards, by action. */
+const SIZE_KEY = "o_kanban_size";
+
+/** The size of cards the user last chose for an action, if any. */
+function readSize(action: string | null): "small" | "large" | null {
+    try {
+        const size = localStorage.getItem(`${SIZE_KEY}.${action ?? ""}`);
+        return size === "small" || size === "large" ? size : null;
+    } catch {
+        return null;
+    }
+}
 /** How many columns show open; those after them start folded. */
 const OPEN_LANES = 15;
 
@@ -270,9 +284,11 @@ export class KanbanView extends View implements CardHost {
         return "kanban";
     }
 
-    @state accessor facets: Facet[] | null = null;
+    @state accessor facets: Facet[] | null = takeOpening(listKey(this.router.route)) ?? searchFacets(listKey(this.router.route)) ?? null;
     /** The columns folded or unfolded by hand, against how they start. */
     @state accessor toggled = new Set<string>();
+    /** The size of the cards the user chose, by action, this time or before. */
+    @state accessor chosenSizes = new Map<string, "small" | "large">();
     /** The record of the card being dragged. */
     @state accessor dragging: number | null = null;
     /** Where it would land: a column, and a position among its other cards. */
@@ -371,11 +387,46 @@ export class KanbanView extends View implements CardHost {
         return this.archRoot?.getAttribute(name) ?? null;
     }
 
-    /** The field the cards are gathered by: the search's, else the view's `default_group_by`. */
+    /**
+     * Whether the cards are large: wider columns, more room, and what a card keeps for then —
+     * `size="large"`. As the user last chose for the action, else as the view's `card_size` says.
+     */
+    get large(): boolean {
+        const action = this.router.route.action ?? "";
+        const chosen = this.chosenSizes.get(action) ?? readSize(action);
+        return (chosen ?? this.attribute("card_size") ?? "small") === "large";
+    }
+
+    toggleSize(): void {
+        const action = this.router.route.action ?? "";
+        const size = this.large ? "small" : "large";
+        this.chosenSizes = new Map(this.chosenSizes).set(action, size);
+        try {
+            localStorage.setItem(`${SIZE_KEY}.${action}`, size);
+        } catch {
+            // Remembered for this page only.
+        }
+    }
+
+    /** The field the cards are gathered by: the search's, else — a date by period among them — the view's `default_group_by`. */
     @computed get groupField(): string | null {
         const searched = groupByOf(this.currentFacets)?.groupBy ?? null;
-        const field = searched ?? this.attribute("default_group_by");
+        const field = searched !== null && !searched.includes(":") ? searched : this.attribute("default_group_by");
         return field === null || field.includes(":") ? null : field;
+    }
+
+    /** Leave the search as it stands, gathered in these columns, for the records' list to open with. */
+    @effect shareSearch(): void {
+        if (loading(() => this.searchView) || loading(() => this.favorites) || loading(() => this.fields)) {
+            return;
+        }
+        const field = this.groupField;
+        const label = field === null ? "" : (this.fields?.[field]?.label ?? field);
+        rememberSearch(listKey(this.router.route), {
+            facets: this.currentFacets,
+            domain: this.domain,
+            grouping: field === null ? null : { groupBy: field, label },
+        });
     }
 
     /** The view's `<card>`, as a template. */
