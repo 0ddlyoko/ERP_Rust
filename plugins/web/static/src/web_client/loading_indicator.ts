@@ -2,9 +2,9 @@ import { Component, inject } from "trame";
 import { Rpc } from "@web/core/rpc";
 
 /**
- * A small mark in the bottom right corner while the server is asked something: `Loading`, or
- * `Loading (2)` for calls waiting side by side. It shows only once a call has lasted a moment,
- * so that the quick ones do not make it flicker.
+ * A thin bar running along the top of the page while the server is asked something — a record
+ * opening, a list read. It shows only once a call has lasted a moment, so that the quick ones do
+ * not make it flicker; how many calls wait is said to assistive technologies.
  */
 export class LoadingIndicator extends Component {
     static template = "web.LoadingIndicator";

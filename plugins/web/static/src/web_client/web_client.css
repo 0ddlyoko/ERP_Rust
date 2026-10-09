@@ -717,18 +717,10 @@ button {
 .o_loading_indicator {
     position: fixed;
     z-index: 110;
-    right: 16px;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: var(--o-side);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    box-shadow: 0 4px 14px rgb(15 23 42 / 0.18);
+    inset: 0 0 auto 0;
+    height: 3px;
+    overflow: hidden;
+    background: color-mix(in oklch, var(--o-accent) 18%, transparent);
     pointer-events: none;
     animation: o_loading_show 0s linear 150ms backwards;
 }
@@ -739,13 +731,22 @@ button {
     }
 }
 
-.o_loading_spinner {
-    width: 11px;
-    height: 11px;
-    border: 2px solid rgb(255 255 255 / 0.35);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: o_spin 0.7s linear infinite;
+.o_loading_bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    border-radius: 0 3px 3px 0;
+    background: var(--o-accent);
+    animation: o_loading_run 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes o_loading_run {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(260%);
+    }
 }
 
 /* The home page */

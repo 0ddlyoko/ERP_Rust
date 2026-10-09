@@ -1,6 +1,6 @@
 <templates>
     <t t-name="web.KanbanView">
-        <div class="o_kanban_view">
+        <div t-att-class="{ o_kanban_view: true, o_kanban_large: large }">
             <div class="o_control_panel">
                 <button type="button" class="o_button_primary" t-on-click="create">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -14,6 +14,18 @@
                     <SearchBar view="searchView" facets="currentFacets" onChange="setFacets" favorites="loadedFavorites"
                                onSaveFavorite="saveFavorite" onForgetFavorite="forgetFavorite" onApplyFavorite="applyFavorite"/>
                 </Suspense>
+                <button type="button" t-att-class="{ o_kanban_size: true, active: large }" t-on-click="toggleSize"
+                        t-att-title="large ? 'Smaller cards' : 'Larger cards'" t-att-aria-label="large ? 'Smaller cards' : 'Larger cards'"
+                        t-att-aria-pressed="large ? 'true' : 'false'">
+                    <svg t-if="large" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>
+                    </svg>
+                    <svg t-else="" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                    </svg>
+                </button>
             </div>
             <Suspense>
                 <t t-set-slot="fallback"/>

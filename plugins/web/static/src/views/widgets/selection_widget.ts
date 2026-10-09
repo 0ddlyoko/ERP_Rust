@@ -17,14 +17,15 @@ export class SelectionWidget extends Widget {
 
     get choices(): Choice[] {
         const offered = (this.props.attrs as Record<string, string>).choices?.split(",").map((key) => key.trim());
-        const values = this.props.field.values ?? [];
+        const values: Choice[] = (this.props.field.values ?? []).map(([key, label]) => [key, label]);
         const choices = offered === undefined ? values : values.filter(([key]) => offered.includes(key));
         const key = this.value as string;
         return this.isEmpty || choices.some(([known]) => known === key) ? choices : [...choices, [key, key]];
     }
 
     override get text(): string {
-        return this.isEmpty ? "" : (this.choices.find(([key]) => key === this.value)?.[1] ?? String(this.value));
+        const values = this.props.field.values ?? [];
+        return this.isEmpty ? "" : (values.find(([key]) => key === this.value)?.[1] ?? String(this.value));
     }
 
     /** Whether "no value" is offered: the field may be empty, or is. */

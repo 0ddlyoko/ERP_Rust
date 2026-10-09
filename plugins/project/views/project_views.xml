@@ -11,6 +11,7 @@
                     <field name="manager" widget="avatar" quick_edit="1"/>
                     <open_form invisible="is_template"/>
                 </row>
+                <muted size="large" invisible="!description"><field name="description"/></muted>
                 <row>
                     <muted name="tasks"><field name="closed_task_count"/> / <field name="task_count"/> tasks done</muted>
                     <spacer/>

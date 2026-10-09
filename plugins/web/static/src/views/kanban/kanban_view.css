@@ -458,3 +458,66 @@
     background: color-mix(in oklch, var(--o-accent) 10%, white);
     color: var(--o-accent-strong);
 }
+
+/* Large cards: wider columns, more room, and what a card keeps for them */
+
+.o_kanban_size {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: var(--o-surface);
+    color: var(--o-muted);
+    cursor: pointer;
+}
+
+.o_kanban_size:hover,
+.o_kanban_size.active {
+    color: var(--o-accent-strong);
+}
+
+.o_kanban_large .o_kanban_lane {
+    flex-basis: 380px;
+}
+
+.o_kanban_large .o_kanban_grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+
+.o_kanban_large .o_kanban_card {
+    gap: 6px;
+    padding: 16px 18px;
+    font-size: 14px;
+}
+
+.o_kanban_large .o_card {
+    gap: 8px;
+}
+
+.o_kanban_large .o_card_title {
+    font-size: 15.5px;
+    white-space: normal;
+}
+
+.o_card_large_only {
+    display: none;
+}
+
+.o_kanban_large .o_card_large_only {
+    display: block;
+}
+
+.o_kanban_lane {
+    min-width: 0;
+}
+
+.o_kanban_large .o_card_large_only .o_card_muted {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}

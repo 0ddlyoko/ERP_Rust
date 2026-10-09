@@ -38,7 +38,8 @@ const bodies = new Map<string, ComponentClass>();
  * `quick_edit="1"` is changed there: stars or a check box at once, anything else in a small
  * editor opened by a click on it, the rest of the card still opening the record. There too, an
  * `<open_form/>` is a small button opening the record's form — `string` saying what it is, `Settings`
- * by default — for a card that opens something else: a project its tasks.
+ * by default — for a card that opens something else: a project its tasks. Anything saying
+ * `size="large"` shows only when the kanban shows large cards.
  */
 export function compileCard(root: Element, columnOf: (element: Element) => Column, quickEdits = false): CompiledCard {
     const columns: Column[] = [];
@@ -49,6 +50,12 @@ export function compileCard(root: Element, columnOf: (element: Element) => Colum
         }
         const invisible = child.getAttribute("invisible");
         const shown = invisible === null ? "" : ` t-if="${escape(`!__strip.holds(props.record, ${JSON.stringify(invisible)})`)}"`;
+        if (child.getAttribute("size") === "large") {
+            const inner = child.cloneNode(true) as Element;
+            inner.removeAttribute("size");
+            inner.removeAttribute("invisible");
+            return `<div class="o_card_large_only"${shown}>${node(inner)}</div>`;
+        }
         if (child.tagName === "field") {
             const described = columnOf(child);
             columns.push(described);

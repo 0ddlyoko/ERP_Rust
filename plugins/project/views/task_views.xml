@@ -12,6 +12,8 @@
                     <field name="priority" widget="priority" quick_edit="1"/>
                 </row>
                 <title><field name="name"/></title>
+                <muted size="large" invisible="!customer"><field name="customer"/></muted>
+                <muted size="large" invisible="!description"><field name="description"/></muted>
                 <field name="tags" widget="tags" invisible="!tags.length" quick_edit="1"/>
                 <row invisible="status !== 'blocked' || !depends_on.length"><muted>Waiting for <field name="depends_on" limit="2"/></muted></row>
                 <row invisible="!checklist_done"><muted><field name="checklist_done"/> checked</muted></row>
