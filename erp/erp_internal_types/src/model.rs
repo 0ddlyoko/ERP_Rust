@@ -27,6 +27,11 @@ pub struct FinalInternalModel {
     pub description: String,
     /// The field naming a record, when a struct said it is not `name`.
     pub declared_name_field: Option<String>,
+    /// How the records come when nobody asks for an order, as the last struct saying it wrote it.
+    pub declared_order: Option<String>,
+    /// That order, read: each field and whether it is sorted largest first. Set once every
+    /// field is known; by id alone without one.
+    pub order: Vec<(String, bool)>,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
@@ -41,6 +46,8 @@ impl FinalInternalModel {
             table_name: model_name.to_string(),
             description: "".to_string(),
             declared_name_field: None,
+            declared_order: None,
+            order: Vec::new(),
             models: HashMap::new(),
             fields: HashMap::new(),
             methods: MethodRegistry::default(),
@@ -61,6 +68,7 @@ impl FinalInternalModel {
             table_name,
             description,
             name_field,
+            order,
             fields,
         } = model_descriptor;
 
@@ -119,6 +127,9 @@ impl FinalInternalModel {
         }
         if name_field.is_some() {
             self.declared_name_field = name_field;
+        }
+        if order.is_some() {
+            self.declared_order = order;
         }
         self.models.insert(type_id, internal_model);
     }

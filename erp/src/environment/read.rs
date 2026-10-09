@@ -4,7 +4,9 @@ use crate::access::{Access, AccessDenied, Operation};
 use crate::database::{Group, GroupBy};
 use crate::errors::MissingRecords;
 use crate::model::CREATE_DATE;
+use erp_search::OrderBy;
 use erp_types::field::FieldKind;
+use std::borrow::Cow;
 
 impl<'mm> Environment<'mm> {
     pub fn get_empty_record<M>(&self) -> M
@@ -231,9 +233,51 @@ impl<'mm> Environment<'mm> {
         domain: &SearchType,
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
-        self.prepare_search(model_name, domain, options)?;
+        let options = self.ordered(model_name, options)?;
+        self.prepare_search(model_name, domain, &options)?;
         self.database
-            .find_ids(model_name, domain, self.model_manager, options)
+            .find_ids(model_name, domain, self.model_manager, &options)
+    }
+
+    /// The order the lines of a one2many come in: their model's. A field of it being computed
+    /// right now is left out, as Odoo protects it: computing it again to sort would run the very
+    /// compute that may be reading these lines.
+    fn lines_order(&self, model_name: &str) -> Result<SearchOptions> {
+        let mut options = self
+            .ordered(model_name, &SearchOptions::default())?
+            .into_owned();
+        options.order.retain(|order| {
+            !self
+                .computing
+                .iter()
+                .any(|(model, field)| model == model_name && *field == order.field)
+        });
+        Ok(options)
+    }
+
+    /// The options a search runs with: those asked, in the model's own order when they name none.
+    fn ordered<'o>(
+        &self,
+        model_name: &str,
+        options: &'o SearchOptions,
+    ) -> Result<Cow<'o, SearchOptions>> {
+        let model = self.model_manager.try_get_model(model_name)?;
+        if !options.order.is_empty() || model.order.is_empty() {
+            return Ok(Cow::Borrowed(options));
+        }
+        let mut ordered = options.clone();
+        ordered.order = model
+            .order
+            .iter()
+            .map(|(field, descending)| {
+                if *descending {
+                    OrderBy::desc(field)
+                } else {
+                    OrderBy::asc(field)
+                }
+            })
+            .collect();
+        Ok(Cow::Owned(ordered))
     }
 
     /// Same, loading the stored fields of the records found in the same query, as reading them
@@ -244,14 +288,15 @@ impl<'mm> Environment<'mm> {
         domain: &SearchType,
         options: &SearchOptions,
     ) -> Result<Vec<u32>> {
-        self.prepare_search(model_name, domain, options)?;
+        let options = self.ordered(model_name, options)?;
+        self.prepare_search(model_name, domain, &options)?;
         let fields = self
             .model_manager
             .try_get_model(model_name)?
             .get_stored_fields();
         let rows =
             self.database
-                .search(model_name, &fields, domain, self.model_manager, options)?;
+                .search(model_name, &fields, domain, self.model_manager, &options)?;
         let mut ids = Vec::with_capacity(rows.len());
         for (id, values) in rows {
             for (field_name, value) in values {
@@ -752,12 +797,21 @@ impl<'mm> Environment<'mm> {
                     result.insert(id.get_id(), vec![]);
                 }
 
+                let pointing = make_domain!([(inverse_field, "=", ids_not_in_cache)]);
+                let options = self.lines_order(target_model)?;
+                let sorted: Vec<&str> = options
+                    .order
+                    .iter()
+                    .map(|order| order.field.as_str())
+                    .filter(|field| *field != "id")
+                    .collect();
+                self.save_fields_to_db(target_model, &sorted)?;
                 let database_result = self.database.search(
                     target_model,
                     &[inverse_field],
-                    &make_domain!([(inverse_field, "=", ids_not_in_cache)]),
+                    &pointing,
                     self.model_manager,
-                    &SearchOptions::default(),
+                    &options,
                 )?;
                 for (id, mut map) in database_result {
                     // Data should exist in database, and should not be empty, so we unwrap 2 times

@@ -8,7 +8,7 @@ use erp::types::model::MapOfFields;
 
 /// A warehouse: its stock location, and its receipts, deliveries and internal transfers.
 #[derive(Model)]
-#[erp(id = "stock_warehouse", methods)]
+#[erp(id = "stock_warehouse", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct Warehouse<Mode: IdMode> {
     id: Mode,

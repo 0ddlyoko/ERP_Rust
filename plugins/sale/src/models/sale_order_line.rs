@@ -28,7 +28,12 @@ pub enum InvoiceStatus {
 
 /// A line of a quotation or order: a product, how many, at the pricelist's price.
 #[derive(Model)]
-#[erp(id = "sale_order_line", name_field = "name", methods)]
+#[erp(
+    id = "sale_order_line",
+    order = "sequence, id",
+    name_field = "name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct SaleOrderLine<Mode: IdMode> {
     id: Mode,

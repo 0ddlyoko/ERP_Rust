@@ -27,7 +27,7 @@ pub enum JournalType {
 /// A book entries are kept in: customer invoices, vendor bills, a bank account, or
 /// miscellaneous operations — each numbering its entries in its own series.
 #[derive(Model)]
-#[erp(id = "account_journal", methods)]
+#[erp(id = "account_journal", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct Journal<Mode: IdMode> {
     id: Mode,

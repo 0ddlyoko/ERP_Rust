@@ -28,7 +28,12 @@ pub enum BillStatus {
 
 /// A line of a request or purchase order: a product, how many, at the vendor's price.
 #[derive(Model)]
-#[erp(id = "purchase_order_line", name_field = "name", methods)]
+#[erp(
+    id = "purchase_order_line",
+    order = "sequence, id",
+    name_field = "name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct PurchaseOrderLine<Mode: IdMode> {
     id: Mode,

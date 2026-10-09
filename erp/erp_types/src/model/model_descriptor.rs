@@ -8,6 +8,8 @@ pub struct ModelDescriptor {
     pub description: Option<String>,
     /// The field naming a record, when it is not `name`.
     pub name_field: Option<String>,
+    /// How the records come when nobody asks for an order: `date_order desc, id desc`.
+    pub order: Option<String>,
     pub fields: Vec<FieldDescriptor>,
 }
 
@@ -19,6 +21,7 @@ impl ModelDescriptor {
             name,
             description,
             name_field: None,
+            order: None,
             fields: Vec::new(),
         }
     }

@@ -20,7 +20,7 @@ pub enum SymbolPosition {
 
 /// What amounts are counted in: `EUR`, with its symbol, its smallest coin, and its rates.
 #[derive(Model)]
-#[erp(id = "currency", methods)]
+#[erp(id = "currency", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct Currency<Mode: IdMode> {
     id: Mode,

@@ -98,7 +98,7 @@ pub enum PaymentState {
 /// A journal entry: an invoice, a vendor bill, a credit note, or an entry made by hand — its
 /// journal items balancing debits with credits once posted.
 #[derive(Model)]
-#[erp(id = "account_move", methods)]
+#[erp(id = "account_move", order = "date desc, name desc, id desc", methods)]
 #[allow(dead_code)]
 pub struct Move<Mode: IdMode> {
     id: Mode,

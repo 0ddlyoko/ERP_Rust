@@ -46,7 +46,7 @@ pub enum PaymentStatus {
 /// Money received from a customer or sent to a vendor, through a bank or cash journal, and the
 /// invoices it pays.
 #[derive(Model)]
-#[erp(id = "account_payment", methods)]
+#[erp(id = "account_payment", order = "date desc, id desc", methods)]
 #[allow(dead_code)]
 pub struct Payment<Mode: IdMode> {
     id: Mode,

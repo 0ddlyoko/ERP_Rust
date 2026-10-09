@@ -19,7 +19,12 @@ use uom::models::{BaseUom, Uom};
 /// What the product says fills it in — label, account, price, taxes, unit — and anything filled
 /// in may be changed by hand.
 #[derive(Model)]
-#[erp(id = "account_invoice_line", name_field = "name", methods)]
+#[erp(
+    id = "account_invoice_line",
+    order = "sequence, id",
+    name_field = "name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct InvoiceLine<Mode: IdMode> {
     id: Mode,

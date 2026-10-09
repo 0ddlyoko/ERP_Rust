@@ -24,7 +24,12 @@ pub enum LocationUsage {
 /// A place goods are: a shelf of a warehouse, or where they come from and go to — vendors,
 /// customers, inventory adjustments.
 #[derive(Model)]
-#[erp(id = "stock_location", name_field = "complete_name", methods)]
+#[erp(
+    id = "stock_location",
+    order = "name, id",
+    name_field = "complete_name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Location<Mode: IdMode> {
     id: Mode,

@@ -26,6 +26,8 @@ pub enum AllowedModelAttrs {
     DerivedModel(Ident, LitStr),
     /// The field naming a record, when it is not `name`.
     NameField(Ident, LitStr),
+    /// How the records come when nobody asks for an order: `date_order desc, id desc`.
+    Order(Ident, LitStr),
     /// Says an `#[erp_methods]` block declares overridable methods for this struct.
     Methods(Ident),
 }
@@ -36,6 +38,7 @@ static VALID_MODEL_STRINGS: &[&str] = &[
     "description",
     "derived_model",
     "name_field",
+    "order",
     "methods",
 ];
 
@@ -65,6 +68,10 @@ impl Parse for AllowedModelAttrs {
                 name,
                 parse_eq(input, "name_field = \"login\"")?,
             )),
+            "order" => Ok(AllowedModelAttrs::Order(
+                name,
+                parse_eq(input, "order = \"sequence, id\"")?,
+            )),
             "methods" => Ok(AllowedModelAttrs::Methods(name)),
             _ => Err(gen_unknown_key_error(
                 name.span(),
@@ -83,6 +90,7 @@ impl MySpanned for AllowedModelAttrs {
             AllowedModelAttrs::Description(ident, _) => ident.span(),
             AllowedModelAttrs::DerivedModel(ident, _) => ident.span(),
             AllowedModelAttrs::NameField(ident, _) => ident.span(),
+            AllowedModelAttrs::Order(ident, _) => ident.span(),
             AllowedModelAttrs::Methods(ident) => ident.span(),
         }
     }

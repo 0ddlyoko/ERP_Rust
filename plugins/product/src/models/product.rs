@@ -21,7 +21,12 @@ pub enum ProductType {
 
 /// Something the business sells, buys or keeps: goods counted in a unit, or a service.
 #[derive(Model)]
-#[erp(id = "product", name_field = "display_name", methods)]
+#[erp(
+    id = "product",
+    order = "name, id",
+    name_field = "display_name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Product<Mode: IdMode> {
     id: Mode,

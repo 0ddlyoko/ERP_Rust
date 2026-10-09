@@ -6,7 +6,12 @@ use erp::types::model::MapOfFields;
 
 /// A family of products, within a parent family: `All / Saleable / Office furniture`.
 #[derive(Model)]
-#[erp(id = "product_category", name_field = "complete_name", methods)]
+#[erp(
+    id = "product_category",
+    order = "name, id",
+    name_field = "complete_name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct ProductCategory<Mode: IdMode> {
     id: Mode,

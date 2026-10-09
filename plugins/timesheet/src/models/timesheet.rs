@@ -8,7 +8,7 @@ use project::models::{BaseProjectProject, BaseProjectTask, Project, Task};
 
 /// Time someone spent on a task, or on a project with no task in particular, on a day.
 #[derive(Model)]
-#[erp(id = "timesheet", methods)]
+#[erp(id = "timesheet", order = "date desc, id desc", methods)]
 #[allow(dead_code)]
 pub struct Timesheet<Mode: IdMode> {
     id: Mode,

@@ -52,7 +52,12 @@ impl AccountType {
 
 /// An account of the chart: `400000 Customers`, where amounts are recorded.
 #[derive(Model)]
-#[erp(id = "account", name_field = "display_name", methods)]
+#[erp(
+    id = "account",
+    order = "code, id",
+    name_field = "display_name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Account<Mode: IdMode> {
     id: Mode,

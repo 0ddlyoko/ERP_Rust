@@ -25,7 +25,7 @@ pub enum StatementState {
 
 /// A statement of a bank account: its lines, between a starting and an ending balance.
 #[derive(Model)]
-#[erp(id = "account_bank_statement", methods)]
+#[erp(id = "account_bank_statement", order = "date desc, id desc", methods)]
 #[allow(dead_code)]
 pub struct BankStatement<Mode: IdMode> {
     id: Mode,

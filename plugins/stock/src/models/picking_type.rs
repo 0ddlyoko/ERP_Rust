@@ -18,7 +18,7 @@ pub enum PickingKind {
 /// A kind of transfer of a warehouse: its receipts, its deliveries, its internal transfers —
 /// where they go from and to, and how they are numbered.
 #[derive(Model)]
-#[erp(id = "stock_picking_type")]
+#[erp(id = "stock_picking_type", order = "sequence, id")]
 #[allow(dead_code)]
 pub struct PickingType<Mode: IdMode> {
     id: Mode,

@@ -20,7 +20,7 @@ pub enum UomType {
 
 /// A unit quantities are counted in, worth `ratio` reference units of its category.
 #[derive(Model)]
-#[erp(id = "uom", methods)]
+#[erp(id = "uom", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct Uom<Mode: IdMode> {
     id: Mode,

@@ -8,7 +8,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 /// How taxes and accounts change for a kind of customer or supplier: an EU business with a VAT
 /// number is invoiced intra-community, without VAT; one outside the EU, as an export.
 #[derive(Model)]
-#[erp(id = "account_fiscal_position", methods)]
+#[erp(id = "account_fiscal_position", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct FiscalPosition<Mode: IdMode> {
     id: Mode,

@@ -15,6 +15,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         description,
         derived_model,
         name_field,
+        order,
         has_methods,
         fields,
         ..
@@ -399,6 +400,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         Some(name_field) => quote! { Some(#name_field.to_string()) },
         None => quote! { None },
     };
+    let order = match order {
+        Some(order) => quote! { Some(#order.to_string()) },
+        None => quote! { None },
+    };
 
     let fields_descriptor = fields.iter().map(|f| {
         let FieldGen {
@@ -670,6 +675,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     table_name: #table_name.to_string(),
                     description,
                     name_field: #name_field,
+                    order: #order,
                     fields,
                 }
             }

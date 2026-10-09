@@ -32,7 +32,7 @@ pub enum PurchaseState {
 /// A request for quotation, and once confirmed, a purchase order: what is bought from a
 /// vendor, at what price, and how much of it is billed.
 #[derive(Model)]
-#[erp(id = "purchase_order", methods)]
+#[erp(id = "purchase_order", order = "date_order desc, id desc", methods)]
 #[allow(dead_code)]
 pub struct PurchaseOrder<Mode: IdMode> {
     id: Mode,

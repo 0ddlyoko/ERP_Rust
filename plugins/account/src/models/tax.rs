@@ -39,7 +39,7 @@ pub enum TaxDocument {
 /// A grid of the tax return an amount is reported in: `03`, counted with the sign the entry's
 /// balance has on that side, so that grids hold positive amounts.
 #[derive(Model)]
-#[erp(id = "account_tax_tag")]
+#[erp(id = "account_tax_tag", order = "name, id")]
 #[allow(dead_code)]
 pub struct TaxTag<Mode: IdMode> {
     id: Mode,
@@ -57,7 +57,7 @@ pub struct TaxTag<Mode: IdMode> {
 
 /// A tax: 21 % VAT on sales, with where its amount goes on invoices and on credit notes.
 #[derive(Model)]
-#[erp(id = "account_tax", methods)]
+#[erp(id = "account_tax", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct Tax<Mode: IdMode> {
     id: Mode,
@@ -92,7 +92,7 @@ pub struct Tax<Mode: IdMode> {
 
 /// Where a share of a tax goes, on invoices or on credit notes.
 #[derive(Model)]
-#[erp(id = "account_tax_repartition")]
+#[erp(id = "account_tax_repartition", order = "sequence, id")]
 #[allow(dead_code)]
 pub struct TaxRepartition<Mode: IdMode> {
     id: Mode,

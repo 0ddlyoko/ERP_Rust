@@ -4,7 +4,7 @@ use erp::types::field::{IdMode, Reference, SingleId};
 
 /// A step of a task, ticked once done: lighter than a subtask, with no one assigned nor time.
 #[derive(Model)]
-#[erp(id = "project_checklist_item")]
+#[erp(id = "project_checklist_item", order = "sequence, id")]
 #[allow(dead_code)]
 pub struct ChecklistItem<Mode: IdMode> {
     id: Mode,

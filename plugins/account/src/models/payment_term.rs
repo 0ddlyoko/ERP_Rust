@@ -16,7 +16,7 @@ pub enum PaymentTermValue {
 
 /// When an invoice is to be paid: `30 days end of month`, or 30 % now and the rest in 60 days.
 #[derive(Model)]
-#[erp(id = "account_payment_term", methods)]
+#[erp(id = "account_payment_term", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct PaymentTerm<Mode: IdMode> {
     id: Mode,
@@ -31,7 +31,7 @@ pub struct PaymentTerm<Mode: IdMode> {
 
 /// One installment of a payment term.
 #[derive(Model)]
-#[erp(id = "account_payment_term_line")]
+#[erp(id = "account_payment_term_line", order = "sequence, id")]
 #[allow(dead_code)]
 pub struct PaymentTermLine<Mode: IdMode> {
     id: Mode,

@@ -34,7 +34,7 @@ pub enum LineKind {
 /// A journal item: an amount debited or credited to an account, for a partner, as part of an
 /// entry — what the ledgers and the tax return are made of.
 #[derive(Model)]
-#[erp(id = "account_move_line", methods)]
+#[erp(id = "account_move_line", order = "date desc, id", methods)]
 #[allow(dead_code)]
 pub struct MoveLine<Mode: IdMode> {
     id: Mode,

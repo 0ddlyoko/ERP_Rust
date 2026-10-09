@@ -29,7 +29,7 @@ pub enum PricelistCompute {
 
 /// Prices for a kind of customer: rules by product, category, quantity and dates.
 #[derive(Model)]
-#[erp(id = "product_pricelist", methods)]
+#[erp(id = "product_pricelist", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct Pricelist<Mode: IdMode> {
     id: Mode,
@@ -46,7 +46,7 @@ pub struct Pricelist<Mode: IdMode> {
 
 /// A rule of a pricelist.
 #[derive(Model)]
-#[erp(id = "product_pricelist_item", methods)]
+#[erp(id = "product_pricelist_item", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct PricelistItem<Mode: IdMode> {
     id: Mode,

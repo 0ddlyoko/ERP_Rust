@@ -7,7 +7,12 @@ use erp::types::model::MapOfFields;
 
 /// How much of a currency one unit of the company's currency bought, from a date on.
 #[derive(Model)]
-#[erp(id = "currency_rate", name_field = "date", methods)]
+#[erp(
+    id = "currency_rate",
+    order = "date desc, id desc",
+    name_field = "date",
+    methods
+)]
 #[allow(dead_code)]
 pub struct CurrencyRate<Mode: IdMode> {
     id: Mode,

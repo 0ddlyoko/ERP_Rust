@@ -189,6 +189,7 @@ impl ModelManager {
         self._post_register_automatic_fields();
         self._post_register_selections();
         self._post_register_storage();
+        self._post_register_orders();
         self._post_register_m2o_links();
         self._post_register_compute_links();
     }
@@ -273,6 +274,35 @@ impl ModelManager {
             if let Err(wrong) = model.settle_storage() {
                 panic!("{wrong}");
             }
+        }
+    }
+
+    /// Read each model's declared order, refusing one that sorts on a field the model lacks or
+    /// does not keep in a column: the database sorts, and has nothing to sort a value worked out
+    /// on each read by.
+    fn _post_register_orders(&mut self) {
+        for model in self.models.values_mut() {
+            let Some(declared) = &model.declared_order else {
+                continue;
+            };
+            let mut order = Vec::new();
+            for key in declared.split(',') {
+                let (field, descending) = match key.trim().rsplit_once(' ') {
+                    Some((field, "desc")) => (field.trim(), true),
+                    Some((field, "asc")) => (field.trim(), false),
+                    _ => (key.trim(), false),
+                };
+                let kept =
+                    field == "id" || model.fields.get(field).is_some_and(|known| known.stored);
+                if !kept {
+                    panic!(
+                        "Model \"{}\" is ordered by \"{field}\", which is none of its fields kept in a column",
+                        model.name
+                    );
+                }
+                order.push((field.to_string(), descending));
+            }
+            model.order = order;
         }
     }
 

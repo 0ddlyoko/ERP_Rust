@@ -10,7 +10,7 @@ use erp_search_code_gen::make_domain;
 
 /// Someone who can log in, and the contact they are.
 #[derive(Model)]
-#[erp(id = "users", methods)]
+#[erp(id = "users", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct Users<Mode: IdMode> {
     pub id: Mode,

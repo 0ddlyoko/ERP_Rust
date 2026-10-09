@@ -10,7 +10,12 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 ///
 /// A person may work for a company, its `parent`, and is then named after it: `Acme, John Doe`.
 #[derive(Model)]
-#[erp(id = "contact", name_field = "complete_name", methods)]
+#[erp(
+    id = "contact",
+    order = "name, id",
+    name_field = "complete_name",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Contact<Mode: IdMode> {
     id: Mode,

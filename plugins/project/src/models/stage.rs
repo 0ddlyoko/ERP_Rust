@@ -11,7 +11,7 @@ use erp_search_code_gen::make_domain;
 /// one shows narrow. Those not shown in the progress are left out of the steps a task's form
 /// lists, unless the task is in one.
 #[derive(Model)]
-#[erp(id = "project_stage", methods)]
+#[erp(id = "project_stage", order = "sequence, id", methods)]
 #[allow(dead_code)]
 pub struct Stage<Mode: IdMode> {
     id: Mode,

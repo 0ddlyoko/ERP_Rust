@@ -7,7 +7,7 @@ use erp_search::SearchType;
 
 /// The business running this database: its name, and the contact holding its address and VAT.
 #[derive(Model)]
-#[erp(id = "company", methods)]
+#[erp(id = "company", order = "name, id", methods)]
 #[allow(dead_code)]
 pub struct Company<Mode: IdMode> {
     id: Mode,

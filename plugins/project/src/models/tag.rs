@@ -26,7 +26,7 @@ pub enum TagColor {
 
 /// A word sorting tasks across projects, in a colour of its own: `Bug`, `Urgent client`, `Design`.
 #[derive(Model)]
-#[erp(id = "project_tag")]
+#[erp(id = "project_tag", order = "name, id")]
 #[allow(dead_code)]
 pub struct Tag<Mode: IdMode> {
     id: Mode,

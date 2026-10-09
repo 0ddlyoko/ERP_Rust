@@ -19,7 +19,7 @@ pub enum BillPolicy {
 
 /// The price a vendor asks for a product, from a quantity on, and how long it takes to come.
 #[derive(Model)]
-#[erp(id = "product_supplierinfo")]
+#[erp(id = "product_supplierinfo", order = "sequence, id")]
 #[allow(dead_code)]
 pub struct SupplierInfo<Mode: IdMode> {
     id: Mode,
