@@ -1,5 +1,6 @@
-//! The thread of every record: what changed in its tracked fields, and later what people say
-//! about it. Installs itself once `base` and `web` are there.
+//! The thread of every record: what changed in its tracked fields and what people say about it,
+//! to its followers and those they mention, each told in their inbox. Installs itself once
+//! `base` and `web` are there.
 
 use erp::assets::{BundleContribution, StaticFiles};
 use erp::model::ModelManager;
@@ -19,7 +20,8 @@ impl Plugin for MailPlugin {
     fn info(&self) -> PluginInfo {
         PluginInfo {
             description: Some(
-                "The thread of every record: changes of its tracked fields.".to_string(),
+                "The thread of every record: messages, notes, followers and their inbox."
+                    .to_string(),
             ),
             category: Some("Technical".to_string()),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
@@ -30,9 +32,16 @@ impl Plugin for MailPlugin {
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::Message<_>>();
         model_manager.register_model::<models::MessageChange<_>>();
+        model_manager.register_model::<models::MessageSubtype<_>>();
+        model_manager.register_model::<models::Follower<_>>();
+        model_manager.register_model::<models::Notification<_>>();
         model_manager.tracking_hooks.push(models::note_changes);
         model_manager.create_hooks.push(models::note_creation);
         model_manager.delete_hooks.push(models::forget_deleted);
+    }
+
+    fn data(&self) -> Vec<&'static str> {
+        vec![include_str!("../data/mail_data.xml")]
     }
 
     fn static_files(&self) -> StaticFiles {

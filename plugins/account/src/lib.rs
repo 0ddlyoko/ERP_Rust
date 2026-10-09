@@ -64,6 +64,7 @@ impl Plugin for AccountPlugin {
         vec![
             include_str!("../data/groups.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
             include_str!("../views/account_views.xml"),
             include_str!("../views/tax_views.xml"),
             include_str!("../views/journal_views.xml"),

@@ -41,6 +41,7 @@ impl Plugin for PurchasePlugin {
         vec![
             include_str!("../data/groups.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
             include_str!("../data/purchase_data.xml"),
             include_str!("../views/purchase_views.xml"),
             include_str!("../views/dashboard_views.xml"),

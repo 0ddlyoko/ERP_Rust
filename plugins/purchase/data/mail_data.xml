@@ -1,0 +1,3 @@
+<erp>
+    <message_subtype id="subtype_order_state" name="Status changed" model="purchase_order" field="state"/>
+</erp>

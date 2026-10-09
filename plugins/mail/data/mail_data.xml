@@ -1,0 +1,3 @@
+<erp>
+    <message_subtype id="subtype_discussion" name="Discussions" sequence="1"/>
+</erp>

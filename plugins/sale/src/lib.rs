@@ -42,6 +42,7 @@ impl Plugin for SalePlugin {
         vec![
             include_str!("../data/groups.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
             include_str!("../data/sale_data.xml"),
             include_str!("../views/pricelist_views.xml"),
             include_str!("../views/sale_views.xml"),

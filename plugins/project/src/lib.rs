@@ -41,6 +41,7 @@ impl Plugin for ProjectPlugin {
         vec![
             include_str!("../data/groups.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
             include_str!("../data/project_data.xml"),
             include_str!("../views/project_views.xml"),
             include_str!("../views/task_views.xml"),

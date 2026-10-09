@@ -1,0 +1,4 @@
+<erp>
+    <message_subtype id="subtype_task_stage" name="Stage changed" model="project_task" field="stage"/>
+    <message_subtype id="subtype_task_status" name="Status changed" model="project_task" field="status" default="0"/>
+</erp>

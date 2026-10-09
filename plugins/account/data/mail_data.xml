@@ -1,0 +1,4 @@
+<erp>
+    <message_subtype id="subtype_move_state" name="Status changed" model="account_move" field="state"/>
+    <message_subtype id="subtype_payment_state" name="Status changed" model="account_payment" field="state"/>
+</erp>

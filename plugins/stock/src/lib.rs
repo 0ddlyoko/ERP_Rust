@@ -44,6 +44,7 @@ impl Plugin for StockPlugin {
         vec![
             include_str!("../data/groups.xml"),
             include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
             include_str!("../data/stock_data.xml"),
             include_str!("../views/stock_views.xml"),
             include_str!("../views/dashboard_views.xml"),
