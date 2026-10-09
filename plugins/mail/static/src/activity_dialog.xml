@@ -1,0 +1,88 @@
+<templates>
+    <t t-name="mail.ActivityDialog">
+        <Portal target="'body'">
+            <div class="o_dialog_backdrop" t-on-mousedown.self="props.onClose">
+                <div class="o_dialog o_activity_dialog" role="dialog" aria-modal="true" t-att-aria-label="activity.kind.name">
+                    <header class="o_activity_dialog_head">
+                        <span t-att-class="'o_activity_dialog_icon o_activity_' + due.state"><Icon name="activity.kind.icon" size="18"/></span>
+                        <div class="o_activity_dialog_title">
+                            <strong>{{ activity.kind.name }}</strong>
+                            <span t-if="activity.record_name">{{ activity.record_name }}</span>
+                        </div>
+                        <button type="button" class="o_form_dialog_close" aria-label="Close" t-on-click="props.onClose">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                        </button>
+                    </header>
+
+                    <dl t-if="!editing" class="o_activity_details">
+                        <dt>Summary</dt>
+                        <dd t-att-class="{ o_activity_none: !activity.summary }">{{ activity.summary ?? 'None' }}</dd>
+                        <dt>Due</dt>
+                        <dd>
+                            {{ longDay(activity.deadline) }}
+                            <span t-att-class="'o_activity_due o_activity_' + due.state">{{ due.text }}</span>
+                        </dd>
+                        <dt>Assigned to</dt>
+                        <dd>{{ activity.assignee[1] }}</dd>
+                        <t t-if="activity.planned_by">
+                            <dt>Planned by</dt>
+                            <dd>{{ activity.planned_by[1] }}<t t-if="activity.planned_on">, {{ longDay(activity.planned_on) }}</t></dd>
+                        </t>
+                        <dt>Note</dt>
+                        <dd t-att-class="{ o_activity_note: true, o_activity_none: !activity.note }">{{ activity.note ?? 'None' }}</dd>
+                    </dl>
+
+                    <div t-else="" class="o_activity_edit o_chatter_planner">
+                        <div class="o_chatter_kinds" role="group" aria-label="Kind">
+                            <button t-foreach="kinds ?? []" t-as="known" t-key="known.id" type="button"
+                                    t-att-class="{ o_chatter_kind: true, active: kind === known.id }"
+                                    t-att-aria-pressed="kind === known.id ? 'true' : 'false'" t-on-click="() => kind = known.id">
+                                <Icon name="known.icon" size="14"/>{{ known.name }}
+                            </button>
+                        </div>
+                        <input class="o_input" type="text" placeholder="Summary" aria-label="Summary"
+                               t-att-value="summary" t-on-input="(ev) => summary = ev.target.value"/>
+                        <div class="o_chatter_plan_row">
+                            <label class="o_chatter_plan_field">
+                                <span>Due</span>
+                                <input class="o_input" type="date" t-att-value="deadline" t-on-input="(ev) => deadline = ev.target.value"/>
+                            </label>
+                            <div class="o_chatter_plan_field">
+                                <span>For</span>
+                                <RecordSearch model="'users'" text="assignee ? assignee[1] : ''" onPick="pickAssignee"
+                                              placeholder="'Someone…'"/>
+                            </div>
+                        </div>
+                        <textarea class="o_input" rows="3" placeholder="Note" aria-label="Note" t-att-value="note"
+                                  t-on-input="(ev) => note = ev.target.value"/>
+                    </div>
+
+                    <div t-if="finishing" class="o_activity_finish">
+                        <textarea class="o_input" rows="2" placeholder="What came of it?" aria-label="What came of it"
+                                  t-att-value="feedback" t-on-input="(ev) => feedback = ev.target.value"/>
+                    </div>
+
+                    <footer class="o_activity_dialog_foot">
+                        <t t-if="editing">
+                            <button type="button" class="o_button_primary" t-att-disabled="busy || kind === null || !deadline || assignee === null ? 'disabled' : null"
+                                    t-on-click="save">Save</button>
+                            <button type="button" class="o_button_secondary" t-on-click="() => editing = false">Discard</button>
+                        </t>
+                        <t t-elif="finishing">
+                            <button type="button" class="o_button_primary" t-att-disabled="busy ? 'disabled' : null" t-on-click="finish">Mark done</button>
+                            <button type="button" class="o_button_secondary" t-on-click="() => finishing = false">Back</button>
+                        </t>
+                        <t t-else="">
+                            <button type="button" class="o_button_primary" t-on-click="startFinish">Mark done</button>
+                            <button type="button" class="o_button_secondary" t-on-click="startEdit">Edit</button>
+                            <button t-if="props.onOpenRecord" type="button" class="o_button_secondary" t-on-click="props.onOpenRecord">Open record</button>
+                            <button type="button" class="o_button_secondary o_activity_cancel" t-att-disabled="busy ? 'disabled' : null"
+                                    t-on-click="cancel">Cancel activity</button>
+                        </t>
+                    </footer>
+                </div>
+            </div>
+        </Portal>
+    </t>
+</templates>

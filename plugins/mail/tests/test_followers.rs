@@ -444,3 +444,79 @@ fn test_activities_are_planned_then_done() -> Result<()> {
     assert_eq!(thread[0]["author"][1], "Claire");
     Ok(())
 }
+
+/// An activity tells who planned it and when; changed, it is another kind, for someone else, by
+/// another day, its summary cleared — and that someone follows its record.
+#[test]
+fn test_an_activity_is_changed() -> Result<()> {
+    let app = new_app()?;
+    let deal = create(&app, "deal", json!({"name": "Changed"}))?;
+    let claire = create(
+        &app,
+        "users",
+        json!({"name": "Claire", "login": "claire", "groups": [1]}),
+    )?;
+    let (call_kind, meeting_kind) = {
+        let mut env = admin(&app)?;
+        (
+            data::resolve(&mut env, "mail.activity_type_call")?.expect("seeded"),
+            data::resolve(&mut env, "mail.activity_type_meeting")?.expect("seeded"),
+        )
+    };
+    let today = erp::types::field::Utc::now().date_naive();
+    let planned = call(
+        &app,
+        None,
+        "activity",
+        "schedule",
+        json!({"model": "deal", "record": deal, "kind": call_kind, "summary": "Ask the budget",
+               "deadline": today.to_string()}),
+    )?;
+    let listed = call(
+        &app,
+        None,
+        "activity",
+        "of",
+        json!({"model": "deal", "record": deal}),
+    )?;
+    assert_eq!(listed[0]["planned_by"][1], "Administrator");
+    assert!(listed[0]["planned_on"].is_string());
+
+    let later = (today + erp::types::field::TimeDelta::days(3)).to_string();
+    call(
+        &app,
+        None,
+        "activity",
+        "change",
+        json!({"activity": planned, "kind": meeting_kind, "summary": " ", "note": "At their office",
+               "assignee": claire, "deadline": later}),
+    )?;
+    let listed = call(
+        &app,
+        None,
+        "activity",
+        "of",
+        json!({"model": "deal", "record": deal}),
+    )?;
+    assert_eq!(listed[0]["kind"]["name"], "Meeting");
+    assert_eq!(listed[0]["summary"], json!(null));
+    assert_eq!(listed[0]["note"], "At their office");
+    assert_eq!(listed[0]["assignee"][1], "Claire");
+    assert_eq!(listed[0]["deadline"], later);
+    let followers = call(
+        &app,
+        None,
+        "follower",
+        "of",
+        json!({"model": "deal", "record": deal}),
+    )?;
+    assert!(
+        followers["followers"]
+            .as_array()
+            .expect("listed")
+            .iter()
+            .any(|follower| follower["contact"][1] == "Claire"),
+        "{followers}"
+    );
+    Ok(())
+}

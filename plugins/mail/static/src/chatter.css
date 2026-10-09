@@ -287,6 +287,12 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.o_chatter_activity:hover {
+    background: color-mix(in oklch, var(--o-accent) 6%, var(--o-panel));
 }
 
 .o_chatter_activity_head {

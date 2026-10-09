@@ -5,7 +5,7 @@ import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { Router } from "@web/core/router";
 import { systray } from "@web/web_client/systray";
-import { dueOf, type Planned } from "./chatter";
+import { ActivityDialog, dueOf, type Planned } from "./activity_dialog";
 import { MessageFocus } from "./message_focus";
 
 /** A message the user was told of, as `notification.inbox` describes it. */
@@ -37,6 +37,7 @@ const POLL_EVERY = 60_000;
  */
 export class InboxTray extends Component {
     static template = "mail.InboxTray";
+    static components = { ActivityDialog };
 
     props = props({
         /** Whether the menu shows its names. */
@@ -54,6 +55,8 @@ export class InboxTray extends Component {
     @state accessor notices: Notice[] | null = null;
     /** The user's activities, soonest first. */
     @state accessor activities: Planned[] = [];
+    /** The activity shown in a dialog. */
+    @state accessor opened: Planned | null = null;
     /** Where the open inbox stands on the page: beside the menu, level with its button. */
     @state accessor place = "";
 
@@ -120,15 +123,33 @@ export class InboxTray extends Component {
         return dueOf(deadline);
     }
 
-    /** Open the record an activity is about. */
-    async openActivity(activity: Planned): Promise<void> {
+    /** Show an activity in a dialog, the inbox closed. */
+    openActivity(activity: Planned): void {
+        this.open = false;
+        this.opened = activity;
+    }
+
+    readonly closeActivity = (): void => {
+        this.opened = null;
+    };
+
+    readonly activityChanged = (): void => {
+        void this.count();
+    };
+
+    /** Open the record the activity shown is about. */
+    readonly openActivityRecord = async (): Promise<void> => {
+        const activity = this.opened;
+        this.opened = null;
+        if (activity === null) {
+            return;
+        }
         const tree = loading(() => this.menus.tree) ? [] : (this.menus.tree ?? []);
         const action = actionFor(tree, activity.model);
-        this.open = false;
         if (action !== null) {
             await this.router.go({ action, view: "form", id: activity.record });
         }
-    }
+    };
 
     /** Open the record a notice is about, at its message, the notice read from then on. */
     async openNotice(notice: Notice): Promise<void> {

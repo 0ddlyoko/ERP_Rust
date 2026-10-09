@@ -183,6 +183,38 @@ impl Activity<MultipleIds> {
         Ok(())
     }
 
+    /// Change what an activity is, who does it or by when: the new assignee follows its record.
+    #[erp(rpc)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn change(
+        &self,
+        env: &mut Environment,
+        activity: u32,
+        kind: u32,
+        summary: Option<String>,
+        note: Option<String>,
+        assignee: u32,
+        deadline: NaiveDate,
+    ) -> Result<()> {
+        let _ = self;
+        let planned = Self::readable(env, activity)?;
+        let env = &mut *env.sudo();
+        let given = |text: Option<String>| text.filter(|text| !text.trim().is_empty());
+        let mut values = MapOfFields::default();
+        values.insert("kind", kind);
+        values.insert_option("summary", given(summary));
+        values.insert_option("note", given(note));
+        values.insert("assignee", assignee);
+        values.insert("deadline", deadline);
+        env.write("activity", &SingleId::from(activity), values)?;
+        if let Some(contact) = contact_of(env, assignee)? {
+            let model = planned.get_model(env)?.clone();
+            let record = u32::try_from(*planned.get_record(env)?)?;
+            follow(env, &model, record, &[contact])?;
+        }
+        Ok(())
+    }
+
     /// Drop an activity without doing it.
     #[erp(rpc)]
     pub fn cancel(&self, env: &mut Environment, activity: u32) -> Result<()> {
@@ -210,7 +242,8 @@ impl Activity<MultipleIds> {
     }
 }
 
-/// Activities as a client shows them: what, about which record, for whom, and by when.
+/// Activities as a client shows them: what, about which record, for whom, by when, and who
+/// planned it when.
 fn describe(env: &mut Environment, planned: Activity<MultipleIds>) -> Result<Value> {
     let mut found = Vec::new();
     for activity in planned {
@@ -219,6 +252,10 @@ fn describe(env: &mut Environment, planned: Activity<MultipleIds>) -> Result<Val
         let model = activity.get_model(env)?.clone();
         let record = u32::try_from(*activity.get_record(env)?)?;
         let name = env.names(&model, &[record])?.remove(&record);
+        let planned_by = match activity.get_create_uid(env)? {
+            Some(planner) => json!([planner, env.names("users", &[planner])?.remove(&planner)]),
+            None => Value::Null,
+        };
         found.push(json!({
             "id": activity.get_id(),
             "kind": {"id": kind.get_id(), "name": kind.get_name(env)?, "icon": kind.get_icon(env)?},
@@ -229,6 +266,8 @@ fn describe(env: &mut Environment, planned: Activity<MultipleIds>) -> Result<Val
             "model": model,
             "record": record,
             "record_name": name,
+            "planned_by": planned_by,
+            "planned_on": activity.get_create_date(env)?.map(|date| date.to_rfc3339()),
         }));
     }
     Ok(Value::Array(found))

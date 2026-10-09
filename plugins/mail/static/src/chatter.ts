@@ -7,6 +7,7 @@ import { Session } from "@web/core/session";
 import { formParts } from "@web/views/form/form_view";
 import { SidePlace } from "@web/views/form/side_place";
 import { RecordSearch } from "@web/views/widgets/record_search";
+import { ActivityDialog, type ActivityKind, dayFromToday, dueOf, type Planned } from "./activity_dialog";
 import { MessageFocus } from "./message_focus";
 
 /** A tracked field a message notes the change of, as text. */
@@ -62,50 +63,6 @@ const KINDS: Record<Shown, string[] | null> = {
     change: ["tracking", "creation"],
 };
 
-/** Something planned about the record, as `activity.of` describes it. */
-export interface Planned {
-    id: number;
-    kind: { id: number; name: string; icon: string | null };
-    summary: string | null;
-    note: string | null;
-    assignee: [number, string];
-    deadline: string;
-    model: string;
-    record: number;
-    record_name: string | null;
-}
-
-/** A kind of activity, as `activity.kinds` describes it. */
-interface ActivityKind {
-    id: number;
-    name: string;
-    icon: string | null;
-    delay: number;
-}
-
-/** A day as `YYYY-MM-DD`, `days` from today. */
-function dayFromToday(days: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-/** When an activity is due, said from today, and how urgent: late, today, or ahead. */
-export function dueOf(deadline: string): { text: string; state: "late" | "today" | "planned" } {
-    const [year, month, day] = deadline.split("-").map(Number);
-    const due = new Date(year, month - 1, day).getTime();
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const days = Math.round((due - today) / 86_400_000);
-    if (days < 0) {
-        return { text: days === -1 ? "Yesterday" : `${-days} days late`, state: "late" };
-    }
-    if (days === 0) {
-        return { text: "Today", state: "today" };
-    }
-    return { text: days === 1 ? "Tomorrow" : `In ${days} days`, state: "planned" };
-}
-
 /** A part of a message's text: as written, or a mention of someone. */
 interface Segment {
     text: string;
@@ -125,7 +82,7 @@ interface Segment {
  */
 export class Chatter extends Component {
     static template = "mail.Chatter";
-    static components = { Icon, RecordSearch };
+    static components = { ActivityDialog, Icon, RecordSearch };
 
     props = props({
         model: t.string(),
@@ -147,6 +104,8 @@ export class Chatter extends Component {
     @state accessor planNote = "";
     @state accessor planDeadline = dayFromToday(0);
     @state accessor planAssignee: [number, string] | null = null;
+    /** The activity shown in a dialog. */
+    @state accessor opened: Planned | null = null;
     /** The activity being marked done, and what came of it. */
     @state accessor finishing: number | null = null;
     @state accessor feedback = "";
@@ -446,6 +405,18 @@ export class Chatter extends Component {
         this.finishing = null;
         this.feedback = "";
     }
+
+    openActivity(activity: Planned): void {
+        this.opened = activity;
+    }
+
+    readonly closeActivity = (): void => {
+        this.opened = null;
+    };
+
+    readonly activityChanged = (): void => {
+        this.changed++;
+    };
 
     cancelActivity(activity: Planned): void {
         void this.act(() => this.orm.call("activity", "cancel", [], { activity: activity.id }));

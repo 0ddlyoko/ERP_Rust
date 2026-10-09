@@ -130,11 +130,14 @@
                 </div>
             </t>
 
+            <ActivityDialog t-if="opened" activity="opened" onClose="closeActivity" onChanged="activityChanged"/>
             <ul t-if="planned.length" class="o_chatter_planned" aria-label="Planned activities">
                 <li t-foreach="planned" t-as="activity" t-key="activity.id"
                     t-att-class="'o_chatter_activity o_chatter_due_' + dueOf(activity.deadline).state">
                     <span class="o_chatter_activity_icon"><Icon name="activity.kind.icon" size="15"/></span>
-                    <div class="o_chatter_activity_main">
+                    <div class="o_chatter_activity_main" role="button" tabindex="0" title="See the activity"
+                         t-on-click="(ev) => !ev.target.closest('.o_chatter_finish') &amp;&amp; openActivity(activity)"
+                         t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; ev.target === ev.currentTarget &amp;&amp; openActivity(activity)">
                         <div class="o_chatter_activity_head">
                             <strong>{{ activity.kind.name }}</strong>
                             <span t-if="activity.summary">{{ activity.summary }}</span>

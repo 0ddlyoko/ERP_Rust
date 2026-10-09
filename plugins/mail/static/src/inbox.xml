@@ -12,6 +12,8 @@
                 </span>
                 <span t-if="props.wide">Inbox</span>
             </button>
+            <ActivityDialog t-if="opened" activity="opened" onClose="closeActivity" onChanged="activityChanged"
+                            onOpenRecord="openActivityRecord"/>
             <Portal t-if="open" target="'body'">
             <div class="o_inbox_backdrop" t-on-mousedown.self="() => open = false"/>
             <div class="o_inbox_panel" role="dialog" aria-label="Inbox" t-att-style="place">
