@@ -1,19 +1,107 @@
 <templates>
     <t t-name="mail.Chatter">
         <div class="o_chatter">
-            <h2 class="o_form_block_title">Messages</h2>
+            <div class="o_chatter_top">
+                <h2 class="o_form_block_title">Messages</h2>
+                <t t-if="info">
+                    <div class="o_chatter_followers">
+                        <button type="button" class="o_chatter_followers_button" t-att-aria-expanded="followersOpen ? 'true' : 'false'"
+                                t-att-title="info.followers.length + ' following'" t-on-click="() => followersOpen = !followersOpen">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            {{ info.followers.length }}
+                        </button>
+                        <div t-if="followersOpen" class="o_chatter_followers_list">
+                            <div t-foreach="info.followers" t-as="follower" t-key="follower.id" class="o_chatter_follower">
+                                <div class="o_chatter_follower_row">
+                                    <span class="o_chatter_avatar o_chatter_avatar_small" t-att-style="avatarOf(follower.contact[1])"
+                                          aria-hidden="true">{{ initialsOf(follower.contact[1]) }}</span>
+                                    <span class="o_chatter_follower_name">{{ follower.contact[1] }}</span>
+                                    <button type="button" class="o_chatter_icon" title="What they follow"
+                                            aria-label="What they follow"
+                                            t-on-click="() => choosing = choosing === follower.id ? null : follower.id">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="o_chatter_icon" title="Remove" t-att-aria-label="'Remove ' + follower.contact[1]"
+                                            t-on-click="() => removeFollower(follower.id)">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                                    </button>
+                                </div>
+                                <ul t-if="choosing === follower.id" class="o_chatter_subtypes">
+                                    <li t-foreach="info.subtypes" t-as="subtype" t-key="subtype.id">
+                                        <label>
+                                            <input type="checkbox" t-att-checked="follower.subtypes.includes(subtype.id)"
+                                                   t-on-change="() => toggleSubtype(follower, subtype.id)"/>
+                                            {{ subtype.name }}
+                                        </label>
+                                    </li>
+                                </ul>
+                            </div>
+                            <RecordSearch model="'contact'" exclude="followerContacts" onPick="addFollower"
+                                          placeholder="'Add a follower…'"/>
+                        </div>
+                    </div>
+                    <button type="button" t-att-class="{ o_chatter_follow: true, o_chatter_following: info.following }"
+                            t-on-click="toggleFollow">
+                        <span class="o_chatter_follow_on">{{ info.following ? "Following" : "Follow" }}</span>
+                        <span t-if="info.following" class="o_chatter_follow_off">Unfollow</span>
+                    </button>
+                </t>
+            </div>
+
+            <t t-if="props.record !== null">
+                <div class="o_chatter_tabs" role="group" aria-label="Write">
+                    <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'message' }"
+                            t-att-aria-pressed="composing === 'message' ? 'true' : 'false'" t-on-click="() => compose('message')">Send message</button>
+                    <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'note' }"
+                            t-att-aria-pressed="composing === 'note' ? 'true' : 'false'" t-on-click="() => compose('note')">Log note</button>
+                </div>
+                <div t-if="composing" t-att-class="{ o_chatter_composer: true, o_chatter_composer_note: composing === 'note' }">
+                    <textarea t-ref="box" class="o_input" rows="3" t-att-value="text"
+                              t-att-placeholder="composing === 'note' ? 'Log an internal note… @ to mention someone' : 'Write to the followers… @ to mention someone'"
+                              t-on-input="(ev) => type(ev)" t-on-keydown="(ev) => key(ev)"/>
+                    <ul t-if="mentionQuery !== null &amp;&amp; mentionResults.length" class="o_chatter_mentions" role="listbox">
+                        <li t-foreach="mentionResults" t-as="choice" t-key="choice.contact" role="option"
+                            t-att-aria-selected="choice_index === mentionAt ? 'true' : 'false'"
+                            t-att-class="{ active: choice_index === mentionAt }"
+                            t-on-mousedown.prevent="() => mention(choice)">
+                            <span class="o_chatter_avatar o_chatter_avatar_small" t-att-style="avatarOf(choice.name)"
+                                  aria-hidden="true">{{ initialsOf(choice.name) }}</span>
+                            {{ choice.name }}
+                        </li>
+                    </ul>
+                    <div class="o_chatter_composer_foot">
+                        <span class="o_chatter_audience">{{ audience }}</span>
+                        <button type="button" class="o_button_primary" t-att-disabled="sending || !text.trim() ? 'disabled' : null"
+                                t-on-click="send">{{ composing === 'note' ? 'Log' : 'Send' }}</button>
+                    </div>
+                </div>
+            </t>
+
             <p t-if="props.record === null" class="o_chatter_empty">Messages will show once the record is saved.</p>
             <p t-elif="!messages.length" class="o_chatter_empty">No messages yet.</p>
             <ol t-else="" class="o_chatter_thread">
-                <li t-foreach="messages" t-as="message" t-key="message.id" class="o_chatter_message">
-                    <span class="o_chatter_avatar" aria-hidden="true">{{ initialsOf(message) }}</span>
+                <li t-foreach="messages" t-as="message" t-key="message.id"
+                    t-att-class="{ o_chatter_message: true, o_chatter_note: message.kind === 'note' }">
+                    <span class="o_chatter_avatar" aria-hidden="true">{{ initialsOf(authorOf(message)) }}</span>
                     <div class="o_chatter_content">
                         <div class="o_chatter_head">
                             <span class="o_chatter_author">{{ authorOf(message) }}</span>
                             <span class="o_chatter_date">{{ whenOf(message) }}</span>
+                            <span t-if="message.kind === 'note'" class="o_chatter_badge">Note</span>
                         </div>
+                        <p t-if="message.kind === 'comment' &amp;&amp; message.recipients.length" class="o_chatter_to">
+                            To {{ recipientsOf(message) }}
+                        </p>
                         <p t-if="message.kind === 'creation'" class="o_chatter_created">Created the record</p>
-                        <p t-if="message.body" class="o_chatter_body">{{ message.body }}</p>
+                        <p t-if="message.body" class="o_chatter_body"><t t-foreach="segmentsOf(message)" t-as="segment" t-key="segment_index"><span t-if="segment.mention" class="o_chatter_mention">{{ segment.text }}</span><t t-else="">{{ segment.text }}</t></t></p>
                         <ul t-if="message.changes.length" class="o_chatter_changes">
                             <li t-foreach="message.changes" t-as="change" t-key="change.field">
                                 <span class="o_chatter_field">{{ change.label }}</span>

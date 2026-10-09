@@ -88,8 +88,9 @@ export function pathsOf(entries: readonly MenuEntry[], above: string[] = []): { 
     });
 }
 
-/** The action a menu opens on a model, as a link names it, to open one of its records with. */
+/** The action a menu opens on a model, as a link names it, to open one of its records with: one offering its form, if one does. */
 export function actionFor(entries: readonly MenuEntry[], model: string | undefined): string | null {
-    const action = actionsOf(entries).find((action) => action.model === model);
+    const actions = actionsOf(entries).filter((action) => action.model === model);
+    const action = actions.find((one) => one.views.includes("form")) ?? actions[0];
     return action === undefined ? null : (action.xml_id ?? String(action.id));
 }

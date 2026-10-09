@@ -1,0 +1,44 @@
+<templates>
+    <t t-name="mail.InboxTray">
+        <div t-att-class="{ o_inbox_tray: true, o_inbox_narrow: !props.wide }">
+            <button type="button" class="o_inbox_button" t-att-aria-expanded="open ? 'true' : 'false'"
+                    t-att-title="unread ? unread + ' unread' : 'Inbox'" t-on-click="(ev) => toggle(ev)">
+                <span class="o_inbox_bell">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
+                    <span t-if="unread" class="o_inbox_count">{{ unread > 99 ? "99+" : unread }}</span>
+                </span>
+                <span t-if="props.wide">Inbox</span>
+            </button>
+            <Portal t-if="open" target="'body'">
+            <div class="o_inbox_backdrop" t-on-mousedown.self="() => open = false"/>
+            <div class="o_inbox_panel" role="dialog" aria-label="Inbox" t-att-style="place">
+                <div class="o_inbox_head">
+                    <strong>Inbox</strong>
+                    <button t-if="unread" type="button" class="o_inbox_all" t-on-click="() => markRead([])">Mark all as read</button>
+                </div>
+                <p t-if="notices === null" class="o_inbox_empty">Loading…</p>
+                <p t-elif="!notices.length" class="o_inbox_empty">Nothing to read.</p>
+                <ul t-else="" class="o_inbox_list">
+                    <li t-foreach="notices" t-as="notice" t-key="notice.id">
+                        <button type="button" t-att-class="{ o_inbox_notice: true, o_inbox_unread: !notice.read }"
+                                t-on-click="() => openNotice(notice)">
+                            <span class="o_inbox_avatar" t-att-style="avatarOf(authorOf(notice))"
+                                  aria-hidden="true">{{ initialsOf(authorOf(notice)) }}</span>
+                            <span class="o_inbox_text">
+                                <span class="o_inbox_record">{{ notice.record_name ?? notice.model }}</span>
+                                <span class="o_inbox_who">
+                                    {{ authorOf(notice) }}{{ notice.reason === 'mention' ? ' mentioned you' : '' }}
+                                </span>
+                                <span class="o_inbox_summary">{{ summaryOf(notice) }}</span>
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            </Portal>
+        </div>
+    </t>
+</templates>

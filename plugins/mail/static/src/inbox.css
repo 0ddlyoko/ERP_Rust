@@ -1,0 +1,163 @@
+/* The user's inbox, under the menu */
+
+.o_inbox_tray {
+    position: relative;
+}
+
+.o_inbox_button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    color: var(--o-side-muted);
+    font: inherit;
+    cursor: pointer;
+}
+
+.o_inbox_narrow .o_inbox_button {
+    justify-content: center;
+}
+
+.o_inbox_button:hover {
+    background: var(--o-side-raised);
+    color: #ffffff;
+}
+
+.o_inbox_bell {
+    position: relative;
+    display: flex;
+}
+
+.o_inbox_count {
+    position: absolute;
+    top: -7px;
+    right: -9px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--o-danger);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+}
+
+.o_inbox_backdrop {
+    position: fixed;
+    z-index: 69;
+    inset: 0;
+}
+
+.o_inbox_panel {
+    position: fixed;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 340px;
+    max-height: 70vh;
+    padding: 12px;
+    border-radius: 16px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    box-shadow: var(--o-shadow-pop);
+}
+
+.o_inbox_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 4px;
+}
+
+.o_inbox_all {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--o-accent-strong);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_inbox_empty {
+    margin: 8px 4px;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_inbox_list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.o_inbox_notice {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: var(--o-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_inbox_notice:hover {
+    background: var(--o-panel);
+}
+
+.o_inbox_unread {
+    background: color-mix(in oklch, var(--o-accent) 7%, white);
+}
+
+.o_inbox_avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.o_inbox_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.o_inbox_record {
+    font-weight: 700;
+}
+
+.o_inbox_who {
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_inbox_summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}

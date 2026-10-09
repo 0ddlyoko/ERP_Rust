@@ -111,6 +111,264 @@
     font-size: 13px;
 }
 
+/* Who follows the record, and whether the user does */
+
+.o_chatter_top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.o_chatter_top .o_form_block_title {
+    flex-grow: 1;
+    margin: 0;
+}
+
+.o_chatter_followers {
+    position: relative;
+}
+
+.o_chatter_followers_button,
+.o_chatter_follow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--o-border);
+    border-radius: 999px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.o_chatter_followers_button:hover,
+.o_chatter_follow:hover {
+    border-color: var(--o-accent);
+    color: var(--o-accent-strong);
+}
+
+.o_chatter_following {
+    border-color: transparent;
+    background: color-mix(in oklch, var(--o-accent) 12%, white);
+    color: var(--o-accent-strong);
+}
+
+.o_chatter_follow_off,
+.o_chatter_following:hover .o_chatter_follow_on {
+    display: none;
+}
+
+.o_chatter_following:hover .o_chatter_follow_off {
+    display: inline;
+    color: var(--o-danger);
+}
+
+.o_chatter_followers_list {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 280px;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--o-surface);
+    box-shadow: var(--o-shadow-pop);
+}
+
+.o_chatter_follower_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.o_chatter_follower_name {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_chatter_icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--o-muted);
+    cursor: pointer;
+}
+
+.o_chatter_icon:hover {
+    background: var(--o-panel);
+    color: var(--o-ink);
+}
+
+.o_chatter_subtypes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 4px 0 4px 36px;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+}
+
+.o_chatter_subtypes label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.o_chatter_avatar_small {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+}
+
+/* What to say: a message, or an internal note */
+
+.o_chatter_tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.o_chatter_tab {
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--o-panel);
+    color: var(--o-ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_chatter_tab:hover {
+    color: var(--o-accent-strong);
+}
+
+.o_chatter_tab.active {
+    background: var(--o-side);
+    color: #ffffff;
+}
+
+.o_chatter_composer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--o-panel);
+}
+
+.o_chatter_composer_note {
+    background: #fff8e6;
+}
+
+.o_chatter_composer textarea {
+    width: 100%;
+    min-height: 72px;
+    box-sizing: border-box;
+    resize: vertical;
+    font: inherit;
+    font-size: 13px;
+}
+
+.o_chatter_composer_foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.o_chatter_audience {
+    flex-grow: 1;
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_chatter_mentions {
+    position: absolute;
+    z-index: 40;
+    top: 92px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    margin: 0;
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--o-surface);
+    box-shadow: var(--o-shadow-pop);
+    list-style: none;
+}
+
+.o_chatter_mentions li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.o_chatter_mentions li.active,
+.o_chatter_mentions li:hover {
+    background: var(--o-panel);
+}
+
+/* Notes, whom a message was said to, and those it mentions */
+
+.o_chatter_note .o_chatter_content {
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: #fff8e6;
+}
+
+.o_chatter_badge {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #ffe9b8;
+    color: #6e5200;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.o_chatter_to {
+    margin: 0;
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_chatter_body {
+    white-space: pre-wrap;
+}
+
+.o_chatter_mention {
+    padding: 0 4px;
+    border-radius: 6px;
+    background: color-mix(in oklch, var(--o-accent) 12%, white);
+    color: var(--o-accent-strong);
+    font-weight: 600;
+}
+
 .o_statusbar_durations {
     display: flex;
     flex-direction: column;
