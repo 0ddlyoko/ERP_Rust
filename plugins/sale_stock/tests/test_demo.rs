@@ -85,7 +85,7 @@ fn assert_demo_orders(env: &mut Environment) -> Result<()> {
 /// off and on again, it is not loaded twice.
 #[test]
 fn test_turning_demo_data_on_loads_that_of_each_plugin_once() -> Result<()> {
-    let mut app = erp_test_support::app(plugins(), "sale_stock")?;
+    let mut app = erp_test_support::app(plugins, &["sale_stock"])?;
     app.load_plugin("account_test_chart")?;
     {
         let mut env = admin_env(&app)?;
@@ -121,7 +121,7 @@ fn test_turning_demo_data_on_loads_that_of_each_plugin_once() -> Result<()> {
 /// orders confirmed once deliveries exist have one.
 #[test]
 fn test_a_plugin_installed_after_demo_data_was_asked_for_brings_its_own() -> Result<()> {
-    let mut app = erp_test_support::app(plugins(), "base")?;
+    let mut app = erp_test_support::app(plugins, &["base"])?;
     turn_demo(&app, true)?;
     app.load_plugin("sale_stock")?;
     app.load_plugin("account_test_chart")?;

@@ -21,25 +21,25 @@ use uom::UomPlugin;
 use web::WebPlugin;
 
 fn new_app() -> Result<Application> {
-    let mut app = erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(ContactsPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(CurrencyPlugin {}),
-            Box::new(SequencePlugin {}),
-            Box::new(ProductPlugin {}),
-            Box::new(AccountPlugin {}),
-            Box::new(TestChartPlugin {}),
-            Box::new(StockPlugin {}),
-            Box::new(StockAccountPlugin {}),
-        ],
-        "stock_account",
-    )?;
-    app.load_plugin("account_test_chart")?;
-    Ok(app)
+    erp_test_support::app(
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![
+                Box::new(BasePlugin {}),
+                Box::new(WebPlugin {}),
+                Box::new(MailPlugin {}),
+                Box::new(ContactsPlugin {}),
+                Box::new(UomPlugin {}),
+                Box::new(CurrencyPlugin {}),
+                Box::new(SequencePlugin {}),
+                Box::new(ProductPlugin {}),
+                Box::new(AccountPlugin {}),
+                Box::new(TestChartPlugin {}),
+                Box::new(StockPlugin {}),
+                Box::new(StockAccountPlugin {}),
+            ]
+        },
+        &["stock_account", "account_test_chart"],
+    )
 }
 
 fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {

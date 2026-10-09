@@ -38,9 +38,7 @@ fn plugins() -> Vec<Box<dyn Plugin>> {
 }
 
 fn new_app() -> Result<Application> {
-    let mut app = erp_test_support::app(plugins(), "sale")?;
-    app.load_plugin("account_test_chart")?;
-    Ok(app)
+    erp_test_support::app(plugins, &["sale", "account_test_chart"])
 }
 
 fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {

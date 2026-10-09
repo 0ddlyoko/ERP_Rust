@@ -13,7 +13,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 /// Committed state of the in-memory database, shared by every connection opened on it.
 ///
 /// Also owns id allocation, so rows created concurrently by different connections never collide.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct CacheStore {
     installed: bool,
     tables: HashMap<String, Table>,
@@ -61,6 +61,19 @@ pub struct CacheDatabase {
 }
 
 impl CacheDatabase {
+    /// A database of its own holding what this one has committed: a test starts from an
+    /// installed one rather than installing it again.
+    pub fn copy(&self) -> CacheDatabase {
+        let store = self
+            .store
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        CacheDatabase {
+            store: Arc::new(Mutex::new(store)),
+        }
+    }
+
     /// Open an independent connection to this database.
     pub fn connect(&self) -> CacheConnection {
         let mut connection = CacheConnection {

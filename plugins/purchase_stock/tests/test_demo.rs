@@ -28,22 +28,24 @@ fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<
 #[test]
 fn test_demo_purchases_come_with_their_receipts() -> Result<()> {
     let mut app = erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(ContactsPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(CurrencyPlugin {}),
-            Box::new(SequencePlugin {}),
-            Box::new(ProductPlugin {}),
-            Box::new(AccountPlugin {}),
-            Box::new(TestChartPlugin {}),
-            Box::new(PurchasePlugin {}),
-            Box::new(StockPlugin {}),
-            Box::new(PurchaseStockPlugin {}),
-        ],
-        "base",
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![
+                Box::new(BasePlugin {}),
+                Box::new(WebPlugin {}),
+                Box::new(MailPlugin {}),
+                Box::new(ContactsPlugin {}),
+                Box::new(UomPlugin {}),
+                Box::new(CurrencyPlugin {}),
+                Box::new(SequencePlugin {}),
+                Box::new(ProductPlugin {}),
+                Box::new(AccountPlugin {}),
+                Box::new(TestChartPlugin {}),
+                Box::new(PurchasePlugin {}),
+                Box::new(StockPlugin {}),
+                Box::new(PurchaseStockPlugin {}),
+            ]
+        },
+        &["base"],
     )?;
     {
         let mut env = admin_env(&app)?;

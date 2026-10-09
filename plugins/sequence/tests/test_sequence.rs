@@ -15,7 +15,7 @@ use serde_json::json;
 use web::WebPlugin;
 
 fn new_app() -> Result<Application> {
-    erp_test_support::app(
+    erp_test_support::committing_app(
         vec![
             Box::new(BasePlugin {}),
             Box::new(WebPlugin {}),

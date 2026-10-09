@@ -42,9 +42,7 @@ fn plugins() -> Vec<Box<dyn Plugin>> {
 }
 
 fn new_app() -> Result<Application> {
-    let mut app = erp_test_support::app(plugins(), "sale_project")?;
-    app.load_plugin("account_test_chart")?;
-    Ok(app)
+    erp_test_support::app(plugins, &["sale_project", "account_test_chart"])
 }
 
 fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
@@ -276,7 +274,7 @@ fn test_an_order_starts_from_a_template() -> Result<()> {
 /// Installed where demo data is wanted, the plugin loads its own and that of what it brings.
 #[test]
 fn test_installed_with_demo_data() -> Result<()> {
-    let mut app = erp_test_support::app(plugins(), "sale")?;
+    let mut app = erp_test_support::app(plugins, &["sale"])?;
     app.load_plugin("account_test_chart")?;
     let mut env = admin_env(&app)?;
     let settings = xml_id(&mut env, "base.settings");

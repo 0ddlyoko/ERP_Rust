@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
-use crate::database::postgres::{ConnectionPool, PostgresDatabase};
+use crate::database::postgres::{ConnectionPool, PinnedTransaction, PostgresDatabase};
 use crate::database::{Database, DatabaseType};
 use crate::environment::Environment;
 use crate::model::ModelManager;
@@ -8,8 +8,9 @@ use crate::plugin::InternalPluginState::Installed;
 use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
 use crate::util::dependency::CircularDependencyError;
+use std::any::Any;
 use std::error::Error;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -119,6 +120,9 @@ pub struct Application {
     boot: Option<crate::plugin::BootRecords>,
     install: Vec<String>,
     signing_secret: OnceLock<String>,
+    /// What a test keeps alive along with the application and those succeeding it: the
+    /// transaction its work happens in, its turn among the other tests.
+    held: Vec<Arc<dyn Any + Send + Sync>>,
 }
 
 impl Application {
@@ -137,6 +141,7 @@ impl Application {
             boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
+            held: Vec::new(),
         }
     }
 
@@ -150,13 +155,14 @@ impl Application {
             plugin_manager: PluginManager::default(),
             is_test: self.is_test,
             cache_db: self.cache_db.clone(),
-            pool: OnceLock::new(),
+            pool: self.pool.clone(),
             data_update: DataUpdate::default(),
             checks_deferred: false,
             schema_state: None,
             boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
+            held: self.held.clone(),
         };
         let _ = successor
             .signing_secret
@@ -182,7 +188,20 @@ impl Application {
             boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
+            held: Vec::new(),
         }
+    }
+
+    /// Do every unit of work of this application — and of those succeeding it — on one
+    /// connection, in one transaction undone once the returned guard is let go: a test's work,
+    /// all of it taken back at its end. See [`ConnectionPool::pin`].
+    pub fn pin_transaction(&self) -> Result<PinnedTransaction> {
+        Ok(self.pool()?.pin()?)
+    }
+
+    /// Keep something alive as long as this application, and those succeeding it, are.
+    pub fn hold(&mut self, held: Arc<dyn Any + Send + Sync>) {
+        self.held.push(held);
     }
 
     /// Create a new connection to the database

@@ -21,19 +21,21 @@ use web::WebPlugin;
 
 fn new_app() -> Result<Application> {
     erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(ContactsPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(CurrencyPlugin {}),
-            Box::new(SequencePlugin {}),
-            Box::new(ProductPlugin {}),
-            Box::new(AccountPlugin {}),
-            Box::new(L10nBePlugin {}),
-        ],
-        "l10n_be",
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![
+                Box::new(BasePlugin {}),
+                Box::new(WebPlugin {}),
+                Box::new(MailPlugin {}),
+                Box::new(ContactsPlugin {}),
+                Box::new(UomPlugin {}),
+                Box::new(CurrencyPlugin {}),
+                Box::new(SequencePlugin {}),
+                Box::new(ProductPlugin {}),
+                Box::new(AccountPlugin {}),
+                Box::new(L10nBePlugin {}),
+            ]
+        },
+        &["l10n_be"],
     )
 }
 

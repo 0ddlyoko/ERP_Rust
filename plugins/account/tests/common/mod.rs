@@ -25,19 +25,21 @@ pub use erp_test_support::{admin_env, d, user_env};
 
 pub fn new_app() -> Result<Application> {
     erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(ContactsPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(CurrencyPlugin {}),
-            Box::new(SequencePlugin {}),
-            Box::new(ProductPlugin {}),
-            Box::new(AccountPlugin {}),
-            Box::new(TestChartPlugin {}),
-        ],
-        "account_test_chart",
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![
+                Box::new(BasePlugin {}),
+                Box::new(WebPlugin {}),
+                Box::new(MailPlugin {}),
+                Box::new(ContactsPlugin {}),
+                Box::new(UomPlugin {}),
+                Box::new(CurrencyPlugin {}),
+                Box::new(SequencePlugin {}),
+                Box::new(ProductPlugin {}),
+                Box::new(AccountPlugin {}),
+                Box::new(TestChartPlugin {}),
+            ]
+        },
+        &["account_test_chart"],
     )
 }
 

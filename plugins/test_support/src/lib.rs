@@ -9,6 +9,7 @@ use erp::Result;
 use erp::app::Application;
 use erp::config::Config;
 use erp::data;
+use erp::database::cache::CacheDatabase;
 use erp::database::{DatabaseConfig, DatabaseType};
 use erp::environment::Environment;
 use erp::plugin::Plugin;
@@ -16,6 +17,7 @@ use erp::types::field::{Decimal, FieldType, IdMode};
 use erp::types::model::MapOfFields;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::str::FromStr;
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
 
 /// A decimal written in the test, `d("12.50")`.
 pub fn d(value: &str) -> Decimal {
@@ -83,10 +85,124 @@ pub fn on_postgres() -> bool {
     std::env::var_os("ERP_TEST_MEMORY").is_none() && postgres_app("t_probe_connection").is_some()
 }
 
-/// An application with `plugins` registered and `install` installed, with its dependencies.
+/// The databases installed once per test binary, by what they hold: copied for each test in
+/// memory, a schema each test works in, inside a transaction undone at its end, on PostgreSQL.
+static INSTALLED: Mutex<Vec<(String, Installed)>> = Mutex::new(Vec::new());
+
+#[derive(Clone)]
+enum Installed {
+    Memory(CacheDatabase),
+    Postgres(String),
+}
+
+/// Whether a test on PostgreSQL is running in this process: one at a time, each in its
+/// transaction on the shared schema, which another would wait on or deadlock with.
+static RUNNING: Mutex<bool> = Mutex::new(false);
+static TURN_ENDED: Condvar = Condvar::new();
+
+/// A test's turn on PostgreSQL, given to the next once let go.
+struct Turn;
+
+impl Turn {
+    fn take() -> Turn {
+        let mut running = RUNNING.lock().unwrap_or_else(PoisonError::into_inner);
+        while *running {
+            running = TURN_ENDED
+                .wait(running)
+                .unwrap_or_else(PoisonError::into_inner);
+        }
+        *running = true;
+        Turn
+    }
+}
+
+impl Drop for Turn {
+    fn drop(&mut self) {
+        *RUNNING.lock().unwrap_or_else(PoisonError::into_inner) = false;
+        TURN_ENDED.notify_one();
+    }
+}
+
+/// An application with the plugins `plugins` makes registered and those of `install` installed,
+/// with their dependencies.
 ///
-/// On PostgreSQL the schema is named after the running test, so tests run side by side.
-pub fn app(plugins: Vec<Box<dyn Plugin>>, install: &str) -> Result<Application> {
+/// They are installed once per test binary: in memory, each test starts from a copy of that
+/// database; on PostgreSQL, each works in its schema inside one transaction, rolled back once
+/// the application — and those succeeding it — are let go, the tests of the binary running one
+/// after another. What a test does to the database is thus never seen by another, without paying
+/// for an installation each time. A test needing several connections at once — locks, concurrent
+/// transactions — takes a [`committing_app`] instead.
+pub fn app(plugins: impl Fn() -> Vec<Box<dyn Plugin>>, install: &[&str]) -> Result<Application> {
+    let installed = installed(&plugins, install)?;
+    let mut app = match installed {
+        Installed::Memory(database) => {
+            let mut app = Application::new_test();
+            app.cache_db = database.copy();
+            app
+        }
+        Installed::Postgres(schema) => {
+            let turn = Turn::take();
+            let mut app = Application::new(postgres_config(&schema));
+            let transaction = app.pin_transaction()?;
+            app.hold(Arc::new(transaction));
+            app.hold(Arc::new(turn));
+            app
+        }
+    };
+    for plugin in plugins() {
+        app.register_plugin(plugin)?;
+    }
+    app.load()?;
+    Ok(app)
+}
+
+/// The database holding `install` for this binary, installed the first time it is asked for.
+fn installed(plugins: &impl Fn() -> Vec<Box<dyn Plugin>>, install: &[&str]) -> Result<Installed> {
+    let mut names: Vec<String> = plugins().iter().map(|plugin| plugin.name()).collect();
+    names.sort();
+    let key = format!("{}|{}", install.join(","), names.join(","));
+    let mut databases = INSTALLED.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some((_, installed)) = databases.iter().find(|(known, _)| *known == key) {
+        return Ok(installed.clone());
+    }
+    let binary = std::env::current_exe()
+        .ok()
+        .and_then(|path| {
+            path.file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+        })
+        .unwrap_or_default();
+    let postgres = if std::env::var_os("ERP_TEST_MEMORY").is_some() {
+        None
+    } else {
+        let schema = schema_for(&format!("{binary}::{key}"));
+        postgres_app(&schema).map(|app| (app, schema))
+    };
+    let (mut app, made) = match postgres {
+        Some((app, schema)) => (app, Installed::Postgres(schema)),
+        None => {
+            let app = Application::new_test();
+            let database = app.cache_db.clone();
+            (app, Installed::Memory(database))
+        }
+    };
+    for plugin in plugins() {
+        app.register_plugin(plugin)?;
+    }
+    if let Installed::Postgres(_) = made {
+        app.load()?;
+    }
+    for name in install {
+        app.load_plugin(name)?;
+    }
+    databases.push((key, made.clone()));
+    Ok(made)
+}
+
+/// An application with `plugins` registered and `install` installed, with its dependencies, on a
+/// database of its own whose transactions commit: for a test of what several connections do at
+/// once. On PostgreSQL the schema is named after the running test, so tests run side by side.
+pub fn committing_app(plugins: Vec<Box<dyn Plugin>>, install: &str) -> Result<Application> {
     let test = std::thread::current()
         .name()
         .unwrap_or("unnamed")

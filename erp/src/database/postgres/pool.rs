@@ -11,7 +11,6 @@ use crate::database::{DatabaseConfig, ErrorType};
 use crate::request_log;
 use postgres::types::ToSql;
 use postgres::{Client, NoTls, Row};
-use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -46,6 +45,10 @@ struct Shared {
     revalidations: AtomicUsize,
     /// Connections found dead and thrown away.
     discarded: AtomicUsize,
+    /// The one connection lent to every caller while a test runs, inside its transaction.
+    pinned: Mutex<Option<Arc<Mutex<Client>>>>,
+    /// Savepoints taken on the pinned connection, each borrower's named after its number.
+    savepoints: AtomicUsize,
 }
 
 #[derive(Default)]
@@ -102,6 +105,8 @@ impl ConnectionPool {
                 returned: Condvar::new(),
                 revalidations: AtomicUsize::new(0),
                 discarded: AtomicUsize::new(0),
+                pinned: Mutex::new(None),
+                savepoints: AtomicUsize::new(0),
             }),
         }
     }
@@ -133,13 +138,56 @@ impl ConnectionPool {
     /// Gives up after the configured timeout rather than blocking for good: a caller told that
     /// the database is saturated can say so, one that never returns cannot.
     pub fn get(&self) -> Result<PooledConnection> {
+        if let Some(pinned) = self.inner.pinned().as_ref() {
+            let number = self.inner.savepoints.fetch_add(1, Ordering::Relaxed);
+            return Ok(PooledConnection {
+                pool: Arc::clone(&self.inner),
+                client: Some(Lent::Pinned(Arc::clone(pinned), format!("lent_{number}"))),
+                broken: false,
+                transaction: Transaction::None,
+            });
+        }
         let client = self.inner.check_out()?;
         Ok(PooledConnection {
             pool: Arc::clone(&self.inner),
-            client: Some(client),
+            client: Some(Lent::Own(Box::new(client))),
             broken: false,
             transaction: Transaction::None,
         })
+    }
+
+    /// Lend one connection to every caller from now on, inside a transaction undone once the
+    /// returned guard is let go: a test's work, all of it taken back at its end.
+    ///
+    /// Each borrower's transaction is a savepoint in it — committing releases the savepoint,
+    /// rolling back returns to it — so what one commits, the next sees, as it would.
+    pub fn pin(&self) -> Result<PinnedTransaction> {
+        let mut client = self.inner.check_out()?;
+        client.batch_execute("START TRANSACTION")?;
+        *self.inner.pinned() = Some(Arc::new(Mutex::new(client)));
+        Ok(PinnedTransaction { pool: self.clone() })
+    }
+}
+
+/// The transaction a pinned connection holds, rolled back once let go.
+pub struct PinnedTransaction {
+    pool: ConnectionPool,
+}
+
+impl Drop for PinnedTransaction {
+    fn drop(&mut self) {
+        let Some(pinned) = self.pool.inner.pinned().take() else {
+            return;
+        };
+        let Ok(client) = Arc::try_unwrap(pinned) else {
+            return;
+        };
+        let mut client = client.into_inner().unwrap_or_else(PoisonError::into_inner);
+        if client.batch_execute("ROLLBACK").is_ok() {
+            self.pool.inner.put_back(client);
+        } else {
+            self.pool.inner.discard(client);
+        }
     }
 }
 
@@ -148,6 +196,10 @@ impl Shared {
     /// every change to it is made in one step.
     fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn pinned(&self) -> MutexGuard<'_, Option<Arc<Mutex<Client>>>> {
+        self.pinned.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     fn check_out(&self) -> Result<Client> {
@@ -268,9 +320,16 @@ impl Shared {
 pub struct PooledConnection {
     pool: Arc<Shared>,
     /// Always `Some` until dropped; an `Option` only so the client can be moved out there.
-    client: Option<Client>,
+    client: Option<Lent>,
     broken: bool,
     transaction: Transaction,
+}
+
+/// The connection a borrower works on: one of its own, or the pinned one, with the name of the
+/// savepoint standing for its transaction there.
+enum Lent {
+    Own(Box<Client>),
+    Pinned(Arc<Mutex<Client>>, String),
 }
 
 /// Where a connection is in its transaction.
@@ -309,7 +368,16 @@ impl PooledConnection {
         let started = self.transaction == Transaction::Started;
         self.transaction = Transaction::None;
         if started {
-            request_log::sql(statement, || self.deref_mut().batch_execute(statement))?;
+            let statement = match self.savepoint() {
+                Some(name) if statement == "COMMIT" => format!("RELEASE SAVEPOINT \"{name}\""),
+                Some(name) => {
+                    format!("ROLLBACK TO SAVEPOINT \"{name}\"; RELEASE SAVEPOINT \"{name}\"")
+                }
+                None => statement.to_string(),
+            };
+            request_log::sql(&statement, || {
+                self.with_client(|client| client.batch_execute(&statement))
+            })?;
         }
         Ok(())
     }
@@ -317,10 +385,33 @@ impl PooledConnection {
     fn start_if_pending(&mut self) -> std::result::Result<(), postgres::Error> {
         if self.transaction == Transaction::Pending {
             self.transaction = Transaction::Started;
-            let statement = "START TRANSACTION";
-            request_log::sql(statement, || self.deref_mut().batch_execute(statement))?;
+            let statement = match self.savepoint() {
+                Some(name) => format!("SAVEPOINT \"{name}\""),
+                None => "START TRANSACTION".to_string(),
+            };
+            request_log::sql(&statement, || {
+                self.with_client(|client| client.batch_execute(&statement))
+            })?;
         }
         Ok(())
+    }
+
+    /// The savepoint standing for this borrower's transaction on a pinned connection.
+    fn savepoint(&self) -> Option<String> {
+        match self.client.as_ref() {
+            Some(Lent::Pinned(_, name)) => Some(name.clone()),
+            _ => None,
+        }
+    }
+
+    /// Work on the client, the pinned one locked for as long as the work takes.
+    fn with_client<T>(&mut self, work: impl FnOnce(&mut Client) -> T) -> T {
+        match self.client.as_mut().expect("held until dropped") {
+            Lent::Own(client) => work(client),
+            Lent::Pinned(client, _) => {
+                work(&mut client.lock().unwrap_or_else(PoisonError::into_inner))
+            }
+        }
     }
 
     /// [`Client::query`], counted in the request's SQL.
@@ -330,7 +421,9 @@ impl PooledConnection {
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<Vec<Row>, postgres::Error> {
         self.start_if_pending()?;
-        request_log::sql(query, || self.deref_mut().query(query, params))
+        request_log::sql(query, || {
+            self.with_client(|client| client.query(query, params))
+        })
     }
 
     /// [`Client::query_one`], counted in the request's SQL.
@@ -340,7 +433,9 @@ impl PooledConnection {
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<Row, postgres::Error> {
         self.start_if_pending()?;
-        request_log::sql(query, || self.deref_mut().query_one(query, params))
+        request_log::sql(query, || {
+            self.with_client(|client| client.query_one(query, params))
+        })
     }
 
     /// [`Client::execute`], counted in the request's SQL.
@@ -350,35 +445,30 @@ impl PooledConnection {
         params: &[&(dyn ToSql + Sync)],
     ) -> std::result::Result<u64, postgres::Error> {
         self.start_if_pending()?;
-        request_log::sql(query, || self.deref_mut().execute(query, params))
+        request_log::sql(query, || {
+            self.with_client(|client| client.execute(query, params))
+        })
     }
 
     /// [`Client::batch_execute`], counted in the request's SQL.
     pub fn batch_execute(&mut self, query: &str) -> std::result::Result<(), postgres::Error> {
         self.start_if_pending()?;
-        request_log::sql(query, || self.deref_mut().batch_execute(query))
-    }
-}
-
-impl Deref for PooledConnection {
-    type Target = Client;
-
-    fn deref(&self) -> &Client {
-        self.client.as_ref().expect("held until dropped")
-    }
-}
-
-impl DerefMut for PooledConnection {
-    fn deref_mut(&mut self) -> &mut Client {
-        self.client.as_mut().expect("held until dropped")
+        request_log::sql(query, || {
+            self.with_client(|client| client.batch_execute(query))
+        })
     }
 }
 
 impl Drop for PooledConnection {
     fn drop(&mut self) {
-        let Some(client) = self.client.take() else {
+        if self.savepoint().is_some() {
+            let _ = self.rollback();
+            return;
+        }
+        let Some(Lent::Own(client)) = self.client.take() else {
             return;
         };
+        let client = *client;
         if self.broken {
             self.pool.discard(client);
         } else {

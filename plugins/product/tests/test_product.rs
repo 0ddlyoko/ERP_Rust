@@ -19,14 +19,16 @@ use web::WebPlugin;
 
 fn new_app() -> Result<Application> {
     erp_test_support::app(
-        vec![
-            Box::new(BasePlugin {}),
-            Box::new(WebPlugin {}),
-            Box::new(MailPlugin {}),
-            Box::new(UomPlugin {}),
-            Box::new(ProductPlugin {}),
-        ],
-        "product",
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![
+                Box::new(BasePlugin {}),
+                Box::new(WebPlugin {}),
+                Box::new(MailPlugin {}),
+                Box::new(UomPlugin {}),
+                Box::new(ProductPlugin {}),
+            ]
+        },
+        &["product"],
     )
 }
 
