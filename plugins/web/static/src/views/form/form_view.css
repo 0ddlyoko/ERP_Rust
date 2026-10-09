@@ -502,6 +502,44 @@ span.o_text {
     font-weight: 500;
 }
 
+.o_record_search_more {
+    position: sticky;
+    bottom: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 4px -6px -6px;
+    padding: 8px 16px 10px;
+    border-top: 1px solid var(--o-row-line);
+    background: var(--o-surface);
+    color: var(--o-muted);
+    font-size: 12px;
+}
+
+.o_record_search_more button {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--o-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_record_search_more button:hover {
+    background: color-mix(in oklch, var(--o-accent) 10%, white);
+}
+
+.o_dialog.o_search_more_dialog {
+    width: min(1100px, 100%);
+}
+
+.o_search_more_dialog .o_list_view {
+    padding: 16px 20px 20px;
+}
+
 .o_record_search_note {
     padding: 8px 10px;
     color: var(--o-muted);

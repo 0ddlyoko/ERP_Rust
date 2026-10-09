@@ -16,7 +16,7 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 </button>
-                <RecordSearch t-else="" model="props.field.relation" exclude="people.map((person) => person.id)"
+                <RecordSearch t-else="" many="true" model="props.field.relation" exclude="people.map((person) => person.id)"
                               domain="domain" placeholder="'Add someone…'" onPick="add" onEmpty="() => adding = false"/>
             </span>
         </span>

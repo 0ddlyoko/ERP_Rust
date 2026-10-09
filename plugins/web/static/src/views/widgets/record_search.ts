@@ -1,5 +1,9 @@
 import { Component, effect, inject, props, state, t } from "trame";
 import { Orm } from "@web/core/orm";
+import { SearchMoreDialog } from "./search_more_dialog";
+
+/** How many records the list offers; past them, the user types or searches more. */
+const OFFERED = 8;
 
 /** How long typing has to pause before the records are searched, in milliseconds. */
 const SEARCH_AFTER = 250;
@@ -18,9 +22,13 @@ export type Entry = { kind: "pick"; choice: Choice } | { kind: "create" | "creat
  * typing; `onEmpty` is called as soon as they empty it. With `onCreate` or `onCreateEdit`, what
  * is typed can also become a new record: created at once, or in a form first. `onBackspace` is
  * called on Backspace in an empty input: a tags field removes its last tag.
+ *
+ * Past the eight records offered, the list says so, and offers to search more of them in a dialog
+ * as a list of them is searched — picking several there when `many`.
  */
 export class RecordSearch extends Component {
     static template = "web.RecordSearch";
+    static components = { SearchMoreDialog };
 
     props = props({
         model: t.string(),
@@ -37,6 +45,8 @@ export class RecordSearch extends Component {
         onBackspace: t.func<() => void>().optional(),
         /** The list stays open once a record is picked or created, for the next: tags. */
         keepOpen: t.boolean().default(false),
+        /** Searching more, several records may be picked at once. */
+        many: t.boolean().default(false),
     });
 
     @inject(Orm) orm!: Orm;
@@ -47,6 +57,9 @@ export class RecordSearch extends Component {
     @state accessor active = 0;
     @state accessor isOpen = false;
     @state accessor searching = false;
+    /** Whether more records match than are offered. */
+    @state accessor hasMore = false;
+    @state accessor searchingMore = false;
     /** Where the list of records stands on the page: under the input, as wide as it. */
     @state accessor place = "";
 
@@ -62,7 +75,7 @@ export class RecordSearch extends Component {
 
     /** What was found, less the records not offered. */
     get choices(): Choice[] {
-        return this.results.filter(([id]) => !this.props.exclude.includes(id));
+        return this.results.filter(([id]) => !this.props.exclude.includes(id)).slice(0, OFFERED);
     }
 
     /**
@@ -183,11 +196,12 @@ export class RecordSearch extends Component {
             const found = await this.orm.nameSearch(
                 this.props.model,
                 text,
-                8 + this.props.exclude.length,
+                OFFERED + 1 + this.props.exclude.length,
                 [...this.props.domain],
             );
             if (search === this.searches) {
                 this.results = found;
+                this.hasMore = found.filter(([id]) => !this.props.exclude.includes(id)).length > OFFERED;
                 this.active = 0;
             }
         } finally {
@@ -196,6 +210,23 @@ export class RecordSearch extends Component {
             }
         }
     }
+
+    /** Search more records in a dialog, the list closed. */
+    searchMore(): void {
+        this.close();
+        this.searchingMore = true;
+    }
+
+    readonly closeSearchMore = (): void => {
+        this.searchingMore = false;
+    };
+
+    /** The records picked in the dialog, each as if picked from the list. */
+    readonly pickMore = (choices: Choice[]): void => {
+        for (const choice of choices) {
+            this.props.onPick(choice);
+        }
+    };
 
     pick(choice: Choice): void {
         this.props.onPick(choice);
@@ -208,6 +239,7 @@ export class RecordSearch extends Component {
         this.query = null;
         this.isOpen = false;
         this.results = [];
+        this.hasMore = false;
         this.searching = false;
     }
 

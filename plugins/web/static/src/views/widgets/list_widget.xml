@@ -59,7 +59,7 @@
                     </tbody>
                 </table>
             </div>
-            <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" domain="domain" onPick="add" placeholder="'Add…'"/>
+            <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" domain="domain" onPick="add" many="true" placeholder="'Add…'"/>
         </div>
     </t>
 </templates>

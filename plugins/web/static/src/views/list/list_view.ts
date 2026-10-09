@@ -71,6 +71,14 @@ export class ListView extends View {
         ...viewProps,
         /** How many rows a page holds. */
         limit: t.number().default(100),
+        /**
+         * Records are chosen rather than opened, as a field searching more of them does: choosing a
+         * row picks its record, unless rows are selected — it is then selected in turn, and those
+         * selected picked at once. Neither remembered nor shared, so a list of the action keeps its own.
+         */
+        onChoose: t.func<(ids: number[]) => void>().optional(),
+        /** Choosing, only one record may be: selecting another drops the one selected. */
+        chooseOne: t.boolean().default(false),
     });
 
     @inject(Notifications) notifications!: Notifications;
@@ -79,12 +87,12 @@ export class ListView extends View {
         return "list";
     }
 
-    @state accessor offset = listMemory(listKey(this.router.route))?.offset ?? 0;
-    @state accessor selected = new Set<number>(listMemory(listKey(this.router.route))?.selected ?? []);
+    @state accessor offset = listMemory(this.memoryKey)?.offset ?? 0;
+    @state accessor selected = new Set<number>(listMemory(this.memoryKey)?.selected ?? []);
     /** The search as the user left it; until they touch it, the view's default filters. */
     @state accessor facets: Facet[] | null =
-        takeOpening(listKey(this.router.route)) ?? searchFacets(listKey(this.router.route)) ?? listMemory(listKey(this.router.route))?.facets ?? null;
-    @state accessor sort: Sort | null = listMemory(listKey(this.router.route))?.sort ?? null;
+        takeOpening(this.memoryKey) ?? searchFacets(this.memoryKey) ?? listMemory(this.memoryKey)?.facets ?? null;
+    @state accessor sort: Sort | null = listMemory(this.memoryKey)?.sort ?? null;
     @state accessor actionsOpen = false;
     @state accessor confirming: Confirming | null = null;
     @state accessor running = false;
@@ -92,7 +100,7 @@ export class ListView extends View {
     @state accessor widths: ColumnWidths | null = null;
     /** The groups opened, by their domain: their records, or `null` while they load. */
     @state accessor openGroups = new Map<string, Values[] | null>(
-        (listMemory(listKey(this.router.route))?.openGroups ?? []).map((key) => [key, null]),
+        (listMemory(this.memoryKey)?.openGroups ?? []).map((key) => [key, null]),
     );
     /** The open groups whose records are being read. */
     private readingGroups = new Set<string>();
@@ -108,6 +116,11 @@ export class ListView extends View {
     @state accessor countDeltas = new Map<string, number>();
     /** The groups those deltas apply to: read again, the counts are right of themselves. */
     private deltasOf: Group[] | null = null;
+
+    /** Where the list is remembered: under its action, or apart while choosing, never restored. */
+    get memoryKey(): string | null {
+        return this.props.onChoose === undefined ? listKey(this.router.route) : `choosing:${this.props.resModel}`;
+    }
 
     resize(event: MouseEvent, name: string): void {
         dragColumn(event, name, this.widths, (widths) => {
@@ -154,14 +167,20 @@ export class ListView extends View {
 
     /** Leave the search as it stands for the records' other views — their board — to open with. */
     @effect shareSearch(): void {
+        if (this.props.onChoose !== undefined) {
+            return;
+        }
         if (loading(() => this.searchView) || loading(() => this.favorites)) {
             return;
         }
-        rememberSearch(listKey(this.router.route), { facets: this.currentFacets, domain: this.domain, grouping: this.grouping });
+        rememberSearch(this.memoryKey, { facets: this.currentFacets, domain: this.domain, grouping: this.grouping });
     }
 
     /** Remember the list once its rows are there; reading them sooner would hold the view back. */
     @effect remember(): void {
+        if (this.props.onChoose !== undefined) {
+            return;
+        }
         if (
             loading(() => this.records) ||
             loading(() => this.total) ||
@@ -171,7 +190,7 @@ export class ListView extends View {
             return;
         }
         const shown = this.lines.flatMap((line) => (line.kind === "record" ? [this.idOf(line.record)] : []));
-        rememberList(listKey(this.router.route), {
+        rememberList(this.memoryKey, {
             offset: this.grouping === null ? this.offset : 0,
             selected: [...this.selected],
             facets: this.currentFacets,
@@ -219,8 +238,8 @@ export class ListView extends View {
 
     /** The searches the user saved on this list. */
     @resource accessor favorites: Favorite[] = load(
-        () => this.router.route.action,
-        (action) => favoritesOf(this.orm, action),
+        () => (this.props.onChoose === undefined ? this.router.route.action : null),
+        (action) => (action === null ? Promise.resolve([]) : favoritesOf(this.orm, action)),
     );
 
     /**
@@ -228,7 +247,7 @@ export class ListView extends View {
      * view's — none for records opened from another, such as an order's deliveries: all of them.
      */
     get currentFacets(): Facet[] {
-        if (this.facets === null && this.router.route.ids) {
+        if (this.facets === null && this.props.onChoose === undefined && this.router.route.ids) {
             return [];
         }
         return this.facets ?? this.favorites?.find((favorite) => favorite.is_default)?.facets ?? defaultFacets(this.searchView);
@@ -691,6 +710,9 @@ export class ListView extends View {
     }
 
     select(record: Values, checked: boolean): void {
+        if (checked && this.props.chooseOne) {
+            this.selected.clear();
+        }
         if (checked) {
             this.selected.add(this.idOf(record));
         } else {
@@ -698,13 +720,25 @@ export class ListView extends View {
         }
     }
 
-    /** A row chosen: its record opened, or, while rows are selected, selected or not in turn. */
+    /**
+     * A row chosen: its record opened — or picked, while choosing — or, while rows are selected,
+     * selected or not in turn.
+     */
     choose(record: Values): void {
         if (this.selected.size > 0) {
             this.select(record, !this.selected.has(this.idOf(record)));
             return;
         }
+        if (this.props.onChoose !== undefined) {
+            this.props.onChoose([this.idOf(record)]);
+            return;
+        }
         this.router.go({ ...this.router.route, view: "form", id: this.idOf(record) });
+    }
+
+    /** Pick the records selected, while choosing. */
+    chooseSelected(): void {
+        this.props.onChoose?.([...this.selected]);
     }
 
     selectAll(checked: boolean): void {

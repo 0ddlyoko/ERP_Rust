@@ -2,7 +2,7 @@
     <t t-name="web.ListView">
         <div class="o_list_view">
             <div class="o_control_panel">
-                <button type="button" class="o_button_primary" t-att-disabled="running" t-on-click="create">
+                <button t-if="!props.onChoose" type="button" class="o_button_primary" t-att-disabled="running" t-on-click="create">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     New
@@ -14,7 +14,11 @@
                     <SearchBar view="searchView" facets="currentFacets" onChange="setFacets" favorites="favorites"
                                onSaveFavorite="saveFavorite" onForgetFavorite="forgetFavorite" onApplyFavorite="applyFavorite"/>
                 </Suspense>
-                <div t-if="selected.size" class="o_list_actions">
+                <div t-if="selected.size &amp;&amp; props.onChoose" class="o_list_actions">
+                    <span t-if="!props.chooseOne" class="o_selection_count">{{ selected.size }} selected</span>
+                    <button type="button" class="o_button_primary" t-on-click="chooseSelected">Select</button>
+                </div>
+                <div t-elif="selected.size" class="o_list_actions">
                     <span class="o_selection_count">{{ selected.size }} selected</span>
                     <button type="button" class="o_button_secondary" t-att-disabled="running"
                             t-att-aria-expanded="actionsOpen ? 'true' : 'false'" t-on-click="() => actionsOpen = !actionsOpen">
@@ -56,7 +60,7 @@
                         <thead>
                             <tr>
                                 <th class="o_list_select">
-                                    <Suspense>
+                                    <Suspense t-if="!props.chooseOne">
                                         <t t-set-slot="fallback"><input type="checkbox" aria-label="Select all rows" disabled=""/></t>
                                         <input type="checkbox" aria-label="Select all rows" t-att-checked="allSelected"
                                                t-on-change="(ev) => selectAll(ev.target.checked)"/>

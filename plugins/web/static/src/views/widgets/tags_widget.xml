@@ -11,7 +11,7 @@
                 </button>
             </span>
             <span t-if="more" class="o_tags_more" t-att-title="text">+{{ more }} more</span>
-            <RecordSearch t-if="editable" model="relation" exclude="ids" domain="domain" onPick="add" placeholder="entries.length ? '' : 'Add…'"
+            <RecordSearch t-if="editable" model="relation" exclude="ids" domain="domain" onPick="add" many="true" placeholder="entries.length ? '' : 'Add…'"
                           onBackspace="removeLast" keepOpen="true"
                           onCreate="canCreate ? create : undefined"
                           onCreateEdit="canCreate &amp;&amp; !isOne2Many ? createEdit : undefined"/>
