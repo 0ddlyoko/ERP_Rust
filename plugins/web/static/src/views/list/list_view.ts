@@ -431,6 +431,12 @@ export class ListView extends View {
             return;
         }
         this.openGroups.set(key, null);
+        await this.readOpenGroup(group);
+    }
+
+    /** Read the first records of an open group, in the order the list is sorted in. */
+    private async readOpenGroup(group: Group): Promise<void> {
+        const key = this.groupKey(group);
         const fields = [...this.columns.map((column) => column.name), ...this.extraNames];
         const order = this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`];
         try {
@@ -516,6 +522,11 @@ export class ListView extends View {
         const descending = this.sort?.name === column.name && !this.sort.descending;
         this.sort = { name: column.name, descending };
         this.turnTo(0);
+        for (const group of this.groups ?? []) {
+            if (this.openGroups.has(this.groupKey(group))) {
+                void this.readOpenGroup(group);
+            }
+        }
     }
 
     sortOf(column: Column): "ascending" | "descending" | "none" {
