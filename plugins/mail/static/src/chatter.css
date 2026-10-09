@@ -337,6 +337,22 @@
 
 /* Notes, whom a message was said to, and those it mentions */
 
+.o_chatter_mine {
+    flex-direction: row-reverse;
+}
+
+.o_chatter_mine .o_chatter_content {
+    flex-grow: 1;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: var(--o-panel);
+}
+
+.o_chatter_mine .o_chatter_avatar {
+    background: var(--o-side);
+    color: #ffffff;
+}
+
 .o_chatter_icon.active {
     background: var(--o-panel);
     color: var(--o-accent-strong);

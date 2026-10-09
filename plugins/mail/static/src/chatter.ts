@@ -2,6 +2,7 @@ import { Component, effect, inject, load, loading, nextTick, props, resource, st
 import { avatarStyleOf, initialsOf } from "@web/core/avatar";
 import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
+import { Session } from "@web/core/session";
 import { formParts } from "@web/views/form/form_view";
 import { RecordSearch } from "@web/views/widgets/record_search";
 import { MessageFocus } from "./message_focus";
@@ -69,6 +70,7 @@ export class Chatter extends Component {
     @inject(Orm) orm!: Orm;
     @inject(Notifications) notifications!: Notifications;
     @inject(MessageFocus) focus!: MessageFocus;
+    @inject(Session) session!: Session;
 
     /** What is being written: a message, a note, or nothing yet. */
     @state accessor composing: "message" | "note" | null = null;
@@ -132,6 +134,11 @@ export class Chatter extends Component {
                 this.flashed = null;
             }
         }, 2400);
+    }
+
+    /** Whether the user wrote a message: shown on their side, to tell it from the others'. */
+    isMine(message: Message): boolean {
+        return message.author?.[0] === this.session.uid;
     }
 
     /** Whether a message mentions the user. */

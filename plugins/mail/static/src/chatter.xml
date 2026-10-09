@@ -91,7 +91,7 @@
             <ol t-else="" class="o_chatter_thread">
                 <li t-foreach="messages" t-as="message" t-key="message.id"
                     t-att-data-message="message.id"
-                    t-att-class="{ o_chatter_message: true, o_chatter_note: message.kind === 'note', o_chatter_pinged: mentionsMe(message), o_chatter_flash: flashed === message.id }">
+                    t-att-class="{ o_chatter_message: true, o_chatter_note: message.kind === 'note', o_chatter_pinged: mentionsMe(message), o_chatter_mine: isMine(message), o_chatter_flash: flashed === message.id }">
                     <span class="o_chatter_avatar" aria-hidden="true">{{ initialsOf(authorOf(message)) }}</span>
                     <div class="o_chatter_content">
                         <div class="o_chatter_head">
