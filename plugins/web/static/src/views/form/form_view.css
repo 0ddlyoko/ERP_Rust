@@ -240,6 +240,14 @@
     font: inherit;
 }
 
+textarea.o_input {
+    height: auto;
+    min-height: var(--o-control-height);
+    padding: 10px;
+    line-height: 1.45;
+    resize: vertical;
+}
+
 .o_input:focus {
     border-color: var(--o-accent);
     outline: 2px solid color-mix(in oklch, var(--o-accent) 25%, white);
