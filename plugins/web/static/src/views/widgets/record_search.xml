@@ -25,7 +25,7 @@
                     </li>
                 </ul>
             </Portal>
-            <SearchMoreDialog t-if="searchingMore" model="props.model" domain="props.domain" exclude="props.exclude"
+            <SearchMoreDialog t-if="searchingMore" model="props.model" text="moreText" domain="props.domain" exclude="props.exclude"
                               many="props.many" onPick="pickMore" onClose="closeSearchMore"/>
         </div>
     </t>

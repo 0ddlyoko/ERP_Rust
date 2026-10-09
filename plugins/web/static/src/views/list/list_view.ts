@@ -11,6 +11,7 @@ import { favoritesOf, forgetFavorite, saveFavorite } from "@web/views/search/fav
 import { FilterChips } from "@web/views/search/filter_chips";
 import { SearchBar } from "@web/views/search/search_bar";
 import {
+    accepts,
     defaultFacets,
     type Facet,
     type Favorite,
@@ -18,6 +19,7 @@ import {
     readSearchView,
     type SearchView,
     searchDomain,
+    withText,
 } from "@web/views/search/search_model";
 import { asksReload, opensRecord, type Column, View, viewKinds, viewProps, widgetFor } from "@web/views/view";
 import { type ColumnWidths, columnStyle, dragColumn, tableStyle } from "./column_widths";
@@ -79,6 +81,8 @@ export class ListView extends View {
         onChoose: t.func<(ids: number[]) => void>().optional(),
         /** Choosing, only one record may be: selecting another drops the one selected. */
         chooseOne: t.boolean().default(false),
+        /** A text the search starts with, in the first field that takes it: what was typed in a field. */
+        searchText: t.string().default(""),
     });
 
     @inject(Notifications) notifications!: Notifications;
@@ -244,13 +248,20 @@ export class ListView extends View {
 
     /**
      * The search as the user left it; until they touch it, the one they open the list with, or the
-     * view's — none for records opened from another, such as an order's deliveries: all of them.
+     * view's — none for records opened from another, such as an order's deliveries: all of them —
+     * with the text it was asked to start with.
      */
     get currentFacets(): Facet[] {
         if (this.facets === null && this.props.onChoose === undefined && this.router.route.ids) {
             return [];
         }
-        return this.facets ?? this.favorites?.find((favorite) => favorite.is_default)?.facets ?? defaultFacets(this.searchView);
+        if (this.facets !== null) {
+            return this.facets;
+        }
+        const starting = this.favorites?.find((favorite) => favorite.is_default)?.facets ?? defaultFacets(this.searchView);
+        const text = this.props.searchText.trim();
+        const field = text === "" ? undefined : this.searchView.fields.find((searchField) => accepts(searchField, text));
+        return field === undefined ? starting : withText(starting, field.name, text);
     }
 
     /** Save the search as it stands under a name, the list opening with it if asked. */

@@ -11,7 +11,7 @@
                         </button>
                     </header>
                     <t t-component="list" resModel="props.model" domain="domain" embedded="true" limit="40"
-                       onChoose="choose" chooseOne="!props.many"/>
+                       onChoose="choose" chooseOne="!props.many" searchText="props.text"/>
                 </div>
             </div>
         </Portal>

@@ -63,6 +63,8 @@ export class RecordSearch extends Component {
     /** Whether more records match than are offered. */
     @state accessor hasMore = false;
     @state accessor searchingMore = false;
+    /** What was typed when searching more, for the dialog's search to start with. */
+    @state accessor moreText = "";
     /** Where the list of records stands on the page: under the input, as wide as it. */
     @state accessor place = "";
 
@@ -216,8 +218,9 @@ export class RecordSearch extends Component {
         }
     }
 
-    /** Search more records in a dialog, the list closed. */
+    /** Search more records in a dialog, searching what was typed, the list closed. */
     searchMore(): void {
+        this.moreText = (this.query ?? "").trim();
         this.close();
         this.searchingMore = true;
     }

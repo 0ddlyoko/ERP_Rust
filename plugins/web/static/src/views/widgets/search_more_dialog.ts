@@ -17,6 +17,8 @@ export class SearchMoreDialog extends Component {
         domain: t.array(t.any()).default([]),
         /** Records not offered: those already chosen. */
         exclude: t.array(t.number()).default([]),
+        /** What was typed in the field: the search starts with it. */
+        text: t.string().default(""),
         /** Whether several records may be picked at once. */
         many: t.boolean().default(false),
         onPick: t.func<(choices: Choice[]) => void>(),
