@@ -1,4 +1,4 @@
-import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state } from "trame";
+import { type ComponentClass, computed, effect, inject, load, nextTick, props, resource, state, untrack } from "trame";
 import { type Fields, Models } from "@web/core/models";
 import { Orm, type Values } from "@web/core/orm";
 import { Views } from "@web/core/views";
@@ -41,6 +41,10 @@ export class ListWidget extends X2ManyWidget {
 
     /** The row being edited, by its key. */
     @state accessor editing: string | null = null;
+    /** The lines added that the user has not typed in yet. */
+    private untouched = new Set<string>();
+    /** The row edited before, to know which one was just left. */
+    private lastEditing: string | null = null;
     private hadChanges = false;
 
     /** The widget's element, set by its template. */
@@ -82,6 +86,17 @@ export class ListWidget extends X2ManyWidget {
         };
         document.addEventListener("mousedown", leave, true);
         return () => document.removeEventListener("mousedown", leave, true);
+    }
+
+    /** A line added then left without anything typed in it is taken away again. */
+    @effect dropUntouchedLine(): void {
+        const editing = this.editing;
+        const left = this.lastEditing;
+        this.lastEditing = editing;
+        if (left !== null && left !== editing && this.untouched.has(left)) {
+            this.untouched.delete(left);
+            untrack(() => this.remove(left));
+        }
     }
 
     /** Leave the row edited once what was changed is saved or discarded. */
@@ -176,7 +191,10 @@ export class ListWidget extends X2ManyWidget {
 
     /** What a cell's widget calls with the value the user gave. */
     changer(row: Row, name: string): (value: unknown) => void {
-        return (value) => this.change(row.key, name, value);
+        return (value) => {
+            this.untouched.delete(row.key);
+            this.change(row.key, name, value);
+        };
     }
 
     /** A row chosen: edited in place where the list is edited, its record opened otherwise. */
@@ -257,7 +275,9 @@ export class ListWidget extends X2ManyWidget {
                 .filter((name) => fields[name]?.default !== undefined)
                 .map((name) => [name, fields[name].default]),
         );
-        this.editing = this.addDraft(defaults);
+        const key = this.addDraft(defaults);
+        this.untouched.add(key);
+        this.editing = key;
         this.focusEdited("first");
     }
 }
