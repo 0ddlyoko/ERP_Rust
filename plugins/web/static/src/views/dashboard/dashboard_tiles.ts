@@ -11,6 +11,7 @@ import { periodLabel } from "@web/views/list/list_view";
 import {
     bucketOf,
     bucketsOf,
+    comparedBuckets,
     type Condition,
     counting,
     dateOf,
@@ -46,6 +47,15 @@ export const CHART_VIEWS: readonly { key: ChartView; label: string; icon: string
 
 /** The colours bars are painted in, one after another: each readable beside the next. */
 const BAR_COLOURS = ["#4b3fe0", "#0f8a6a", "#c8650f", "#3a86cc", "#8e1f55", "#6e5200", "#24489e", "#0e6b52"];
+
+/** How a value changed since another: `+12%`, `−4%`, nothing when there was none before. */
+function changeOf(now: number, before: number | null): string {
+    if (before === null || before === 0) {
+        return "";
+    }
+    const change = Math.round(((now - before) / Math.abs(before)) * 100);
+    return change > 0 ? `+${change}%` : change < 0 ? `−${-change}%` : "=";
+}
 
 /** The amount of a group: the sum of the field asked, its average, or how many records it holds. */
 function amountOf(tile: Tile, group: Group | undefined): number {
@@ -159,6 +169,20 @@ export class DashboardMetric extends DashboardTile {
         return this.figures === null ? "—" : this.written(amountOf(this.tile, this.figures.now));
     }
 
+    /** How far the period got towards the metric's target: `76% of €80K`, and whether it is reached. */
+    get progress(): { share: number; text: string; reached: boolean } | null {
+        const target = this.tile.target;
+        if (target === null || target === 0 || this.figures === null) {
+            return null;
+        }
+        const ratio = amountOf(this.tile, this.figures.now) / target;
+        return {
+            share: Math.max(0, Math.min(100, ratio * 100)),
+            text: `${Math.round(ratio * 100)}% of ${this.written(target, true)}`,
+            reached: ratio >= 1,
+        };
+    }
+
     /** `▲ 83% vs September 2026 (33,500 €)`, or what it counts: `8 orders`. */
     get caption(): { text: string; tone: string } | null {
         const figures = this.figures;
@@ -207,6 +231,12 @@ interface Bar {
     text: string;
     count: number;
     countText: string;
+    /** The value of the period compared with, when the chart compares. */
+    before: number | null;
+    beforeText: string;
+    beforeShare: number;
+    /** How it changed since: `+12%`, `−4%`. */
+    change: string;
     /** The records it stands for, each condition named. */
     conditions: Condition[];
     /** Its length against the longest, as a percentage. */
@@ -279,10 +309,71 @@ export class DashboardChart extends DashboardTile {
         },
     );
 
+    /** The domain the chart compares with: the periods a year before, or the period before. */
+    get comparedAsked(): { domain: Domain; groupBy: string } | null {
+        if (!this.tile.compare) {
+            return null;
+        }
+        const { field, period } = this.grouping;
+        const groupBy = period === null ? field : `${field}:${period}`;
+        if (!this.timed) {
+            return this.scope.previous === null ? null : { domain: this.domainIn(1), groupBy };
+        }
+        const buckets = comparedBuckets(period ?? "month", this.tile.last, dateOf(this.scope.until));
+        const span = { start: buckets[0].start, end: buckets[buckets.length - 1].end };
+        return { domain: and([this.tile.domain, within(field, span), ...this.filtered.map((condition) => condition.domain)]), groupBy };
+    }
+
+    @resource accessor comparedGroups: Group[] | null = load(
+        () => {
+            const asked = this.fields === undefined ? null : this.comparedAsked;
+            return asked === null ? null : this.keyOf(asked);
+        },
+        async (key) => {
+            if (key === null) {
+                return null;
+            }
+            const { model, domain, groupBy } = JSON.parse(key) as { model: string; domain: Domain; groupBy: string };
+            try {
+                return await this.orm.readGroup(model, domain, groupBy, this.sums);
+            } catch {
+                return null;
+            }
+        },
+    );
+
+    /** What the chart compares with, by bar: a period by its place among the columns, else a group by its value. */
+    private get compared(): Map<string, number> | null {
+        const groups = this.comparedGroups;
+        if (groups === null || groups === undefined) {
+            return null;
+        }
+        const { period } = this.grouping;
+        if (!this.timed) {
+            return new Map(groups.map((group) => [JSON.stringify(group.value), amountOf(this.tile, group)]));
+        }
+        const buckets = comparedBuckets(period ?? "month", this.tile.last, dateOf(this.scope.until));
+        const byStart = new Map(groups.filter((group) => typeof group.value === "string").map((group) => [bucketOf(group.value as string, period ?? "month"), group]));
+        return new Map(buckets.map((bucket, at) => [String(at), amountOf(this.tile, byStart.get(bucket.start))]));
+    }
+
+    /** What the bars are compared with, as the chart's note says it. */
+    get comparedWith(): string {
+        if (!this.tile.compare) {
+            return "";
+        }
+        const period = this.grouping.period ?? "month";
+        if (this.timed) {
+            return period === "month" || period === "quarter" || period === "year" ? "vs a year before" : "vs the periods before";
+        }
+        const previous = this.scope.previous;
+        return previous === null ? "" : `vs ${periodLabel(previous.start, this.scope.period)}`;
+    }
+
     @computed get bars(): Bar[] {
         const groups = this.groups ?? [];
         const { field, period } = this.grouping;
-        let bars: Omit<Bar, "share" | "style" | "countText">[];
+        let bars: Omit<Bar, "share" | "style" | "countText" | "before" | "beforeText" | "beforeShare" | "change">[];
         if (this.timed) {
             const byStart = new Map(groups.filter((group) => typeof group.value === "string").map((group) => [bucketOf(group.value as string, period ?? "month"), group]));
             const buckets = bucketsOf(period ?? "month", this.tile.last, dateOf(this.scope.until));
@@ -328,10 +419,18 @@ export class DashboardChart extends DashboardTile {
             }
             bars = bars.filter((bar) => bar.value !== 0 || bar.count !== 0).slice(0, this.tile.limit);
         }
-        const top = this.shown === "columns" ? this.top : Math.max(...bars.map((bar) => Math.abs(bar.value)), 0) || 1;
+        const compared = this.compared;
+        const beforeOf = (bar: (typeof bars)[number], at: number): number | null =>
+            compared === null ? null : (compared.get(this.timed ? String(at) : bar.key) ?? 0);
+        const largest = Math.max(0, ...bars.flatMap((bar, at) => [Math.abs(bar.value), Math.abs(beforeOf(bar, at) ?? 0)]));
+        const top = this.shown === "columns" ? this.top : largest || 1;
         const plain = this.timed || this.tile.chart === "ranking";
         return bars.map((bar, at) => ({
             ...bar,
+            before: beforeOf(bar, at),
+            beforeText: beforeOf(bar, at) === null ? "" : this.written(beforeOf(bar, at) ?? 0),
+            beforeShare: Math.max(0, Math.min(100, ((beforeOf(bar, at) ?? 0) / top) * 100)),
+            change: changeOf(bar.value, beforeOf(bar, at)),
             countText: bar.count.toLocaleString(),
             share: Math.max(0, Math.min(100, (bar.value / top) * 100)),
             style: `--o-dash-bar: ${plain ? "var(--o-accent)" : BAR_COLOURS[at % BAR_COLOURS.length]}; --o-dash-at: ${at}`,
@@ -340,7 +439,7 @@ export class DashboardChart extends DashboardTile {
 
     /** Where the scale of columns ends: a round number over the largest, with room for its label; a count's in thirds. */
     get top(): number {
-        const groups = this.groups ?? [];
+        const groups = [...(this.groups ?? []), ...(this.comparedGroups ?? [])];
         const largest = Math.max(0, ...groups.map((group) => amountOf(this.tile, group))) * 1.15;
         return this.countShown ? scaleTop(largest) : Math.max(3, Math.ceil(largest / 3) * 3);
     }

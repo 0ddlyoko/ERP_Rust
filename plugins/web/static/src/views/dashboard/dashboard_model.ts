@@ -54,8 +54,10 @@ export interface Tile {
     widget: string | null;
     /** The action opening its records, from a figure, a bar or a card. */
     action: string | null;
-    /** A metric beside the one of the period before. */
+    /** A metric beside the one of the period before; a chart's bars beside theirs. */
     compare: boolean;
+    /** What a metric aims at over the period: a gauge shows how far it got. */
+    target: number | null;
     /** What a metric counts, written under it: `order|orders` for `1 order`, `8 orders`. */
     counted: string | null;
     chart: "columns" | "bars" | "ranking";
@@ -89,6 +91,7 @@ export function readTile(element: Element, at: number, model: string, date: stri
         widget: attr("widget"),
         action: attr("action"),
         compare: attr("compare") === "1",
+        target: attr("target") === null || Number.isNaN(Number(attr("target"))) ? null : Number(attr("target")),
         counted: attr("counted"),
         chart: chart === "columns" || chart === "ranking" ? chart : "bars",
         groupBy: attr("group_by"),
@@ -193,6 +196,18 @@ export function bucketsOf(period: string, count: number, today = new Date()): Ra
         const start = shifted(current, period, at - count + 1);
         return { start: dayOf(start), end: dayOf(shifted(start, period, 1)) };
     });
+}
+
+/**
+ * The periods columns are compared with: the same a year before for months, quarters and years —
+ * this September beside the last — else those just before.
+ */
+export function comparedBuckets(period: string, count: number, until: Date): Range[] {
+    const yearly = period === "month" || period === "quarter" || period === "year";
+    const anchor = yearly
+        ? new Date(until.getFullYear() - 1, until.getMonth(), until.getDate())
+        : shifted(startOf(until, period), period, -count);
+    return bucketsOf(period, count, anchor);
 }
 
 /** The first day of the period holding `day`, as `read_group` keys a date gathered by period. */

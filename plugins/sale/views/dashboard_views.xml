@@ -1,7 +1,7 @@
 <erp>
     <view id="view_sale_order_dashboard" name="sale_order.dashboard" model="sale_order">
         <dashboard date="date_order" filter_by="user" currency_field="currency">
-            <metric string="Confirmed" sum="amount_untaxed" widget="monetary" compare="1"
+            <metric string="Confirmed" sum="amount_untaxed" widget="monetary" compare="1" target="50000"
                     domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
             <metric string="Quotations" sum="amount_untaxed" widget="monetary" counted="quotation|quotations"
                     domain='[["state", "in", ["draft", "sent"]]]' action="sale.action_quotations"/>
@@ -9,9 +9,9 @@
                     domain='[["invoice_status", "=", "to_invoice"]]' action="sale.action_orders_to_invoice"/>
             <metric string="Average order" average="amount_untaxed" widget="monetary"
                     domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
-            <chart string="Confirmed per month" type="columns" group_by="date_order:month" sum="amount_untaxed"
+            <chart string="Confirmed per month" type="columns" group_by="date_order:month" sum="amount_untaxed" compare="1"
                    widget="monetary" domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
-            <chart string="By status" type="bars" group_by="state" sum="amount_untaxed" widget="monetary"
+            <chart string="By status" type="bars" group_by="state" sum="amount_untaxed" widget="monetary" compare="1"
                    action="sale.action_all_orders"/>
             <chart string="Best customers" type="ranking" group_by="partner" sum="amount_untaxed" widget="monetary"
                    domain='[["state", "=", "sale"]]' action="sale.action_orders"/>

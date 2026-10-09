@@ -656,6 +656,81 @@
     border-radius: var(--o-radius-card);
 }
 
+/* What a metric aims at, and what charts are compared with */
+
+.o_dash_target {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.o_dash_target_track {
+    display: flex;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--o-head);
+    overflow: hidden;
+}
+
+.o_dash_target_fill {
+    border-radius: inherit;
+    background: var(--o-accent);
+    transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.o_dash_target_reached .o_dash_target_fill {
+    background: #0f8a6a;
+}
+
+.o_dash_target_text {
+    color: var(--o-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_dash_target_reached .o_dash_target_text {
+    color: #0b6e55;
+}
+
+.o_dash_column_slot:has(.o_dash_column_before) {
+    gap: 3px;
+}
+
+.o_dash_column_slot:has(.o_dash_column_before) .o_dash_column {
+    max-width: 22px;
+}
+
+.o_dash_column.o_dash_column_before,
+.o_dash_columns_solid .o_dash_column.o_dash_column_before,
+.o_dash_column_slot:hover .o_dash_column.o_dash_column_before {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--o-dash-bar) 45%, white);
+}
+
+.o_dash_track {
+    position: relative;
+}
+
+.o_dash_before_mark {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 2px;
+    background: var(--o-ink);
+    opacity: 0.55;
+}
+
+.o_dash_before_cell {
+    color: var(--o-muted);
+}
+
+.o_dash_table tbody td.o_dash_change_cell {
+    font-weight: 600;
+}
+
 /* Shown, or drawn another way: columns grow up, bars along, figures and rows come in */
 
 .o_dash_column {

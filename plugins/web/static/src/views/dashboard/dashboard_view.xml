@@ -65,6 +65,10 @@
         <span class="o_dash_metric_label">{{ tile.label }}</span>
         <span class="o_dash_metric_value">{{ value }}</span>
         <span t-if="caption" t-att-class="'o_dash_metric_caption ' + caption.tone">{{ caption.text }}</span>
+        <span t-if="progress" t-att-class="{ o_dash_target: true, o_dash_target_reached: progress.reached }">
+            <span class="o_dash_target_track"><span class="o_dash_target_fill" t-att-style="'width: ' + progress.share + '%'"/></span>
+            <span class="o_dash_target_text">{{ progress.text }}</span>
+        </span>
     </t>
 
     <t t-name="web.DashboardMetric">
@@ -78,7 +82,7 @@
         <section class="o_dash_chart" t-att-aria-label="tile.label">
             <header class="o_dash_panel_head">
                 <h2>{{ tile.label }}</h2>
-                <span class="o_dash_note">{{ note }}</span>
+                <span class="o_dash_note">{{ note }}<t t-if="comparedWith"> · {{ comparedWith }}</t></span>
                 <div class="o_dash_views" role="group" aria-label="Draw as">
                     <button t-foreach="views" t-as="view" t-key="view.key" type="button"
                             t-att-class="{ o_dash_view: true, active: view.key === shown }"
@@ -104,11 +108,14 @@
                                 t-att-class="{ o_dash_column_slot: true, o_dash_current: bar.current }"
                                 t-att-style="bar.style" t-att-aria-label="bar.full + ': ' + bar.text"
                                 t-att-disabled="tile.action ? null : 'disabled'" t-on-click="() => open(bar)">
+                            <span t-if="bar.before !== null" class="o_dash_column o_dash_column_before"
+                                  t-att-style="'height: ' + bar.beforeShare + '%'"/>
                             <span class="o_dash_column" t-att-style="'height: ' + bar.share + '%'"/>
                             <span t-if="bar.current" class="o_dash_column_value"
                                   t-att-style="'bottom: calc(' + bar.share + '% + 6px)'">{{ bar.text }}</span>
                             <span class="o_dash_tip" role="tooltip" t-att-style="'bottom: calc(' + bar.share + '% + 8px)'">
                                 <span>{{ bar.full }}</span><strong>{{ bar.text }}</strong>
+                                <span t-if="bar.before !== null">Before: {{ bar.beforeText }}<t t-if="bar.change"> · {{ bar.change }}</t></span>
                             </span>
                         </button>
                     </div>
@@ -123,6 +130,8 @@
                         <th scope="col">{{ groupLabel }}</th>
                         <th t-if="countShown" scope="col" class="o_dash_number">Records</th>
                         <th scope="col" class="o_dash_number">{{ valueLabel }}</th>
+                        <th t-if="tile.compare" scope="col" class="o_dash_number">Before</th>
+                        <th t-if="tile.compare" scope="col" class="o_dash_number">Change</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -133,6 +142,8 @@
                         </th>
                         <td t-if="countShown" class="o_dash_number">{{ bar.countText }}</td>
                         <td class="o_dash_number">{{ bar.text }}</td>
+                        <td t-if="tile.compare" class="o_dash_number o_dash_before_cell">{{ bar.beforeText }}</td>
+                        <td t-if="tile.compare" class="o_dash_number o_dash_change_cell">{{ bar.change }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -149,7 +160,11 @@
                                 <span class="o_dash_bar_count"><t t-if="countShown">· {{ bar.countText }}</t></span>
                                 <strong class="o_dash_bar_value">{{ bar.text }}</strong>
                             </span>
-                            <span class="o_dash_track"><span class="o_dash_fill" t-att-style="'width: ' + bar.share + '%'"/></span>
+                            <span class="o_dash_track">
+                                <span class="o_dash_fill" t-att-style="'width: ' + bar.share + '%'"/>
+                                <span t-if="bar.before !== null" class="o_dash_before_mark"
+                                      t-att-style="'left: ' + bar.beforeShare + '%'" t-att-title="'Before: ' + bar.beforeText"/>
+                            </span>
                         </span>
                     </button>
                 </li>
