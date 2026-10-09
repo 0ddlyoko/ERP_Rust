@@ -38,7 +38,12 @@ pub enum Priority {
 /// A piece of work on a project's board: a card in one of its columns, numbered `T-0001`, given
 /// to people, with a deadline, a priority, hours planned and subtasks.
 #[derive(Model)]
-#[erp(id = "project_task", order = "sequence, id", methods)]
+#[erp(
+    id = "project_task",
+    contact_field = "customer",
+    order = "sequence, id",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Task<Mode: IdMode> {
     id: Mode,

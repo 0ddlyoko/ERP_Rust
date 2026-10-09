@@ -32,7 +32,12 @@ pub enum PickingState {
 /// A transfer: a receipt, a delivery or an internal move of goods, made of moves, numbered by
 /// its kind.
 #[derive(Model)]
-#[erp(id = "stock_picking", order = "scheduled_date, id", methods)]
+#[erp(
+    id = "stock_picking",
+    contact_field = "partner",
+    order = "scheduled_date, id",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Picking<Mode: IdMode> {
     id: Mode,

@@ -10,6 +10,8 @@ pub struct ModelDescriptor {
     pub name_field: Option<String>,
     /// How the records come when nobody asks for an order: `date_order desc, id desc`.
     pub order: Option<String>,
+    /// The many2one to the contact a record is about, whom its messages go to.
+    pub contact_field: Option<String>,
     pub fields: Vec<FieldDescriptor>,
 }
 
@@ -22,6 +24,7 @@ impl ModelDescriptor {
             description,
             name_field: None,
             order: None,
+            contact_field: None,
             fields: Vec::new(),
         }
     }

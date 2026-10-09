@@ -32,6 +32,9 @@ pub struct FinalInternalModel {
     /// That order, read: each field and whether it is sorted largest first. Set once every
     /// field is known; by id alone without one.
     pub order: Vec<(String, bool)>,
+    /// The many2one to the contact a record is about — an order's customer — as the last struct
+    /// saying it named it: whom its messages go to.
+    pub contact_field: Option<String>,
     pub models: HashMap<TypeId, InternalModel>,
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
@@ -48,6 +51,7 @@ impl FinalInternalModel {
             declared_name_field: None,
             declared_order: None,
             order: Vec::new(),
+            contact_field: None,
             models: HashMap::new(),
             fields: HashMap::new(),
             methods: MethodRegistry::default(),
@@ -69,6 +73,7 @@ impl FinalInternalModel {
             description,
             name_field,
             order,
+            contact_field,
             fields,
         } = model_descriptor;
 
@@ -131,6 +136,9 @@ impl FinalInternalModel {
         }
         if order.is_some() {
             self.declared_order = order;
+        }
+        if contact_field.is_some() {
+            self.contact_field = contact_field;
         }
         self.models.insert(type_id, internal_model);
     }

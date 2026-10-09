@@ -15,6 +15,7 @@ pub struct ModelGen {
     pub derived_model: Option<String>,
     pub name_field: Option<String>,
     pub order: Option<String>,
+    pub contact_field: Option<String>,
     /// Whether an `#[erp_methods]` block contributes overridable methods.
     pub has_methods: bool,
     pub fields: Vec<FieldGen>,
@@ -32,6 +33,7 @@ impl ModelGen {
         let mut derived_model = None;
         let mut name_field = None;
         let mut order = None;
+        let mut contact_field = None;
         let mut has_methods = false;
 
         for attr in parse_attributes(attrs)? {
@@ -42,6 +44,7 @@ impl ModelGen {
                 AllowedModelAttrs::DerivedModel(_, value) => derived_model = Some(value.value()),
                 AllowedModelAttrs::NameField(_, value) => name_field = Some(value.value()),
                 AllowedModelAttrs::Order(_, value) => order = Some(value.value()),
+                AllowedModelAttrs::ContactField(_, value) => contact_field = Some(value.value()),
                 AllowedModelAttrs::Methods(_) => has_methods = true,
             }
         }
@@ -74,6 +77,7 @@ impl ModelGen {
             derived_model,
             name_field,
             order,
+            contact_field,
             has_methods,
             fields,
         })

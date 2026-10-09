@@ -15,7 +15,12 @@ use std::collections::HashMap;
 /// A template is a project to start others from: its columns and tasks are copied into a
 /// project created from it.
 #[derive(Model)]
-#[erp(id = "project_project", order = "name, id", methods)]
+#[erp(
+    id = "project_project",
+    contact_field = "customer",
+    order = "name, id",
+    methods
+)]
 #[allow(dead_code)]
 pub struct Project<Mode: IdMode> {
     id: Mode,

@@ -190,6 +190,7 @@ impl ModelManager {
         self._post_register_selections();
         self._post_register_storage();
         self._post_register_orders();
+        self._post_register_contact_fields();
         self._post_register_m2o_links();
         self._post_register_compute_links();
     }
@@ -303,6 +304,28 @@ impl ModelManager {
                 order.push((field.to_string(), descending));
             }
             model.order = order;
+        }
+    }
+
+    /// Refuse a contact field that is not a many2one to contacts: messages would go to nobody.
+    fn _post_register_contact_fields(&self) {
+        for model in self.models.values() {
+            let Some(name) = &model.contact_field else {
+                continue;
+            };
+            let points_to_contacts = model.fields.get(name).is_some_and(|field| {
+                field.kind == FieldKind::Ref
+                    && field
+                        .inverse
+                        .as_ref()
+                        .is_some_and(|reference| reference.target_model == "contact")
+            });
+            if !points_to_contacts {
+                panic!(
+                    "Model \"{}\" is about the contact of its field \"{name}\", which is no many2one to contacts",
+                    model.name
+                );
+            }
         }
     }
 

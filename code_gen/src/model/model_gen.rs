@@ -16,6 +16,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         derived_model,
         name_field,
         order,
+        contact_field,
         has_methods,
         fields,
         ..
@@ -404,6 +405,10 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         Some(order) => quote! { Some(#order.to_string()) },
         None => quote! { None },
     };
+    let contact_field = match contact_field {
+        Some(contact_field) => quote! { Some(#contact_field.to_string()) },
+        None => quote! { None },
+    };
 
     let fields_descriptor = fields.iter().map(|f| {
         let FieldGen {
@@ -678,6 +683,7 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
                     description,
                     name_field: #name_field,
                     order: #order,
+                    contact_field: #contact_field,
                     fields,
                 }
             }

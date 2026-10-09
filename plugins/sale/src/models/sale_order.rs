@@ -35,7 +35,12 @@ pub enum SaleState {
 /// A quotation, and once confirmed, a sales order: what a customer buys, at what price, and
 /// how much of it has been invoiced.
 #[derive(Model)]
-#[erp(id = "sale_order", order = "date_order desc, id desc", methods)]
+#[erp(
+    id = "sale_order",
+    contact_field = "partner",
+    order = "date_order desc, id desc",
+    methods
+)]
 #[allow(dead_code)]
 pub struct SaleOrder<Mode: IdMode> {
     id: Mode,
