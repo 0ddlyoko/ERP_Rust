@@ -65,6 +65,26 @@ export class FormView extends View {
         return "form";
     }
 
+    /**
+     * A click on a field — its label, or beside its input — types in it, as a click on its input
+     * would: a relation's then lists the records to choose from. A click on what reacts to it
+     * itself — a button, a link, an input — is left to it.
+     */
+    focusField(event: MouseEvent): void {
+        const target = event.target as HTMLElement;
+        if (target.closest("input, textarea, select, button, a, [contenteditable], .o_record_search_results, .o_x2many_list")) {
+            return;
+        }
+        const field = target.closest<HTMLElement>(".o_form_field, .o_leader_tile, .o_form_heading_field");
+        const input = field?.querySelector<HTMLElement>(
+            "input:not([type='hidden']):not([disabled]):not([readonly]), textarea:not([disabled]), select:not([disabled])",
+        );
+        input?.focus();
+        if (input instanceof HTMLInputElement && input.type === "checkbox") {
+            input.click();
+        }
+    }
+
     @state accessor changes: Values = {};
     @state accessor saving = false;
     /** The button whose method runs, by its position in the bar, until it is done. */
