@@ -92,7 +92,12 @@ export class Rpc {
     }
 }
 
+/**
+ * Log in again, then come back where the user was — the record or list the address's hash names,
+ * which only the browser knows. Still logged in, as when the server restarted with another
+ * signing secret, the login page sends them straight back, with a page holding a valid token.
+ */
 function logInAgain(): void {
-    const back = window.location.pathname + window.location.search;
+    const back = window.location.pathname + window.location.search + window.location.hash;
     window.location.assign(`/login?redirect=${encodeURIComponent(back)}`);
 }
