@@ -11,7 +11,8 @@ pub(crate) use internal_plugin::InternalPlugin;
 pub(crate) use internal_plugin::InternalPluginState;
 pub(crate) use internal_plugin::InternalPluginType;
 pub use plugin_manager::{PluginManager, plugin_build_symbol, plugin_symbol};
-pub(crate) use record::{installed_version, record_plugin};
+pub use record::{BootRecords, note_parameter, parameter};
+pub(crate) use record::{PluginRow, installed_version, note_plugin, plugin_row, record_plugin};
 
 use crate::assets::{BundleContribution, StaticFiles, TemplateFiles};
 use crate::environment::Environment;

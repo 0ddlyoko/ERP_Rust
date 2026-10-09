@@ -114,6 +114,9 @@ pub struct Application {
     /// The schema as the plugins loading so far left it, handed from one to the next so it is
     /// read once; forgotten once they are loaded, as other processes may change it.
     schema_state: Option<crate::database::postgres::SchemaState>,
+    /// The plugins' rows and the parameters as loading read them, handed from one plugin to the
+    /// next so they are read once; forgotten once the plugins are loaded.
+    boot: Option<crate::plugin::BootRecords>,
     install: Vec<String>,
     signing_secret: OnceLock<String>,
 }
@@ -131,6 +134,7 @@ impl Application {
             data_update: DataUpdate::default(),
             checks_deferred: false,
             schema_state: None,
+            boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
@@ -150,6 +154,7 @@ impl Application {
             data_update: DataUpdate::default(),
             checks_deferred: false,
             schema_state: None,
+            boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         };
@@ -174,6 +179,7 @@ impl Application {
             data_update: DataUpdate::default(),
             checks_deferred: false,
             schema_state: None,
+            boot: None,
             install: Vec::new(),
             signing_secret: OnceLock::new(),
         }
@@ -265,6 +271,7 @@ impl Application {
         let started = Instant::now();
         crate::request_log::start();
         self.checks_deferred = true;
+        self.boot = Some(crate::plugin::BootRecords::default());
         self.register_plugins()?;
         self.initialize_db()?;
         self.load_base_plugin()?;
@@ -291,6 +298,7 @@ impl Application {
         self.release_orphan_columns()?;
         self.schema_state = None;
         self.run_checks()?;
+        self.boot = None;
         let done = crate::request_log::current();
         tracing::info!(
             plugins = self.model_manager.loaded_plugins.len(),
@@ -323,11 +331,13 @@ impl Application {
             &self.config.server,
             self.create_new_database()?,
         )?;
+        env.boot = self.boot.take();
         for (name, plugin) in &self.plugin_manager.plugins {
             if plugin.state != Installed {
                 crate::plugin::record_plugin(&mut env, name, &plugin.plugin.info(), false)?;
             }
         }
+        self.boot = env.boot.take();
         env.close()
     }
 
@@ -415,12 +425,14 @@ impl Application {
             &self.config.server,
             self.create_new_database()?,
         )?;
+        env.boot = self.boot.take();
         if let Some(check) = env.model_manager.access.source().map(|source| source.check) {
             check(&mut env)?;
         }
         for hook in env.model_manager.check_hooks.clone() {
             hook(&mut env)?;
         }
+        self.boot = env.boot.take();
         env.close()
     }
 
@@ -566,6 +578,7 @@ impl Application {
         let info = plugin.info();
         let mut env = Environment::new(&self.model_manager, &self.config.server, database)?;
         env.external_ids = Some(crate::data::ExternalIds::default());
+        env.boot = self.boot.take();
         env.savepoint(|env| {
             for (model_name, field_name) in &to_fill {
                 env.fill_stored_field(model_name, field_name)?;
@@ -582,6 +595,7 @@ impl Application {
             crate::plugin::record_plugin(env, plugin_name, &info, true)?;
             crate::plugin::demo::load_for(env, plugin_name)
         })?;
+        self.boot = env.boot.take();
         env.close()?;
 
         let after = crate::request_log::current();

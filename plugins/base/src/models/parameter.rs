@@ -49,25 +49,18 @@ impl Parameter<MultipleIds> {
         self.check_keys(env)
     }
 
-    /// The value kept under a key, if any; read as sudo, parameters being the database's.
+    /// The value kept under a key, if any; read as sudo, parameters being the database's —
+    /// all of them at once while the application loads.
     pub fn value_of(env: &mut Environment, key: String) -> Result<Option<String>> {
-        let env = &mut *env.sudo();
-        let found: Parameter<MultipleIds> =
-            env.search(&make_domain!([("key", "=", key.as_str())]))?;
-        match found.into_iter().next() {
-            Some(parameter) => Ok(parameter.get_value(env)?.cloned()),
-            None => Ok(None),
-        }
+        erp::plugin::parameter(env, &key)
     }
 
-    /// The values kept under these keys, by key: those with none are left out. One search.
+    /// The values kept under these keys, by key: those with none are left out.
     pub fn values_of(env: &mut Environment, keys: Vec<String>) -> Result<HashMap<String, String>> {
-        let env = &mut *env.sudo();
-        let found: Parameter<MultipleIds> = env.search(&make_domain!([("key", "in", keys)]))?;
         let mut values = HashMap::new();
-        for parameter in &found {
-            if let Some(value) = parameter.get_value(env)?.cloned() {
-                values.insert(parameter.get_key(env)?.clone(), value);
+        for key in keys {
+            if let Some(value) = erp::plugin::parameter(env, &key)? {
+                values.insert(key, value);
             }
         }
         Ok(values)
@@ -79,14 +72,15 @@ impl Parameter<MultipleIds> {
         let found: Parameter<MultipleIds> =
             env.search(&make_domain!([("key", "=", key.as_str())]))?;
         match found.into_iter().next() {
-            Some(parameter) => parameter.set_value(Some(value), env),
+            Some(parameter) => parameter.set_value(Some(value.clone()), env)?,
             None => {
                 let mut values = MapOfFields::default();
-                values.insert("key", key);
-                values.insert("value", value);
+                values.insert("key", key.as_str());
+                values.insert("value", value.as_str());
                 env.create_records("parameter", vec![values])?;
-                Ok(())
             }
         }
+        erp::plugin::note_parameter(env, &key, Some(value));
+        Ok(())
     }
 }

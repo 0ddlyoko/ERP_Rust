@@ -106,6 +106,8 @@ pub struct Environment<'mm> {
     /// The external identifiers of the modules a data file names, read once per module while
     /// the file loads; `None` outside of that.
     pub(crate) external_ids: Option<crate::data::ExternalIds>,
+    /// The plugins' rows and the parameters, read once while the application loads.
+    pub(crate) boot: Option<crate::plugin::BootRecords>,
 }
 
 impl Drop for Environment<'_> {
@@ -157,6 +159,7 @@ impl<'mm> Environment<'mm> {
             virtual_count: 0,
             closed: false,
             external_ids: None,
+            boot: None,
         };
         env.database.start_transaction()?;
         Ok(env)
