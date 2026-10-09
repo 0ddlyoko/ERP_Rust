@@ -1,6 +1,7 @@
 import { mount, registerTemplates } from "trame";
 import { Menus } from "./core/menus";
 import { Breadcrumb } from "./core/breadcrumb";
+import { installDialogDrag } from "./core/dialog_drag";
 import { Models } from "./core/models";
 import { Notifications } from "./core/notifications";
 import { Orm } from "./core/orm";
@@ -22,6 +23,7 @@ async function start(): Promise<void> {
     if (target === null) {
         return;
     }
+    installDialogDrag();
     const response = await fetch("/web/assets/web.assets_backend.xml");
     registerTemplates(await response.text(), "web.assets_backend.xml");
     try {

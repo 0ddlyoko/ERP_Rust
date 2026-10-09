@@ -344,6 +344,17 @@
     box-shadow: var(--o-shadow-pop);
 }
 
+.o_dialog > header,
+.o_dialog > .o_activity_dialog_head,
+.o_dialog h2 {
+    cursor: move;
+    user-select: none;
+}
+
+.o_dialog.o_dialog_dragging {
+    user-select: none;
+}
+
 .o_dialog_message {
     margin: 0;
     font-size: 15px;
