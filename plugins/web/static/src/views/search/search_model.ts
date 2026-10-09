@@ -47,13 +47,15 @@ export interface SearchView {
 }
 
 /**
- * One condition of a search, shown as a chip: texts searched in one field, any of them; or
- * filters ticked, any of them.
+ * One condition of a search, shown as a chip: texts searched in one field, any of them; filters
+ * ticked, any of them; or records a domain finds, under a label — those a dashboard's figure
+ * stands for.
  */
 export type Facet =
     | { kind: "field"; name: string; values: string[] }
     | { kind: "filters"; names: string[] }
-    | { kind: "groupby"; groupBy: string; label: string };
+    | { kind: "groupby"; groupBy: string; label: string }
+    | { kind: "domain"; label: string; domain: Domain };
 
 /** Field types records can be gathered by: those holding one value each. */
 const GROUPABLE = new Set(["string", "ref", "selection", "integer", "bool", "date", "datetime"]);
@@ -160,6 +162,9 @@ export function searchDomain(view: SearchView, facets: Facet[]): Domain {
             if (facet.kind === "filters") {
                 return or(view.filters.filter((filter) => facet.names.includes(filter.name)).map((filter) => filter.domain));
             }
+            if (facet.kind === "domain") {
+                return facet.domain;
+            }
             const searchField = view.fields.find((candidate) => candidate.name === facet.name);
             return searchField === undefined ? [] : or(facet.values.map((value) => textDomain(searchField, value)));
         }),
@@ -173,6 +178,9 @@ export function facetLabel(view: SearchView, facet: Facet): string {
     }
     if (facet.kind === "filters") {
         return facet.names.map((name) => view.filters.find((filter) => filter.name === name)?.label ?? name).join(" or ");
+    }
+    if (facet.kind === "domain") {
+        return facet.label;
     }
     const label = view.fields.find((field) => field.name === facet.name)?.label ?? facet.name;
     return `${label}: ${facet.values.join(" or ")}`;

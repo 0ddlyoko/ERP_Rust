@@ -1,5 +1,6 @@
 <erp>
     <menu id="menu_sales" icon="shopping-cart" name="Sales" sequence="10" groups="group_sale_salesman">
+        <menu id="menu_dashboard" icon="layout-dashboard" name="Dashboard" sequence="1" action="action_sale_dashboard"/>
         <menu id="menu_orders" icon="file-text" name="Orders" sequence="10">
             <menu id="menu_quotations" name="Quotations" sequence="10" action="action_quotations"/>
             <menu id="menu_sale_orders" name="Sales orders" sequence="20" action="action_orders"/>

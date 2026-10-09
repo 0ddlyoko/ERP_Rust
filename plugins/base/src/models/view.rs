@@ -4,6 +4,7 @@ use erp::Result;
 use erp::environment::Environment;
 use erp::inheritance::{Arch as Markup, Archs};
 use erp::internal_types::FinalInternalModel;
+use erp::model::ModelManager;
 use erp::search::SearchType;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::xml::{Element, Node, to_markup};
@@ -137,10 +138,12 @@ fn root_element(nodes: &[Node]) -> Option<&Element> {
 }
 
 /// What may stand where in a view, and what a `<field>` or a `{{ field }}` may name.
+#[derive(Clone, Copy)]
 struct Arch<'a> {
     label: &'a str,
     model_name: &'a str,
     model: &'a FinalInternalModel,
+    models: &'a ModelManager,
     kind: &'a str,
 }
 
@@ -168,6 +171,10 @@ const CARD_TEXT: &[&str] = &["title", "subtitle", "figure", "muted"];
 const LEADER_ROLES: &[&str] = &[
     "status", "corner", "avatar", "title", "subtitle", "figure", "note",
 ];
+/// What a dashboard's `<chart>` draws: columns over time, bars side by side, a ranking.
+const CHARTS: &[&str] = &["columns", "bars", "ranking"];
+/// The periods a dashboard opens on.
+const PERIODS: &[&str] = &["month", "quarter", "year", "all"];
 /// The colours a `decoration-*` attribute may name.
 const DECORATIONS: &[&str] = &["success", "info", "warning", "danger", "muted"];
 
@@ -181,10 +188,14 @@ impl Arch<'_> {
         {
             self.known(field)?;
         }
+        if root.name == "dashboard" {
+            self.dashboard(root)?;
+        }
         let allowed: &[&str] = match root.name.as_str() {
             "list" => &["field", "buttons", "compact", "folded", "preview"],
             "kanban" => &["field", "card"],
             "search" => &["field", "filter"],
+            "dashboard" => &["metric", "chart", "records"],
             "form" => &[
                 "block", "field", "h1", "h2", "h3", "h4", "h5", "h6", "pages", "buttons", "side",
                 "chatter", "totals", "leader", "related", "footer",
@@ -225,6 +236,9 @@ impl Arch<'_> {
     }
 
     fn element(&self, element: &Element) -> std::result::Result<(), String> {
+        if let Some(other) = self.other_model(element)? {
+            return other.element(element);
+        }
         if let Some(string) = element.attribute("string") {
             self.placeholders(string)?;
         }
@@ -339,7 +353,80 @@ impl Arch<'_> {
                 self.children(element, &[])
             }
             heading if HEADINGS.contains(&heading) => self.children(element, &["field"]),
+            "metric" | "chart" | "records" => self.tile(element),
             _ => Ok(()),
+        }
+    }
+
+    /// The view as of the model a dashboard's tile names, when not the dashboard's own.
+    fn other_model<'e>(
+        &'e self,
+        element: &'e Element,
+    ) -> std::result::Result<Option<Arch<'e>>, String> {
+        let tile = matches!(element.name.as_str(), "metric" | "chart" | "records");
+        let Some(name) = element
+            .attribute("model")
+            .filter(|name| tile && *name != self.model_name)
+        else {
+            return Ok(None);
+        };
+        let model = self.models.try_get_model(name).map_err(|_| {
+            self.error(format!(
+                "<{}> is of model \"{name}\", which does not exist",
+                element.name
+            ))
+        })?;
+        Ok(Some(Arch {
+            model_name: name,
+            model,
+            ..*self
+        }))
+    }
+
+    /// The date a dashboard narrows to its period, the records it counts some by, and the field
+    /// holding their currency.
+    fn dashboard(&self, root: &Element) -> std::result::Result<(), String> {
+        for attribute in ["date", "filter_by", "currency_field"] {
+            if let Some(field) = root.attribute(attribute) {
+                self.known(field)?;
+            }
+        }
+        match root.attribute("period") {
+            Some(period) if !PERIODS.contains(&period) => Err(self.error(format!(
+                "period \"{period}\" is none a dashboard knows: {}",
+                PERIODS.join(", ")
+            ))),
+            _ => Ok(()),
+        }
+    }
+
+    /// A tile of a dashboard: a `<metric>`, a `<chart>` or `<records>` shown as cards — the
+    /// fields it sums, averages, dates its records by or gathers them by, of its model.
+    fn tile(&self, element: &Element) -> std::result::Result<(), String> {
+        for attribute in ["sum", "average", "date"] {
+            if let Some(field) = element.attribute(attribute) {
+                self.known(field)?;
+            }
+        }
+        match element.name.as_str() {
+            "chart" => {
+                let group_by = self.required(element, "group_by")?;
+                self.known(
+                    group_by
+                        .split_once(':')
+                        .map_or(group_by, |(field, _)| field),
+                )?;
+                let kind = element.attribute("type").unwrap_or("bars");
+                if !CHARTS.contains(&kind) {
+                    return Err(self.error(format!(
+                        "chart type \"{kind}\" is none a dashboard draws: {}",
+                        CHARTS.join(", ")
+                    )));
+                }
+                self.children(element, &[])
+            }
+            "records" => self.children(element, &["card"]),
+            _ => self.children(element, &[]),
         }
     }
 
@@ -680,6 +767,7 @@ impl View<SingleId> {
                 label: &view.label,
                 model_name: &view.model,
                 model,
+                models: env.model_manager,
                 kind: &view.root.name,
             };
             arch.check(&view.root)?;

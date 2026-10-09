@@ -1,5 +1,6 @@
 <erp>
     <menu id="menu_project" icon="folder-kanban" name="Projects" sequence="40" groups="group_project_user">
+        <menu id="menu_dashboard" icon="layout-dashboard" name="Dashboard" sequence="1" action="action_project_dashboard"/>
         <menu id="menu_work" icon="kanban" name="Projects" sequence="10">
             <menu id="menu_projects" name="Projects" sequence="10" action="action_projects"/>
         </menu>

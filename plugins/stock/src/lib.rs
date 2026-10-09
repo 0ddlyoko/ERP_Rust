@@ -46,6 +46,7 @@ impl Plugin for StockPlugin {
             include_str!("../data/access.xml"),
             include_str!("../data/stock_data.xml"),
             include_str!("../views/stock_views.xml"),
+            include_str!("../views/dashboard_views.xml"),
             include_str!("../views/menus.xml"),
         ]
     }

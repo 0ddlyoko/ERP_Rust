@@ -1,5 +1,6 @@
 <erp>
     <menu id="menu_purchase" icon="shopping-bag" name="Purchase" sequence="20" groups="group_purchase_user">
+        <menu id="menu_dashboard" icon="layout-dashboard" name="Dashboard" sequence="1" action="action_purchase_dashboard"/>
         <menu id="menu_orders" icon="file-text" name="Orders" sequence="10">
             <menu id="menu_requests" name="Requests for quotation" sequence="10" action="action_requests"/>
             <menu id="menu_purchase_orders" name="Purchase orders" sequence="20" action="action_orders"/>

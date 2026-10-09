@@ -286,6 +286,7 @@ fn test_views_and_menus() -> Result<()> {
     assert_eq!(
         sections,
         vec![
+            "Dashboard",
             "Customers",
             "Vendors",
             "Accounting",

@@ -1,0 +1,181 @@
+<templates>
+    <t t-name="web.DashboardView">
+        <div class="o_dashboard">
+            <div class="o_dash_toolbar">
+                <div class="o_dash_periods" role="group" aria-label="Period">
+                    <button t-foreach="periods" t-as="option" t-key="option.key" type="button"
+                            t-att-class="{ o_dash_period: true, active: option.key === period }"
+                            t-att-aria-pressed="option.key === period ? 'true' : 'false'"
+                            t-on-click="() => pick(option.key)">{{ option.label }}</button>
+                </div>
+                <div class="o_dash_range">
+                    <t t-if="period !== 'all'">
+                        <button type="button" class="o_dash_step" title="Previous" aria-label="Previous period"
+                                t-on-click="() => step(-1)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="m15 6-6 6 6 6"/>
+                            </svg>
+                        </button>
+                        <span class="o_dash_range_label" aria-live="polite">{{ rangeText }}</span>
+                        <button type="button" class="o_dash_step" title="Next" aria-label="Next period"
+                                t-on-click="() => step(1)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="m9 6 6 6-6 6"/>
+                            </svg>
+                        </button>
+                        <button t-if="!isCurrent" type="button" class="o_dash_today" t-on-click="backToToday">Today</button>
+                    </t>
+                    <span t-else="" class="o_dash_range_label">{{ rangeText }}</span>
+                </div>
+                <Suspense>
+                    <t t-set-slot="fallback"/>
+                    <label t-if="filterField" class="o_dash_filter">
+                        <span>{{ filterLabel }}</span>
+                        <select t-on-change="(ev) => chooseFilter(ev)">
+                            <option value="">All</option>
+                            <option t-foreach="filterChoices" t-as="choice" t-key="choice[0]" t-att-value="choice[0]"
+                                    t-att-selected="choice[0] === filterId">{{ choice[1] }}</option>
+                        </select>
+                    </label>
+                </Suspense>
+            </div>
+            <Suspense>
+                <t t-set-slot="fallback"><t t-call="web.Loading"/></t>
+                <div t-if="metrics.length" class="o_dash_metrics">
+                    <t t-foreach="metrics" t-as="tile" t-key="tile.key">
+                        <Suspense>
+                            <t t-set-slot="fallback"><div class="o_dash_metric o_dash_waiting"/></t>
+                            <DashboardMetric tile="tile" scope="scope" host="this" resModel="tile.model"/>
+                        </Suspense>
+                    </t>
+                </div>
+                <div class="o_dash_panels">
+                    <div t-foreach="panels" t-as="tile" t-key="tile.key" t-att-class="panelClass(tile)">
+                        <Suspense>
+                            <t t-set-slot="fallback"><div class="o_dash_waiting o_dash_waiting_panel"/></t>
+                            <DashboardChart t-if="tile.tag === 'chart'" tile="tile" scope="scope" host="this" resModel="tile.model"/>
+                            <DashboardRecords t-else="" tile="tile" scope="scope" host="this" resModel="tile.model"/>
+                        </Suspense>
+                    </div>
+                </div>
+            </Suspense>
+        </div>
+    </t>
+
+    <t t-name="web.DashboardMetricBody">
+        <span class="o_dash_metric_label">{{ tile.label }}</span>
+        <span class="o_dash_metric_value">{{ value }}</span>
+        <span t-if="caption" t-att-class="'o_dash_metric_caption ' + caption.tone">{{ caption.text }}</span>
+    </t>
+
+    <t t-name="web.DashboardMetric">
+        <button t-if="opens" type="button" class="o_dash_metric o_dash_metric_link" t-on-click="open">
+            <t t-call="web.DashboardMetricBody"/>
+        </button>
+        <div t-else="" class="o_dash_metric"><t t-call="web.DashboardMetricBody"/></div>
+    </t>
+
+    <t t-name="web.DashboardChart">
+        <section class="o_dash_chart" t-att-aria-label="tile.label">
+            <header class="o_dash_panel_head">
+                <h2>{{ tile.label }}</h2>
+                <span class="o_dash_note">{{ note }}</span>
+                <div class="o_dash_views" role="group" aria-label="Draw as">
+                    <button t-foreach="views" t-as="view" t-key="view.key" type="button"
+                            t-att-class="{ o_dash_view: true, active: view.key === shown }"
+                            t-att-title="view.label" t-att-aria-label="view.label"
+                            t-att-aria-pressed="view.key === shown ? 'true' : 'false'" t-on-click="() => show(view.key)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path t-att-d="view.icon"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+            <p t-if="groups === null" class="o_dash_empty">Not available.</p>
+            <p t-elif="empty" class="o_dash_empty">Nothing yet.</p>
+            <div t-elif="shown === 'columns'" t-att-class="{ o_dash_columns: true, o_dash_columns_solid: !timed }">
+                <div class="o_dash_scale" aria-hidden="true">
+                    <span t-foreach="ticks" t-as="tick" t-key="tick_index">{{ tick }}</span>
+                </div>
+                <div class="o_dash_plot">
+                    <div class="o_dash_grid" aria-hidden="true"><span/><span/><span/><span/></div>
+                    <div class="o_dash_column_row">
+                        <button t-foreach="bars" t-as="bar" t-key="bar.key" type="button"
+                                t-att-class="{ o_dash_column_slot: true, o_dash_current: bar.current }"
+                                t-att-style="bar.style" t-att-aria-label="bar.full + ': ' + bar.text"
+                                t-att-disabled="tile.action ? null : 'disabled'" t-on-click="() => open(bar)">
+                            <span class="o_dash_column" t-att-style="'height: ' + bar.share + '%'"/>
+                            <span t-if="bar.current" class="o_dash_column_value"
+                                  t-att-style="'bottom: calc(' + bar.share + '% + 6px)'">{{ bar.text }}</span>
+                            <span class="o_dash_tip" role="tooltip" t-att-style="'bottom: calc(' + bar.share + '% + 8px)'">
+                                <span>{{ bar.full }}</span><strong>{{ bar.text }}</strong>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="o_dash_axis" aria-hidden="true">
+                        <span t-foreach="bars" t-as="bar" t-key="bar.key">{{ bar.label }}</span>
+                    </div>
+                </div>
+            </div>
+            <table t-elif="shown === 'table'" class="o_dash_table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ groupLabel }}</th>
+                        <th t-if="countShown" scope="col" class="o_dash_number">Records</th>
+                        <th scope="col" class="o_dash_number">{{ valueLabel }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="bars" t-as="bar" t-key="bar.key" t-att-class="{ o_dash_current: bar.current }">
+                        <th scope="row">
+                            <button type="button" class="o_dash_table_open" t-att-disabled="tile.action ? null : 'disabled'"
+                                    t-on-click="() => open(bar)">{{ bar.full }}</button>
+                        </th>
+                        <td t-if="countShown" class="o_dash_number">{{ bar.countText }}</td>
+                        <td class="o_dash_number">{{ bar.text }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <ul t-else="" t-att-class="{ o_dash_bars: true, o_dash_ranking: tile.chart === 'ranking' }">
+                <li t-foreach="bars" t-as="bar" t-key="bar.key">
+                    <button type="button" class="o_dash_bar" t-att-style="bar.style"
+                            t-att-disabled="tile.action ? null : 'disabled'" t-on-click="() => open(bar)">
+                        <span t-if="tile.chart === 'ranking'" class="o_avatar o_dash_avatar"
+                              t-att-style="bar.avatar">{{ initials(bar.label) }}</span>
+                        <span class="o_dash_bar_main">
+                            <span class="o_dash_bar_head">
+                                <span t-if="tile.chart !== 'ranking'" class="o_dash_swatch"/>
+                                <span class="o_dash_bar_label">{{ bar.label }}</span>
+                                <span class="o_dash_bar_count"><t t-if="countShown">· {{ bar.countText }}</t></span>
+                                <strong class="o_dash_bar_value">{{ bar.text }}</strong>
+                            </span>
+                            <span class="o_dash_track"><span class="o_dash_fill" t-att-style="'width: ' + bar.share + '%'"/></span>
+                        </span>
+                    </button>
+                </li>
+            </ul>
+        </section>
+    </t>
+
+    <t t-name="web.DashboardRecords">
+        <section class="o_dash_records" t-att-aria-label="tile.label">
+            <header class="o_dash_panel_head">
+                <h2>{{ tile.label }}<span t-if="found" class="o_dash_count">{{ found.total }}</span></h2>
+                <button t-if="opens &amp;&amp; found &amp;&amp; found.total" type="button" class="o_dash_more"
+                        t-on-click="openAll">See all</button>
+            </header>
+            <p t-if="found === null" class="o_dash_empty">Not available.</p>
+            <p t-elif="!found.records.length" class="o_dash_empty">Nothing to see to.</p>
+            <ul t-else="" class="o_dash_cards">
+                <li t-foreach="found.records" t-as="record" t-key="record.id">
+                    <button type="button" class="o_dash_card" t-on-click="() => open(record)">
+                        <t t-component="card.body" strip="this" record="record" card="card"/>
+                    </button>
+                </li>
+            </ul>
+        </section>
+    </t>
+</templates>

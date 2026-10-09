@@ -1,0 +1,44 @@
+<erp>
+    <view id="view_move_dashboard" name="account_move.dashboard" model="account_move">
+        <dashboard date="invoice_date" currency_field="currency">
+            <metric string="Invoiced" sum="amount_untaxed" widget="monetary" compare="1"
+                    domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"]]'
+                    action="account.action_move_out_invoice"/>
+            <metric string="To collect" sum="amount_residual" widget="monetary" counted="invoice|invoices" all_time="1"
+                    domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]]]'
+                    action="account.action_move_out_invoice"/>
+            <metric string="Overdue" sum="amount_residual" widget="monetary" counted="invoice|invoices" all_time="1"
+                    domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]], ["invoice_date_due", "&lt;", "$today"]]'
+                    action="account.action_move_out_invoice"/>
+            <metric string="Bills to pay" sum="amount_residual" widget="monetary" counted="bill|bills" all_time="1"
+                    domain='[["move_type", "=", "in_invoice"], ["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]]]'
+                    action="account.action_move_in_invoice"/>
+            <chart string="Invoiced per month" type="columns" group_by="invoice_date:month" sum="amount_untaxed"
+                   widget="monetary" domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"]]'
+                   action="account.action_move_out_invoice"/>
+            <chart string="Invoices by payment" type="bars" group_by="payment_state" sum="amount_total" widget="monetary"
+                   domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"]]'
+                   action="account.action_move_out_invoice"/>
+            <chart string="Best customers" type="ranking" group_by="partner" sum="amount_untaxed" widget="monetary"
+                   domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"]]'
+                   action="account.action_move_out_invoice"/>
+            <records string="Overdue invoices" all_time="1" order="invoice_date_due asc"
+                     domain='[["move_type", "=", "out_invoice"], ["state", "=", "posted"], ["payment_state", "in", ["not_paid", "partial"]], ["invoice_date_due", "&lt;", "$today"]]'
+                     action="account.action_move_out_invoice">
+                <card>
+                    <row>
+                        <field name="partner" widget="avatar"/>
+                        <column>
+                            <title><field name="partner"/></title>
+                            <muted><field name="name"/> · due <field name="invoice_date_due"/></muted>
+                        </column>
+                        <spacer/>
+                        <figure><field name="amount_residual" widget="monetary"/></figure>
+                    </row>
+                </card>
+            </records>
+        </dashboard>
+    </view>
+
+    <action id="action_account_dashboard" name="Dashboard" model="account_move" views="dashboard"/>
+</erp>

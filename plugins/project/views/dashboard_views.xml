@@ -1,0 +1,37 @@
+<erp>
+    <view id="view_task_dashboard" name="project_task.dashboard" model="project_task">
+        <dashboard filter_by="project">
+            <metric string="Open tasks" domain='[["is_closed", "=", false], ["project.is_template", "=", false]]'
+                    action="project.action_all_tasks"/>
+            <metric string="Blocked"
+                    domain='[["status", "=", "blocked"], ["is_closed", "=", false], ["project.is_template", "=", false]]'
+                    action="project.action_all_tasks"/>
+            <metric string="Overdue"
+                    domain='[["date_deadline", "&lt;", "$today"], ["is_closed", "=", false], ["project.is_template", "=", false]]'
+                    action="project.action_all_tasks"/>
+            <metric string="Planned hours" sum="planned_hours" widget="hours"
+                    domain='[["is_closed", "=", false], ["project.is_template", "=", false]]'
+                    action="project.action_all_tasks"/>
+            <chart string="Open tasks by status" type="bars" group_by="status"
+                   domain='[["is_closed", "=", false], ["project.is_template", "=", false]]' action="project.action_all_tasks"/>
+            <chart string="Open tasks by project" type="ranking" group_by="project"
+                   domain='[["is_closed", "=", false], ["project.is_template", "=", false]]' action="project.action_all_tasks"/>
+            <records string="Overdue tasks" order="date_deadline asc"
+                     domain='[["date_deadline", "&lt;", "$today"], ["is_closed", "=", false], ["project.is_template", "=", false]]'
+                     action="project.action_all_tasks">
+                <card>
+                    <row>
+                        <column>
+                            <title><field name="name"/></title>
+                            <muted><field name="project"/> · <field name="date_deadline"/></muted>
+                        </column>
+                        <spacer/>
+                        <field name="assignees" widget="avatars"/>
+                    </row>
+                </card>
+            </records>
+        </dashboard>
+    </view>
+
+    <action id="action_project_dashboard" name="Dashboard" model="project_task" views="dashboard"/>
+</erp>

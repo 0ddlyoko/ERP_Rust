@@ -502,3 +502,82 @@ fn test_what_a_list_may_not_decorate_is_refused() -> Result<()> {
     }
     Ok(())
 }
+
+/// A dashboard holds figures, charts and records as cards, of its model or of another; what they
+/// sum, date or gather the records by is a field of that model.
+#[test]
+fn test_a_dashboard_is_shown_as_written_and_checked() -> Result<()> {
+    let app = with_data(
+        "dashing",
+        &[
+            r#"<erp><view id="board" name="board" model="users"><dashboard date="create_date" period="year">
+            <metric string="Users" domain='[["active", "=", true]]' action="base.action_users"/>
+            <metric string="Groups" model="group"/>
+            <chart string="Active" type="bars" group_by="active"/>
+            <chart string="Joined" type="columns" group_by="create_date:month" last="4"/>
+            <records string="Newest" limit="3"><card><title><field name="name"/></title></card></records>
+        </dashboard></view></erp>"#,
+        ],
+    )?;
+    let arch = view_of(&app, "users", "dashboard")?;
+    assert!(
+        arch.contains("<dashboard") && arch.contains("model=\"group\""),
+        "{arch}"
+    );
+
+    for (dashboard, expected) in [
+        (
+            "<dashboard><block/></dashboard>",
+            "<block> cannot stand in <dashboard>",
+        ),
+        (r#"<dashboard date="dat"/>"#, "\"dat\""),
+        (r#"<dashboard period="week"/>"#, "period \"week\""),
+        ("<dashboard><chart/></dashboard>", "<chart> has no group_by"),
+        (
+            r#"<dashboard><chart group_by="logn:month"/></dashboard>"#,
+            "\"logn\"",
+        ),
+        (
+            r#"<dashboard><chart group_by="active" type="pie"/></dashboard>"#,
+            "chart type \"pie\"",
+        ),
+        (r#"<dashboard><metric sum="nb"/></dashboard>"#, "\"nb\""),
+        (
+            r#"<dashboard><metric domain='[["actif", "=", true]]'/></dashboard>"#,
+            "\"actif\"",
+        ),
+        (
+            r#"<dashboard><metric model="nope"/></dashboard>"#,
+            "model \"nope\"",
+        ),
+        (
+            r#"<dashboard><metric model="group" sum="login"/></dashboard>"#,
+            "\"login\"",
+        ),
+        (
+            r#"<dashboard><records><card><field name="logn"/></card></records></dashboard>"#,
+            "\"logn\"",
+        ),
+        (
+            "<dashboard><records><block/></records></dashboard>",
+            "<block> cannot stand in <records>",
+        ),
+    ] {
+        let data: &'static str = Box::leak(
+            format!(r#"<erp><view id="bad" name="bad" model="users">{dashboard}</view></erp>"#)
+                .into_boxed_str(),
+        );
+        let data: &'static [&'static str] = Box::leak(vec![data].into_boxed_slice());
+        let mut app = new_app()?;
+        app.register_plugin(Box::new(DataPlugin {
+            name: "bad_dashboard",
+            data,
+        }))?;
+        let error = app
+            .load_plugin("bad_dashboard")
+            .expect_err("refused")
+            .to_string();
+        assert!(error.contains(expected), "{dashboard}: {error}");
+    }
+    Ok(())
+}

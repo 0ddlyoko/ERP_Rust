@@ -1,0 +1,647 @@
+/* An app's dashboard: its figures, its charts, the records to see to */
+
+.o_dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_dash_toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--o-radius-card);
+    background: var(--o-side);
+    color: #ffffff;
+}
+
+.o_dash_periods {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--o-radius-control);
+    background: var(--o-side-raised);
+}
+
+.o_dash_period {
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_dash_period:hover {
+    background: var(--o-side-line);
+}
+
+.o_dash_period.active {
+    background: #ffffff;
+    color: var(--o-ink);
+}
+
+.o_dash_range {
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    gap: 4px;
+}
+
+.o_dash_range_label {
+    min-width: 120px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.o_dash_step {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: var(--o-side-raised);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.o_dash_step:hover {
+    background: var(--o-side-line);
+}
+
+.o_dash_today {
+    height: 32px;
+    margin-left: 6px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--o-side-raised);
+    color: #ffffff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_dash_today:hover {
+    background: var(--o-side-line);
+}
+
+.o_dash_filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--o-side-muted);
+    font-size: 13px;
+}
+
+.o_dash_filter select {
+    height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--o-side-raised);
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+}
+
+.o_dash_filter option {
+    color: var(--o-ink);
+}
+
+/* Figures, side by side */
+
+.o_dash_metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.o_dash_metric {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 104px;
+    box-sizing: border-box;
+    padding: 18px;
+    border: 0;
+    border-radius: 18px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    font: inherit;
+    text-align: left;
+}
+
+.o_dash_metric_link {
+    box-shadow: inset 0 0 0 2px transparent;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+}
+
+.o_dash_metric_link:hover,
+.o_dash_metric_link:focus-visible {
+    box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--o-accent) 30%, transparent);
+}
+
+.o_dash_metric_label {
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+.o_dash_metric_value {
+    font-family: var(--o-font-display);
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.o_dash_metric_caption {
+    color: var(--o-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_dash_metric_caption.o_dash_up {
+    color: #0b6e55;
+}
+
+.o_dash_metric_caption.o_dash_down {
+    color: var(--o-danger);
+}
+
+/* Charts and records, as room allows */
+
+.o_dash_panels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.o_dash_panel {
+    flex: 1 1 380px;
+    min-width: 0;
+}
+
+.o_dash_panel_wide {
+    flex-basis: 520px;
+}
+
+.o_dash_chart,
+.o_dash_records {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 22px;
+    border-radius: var(--o-radius-card);
+    background: var(--o-surface);
+}
+
+.o_dash_panel_head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.o_dash_panel_head h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--o-font-display);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.o_dash_note,
+.o_dash_count {
+    color: var(--o-muted);
+    font-family: var(--o-font);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_dash_more {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--o-accent-strong);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_dash_more:hover {
+    text-decoration: underline;
+}
+
+.o_dash_empty {
+    margin: 8px 0;
+    color: var(--o-muted);
+    font-size: 13px;
+}
+
+/* How a chart is drawn, chosen in its corner */
+
+.o_dash_panel_head .o_dash_note {
+    flex-grow: 1;
+    text-align: right;
+}
+
+.o_dash_views {
+    display: flex;
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 10px;
+    background: var(--o-panel);
+    align-self: center;
+}
+
+.o_dash_view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--o-muted);
+    cursor: pointer;
+}
+
+.o_dash_view:hover {
+    color: var(--o-ink);
+}
+
+.o_dash_view.active {
+    background: var(--o-surface);
+    color: var(--o-accent-strong);
+    box-shadow: 0 1px 3px rgb(26 24 56 / 0.12);
+}
+
+/* A chart as a table */
+
+.o_dash_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.o_dash_table th,
+.o_dash_table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--o-row-line);
+    text-align: left;
+}
+
+.o_dash_table thead th {
+    color: var(--o-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_dash_table tbody th {
+    font-weight: 600;
+}
+
+.o_dash_table .o_dash_number {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.o_dash_table tbody td:last-child {
+    font-weight: 700;
+}
+
+.o_dash_table .o_dash_current th,
+.o_dash_table .o_dash_current td {
+    background: color-mix(in oklch, var(--o-accent) 7%, transparent);
+}
+
+.o_dash_table_open {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--o-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_dash_table_open:hover:not(:disabled) {
+    color: var(--o-accent-strong);
+    text-decoration: underline;
+}
+
+.o_dash_table_open:disabled {
+    cursor: default;
+}
+
+/* Columns over time, on a scale */
+
+.o_dash_columns {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 8px;
+    height: 240px;
+}
+
+.o_dash_scale {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 22px;
+    color: var(--o-muted);
+    font-size: 11px;
+    text-align: right;
+}
+
+.o_dash_plot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.o_dash_grid {
+    position: absolute;
+    inset: 0 0 22px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.o_dash_grid span {
+    height: 1px;
+    background: var(--o-row-line);
+}
+
+.o_dash_grid span:last-child {
+    background: var(--o-input-border);
+}
+
+.o_dash_column_row {
+    position: relative;
+    display: flex;
+    flex-grow: 1;
+    gap: 8px;
+    padding: 0 6px;
+}
+
+.o_dash_column_slot {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.o_dash_column_slot:disabled {
+    cursor: default;
+}
+
+.o_dash_column {
+    width: 100%;
+    max-width: 44px;
+    min-height: 2px;
+    border-radius: 4px 4px 0 0;
+    background: color-mix(in oklch, var(--o-dash-bar) 30%, white);
+    transition: background 0.15s;
+}
+
+.o_dash_columns_solid .o_dash_column,
+.o_dash_current .o_dash_column,
+.o_dash_column_slot:hover .o_dash_column,
+.o_dash_column_slot:focus-visible .o_dash_column {
+    background: var(--o-dash-bar);
+}
+
+.o_dash_column_value {
+    position: absolute;
+    left: 50%;
+    color: var(--o-ink);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+.o_dash_tip {
+    position: absolute;
+    z-index: 5;
+    left: 50%;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--o-side);
+    color: #ffffff;
+    font-size: 12px;
+    white-space: nowrap;
+    box-shadow: 0 8px 20px rgb(26 24 56 / 0.25);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.o_dash_tip span {
+    color: var(--o-side-muted);
+}
+
+.o_dash_tip strong {
+    font-size: 14px;
+}
+
+.o_dash_column_slot:hover .o_dash_tip,
+.o_dash_column_slot:focus-visible .o_dash_tip {
+    display: flex;
+}
+
+.o_dash_column_slot:hover .o_dash_column_value,
+.o_dash_column_slot:focus-visible .o_dash_column_value {
+    visibility: hidden;
+}
+
+.o_dash_axis {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 22px;
+    padding: 0 6px;
+    color: var(--o-muted);
+    font-size: 11px;
+}
+
+.o_dash_axis span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Bars side by side, and rankings */
+
+.o_dash_bars,
+.o_dash_cards {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.o_dash_bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--o-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_dash_bar:hover,
+.o_dash_bar:focus-visible {
+    background: var(--o-panel);
+}
+
+.o_dash_bar:disabled {
+    cursor: default;
+}
+
+.o_dash_bar:disabled:hover {
+    background: none;
+}
+
+.o_dash_bar_main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.o_dash_bar_head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.o_dash_swatch {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--o-dash-bar);
+}
+
+.o_dash_bar_label {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_dash_bar_count {
+    flex-grow: 1;
+    color: var(--o-muted);
+    white-space: nowrap;
+}
+
+.o_dash_bar_value {
+    white-space: nowrap;
+}
+
+.o_dash_track {
+    display: flex;
+    height: 12px;
+    border-radius: 4px;
+    background: var(--o-head);
+}
+
+.o_dash_ranking .o_dash_track {
+    height: 6px;
+    border-radius: 999px;
+}
+
+.o_dash_fill {
+    min-width: 2px;
+    border-radius: inherit;
+    background: var(--o-dash-bar);
+}
+
+.o_dash_ranking .o_dash_fill {
+    background: var(--o-accent);
+}
+
+/* Records to see to, as cards */
+
+.o_dash_card {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: var(--o-panel);
+    color: var(--o-ink);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.o_dash_card:hover,
+.o_dash_card:focus-visible {
+    background: var(--o-head);
+}
+
+/* What is read for the first time */
+
+.o_dash_waiting {
+    background: linear-gradient(90deg, var(--o-surface) 0%, var(--o-panel) 50%, var(--o-surface) 100%);
+    background-size: 200% 100%;
+    animation: o_placeholder_shine 1.2s ease-in-out infinite;
+}
+
+.o_dash_waiting_panel {
+    height: 280px;
+    border-radius: var(--o-radius-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_dash_waiting {
+        animation: none;
+    }
+}

@@ -45,6 +45,7 @@ impl Plugin for SalePlugin {
             include_str!("../data/sale_data.xml"),
             include_str!("../views/pricelist_views.xml"),
             include_str!("../views/sale_views.xml"),
+            include_str!("../views/dashboard_views.xml"),
             include_str!("../views/menus.xml"),
         ]
     }

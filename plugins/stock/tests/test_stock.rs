@@ -569,7 +569,13 @@ fn test_views_and_menus() -> Result<()> {
         .collect();
     assert_eq!(
         sections,
-        vec!["Operations", "Stock", "Reporting", "Configuration"]
+        vec![
+            "Dashboard",
+            "Operations",
+            "Stock",
+            "Reporting",
+            "Configuration"
+        ]
     );
     Ok(())
 }

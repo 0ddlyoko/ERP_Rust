@@ -1,5 +1,6 @@
 <erp>
     <menu id="menu_inventory" icon="package" name="Inventory" sequence="25" groups="group_stock_user">
+        <menu id="menu_dashboard" icon="layout-dashboard" name="Dashboard" sequence="1" action="action_stock_dashboard"/>
         <menu id="menu_operations" icon="truck" name="Operations" sequence="10">
             <menu id="menu_receipts" name="Receipts" sequence="10" action="action_receipts"/>
             <menu id="menu_deliveries" name="Deliveries" sequence="20" action="action_deliveries"/>

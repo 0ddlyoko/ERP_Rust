@@ -1,0 +1,36 @@
+<erp>
+    <view id="view_picking_dashboard" name="stock_picking.dashboard" model="stock_picking">
+        <dashboard date="date_done" period="month">
+            <metric string="To receive" all_time="1"
+                    domain='[["picking_type.code", "=", "incoming"], ["state", "in", ["confirmed", "assigned"]]]'
+                    action="stock.action_receipts"/>
+            <metric string="To deliver" all_time="1"
+                    domain='[["picking_type.code", "=", "outgoing"], ["state", "in", ["confirmed", "assigned"]]]'
+                    action="stock.action_deliveries"/>
+            <metric string="Late" all_time="1"
+                    domain='[["scheduled_date", "&lt;", "$today"], ["state", "in", ["draft", "confirmed", "assigned"]]]'
+                    action="stock.action_pickings"/>
+            <metric string="Done" compare="1" domain='[["state", "=", "done"]]' action="stock.action_pickings"/>
+            <chart string="Done per week" type="columns" group_by="date_done:week" last="8"
+                   domain='[["state", "=", "done"]]' action="stock.action_pickings"/>
+            <chart string="To do by operation" type="bars" group_by="picking_type" all_time="1"
+                   domain='[["state", "in", ["draft", "confirmed", "assigned"]]]' action="stock.action_pickings"/>
+            <records string="Late transfers" all_time="1" order="scheduled_date asc"
+                     domain='[["scheduled_date", "&lt;", "$today"], ["state", "in", ["draft", "confirmed", "assigned"]]]'
+                     action="stock.action_pickings">
+                <card>
+                    <row>
+                        <column>
+                            <title><field name="name"/></title>
+                            <muted><field name="partner"/> · <field name="scheduled_date"/></muted>
+                        </column>
+                        <spacer/>
+                        <field name="state" widget="badge"/>
+                    </row>
+                </card>
+            </records>
+        </dashboard>
+    </view>
+
+    <action id="action_stock_dashboard" name="Dashboard" model="stock_picking" views="dashboard"/>
+</erp>

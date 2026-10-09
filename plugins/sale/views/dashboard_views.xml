@@ -1,0 +1,36 @@
+<erp>
+    <view id="view_sale_order_dashboard" name="sale_order.dashboard" model="sale_order">
+        <dashboard date="date_order" filter_by="user" currency_field="currency">
+            <metric string="Confirmed" sum="amount_untaxed" widget="monetary" compare="1"
+                    domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
+            <metric string="Quotations" sum="amount_untaxed" widget="monetary" counted="quotation|quotations"
+                    domain='[["state", "in", ["draft", "sent"]]]' action="sale.action_quotations"/>
+            <metric string="To invoice" sum="amount_untaxed" widget="monetary" counted="order|orders" all_time="1"
+                    domain='[["invoice_status", "=", "to_invoice"]]' action="sale.action_orders_to_invoice"/>
+            <metric string="Average order" average="amount_untaxed" widget="monetary"
+                    domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
+            <chart string="Confirmed per month" type="columns" group_by="date_order:month" sum="amount_untaxed"
+                   widget="monetary" domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
+            <chart string="By status" type="bars" group_by="state" sum="amount_untaxed" widget="monetary"
+                   action="sale.action_all_orders"/>
+            <chart string="Best customers" type="ranking" group_by="partner" sum="amount_untaxed" widget="monetary"
+                   domain='[["state", "=", "sale"]]' action="sale.action_orders"/>
+            <records string="Quotations to follow up" domain='[["state", "=", "sent"]]' all_time="1"
+                     order="date_order asc" action="sale.action_quotations">
+                <card>
+                    <row>
+                        <field name="partner" widget="avatar"/>
+                        <column>
+                            <title><field name="partner"/></title>
+                            <muted><field name="name"/> · <field name="date_order"/></muted>
+                        </column>
+                        <spacer/>
+                        <figure><field name="amount_total" widget="monetary"/></figure>
+                    </row>
+                </card>
+            </records>
+        </dashboard>
+    </view>
+
+    <action id="action_sale_dashboard" name="Dashboard" model="sale_order" views="dashboard"/>
+</erp>

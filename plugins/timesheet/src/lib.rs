@@ -41,6 +41,7 @@ impl Plugin for TimesheetPlugin {
         vec![
             include_str!("../data/access.xml"),
             include_str!("../views/timesheet_views.xml"),
+            include_str!("../views/dashboard_views.xml"),
             include_str!("../views/menus.xml"),
         ]
     }

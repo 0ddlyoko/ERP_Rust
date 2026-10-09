@@ -78,11 +78,12 @@ export class SearchBar extends Component {
     /** The fields the text can be searched in. */
     get suggestions(): SearchField[] {
         const text = this.text.trim();
-        return text === "" ? [] : this.props.view.fields.filter((field) => accepts(field, text));
+        const fields = (this.props.view as SearchView).fields;
+        return text === "" ? [] : fields.filter((field) => accepts(field, text));
     }
 
     labelOf(facet: Facet): string {
-        return facetLabel(this.props.view, facet);
+        return facetLabel(this.props.view as SearchView, facet);
     }
 
     isTicked(name: string): boolean {
@@ -95,16 +96,16 @@ export class SearchBar extends Component {
     }
 
     pick(field: SearchField): void {
-        this.props.onChange(withText([...this.props.facets], field.name, this.text.trim()));
+        this.props.onChange(withText([...this.props.facets] as Facet[], field.name, this.text.trim()));
         this.text = "";
     }
 
     remove(at: number): void {
-        this.props.onChange(this.props.facets.filter((_, index) => index !== at));
+        this.props.onChange((this.props.facets as Facet[]).filter((_, index) => index !== at));
     }
 
     toggle(name: string): void {
-        this.props.onChange(withFilterToggled([...this.props.facets], name));
+        this.props.onChange(withFilterToggled([...this.props.facets] as Facet[], name));
     }
 
     isGroupedBy(groupBy: string): boolean {

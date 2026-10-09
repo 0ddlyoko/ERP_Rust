@@ -103,19 +103,21 @@ impl Action<MultipleIds> {
     ///
     /// The actions are read as sudo, as [`Action::load`] does; their records are counted as the
     /// caller. One whose records the caller may not read, or whose domain no longer holds,
-    /// counts `null`.
+    /// counts `null` — and so does a dashboard, which shows figures of them rather than them.
     #[erp(rpc)]
     pub fn counts(&self, env: &mut Environment) -> Result<Value> {
         let mut counts = Map::new();
         for action in self {
-            let (model, domain) = {
+            let (model, domain, views) = {
                 let env = &mut *env.sudo();
                 (
                     action.get_model(env)?.clone(),
                     action.get_domain(env)?.cloned(),
+                    action.get_views(env)?.clone(),
                 )
             };
             let domain = match domain {
+                _ if views.split(',').next().map(str::trim) == Some("dashboard") => None,
                 Some(text) => erp::serde_json::from_str::<SearchType>(&text).ok(),
                 None => Some(SearchType::Nothing),
             };

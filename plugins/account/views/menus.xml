@@ -1,5 +1,6 @@
 <erp>
     <menu id="menu_invoicing" icon="receipt" name="Invoicing" sequence="30" groups="group_account_invoice">
+        <menu id="menu_dashboard" icon="layout-dashboard" name="Dashboard" sequence="1" action="action_account_dashboard"/>
         <menu id="menu_customers" icon="users" name="Customers" sequence="10">
             <menu id="menu_out_invoices" name="Invoices" sequence="10" action="action_move_out_invoice"/>
             <menu id="menu_out_refunds" name="Credit notes" sequence="20" action="action_move_out_refund"/>

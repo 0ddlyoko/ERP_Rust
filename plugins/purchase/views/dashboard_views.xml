@@ -1,0 +1,37 @@
+<erp>
+    <view id="view_purchase_order_dashboard" name="purchase_order.dashboard" model="purchase_order">
+        <dashboard date="date_order" filter_by="user" currency_field="currency">
+            <metric string="Ordered" sum="amount_untaxed" widget="monetary" compare="1"
+                    domain='[["state", "=", "purchase"]]' action="purchase.action_orders"/>
+            <metric string="Requests" sum="amount_untaxed" widget="monetary" counted="request|requests"
+                    domain='[["state", "in", ["draft", "sent"]]]' action="purchase.action_requests"/>
+            <metric string="To bill" sum="amount_untaxed" widget="monetary" counted="order|orders" all_time="1"
+                    domain='[["bill_status", "=", "to_bill"]]' action="purchase.action_orders_to_bill"/>
+            <metric string="Late arrivals" all_time="1"
+                    domain='[["state", "=", "purchase"], ["date_planned", "&lt;", "$today"], ["bill_status", "!=", "billed"]]'
+                    action="purchase.action_orders"/>
+            <chart string="Ordered per month" type="columns" group_by="date_order:month" sum="amount_untaxed"
+                   widget="monetary" domain='[["state", "=", "purchase"]]' action="purchase.action_orders"/>
+            <chart string="By status" type="bars" group_by="state" sum="amount_untaxed" widget="monetary"
+                   action="purchase.action_orders"/>
+            <chart string="Main vendors" type="ranking" group_by="partner" sum="amount_untaxed" widget="monetary"
+                   domain='[["state", "=", "purchase"]]' action="purchase.action_orders"/>
+            <records string="Requests to follow up" domain='[["state", "=", "sent"]]' all_time="1"
+                     order="date_order asc" action="purchase.action_requests">
+                <card>
+                    <row>
+                        <field name="partner" widget="avatar"/>
+                        <column>
+                            <title><field name="partner"/></title>
+                            <muted><field name="name"/> · <field name="date_order"/></muted>
+                        </column>
+                        <spacer/>
+                        <figure><field name="amount_total" widget="monetary"/></figure>
+                    </row>
+                </card>
+            </records>
+        </dashboard>
+    </view>
+
+    <action id="action_purchase_dashboard" name="Dashboard" model="purchase_order" views="dashboard"/>
+</erp>

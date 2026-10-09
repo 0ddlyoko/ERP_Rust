@@ -72,6 +72,7 @@ impl Plugin for AccountPlugin {
             include_str!("../views/bank_statement_views.xml"),
             include_str!("../views/report_views.xml"),
             include_str!("../views/partner_product_views.xml"),
+            include_str!("../views/dashboard_views.xml"),
             include_str!("../views/menus.xml"),
         ]
     }

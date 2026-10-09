@@ -1,0 +1,12 @@
+<erp>
+    <view id="view_task_dashboard_timesheet" name="project_task.dashboard.timesheet" inherit="project.view_task_dashboard">
+        <xpath expr="//metric[1]" position="before">
+            <metric name="hours_logged" string="Hours logged" model="timesheet" date="date" sum="hours" widget="hours"
+                    compare="1" action="timesheet.action_timesheets"/>
+        </xpath>
+        <xpath expr="//chart[1]" position="before">
+            <chart name="hours_per_week" string="Hours logged per week" model="timesheet" type="columns"
+                   group_by="date:week" last="8" sum="hours" widget="hours" action="timesheet.action_timesheets"/>
+        </xpath>
+    </view>
+</erp>
