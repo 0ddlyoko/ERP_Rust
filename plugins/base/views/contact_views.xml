@@ -39,7 +39,7 @@
             </block>
             <pages>
                 <page name="contacts" string="Contacts" invisible="!is_company">
-                    <field name="children" widget="list" nolabel="1"/>
+                    <field name="children" widget="list" nolabel="1" columns="name,function,email,phone"/>
                 </page>
                 <page name="notes" string="Notes">
                     <field name="notes" widget="text" nolabel="1"/>

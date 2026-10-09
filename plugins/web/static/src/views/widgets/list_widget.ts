@@ -18,7 +18,8 @@ interface Row {
 
 /**
  * The records of a one2many or a many2many as rows, with the columns of their model's list view
- * — for a one2many, the one pointing back left out.
+ * — for a one2many, the one pointing back left out — or those `columns="name,email"` names, each
+ * shown as that list view shows it.
  *
  * Where a view edits it, a row is edited in place once clicked, and removed with its bin; a
  * one2many adds a line to fill in, a many2many a record found by searching. What is changed is
@@ -116,8 +117,15 @@ export class ListWidget extends X2ManyWidget {
             return [];
         }
         const root = new DOMParser().parseFromString(this.arch, "text/xml").documentElement;
-        return Array.from(root.children)
-            .filter((element) => element.tagName === "field")
+        const listed = Array.from(root.children).filter((element) => element.tagName === "field");
+        const asked = (this.props.attrs as Record<string, string>).columns?.split(",").map((name) => name.trim());
+        const elements =
+            asked === undefined
+                ? listed
+                : asked
+                      .filter((name) => name in fields)
+                      .map((name) => listed.find((element) => element.getAttribute("name") === name) ?? fieldElement(name));
+        return elements
             .map((element) => columnOf(element, fields, this.model))
             .filter((column) => column.name !== this.props.field.inverse);
     }
@@ -255,3 +263,10 @@ export class ListWidget extends X2ManyWidget {
 }
 
 widgets.add("list", ListWidget);
+
+/** A `<field>` element naming a field, for a column the model's list view does not have. */
+function fieldElement(name: string): Element {
+    const element = document.createElementNS(null, "field");
+    element.setAttribute("name", name);
+    return element;
+}
