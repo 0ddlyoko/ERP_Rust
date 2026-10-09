@@ -53,7 +53,7 @@ pub struct SaleOrder<Mode: IdMode> {
         editable
     )]
     validity_date: Option<NaiveDate>,
-    #[erp(label = "Status", tracking, index)]
+    #[erp(label = "Status", tracking, index, readonly)]
     state: SaleState,
     #[erp(
         ondelete = "restrict",

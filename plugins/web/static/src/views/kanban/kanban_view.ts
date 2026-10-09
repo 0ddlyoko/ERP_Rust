@@ -789,18 +789,31 @@ export class KanbanView extends View implements CardHost {
         return !loading(() => this.searchArch) && !loading(() => this.fields) && this.groupField !== null;
     }
 
-    /**
-     * Whether the cards' columns take cards — the field they are gathered by is one the view's
-     * `group_create` lists: a card is dragged from one to another, and created in one from its
-     * title.
-     */
+    /** Whether the cards are dragged: from one column to another, or within one. */
     get canDrag(): boolean {
-        return this.grouped && this.groupField !== null && groupCreateFields(this.archRoot, this.fields).includes(this.groupField);
+        return this.grouped && this.groupField !== null;
     }
 
-    /** The field a card is created with from its title, in a column. */
+    /**
+     * Why a card cannot change column, if it cannot: the field the cards are gathered by is not
+     * one the user sets by hand — a state the record's buttons move — or holds several records.
+     */
+    get unmovable(): string | null {
+        const name = this.groupField;
+        const field = name === null ? undefined : this.fields?.[name];
+        if (field === undefined || (!field.readonly && field.type !== "refs")) {
+            return null;
+        }
+        return `${field.label} is not changed by moving a card: use the record's buttons.`;
+    }
+
+    /**
+     * The field a card is created with from its title, in a column — of columns taking cards, the
+     * field they are gathered by being one the view's `group_create` lists.
+     */
     get quickCreate(): string | null {
-        return this.canDrag ? titleField(this.archRoot, this.fields) : null;
+        const takesCards = this.groupField !== null && groupCreateFields(this.archRoot, this.fields).includes(this.groupField);
+        return this.grouped && takesCards ? titleField(this.archRoot, this.fields) : null;
     }
 
     /** What the button creating a card from its title offers to add. */
@@ -1108,6 +1121,11 @@ export class KanbanView extends View implements CardHost {
         const moved: Values = {};
         const from = keyOf(record[name]);
         if (from !== lane.key) {
+            const refused = this.unmovable;
+            if (refused !== null) {
+                this.notifications.add("warning", refused);
+                return;
+            }
             moved[name] = groupValue(lane.value);
         }
         if (this.hasSequence) {

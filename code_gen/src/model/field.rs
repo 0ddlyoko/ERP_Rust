@@ -39,6 +39,7 @@ pub struct FieldGen {
     pub asks_for_storage: bool,
     pub is_tracked: bool,
     pub is_editable: bool,
+    pub is_readonly: bool,
     pub is_owned: bool,
     pub on_delete: Option<String>,
     pub domain: Option<String>,
@@ -72,6 +73,7 @@ impl FieldGen {
         let mut is_private = false;
         let mut is_tracked = false;
         let mut editable = None;
+        let mut is_readonly = false;
         let mut owned = None;
         let mut stored = None;
         let mut on_delete = None;
@@ -201,6 +203,9 @@ impl FieldGen {
                 }
                 AllowedFieldAttrs::Editable(ident) => {
                     editable = Some(ident);
+                }
+                AllowedFieldAttrs::Readonly(_) => {
+                    is_readonly = true;
                 }
                 AllowedFieldAttrs::Owned(ident) => {
                     owned = Some(ident);
@@ -405,6 +410,7 @@ impl FieldGen {
             asks_for_storage: stored.is_some(),
             is_tracked,
             is_editable: editable.is_some(),
+            is_readonly,
             is_owned: owned.is_some(),
             on_delete: on_delete.map(|(_, key)| key),
             domain: domain.map(|(_, text)| text),

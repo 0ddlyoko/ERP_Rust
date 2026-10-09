@@ -72,7 +72,7 @@ pub struct Payment<Mode: IdMode> {
     journal: Reference<BaseAccountJournal, SingleId>,
     #[erp(label = "Memo")]
     memo: Option<String>,
-    #[erp(label = "Status", tracking, index)]
+    #[erp(label = "Status", tracking, index, readonly)]
     state: PaymentStatus,
     #[erp(label = "Journal entry", ondelete = "restrict")]
     move_id: Reference<BaseAccountMove, SingleId>,

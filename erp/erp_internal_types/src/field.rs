@@ -57,6 +57,9 @@ pub struct FinalInternalField {
     pub tracking: bool,
     /// Whether the field, though computed, may be set by hand: any struct saying so makes it so.
     pub editable: bool,
+    /// Whether the user does not set the field by hand — the code still may: any struct saying
+    /// so makes it so.
+    pub readonly: bool,
     pub owned: bool,
     /// What a many2one does when the record it points to is deleted: as the last struct saying
     /// so asked, so an extension may change it.
@@ -89,6 +92,7 @@ impl FinalInternalField {
             selection: None,
             tracking: false,
             editable: false,
+            readonly: false,
             owned: false,
             on_delete: OnDelete::default(),
             domain: None,

@@ -74,7 +74,7 @@ pub struct StockMove<Mode: IdMode> {
         editable
     )]
     location_dest: Reference<BaseStockLocation, SingleId>,
-    #[erp(label = "Status", index)]
+    #[erp(label = "Status", index, readonly)]
     state: MoveStatus,
     #[erp(label = "Reserved", default = 0.0)]
     reserved_quantity: Decimal,

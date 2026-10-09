@@ -108,6 +108,7 @@ impl FinalInternalModel {
             self.register_internal_field(&internal_field);
             if let Some(final_field) = self.fields.get_mut(&field_name) {
                 final_field.editable |= field.editable;
+                final_field.readonly |= field.readonly;
                 if field.index.is_some() {
                     final_field.index = field.index;
                 }

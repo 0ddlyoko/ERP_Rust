@@ -33,6 +33,8 @@ pub struct FieldDescriptor {
     pub tracking: bool,
     /// Whether a computed field may also be set by hand, keeping what was written.
     pub editable: bool,
+    /// Whether the user does not set the field by hand, though the code may.
+    pub readonly: bool,
     pub owned: bool,
     /// What a many2one does when the record it points to is deleted; `None` leaves it as
     /// another struct said, or emptied when none did.

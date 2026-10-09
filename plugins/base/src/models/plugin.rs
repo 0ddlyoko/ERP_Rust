@@ -21,7 +21,7 @@ pub struct Plugin<Mode: IdMode> {
     description: Option<String>,
     website: Option<String>,
     url: Option<String>,
-    #[erp(tracking)]
+    #[erp(tracking, readonly)]
     state: PluginState,
     category: Option<String>,
     author: Option<String>,

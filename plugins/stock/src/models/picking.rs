@@ -52,7 +52,7 @@ pub struct Picking<Mode: IdMode> {
     date_done: Option<Timestamp>,
     #[erp(label = "Source document", index = "trigram")]
     origin: Option<String>,
-    #[erp(label = "Status", tracking, index)]
+    #[erp(label = "Status", tracking, index, readonly)]
     state: PickingState,
     #[erp(label = "Operations", inverse = "picking", owned)]
     moves: Reference<BaseStockMove, MultipleIds>,

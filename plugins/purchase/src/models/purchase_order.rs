@@ -46,7 +46,7 @@ pub struct PurchaseOrder<Mode: IdMode> {
     date_order: NaiveDate,
     #[erp(label = "Expected arrival")]
     date_planned: Option<NaiveDate>,
-    #[erp(label = "Status", tracking, index)]
+    #[erp(label = "Status", tracking, index, readonly)]
     state: PurchaseState,
     #[erp(
         label = "Payment terms",

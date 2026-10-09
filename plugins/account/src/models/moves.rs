@@ -106,7 +106,7 @@ pub struct Move<Mode: IdMode> {
     name: String,
     #[erp(label = "Type", index)]
     move_type: MoveType,
-    #[erp(label = "Status", tracking, index)]
+    #[erp(label = "Status", tracking, index, readonly)]
     state: MoveState,
     #[erp(
         required,

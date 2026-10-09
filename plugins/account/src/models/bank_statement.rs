@@ -52,7 +52,7 @@ pub struct BankStatement<Mode: IdMode> {
     balance_end: Decimal,
     #[erp(label = "Transactions", inverse = "statement", owned)]
     lines: Reference<BaseAccountBankStatementLine, MultipleIds>,
-    #[erp(label = "Status", tracking)]
+    #[erp(label = "Status", tracking, readonly)]
     state: StatementState,
 }
 
