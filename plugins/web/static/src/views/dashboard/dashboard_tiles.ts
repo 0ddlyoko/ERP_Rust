@@ -334,7 +334,7 @@ export class DashboardChart extends DashboardTile {
             ...bar,
             countText: bar.count.toLocaleString(),
             share: Math.max(0, Math.min(100, (bar.value / top) * 100)),
-            style: `--o-dash-bar: ${plain ? "var(--o-accent)" : BAR_COLOURS[at % BAR_COLOURS.length]}`,
+            style: `--o-dash-bar: ${plain ? "var(--o-accent)" : BAR_COLOURS[at % BAR_COLOURS.length]}; --o-dash-at: ${at}`,
         }));
     }
 

@@ -640,8 +640,80 @@
     border-radius: var(--o-radius-card);
 }
 
+/* Shown, or drawn another way: columns grow up, bars along, figures and rows come in */
+
+.o_dash_column {
+    transform-origin: bottom;
+    transition: height 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.15s;
+    animation: o_dash_grow_up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--o-dash-at, 0) * 45ms);
+}
+
+.o_dash_fill {
+    transform-origin: left;
+    transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: o_dash_grow_along 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--o-dash-at, 0) * 45ms);
+}
+
+.o_dash_column_value,
+.o_dash_bar_value {
+    animation: o_dash_come_in 0.4s ease-out 0.35s both;
+}
+
+.o_dash_metric,
+.o_dash_table tbody tr,
+.o_dash_cards li {
+    animation: o_dash_come_in 0.4s ease-out both;
+}
+
+.o_dash_metric:nth-child(2),
+.o_dash_table tbody tr:nth-child(2),
+.o_dash_cards li:nth-child(2) {
+    animation-delay: 50ms;
+}
+
+.o_dash_metric:nth-child(3),
+.o_dash_table tbody tr:nth-child(3),
+.o_dash_cards li:nth-child(3) {
+    animation-delay: 100ms;
+}
+
+.o_dash_metric:nth-child(n + 4),
+.o_dash_table tbody tr:nth-child(n + 4),
+.o_dash_cards li:nth-child(n + 4) {
+    animation-delay: 150ms;
+}
+
+@keyframes o_dash_grow_up {
+    from {
+        transform: scaleY(0);
+    }
+}
+
+@keyframes o_dash_grow_along {
+    from {
+        transform: scaleX(0);
+    }
+}
+
+@keyframes o_dash_come_in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .o_dash_waiting {
+    .o_dash_waiting,
+    .o_dash_column,
+    .o_dash_fill,
+    .o_dash_column_value,
+    .o_dash_bar_value,
+    .o_dash_metric,
+    .o_dash_table tbody tr,
+    .o_dash_cards li {
         animation: none;
+        transition: none;
     }
 }
