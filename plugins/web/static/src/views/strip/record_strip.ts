@@ -525,11 +525,20 @@ export class RecordStrip extends View {
 
     /** The record open shows in the strip, scrolled to if it has to be — its column, on a board. */
     @effect showSelected(): void {
-        if (loading(() => this.records) || this.records === undefined || this.props.selected === null) {
+        if (loading(() => this.records) || this.records === undefined) {
             return;
         }
-        queueMicrotask(() =>
-            this.element?.querySelector(".o_strip_item.selected")?.scrollIntoView({ block: "nearest", inline: "start" }),
-        );
+        const selected = this.props.selected;
+        // Shown anew as a board, its columns start at the first: the one shown is read again.
+        const board = this.board;
+        queueMicrotask(() => {
+            if (selected !== null) {
+                this.element?.querySelector(".o_strip_item.selected")?.scrollIntoView({ block: "nearest", inline: "start" });
+            }
+            const lanes = this.element?.querySelector<HTMLElement>(".o_strip_lanes");
+            if (board && lanes) {
+                this.followLanes(lanes);
+            }
+        });
     }
 }
