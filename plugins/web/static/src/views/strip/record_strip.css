@@ -555,3 +555,26 @@
     scroll-snap-align: start;
     scroll-snap-stop: always;
 }
+
+.o_strip_narrow .o_strip_lanes_head {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 4px 6px;
+}
+
+.o_strip_narrow .o_strip_lanes_head .o_strip_group_label {
+    flex: 0 0 100%;
+    order: -1;
+    justify-content: center;
+}
+
+.o_strip_narrow .o_strip_lanes_head .o_strip_button {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+}
+
+.o_strip_narrow .o_strip_lane {
+    padding: 2px 6px 14px;
+}

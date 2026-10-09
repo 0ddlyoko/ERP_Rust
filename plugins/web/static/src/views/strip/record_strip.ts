@@ -492,9 +492,17 @@ export class RecordStrip extends View {
     /** The column of the board shown, one at a time, by its position. */
     @state accessor laneAt = 0;
 
-    /** Whether the strip shows a board's columns one at a time, side by side to slide between. */
+    /**
+     * Whether the strip shows a board's columns one at a time, side by side to slide between —
+     * folded too, its small cards then.
+     */
     get board(): boolean {
-        return this.kind === "kanban" && !this.narrow && this.grouping !== null;
+        return this.kind === "kanban" && this.grouping !== null;
+    }
+
+    /** The card the strip shows each record as: small, folded; else its compact one. */
+    get shownCard(): CompiledCard | null {
+        return this.narrow ? this.foldedCard : this.compact;
     }
 
     /** The column shown is the one scrolled to. */

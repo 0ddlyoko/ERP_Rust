@@ -70,7 +70,7 @@
                                     t-att-class="edgeClass(record)" t-att-aria-current="isSelected(record) ? 'true' : null"
                                     t-on-click="() => open(record)" t-on-mouseenter="(ev) => hover(record, ev)"
                                     t-on-mouseleave="() => hidePreview()">
-                                <t t-if="compact" t-component="compact.body" strip="this" record="record" card="compact"/>
+                                <t t-if="shownCard" t-component="shownCard.body" strip="this" record="record" card="shownCard"/>
                             </button>
                         </div>
                     </div>
