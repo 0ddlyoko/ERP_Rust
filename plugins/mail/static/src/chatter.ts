@@ -194,7 +194,7 @@ export class Chatter extends Component {
 
     /** Put the side column under the form, or back beside it. */
     toggleBelow(): void {
-        this.sidePlace.toggle();
+        void this.sidePlace.toggle();
     }
 
     @resource accessor info: Following | null = load(
