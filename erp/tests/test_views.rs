@@ -10,10 +10,10 @@ use std::error::Error;
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
-    let mut app = Application::new_test();
-    app.register_plugin(Box::new(BasePlugin {}))?;
-    app.load_plugin("base")?;
-    Ok(app)
+    Application::new_test_installed(
+        || -> Vec<Box<dyn erp::plugin::Plugin>> { vec![Box::new(BasePlugin {})] },
+        &["base"],
+    )
 }
 
 /// A plugin shipping data files only, views among them.

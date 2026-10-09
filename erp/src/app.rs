@@ -170,6 +170,50 @@ impl Application {
         successor
     }
 
+    /// A test application on an in-memory database holding what `plugins` makes, those of
+    /// `install` installed with their dependencies.
+    ///
+    /// Installed once per process for a set of plugins, then each call starts from a copy of that
+    /// database and loads the plugins as a restart does: the work of a test is never seen by
+    /// another, without installing everything again each time. Restarting needs `base`, which
+    /// `plugins` must hold.
+    pub fn new_test_installed(
+        plugins: impl Fn() -> Vec<Box<dyn Plugin>>,
+        install: &[&str],
+    ) -> Result<Application> {
+        static INSTALLED: std::sync::Mutex<Vec<(String, CacheDatabase)>> =
+            std::sync::Mutex::new(Vec::new());
+        let mut names: Vec<String> = plugins().iter().map(|plugin| plugin.name()).collect();
+        names.sort();
+        let key = format!("{}|{}", install.join(","), names.join(","));
+        let database = {
+            let mut installed = INSTALLED
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            match installed.iter().find(|(known, _)| *known == key) {
+                Some((_, database)) => database.clone(),
+                None => {
+                    let mut app = Application::new_test();
+                    for plugin in plugins() {
+                        app.register_plugin(plugin)?;
+                    }
+                    for name in install {
+                        app.load_plugin(name)?;
+                    }
+                    installed.push((key, app.cache_db.clone()));
+                    app.cache_db.clone()
+                }
+            }
+        };
+        let mut app = Application::new_test();
+        app.cache_db = database.copy();
+        for plugin in plugins() {
+            app.register_plugin(plugin)?;
+        }
+        app.load()?;
+        Ok(app)
+    }
+
     /// Create a new test instance of this application.
     /// Database used is a cache database, so saved in memory.
     /// Creating new environment instances of this Application will create separated memory database, so

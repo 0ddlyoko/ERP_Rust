@@ -23,12 +23,12 @@ use test_utilities::models::{SaleOrder, SaleOrderLine, Tag};
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
-    let mut app = Application::new_test();
-    app.register_plugin(Box::new(BasePlugin {}))?;
-    app.register_plugin(Box::new(TestLibPlugin {}))?;
-    app.load_plugin("base")?;
-    app.load_plugin("test_lib_plugin")?;
-    Ok(app)
+    Application::new_test_installed(
+        || -> Vec<Box<dyn erp::plugin::Plugin>> {
+            vec![Box::new(BasePlugin {}), Box::new(TestLibPlugin {})]
+        },
+        &["base", "test_lib_plugin"],
+    )
 }
 
 /// The domains of a rule, each left out unless given.
