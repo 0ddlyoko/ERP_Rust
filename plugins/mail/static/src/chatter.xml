@@ -6,7 +6,7 @@
                 <t t-if="info">
                     <div class="o_chatter_followers">
                         <button type="button" class="o_chatter_followers_button" t-att-aria-expanded="followersOpen ? 'true' : 'false'"
-                                t-att-title="info.followers.length + ' following'" t-on-click="toggleFollowers">
+                                t-att-title="info.followers.length + ' following'" t-on-click="(ev) => toggleFollowers(ev)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -14,7 +14,9 @@
                             </svg>
                             {{ info.followers.length }}
                         </button>
-                        <div t-if="followersOpen" class="o_chatter_followers_list">
+                        <Portal t-if="followersOpen" target="'body'">
+                        <div class="o_chatter_mail_backdrop" t-on-mousedown.self="() => toggleFollowers()"/>
+                        <div class="o_chatter_followers_list" t-att-style="followersPlace">
                             <div t-foreach="info.followers" t-as="follower" t-key="follower.id" class="o_chatter_follower">
                                 <div class="o_chatter_follower_row">
                                     <span class="o_chatter_avatar o_chatter_avatar_small" t-att-style="avatarOf(follower.contact[1])"
@@ -48,6 +50,7 @@
                             <RecordSearch model="'contact'" exclude="followerContacts" onPick="addFollower"
                                           placeholder="'Add a follower…'"/>
                         </div>
+                        </Portal>
                     </div>
                     <button type="button" t-att-class="{ o_chatter_follow: true, o_chatter_following: info.following }"
                             t-on-click="toggleFollow">

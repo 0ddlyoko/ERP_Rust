@@ -474,11 +474,11 @@
 }
 
 .o_chatter_followers_list {
-    position: absolute;
-    z-index: 40;
-    top: calc(100% + 6px);
-    right: 0;
+    position: fixed;
+    z-index: 60;
     display: flex;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
     flex-direction: column;
     gap: 6px;
     width: 280px;

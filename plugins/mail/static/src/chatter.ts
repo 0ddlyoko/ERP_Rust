@@ -116,6 +116,8 @@ export class Chatter extends Component {
     @state accessor mentionResults: Mentionable[] = [];
     @state accessor mentionAt = 0;
     @state accessor followersOpen = false;
+    /** Where the open followers stand on the page. */
+    @state accessor followersPlace = "";
     /** The follower whose subtypes are shown to be chosen. */
     @state accessor choosing: number | null = null;
     @state accessor sending = false;
@@ -282,8 +284,16 @@ export class Chatter extends Component {
         return me !== null && me !== undefined && message.mentions.some(([id]) => id === me);
     }
 
-    /** Open the followers, or close them — what each follows folded either way. */
-    toggleFollowers(): void {
+    /**
+     * Open the followers under their button, over the page — the chatter scrolling would clip
+     * them — or close them; what each follows folded either way.
+     */
+    toggleFollowers(event?: MouseEvent): void {
+        if (event !== undefined) {
+            const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+            const left = Math.max(8, Math.min(box.right - 280, window.innerWidth - 288));
+            this.followersPlace = `top: ${box.bottom + 6}px; left: ${left}px`;
+        }
         this.followersOpen = !this.followersOpen;
         this.choosing = null;
     }
