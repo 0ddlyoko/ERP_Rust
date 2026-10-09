@@ -2,8 +2,9 @@ import { type ComponentClass, Component, props, t } from "trame";
 import { viewKinds } from "@web/views/view";
 
 /**
- * A form creating a record of a model, over the view the user is on: the address and the
- * breadcrumb stay where they were. `onCreated` gets the record once saved, as `[id, name]`.
+ * A form creating a record of a model — or showing one, given `resId` — over the view the user is
+ * on: the address and the breadcrumb stay where they were. `onCreated` gets the record once
+ * saved, as `[id, name]`. With `onExpand`, a button leaves the dialog for the whole form.
  *
  * As a `wizard`, the form is an assistant: its own heading and the buttons of its `<footer>`,
  * whose method's answer `onDone` gets.
@@ -18,6 +19,8 @@ export class FormDialog extends Component {
         onClose: t.func<() => void>(),
         wizard: t.boolean().default(false),
         onDone: t.func<(answer: unknown) => void>().optional(),
+        resId: t.number().optional(),
+        onExpand: t.func<() => void>().optional(),
     });
 
     /** The form view, as registered: one a plugin put in its place is the one shown. */

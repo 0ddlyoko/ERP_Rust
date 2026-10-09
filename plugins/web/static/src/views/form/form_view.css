@@ -1677,3 +1677,7 @@ button.o_priority_star:hover,
 .o_leader .o_avatars .o_avatar {
     box-shadow: 0 0 0 2px var(--o-leader-bg, #1a1838);
 }
+
+.o_form_dialog_header .o_form_dialog_expand {
+    margin-left: auto;
+}

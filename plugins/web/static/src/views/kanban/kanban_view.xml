@@ -134,6 +134,8 @@
                 </div>
             </Suspense>
             <FormDialog t-if="completing" model="props.resModel" defaults="completing" onCreated="completed" onClose="closeForm"/>
+            <FormDialog t-if="dialogRecord !== null" model="props.resModel" resId="dialogRecord"
+                        onClose="closeRecordDialog" onExpand="expandRecordDialog"/>
             <Portal t-if="quick" target="'body'">
                 <div class="o_quick_backdrop" t-on-mousedown.self="closeQuickEdit"/>
                 <div class="o_quick_popover" t-att-style="quick.place" role="dialog" t-att-aria-label="quick.column.label"

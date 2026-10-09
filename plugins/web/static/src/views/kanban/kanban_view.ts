@@ -246,7 +246,8 @@ export class KanbanCard extends Component {
  * a value each, not a date's period — each column saying how many records it holds; otherwise
  * laid out side by side. Choosing a card opens its record; with `open_action` and `open_by`, it
  * opens instead that action's records belonging to it — a project's board of tasks — unless
- * `open_form`, an expression of the record, holds: a project template opens in its form.
+ * `open_form`, an expression of the record, holds: a project template opens in its form. With
+ * `open_dialog="1"`, the record opens over the board, which stays, a button leading to its whole form.
  *
  * Gathered by a field `group_create` lists, a card is dragged to another column to change it, and
  * within a column to reorder the cards, when the records have a `sequence`. With `expand="1"`,
@@ -1025,7 +1026,29 @@ export class KanbanView extends View implements CardHost {
             void this.breadcrumb.openBy(action, by, record.id as number);
             return;
         }
+        if (this.attribute("open_dialog") === "1") {
+            this.dialogRecord = record.id as number;
+            return;
+        }
         this.router.go({ ...this.router.route, view: "form", id: record.id as number });
+    };
+
+    /** The record shown over the board, for a board saying `open_dialog="1"`. */
+    @state accessor dialogRecord: number | null = null;
+
+    /** Close the record shown over the board, its card read again for what was changed. */
+    readonly closeRecordDialog = (): void => {
+        this.dialogRecord = null;
+        this.reload();
+    };
+
+    /** Leave the board for the whole form of the record shown over it. */
+    readonly expandRecordDialog = (): void => {
+        const id = this.dialogRecord;
+        this.dialogRecord = null;
+        if (id !== null) {
+            void this.router.go({ ...this.router.route, view: "form", id });
+        }
     };
 
     /** Open a card's record in its form, whatever the card opens otherwise. */

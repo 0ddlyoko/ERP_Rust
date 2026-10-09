@@ -1,6 +1,6 @@
 <erp>
     <view id="view_task_kanban" name="project_task.kanban" model="project_task">
-        <kanban default_group_by="stage" expand="1" group_fold="fold" group_create="stage,project,priority" quick_create="name" quick_create_string="Add a task"
+        <kanban default_group_by="stage" open_dialog="1" expand="1" group_fold="fold" group_create="stage,project,priority" quick_create="name" quick_create_string="Add a task"
                 group_edit="project.group_project_manager">
             <card decoration-danger="status === 'blocked'"
                   decoration-warning="status === 'waiting' || (!is_closed &amp;&amp; date_deadline &amp;&amp; date_deadline &lt; today)"

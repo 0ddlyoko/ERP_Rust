@@ -3,10 +3,17 @@
         <Portal target="'body'">
             <div class="o_dialog_backdrop" t-on-mousedown.self="props.onClose">
                 <div t-att-class="{ o_dialog: true, o_form_dialog: true, o_wizard_dialog: props.wizard }" role="dialog"
-                     aria-modal="true" t-att-aria-label="props.wizard ? null : 'New record'"
+                     aria-modal="true" t-att-aria-label="props.wizard ? null : (props.resId === undefined ? 'New record' : 'Record')"
                      t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; !ev.defaultPrevented &amp;&amp; props.onClose()">
                     <header t-if="!props.wizard" class="o_form_dialog_header">
-                        <span>New record</span>
+                        <span>{{ props.resId === undefined ? "New record" : "Record" }}</span>
+                        <button t-if="props.onExpand" type="button" class="o_form_dialog_close o_form_dialog_expand"
+                                title="Open the whole form" aria-label="Open the whole form" t-on-click="props.onExpand">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                            </svg>
+                        </button>
                         <button type="button" class="o_form_dialog_close" aria-label="Close" t-on-click="props.onClose">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -14,6 +21,8 @@
                     </header>
                     <t t-if="props.wizard" t-component="form" resModel="props.model" embedded="true" dialog="true"
                        defaults="props.defaults" onDone="props.onDone" onClose="props.onClose"/>
+                    <t t-elif="props.resId !== undefined" t-component="form" resModel="props.model" embedded="true"
+                       resId="props.resId"/>
                     <t t-else="" t-component="form" resModel="props.model" embedded="true" defaults="props.defaults"
                        onCreated="created"/>
                 </div>
