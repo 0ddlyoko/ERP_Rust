@@ -75,6 +75,38 @@
                             t-att-aria-pressed="composing === 'message' ? 'true' : 'false'" t-on-click="() => compose('message')">Send message</button>
                     <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'note' }"
                             t-att-aria-pressed="composing === 'note' ? 'true' : 'false'" t-on-click="() => compose('note')">Log note</button>
+                    <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'activity' }"
+                            t-att-aria-pressed="composing === 'activity' ? 'true' : 'false'" t-on-click="() => compose('activity')">Activity</button>
+                </div>
+                <div t-if="composing === 'activity'" class="o_chatter_composer o_chatter_planner">
+                    <div class="o_chatter_kinds" role="group" aria-label="Kind">
+                        <button t-foreach="kinds" t-as="kind" t-key="kind.id" type="button"
+                                t-att-class="{ o_chatter_kind: true, active: planKind === kind.id }"
+                                t-att-aria-pressed="planKind === kind.id ? 'true' : 'false'" t-on-click="() => pickKind(kind)">
+                            <Icon name="kind.icon" size="14"/>{{ kind.name }}
+                        </button>
+                    </div>
+                    <input class="o_input" type="text" placeholder="Summary, e.g. Discuss the proposal"
+                           t-att-value="planSummary" t-on-input="(ev) => planSummary = ev.target.value"/>
+                    <div class="o_chatter_plan_row">
+                        <label class="o_chatter_plan_field">
+                            <span>Due</span>
+                            <input class="o_input" type="date" t-att-value="planDeadline"
+                                   t-on-input="(ev) => planDeadline = ev.target.value"/>
+                        </label>
+                        <div class="o_chatter_plan_field">
+                            <span>For</span>
+                            <RecordSearch model="'users'" text="planAssignee ? planAssignee[1] : ''" onPick="pickAssignee"
+                                          placeholder="'Someone…'"/>
+                        </div>
+                    </div>
+                    <textarea class="o_input" rows="2" placeholder="Note" t-att-value="planNote"
+                              t-on-input="(ev) => planNote = ev.target.value"/>
+                    <div class="o_chatter_composer_foot">
+                        <span class="o_chatter_audience">Planned for {{ planAssignee ? planAssignee[1] : 'nobody yet' }}.</span>
+                        <button type="button" class="o_button_primary" t-att-disabled="planKind === null || !planDeadline ? 'disabled' : null"
+                                t-on-click="schedule">Schedule</button>
+                    </div>
                 </div>
                 <div t-if="composing" t-att-class="{ o_chatter_composer: true, o_chatter_composer_note: composing === 'note' }">
                     <textarea t-ref="box" class="o_input" rows="3" t-att-value="text"
@@ -98,6 +130,41 @@
                 </div>
             </t>
 
+            <ul t-if="planned.length" class="o_chatter_planned" aria-label="Planned activities">
+                <li t-foreach="planned" t-as="activity" t-key="activity.id"
+                    t-att-class="'o_chatter_activity o_chatter_due_' + dueOf(activity.deadline).state">
+                    <span class="o_chatter_activity_icon"><Icon name="activity.kind.icon" size="15"/></span>
+                    <div class="o_chatter_activity_main">
+                        <div class="o_chatter_activity_head">
+                            <strong>{{ activity.kind.name }}</strong>
+                            <span t-if="activity.summary">{{ activity.summary }}</span>
+                        </div>
+                        <div class="o_chatter_activity_meta">
+                            <span class="o_chatter_activity_due">{{ dueOf(activity.deadline).text }}</span>
+                            · {{ activity.assignee[1] }}
+                        </div>
+                        <p t-if="activity.note" class="o_chatter_activity_note">{{ activity.note }}</p>
+                        <div t-if="finishing === activity.id" class="o_chatter_finish">
+                            <input class="o_input" type="text" placeholder="What came of it?" t-att-value="feedback"
+                                   t-on-input="(ev) => feedback = ev.target.value"
+                                   t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; finish(activity)"/>
+                            <button type="button" class="o_button_primary" t-on-click="() => finish(activity)">Done</button>
+                        </div>
+                    </div>
+                    <div t-if="finishing !== activity.id" class="o_chatter_activity_actions">
+                        <button type="button" class="o_chatter_icon" title="Done" aria-label="Mark done"
+                                t-on-click="() => startFinish(activity)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                        </button>
+                        <button type="button" class="o_chatter_icon" title="Cancel" aria-label="Cancel the activity"
+                                t-on-click="() => cancelActivity(activity)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+                                 stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                        </button>
+                    </div>
+                </li>
+            </ul>
             <div t-if="props.record !== null" class="o_chatter_filters" role="group" aria-label="Show">
                 <button t-foreach="[['all', 'All'], ['message', 'Messages'], ['note', 'Notes'], ['change', 'Changes']]" t-as="option"
                         t-key="option[0]" type="button" t-att-class="{ o_chatter_filter: true, active: shown === option[0] }"

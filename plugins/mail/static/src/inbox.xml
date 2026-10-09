@@ -19,6 +19,22 @@
                     <strong>Inbox</strong>
                     <button t-if="unread" type="button" class="o_inbox_all" t-on-click="() => markRead([])">Mark all as read</button>
                 </div>
+                <t t-if="activities.length">
+                    <span class="o_inbox_section">Activities</span>
+                    <ul class="o_inbox_list o_inbox_activities">
+                        <li t-foreach="activities" t-as="activity" t-key="activity.id">
+                            <button type="button" t-att-class="'o_inbox_notice o_inbox_due_' + dueOf(activity.deadline).state"
+                                    t-on-click="() => openActivity(activity)">
+                                <span class="o_inbox_text">
+                                    <span class="o_inbox_record">{{ activity.record_name ?? activity.model }}</span>
+                                    <span class="o_inbox_who">{{ activity.kind.name }}{{ activity.summary ? ': ' + activity.summary : '' }}</span>
+                                    <span class="o_inbox_due">{{ dueOf(activity.deadline).text }}</span>
+                                </span>
+                            </button>
+                        </li>
+                    </ul>
+                    <span class="o_inbox_section">Messages</span>
+                </t>
                 <p t-if="notices === null" class="o_inbox_empty">Loading…</p>
                 <p t-elif="!notices.length" class="o_inbox_empty">Nothing to read.</p>
                 <ul t-else="" class="o_inbox_list">

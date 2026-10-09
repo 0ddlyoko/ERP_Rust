@@ -5,6 +5,7 @@ import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { Router } from "@web/core/router";
 import { systray } from "@web/web_client/systray";
+import { dueOf, type Planned } from "./chatter";
 import { MessageFocus } from "./message_focus";
 
 /** A message the user was told of, as `notification.inbox` describes it. */
@@ -51,6 +52,8 @@ export class InboxTray extends Component {
     @state accessor unread = 0;
     @state accessor open = false;
     @state accessor notices: Notice[] | null = null;
+    /** The user's activities, soonest first. */
+    @state accessor activities: Planned[] = [];
     /** Where the open inbox stands on the page: beside the menu, level with its button. */
     @state accessor place = "";
 
@@ -67,7 +70,11 @@ export class InboxTray extends Component {
 
     async count(): Promise<void> {
         try {
-            this.unread = await this.orm.call<number>("notification", "unread", [], {});
+            const [unread, due] = await Promise.all([
+                this.orm.call<number>("notification", "unread", [], {}),
+                this.orm.call<number>("activity", "due", [], {}),
+            ]);
+            this.unread = unread + due;
         } catch {
             // Asked again in a minute.
         }
@@ -79,7 +86,10 @@ export class InboxTray extends Component {
         this.place = `left: ${(box?.right ?? button.right) + 12}px; bottom: ${Math.max(12, window.innerHeight - button.bottom)}px`;
         this.open = !this.open;
         if (this.open) {
-            this.notices = await this.orm.call<Notice[]>("notification", "inbox", [], { limit: 30 });
+            [this.notices, this.activities] = await Promise.all([
+                this.orm.call<Notice[]>("notification", "inbox", [], { limit: 30 }),
+                this.orm.call<Planned[]>("activity", "mine", [], { limit: 20 }),
+            ]);
             await this.count();
         }
     }
@@ -104,6 +114,20 @@ export class InboxTray extends Component {
 
     avatarOf(name: string): string {
         return avatarStyleOf(name);
+    }
+
+    dueOf(deadline: string): { text: string; state: string } {
+        return dueOf(deadline);
+    }
+
+    /** Open the record an activity is about. */
+    async openActivity(activity: Planned): Promise<void> {
+        const tree = loading(() => this.menus.tree) ? [] : (this.menus.tree ?? []);
+        const action = actionFor(tree, activity.model);
+        this.open = false;
+        if (action !== null) {
+            await this.router.go({ action, view: "form", id: activity.record });
+        }
     }
 
     /** Open the record a notice is about, at its message, the notice read from then on. */

@@ -375,3 +375,72 @@ fn test_messages_are_queued_as_mails_to_those_outside() -> Result<()> {
     assert_eq!(note["mails"], json!([]), "a note is mailed to nobody");
     Ok(())
 }
+
+/// An activity is planned about a record for someone, who finds it due; done, it becomes a note
+/// of the thread saying what came of it, and is gone.
+#[test]
+fn test_activities_are_planned_then_done() -> Result<()> {
+    let app = new_app()?;
+    let deal = create(&app, "deal", json!({"name": "Planned"}))?;
+    let claire = create(
+        &app,
+        "users",
+        json!({"name": "Claire", "login": "claire", "groups": [1]}),
+    )?;
+    let call_kind = {
+        let mut env = admin(&app)?;
+        data::resolve(&mut env, "mail.activity_type_call")?.expect("seeded")
+    };
+    let today = erp::types::field::Utc::now().date_naive().to_string();
+    let planned = call(
+        &app,
+        None,
+        "activity",
+        "schedule",
+        json!({"model": "deal", "record": deal, "kind": call_kind, "summary": "Ask the budget",
+               "assignee": claire, "deadline": today}),
+    )?;
+    let listed = call(
+        &app,
+        None,
+        "activity",
+        "of",
+        json!({"model": "deal", "record": deal}),
+    )?;
+    assert_eq!(listed[0]["kind"]["name"], "Call");
+    assert_eq!(listed[0]["assignee"][1], "Claire");
+    assert_eq!(listed[0]["record_name"], "Planned");
+    assert_eq!(call(&app, Some(claire), "activity", "due", json!({}))?, 1);
+    assert_eq!(
+        call(&app, Some(claire), "activity", "mine", json!({}))?[0]["summary"],
+        "Ask the budget"
+    );
+
+    call(
+        &app,
+        Some(claire),
+        "activity",
+        "done",
+        json!({"activity": planned, "feedback": "They agree"}),
+    )?;
+    assert_eq!(
+        call(
+            &app,
+            None,
+            "activity",
+            "of",
+            json!({"model": "deal", "record": deal})
+        )?,
+        json!([])
+    );
+    let thread = call(
+        &app,
+        None,
+        "message",
+        "thread",
+        json!({"model": "deal", "record": deal, "kinds": ["note"]}),
+    )?;
+    assert_eq!(thread[0]["body"], "Call done: Ask the budget\nThey agree");
+    assert_eq!(thread[0]["author"][1], "Claire");
+    Ok(())
+}

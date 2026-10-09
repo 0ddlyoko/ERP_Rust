@@ -1,5 +1,6 @@
 import { Component, effect, inject, load, loading, nextTick, props, resource, state, t } from "trame";
 import { avatarStyleOf, initialsOf } from "@web/core/avatar";
+import { Icon } from "@web/core/icons";
 import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { Session } from "@web/core/session";
@@ -61,6 +62,50 @@ const KINDS: Record<Shown, string[] | null> = {
     change: ["tracking", "creation"],
 };
 
+/** Something planned about the record, as `activity.of` describes it. */
+export interface Planned {
+    id: number;
+    kind: { id: number; name: string; icon: string | null };
+    summary: string | null;
+    note: string | null;
+    assignee: [number, string];
+    deadline: string;
+    model: string;
+    record: number;
+    record_name: string | null;
+}
+
+/** A kind of activity, as `activity.kinds` describes it. */
+interface ActivityKind {
+    id: number;
+    name: string;
+    icon: string | null;
+    delay: number;
+}
+
+/** A day as `YYYY-MM-DD`, `days` from today. */
+function dayFromToday(days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** When an activity is due, said from today, and how urgent: late, today, or ahead. */
+export function dueOf(deadline: string): { text: string; state: "late" | "today" | "planned" } {
+    const [year, month, day] = deadline.split("-").map(Number);
+    const due = new Date(year, month - 1, day).getTime();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const days = Math.round((due - today) / 86_400_000);
+    if (days < 0) {
+        return { text: days === -1 ? "Yesterday" : `${-days} days late`, state: "late" };
+    }
+    if (days === 0) {
+        return { text: "Today", state: "today" };
+    }
+    return { text: days === 1 ? "Tomorrow" : `In ${days} days`, state: "planned" };
+}
+
 /** A part of a message's text: as written, or a mention of someone. */
 interface Segment {
     text: string;
@@ -80,7 +125,7 @@ interface Segment {
  */
 export class Chatter extends Component {
     static template = "mail.Chatter";
-    static components = { RecordSearch };
+    static components = { Icon, RecordSearch };
 
     props = props({
         model: t.string(),
@@ -94,8 +139,17 @@ export class Chatter extends Component {
     @inject(Session) session!: Session;
     @inject(SidePlace) sidePlace!: SidePlace;
 
-    /** What is being written: a message, a note, or nothing yet. */
-    @state accessor composing: "message" | "note" | null = null;
+    /** What is being written: a message, a note, an activity to plan, or nothing yet. */
+    @state accessor composing: "message" | "note" | "activity" | null = null;
+    /** The activity being planned. */
+    @state accessor planKind: number | null = null;
+    @state accessor planSummary = "";
+    @state accessor planNote = "";
+    @state accessor planDeadline = dayFromToday(0);
+    @state accessor planAssignee: [number, string] | null = null;
+    /** The activity being marked done, and what came of it. */
+    @state accessor finishing: number | null = null;
+    @state accessor feedback = "";
     @state accessor text = "";
     @state accessor mentioned: Mentionable[] = [];
     /** What follows the `@` being typed, while a mention is being chosen. */
@@ -201,6 +255,14 @@ export class Chatter extends Component {
     toggleBelow(): void {
         void this.sidePlace.toggle();
     }
+
+    @resource accessor kinds: ActivityKind[] = load(() => this.orm.call<ActivityKind[]>("activity", "kinds", [], {}));
+
+    @resource accessor planned: Planned[] = load(
+        () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
+        ({ model, record }) =>
+            record === null ? Promise.resolve([]) : this.orm.call<Planned[]>("activity", "of", [], { model, record }),
+    );
 
     @resource accessor info: Following | null = load(
         () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
@@ -327,9 +389,66 @@ export class Chatter extends Component {
         return told ? `To ${told}.` : "To the followers, once there are some.";
     }
 
-    compose(kind: "message" | "note"): void {
+    compose(kind: "message" | "note" | "activity"): void {
         this.composing = this.composing === kind ? null : kind;
+        if (this.composing === "activity") {
+            this.pickKind(this.kinds?.[0] ?? null);
+            this.planAssignee = [this.session.uid, this.session.name];
+            return;
+        }
         void nextTick().then(() => this.box?.focus());
+    }
+
+    /** Choose the kind of activity: its deadline moves to its usual delay. */
+    pickKind(kind: ActivityKind | null): void {
+        this.planKind = kind?.id ?? null;
+        this.planDeadline = dayFromToday(kind?.delay ?? 0);
+    }
+
+    readonly pickAssignee = (choice: [number, string]): void => {
+        this.planAssignee = choice;
+    };
+
+    /** Plan the activity written. */
+    async schedule(): Promise<void> {
+        if (this.planKind === null || this.props.record === null) {
+            return;
+        }
+        await this.act(() =>
+            this.orm.call("activity", "schedule", [], {
+                model: this.props.model,
+                record: this.props.record,
+                kind: this.planKind,
+                summary: this.planSummary,
+                note: this.planNote,
+                assignee: this.planAssignee?.[0] ?? null,
+                deadline: this.planDeadline,
+            }),
+        );
+        this.planSummary = "";
+        this.planNote = "";
+        this.composing = null;
+    }
+
+    dueOf(deadline: string): { text: string; state: string } {
+        return dueOf(deadline);
+    }
+
+    /** Ask what came of an activity, before marking it done. */
+    startFinish(activity: Planned): void {
+        this.finishing = activity.id;
+        this.feedback = "";
+    }
+
+    /** Mark an activity done, with what came of it; the thread says so. */
+    async finish(activity: Planned): Promise<void> {
+        await this.act(() => this.orm.call("activity", "done", [], { activity: activity.id, feedback: this.feedback }));
+        this.finishing = null;
+        this.feedback = "";
+    }
+
+    cancelActivity(activity: Planned): void {
+        void this.act(() => this.orm.call("activity", "cancel", [], { activity: activity.id }));
     }
 
     /** Typing: an `@` followed by letters looks for whom to mention. */

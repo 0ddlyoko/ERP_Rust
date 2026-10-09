@@ -1,0 +1,6 @@
+<erp>
+    <activity_type id="activity_type_todo" name="To do" icon="list-checks" delay="5" sequence="1"/>
+    <activity_type id="activity_type_call" name="Call" icon="phone" delay="2" sequence="2"/>
+    <activity_type id="activity_type_meeting" name="Meeting" icon="users" delay="7" sequence="3"/>
+    <activity_type id="activity_type_email" name="Email" icon="mail" delay="2" sequence="4"/>
+</erp>

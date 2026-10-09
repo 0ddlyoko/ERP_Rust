@@ -1,10 +1,12 @@
-pub(crate) mod follower;
+pub(crate) mod activity;
+mod follower;
 mod mail;
 mod message;
 mod message_change;
 mod notification;
 mod subtype;
 
+pub use activity::{Activity, ActivityType, BaseActivity, BaseActivityType};
 pub use follower::{BaseFollower, Follower};
 pub use mail::{BaseMail, Mail, MailState};
 pub use message::{BaseMessage, Message, MessageKind, forget_deleted, note_changes, note_creation};

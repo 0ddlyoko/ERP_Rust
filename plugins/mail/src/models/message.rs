@@ -59,7 +59,9 @@ pub struct Message<Mode: IdMode> {
 }
 
 /// The models a thread is made of, whose own changes are not noted.
-const THREAD_MODELS: [&str; 6] = [
+const THREAD_MODELS: [&str; 8] = [
+    "activity",
+    "activity_type",
     "message",
     "message_change",
     "message_subtype",
@@ -654,6 +656,14 @@ pub fn forget_deleted(env: &mut Environment, model_name: &str, ids: &[u32]) -> R
         env,
     )?;
     followers.delete(env)?;
+    let planned = crate::models::Activity::<MultipleIds>::search(
+        &make_domain!([
+            ("model", "=", model_name.to_string()),
+            ("record", "in", records.clone())
+        ]),
+        env,
+    )?;
+    planned.delete(env)?;
     let messages = Message::<MultipleIds>::search(
         &make_domain!([
             ("model", "=", model_name.to_string()),
