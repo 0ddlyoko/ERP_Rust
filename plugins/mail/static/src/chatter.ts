@@ -7,7 +7,7 @@ import { Session } from "@web/core/session";
 import { formParts } from "@web/views/form/form_view";
 import { SidePlace } from "@web/views/form/side_place";
 import { RecordSearch } from "@web/views/widgets/record_search";
-import { ActivityDialog, type ActivityKind, dayFromToday, dueOf, type Planned } from "./activity_dialog";
+import { ActivityDialog, dueOf, type Planned } from "./activity_dialog";
 import { MessageFocus } from "./message_focus";
 
 /** A tracked field a message notes the change of, as text. */
@@ -96,14 +96,10 @@ export class Chatter extends Component {
     @inject(Session) session!: Session;
     @inject(SidePlace) sidePlace!: SidePlace;
 
-    /** What is being written: a message, a note, an activity to plan, or nothing yet. */
-    @state accessor composing: "message" | "note" | "activity" | null = null;
-    /** The activity being planned. */
-    @state accessor planKind: number | null = null;
-    @state accessor planSummary = "";
-    @state accessor planNote = "";
-    @state accessor planDeadline = dayFromToday(0);
-    @state accessor planAssignee: [number, string] | null = null;
+    /** What is being written: a message, a note, or nothing yet. */
+    @state accessor composing: "message" | "note" | null = null;
+    /** Whether an activity is being planned, in a dialog. */
+    @state accessor planning = false;
     /** The activity shown in a dialog. */
     @state accessor opened: Planned | null = null;
     /** The activity being marked done, and what came of it. */
@@ -216,8 +212,6 @@ export class Chatter extends Component {
     toggleBelow(): void {
         void this.sidePlace.toggle();
     }
-
-    @resource accessor kinds: ActivityKind[] = load(() => this.orm.call<ActivityKind[]>("activity", "kinds", [], {}));
 
     @resource accessor planned: Planned[] = load(
         () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
@@ -358,45 +352,9 @@ export class Chatter extends Component {
         return told ? `To ${told}.` : "To the followers, once there are some.";
     }
 
-    compose(kind: "message" | "note" | "activity"): void {
+    compose(kind: "message" | "note"): void {
         this.composing = this.composing === kind ? null : kind;
-        if (this.composing === "activity") {
-            this.pickKind(this.kinds?.[0] ?? null);
-            this.planAssignee = [this.session.uid, this.session.name];
-            return;
-        }
         void nextTick().then(() => this.box?.focus());
-    }
-
-    /** Choose the kind of activity: its deadline moves to its usual delay. */
-    pickKind(kind: ActivityKind | null): void {
-        this.planKind = kind?.id ?? null;
-        this.planDeadline = dayFromToday(kind?.delay ?? 0);
-    }
-
-    readonly pickAssignee = (choice: [number, string]): void => {
-        this.planAssignee = choice;
-    };
-
-    /** Plan the activity written. */
-    async schedule(): Promise<void> {
-        if (this.planKind === null || this.props.record === null) {
-            return;
-        }
-        await this.act(() =>
-            this.orm.call("activity", "schedule", [], {
-                model: this.props.model,
-                record: this.props.record,
-                kind: this.planKind,
-                summary: this.planSummary,
-                note: this.planNote,
-                assignee: this.planAssignee?.[0] ?? null,
-                deadline: this.planDeadline,
-            }),
-        );
-        this.planSummary = "";
-        this.planNote = "";
-        this.composing = null;
     }
 
     dueOf(deadline: string): { text: string; state: string } {

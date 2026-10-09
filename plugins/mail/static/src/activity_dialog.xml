@@ -2,12 +2,12 @@
     <t t-name="mail.ActivityDialog">
         <Portal target="'body'">
             <div class="o_dialog_backdrop" t-on-mousedown.self="props.onClose">
-                <div class="o_dialog o_activity_dialog" role="dialog" aria-modal="true" t-att-aria-label="activity.kind.name">
+                <div class="o_dialog o_activity_dialog" role="dialog" aria-modal="true" t-att-aria-label="creating ? 'Schedule an activity' : shownKind.name">
                     <header class="o_activity_dialog_head">
-                        <span t-att-class="'o_activity_dialog_icon o_activity_' + due.state"><Icon name="activity.kind.icon" size="18"/></span>
+                        <span t-att-class="'o_activity_dialog_icon o_activity_' + due.state"><Icon name="shownKind.icon" size="18"/></span>
                         <div class="o_activity_dialog_title">
-                            <strong>{{ activity.kind.name }}</strong>
-                            <span t-if="activity.record_name">{{ activity.record_name }}</span>
+                            <strong>{{ creating ? 'Schedule an activity' : shownKind.name }}</strong>
+                            <span t-if="activity?.record_name">{{ activity.record_name }}</span>
                         </div>
                         <button type="button" class="o_form_dialog_close" aria-label="Close" t-on-click="props.onClose">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -15,7 +15,7 @@
                         </button>
                     </header>
 
-                    <dl t-if="!editing" class="o_activity_details">
+                    <dl t-if="!editing &amp;&amp; activity" class="o_activity_details">
                         <dt>Summary</dt>
                         <dd t-att-class="{ o_activity_none: !activity.summary }">{{ activity.summary ?? 'None' }}</dd>
                         <dt>Due</dt>
@@ -33,15 +33,15 @@
                         <dd t-att-class="{ o_activity_note: true, o_activity_none: !activity.note }">{{ activity.note ?? 'None' }}</dd>
                     </dl>
 
-                    <div t-else="" class="o_activity_edit o_chatter_planner">
+                    <div t-elif="editing" class="o_activity_edit o_chatter_planner">
                         <div class="o_chatter_kinds" role="group" aria-label="Kind">
                             <button t-foreach="kinds ?? []" t-as="known" t-key="known.id" type="button"
                                     t-att-class="{ o_chatter_kind: true, active: kind === known.id }"
-                                    t-att-aria-pressed="kind === known.id ? 'true' : 'false'" t-on-click="() => kind = known.id">
+                                    t-att-aria-pressed="kind === known.id ? 'true' : 'false'" t-on-click="() => pickKind(known)">
                                 <Icon name="known.icon" size="14"/>{{ known.name }}
                             </button>
                         </div>
-                        <input class="o_input" type="text" placeholder="Summary" aria-label="Summary"
+                        <input class="o_input" type="text" placeholder="Summary, e.g. Discuss the proposal" aria-label="Summary"
                                t-att-value="summary" t-on-input="(ev) => summary = ev.target.value"/>
                         <div class="o_chatter_plan_row">
                             <label class="o_chatter_plan_field">
@@ -66,8 +66,8 @@
                     <footer class="o_activity_dialog_foot">
                         <t t-if="editing">
                             <button type="button" class="o_button_primary" t-att-disabled="busy || kind === null || !deadline || assignee === null ? 'disabled' : null"
-                                    t-on-click="save">Save</button>
-                            <button type="button" class="o_button_secondary" t-on-click="() => editing = false">Discard</button>
+                                    t-on-click="save">{{ creating ? 'Schedule' : 'Save' }}</button>
+                            <button type="button" class="o_button_secondary" t-on-click="discard">Discard</button>
                         </t>
                         <t t-elif="finishing">
                             <button type="button" class="o_button_primary" t-att-disabled="busy ? 'disabled' : null" t-on-click="finish">Mark done</button>

@@ -78,38 +78,7 @@
                             t-att-aria-pressed="composing === 'message' ? 'true' : 'false'" t-on-click="() => compose('message')">Send message</button>
                     <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'note' }"
                             t-att-aria-pressed="composing === 'note' ? 'true' : 'false'" t-on-click="() => compose('note')">Log note</button>
-                    <button type="button" t-att-class="{ o_chatter_tab: true, active: composing === 'activity' }"
-                            t-att-aria-pressed="composing === 'activity' ? 'true' : 'false'" t-on-click="() => compose('activity')">Activity</button>
-                </div>
-                <div t-if="composing === 'activity'" class="o_chatter_composer o_chatter_planner">
-                    <div class="o_chatter_kinds" role="group" aria-label="Kind">
-                        <button t-foreach="kinds" t-as="kind" t-key="kind.id" type="button"
-                                t-att-class="{ o_chatter_kind: true, active: planKind === kind.id }"
-                                t-att-aria-pressed="planKind === kind.id ? 'true' : 'false'" t-on-click="() => pickKind(kind)">
-                            <Icon name="kind.icon" size="14"/>{{ kind.name }}
-                        </button>
-                    </div>
-                    <input class="o_input" type="text" placeholder="Summary, e.g. Discuss the proposal"
-                           t-att-value="planSummary" t-on-input="(ev) => planSummary = ev.target.value"/>
-                    <div class="o_chatter_plan_row">
-                        <label class="o_chatter_plan_field">
-                            <span>Due</span>
-                            <input class="o_input" type="date" t-att-value="planDeadline"
-                                   t-on-input="(ev) => planDeadline = ev.target.value"/>
-                        </label>
-                        <div class="o_chatter_plan_field">
-                            <span>For</span>
-                            <RecordSearch model="'users'" text="planAssignee ? planAssignee[1] : ''" onPick="pickAssignee"
-                                          placeholder="'Someone…'"/>
-                        </div>
-                    </div>
-                    <textarea class="o_input" rows="2" placeholder="Note" t-att-value="planNote"
-                              t-on-input="(ev) => planNote = ev.target.value"/>
-                    <div class="o_chatter_composer_foot">
-                        <span class="o_chatter_audience">Planned for {{ planAssignee ? planAssignee[1] : 'nobody yet' }}.</span>
-                        <button type="button" class="o_button_primary" t-att-disabled="planKind === null || !planDeadline ? 'disabled' : null"
-                                t-on-click="schedule">Schedule</button>
-                    </div>
+                    <button type="button" class="o_chatter_tab" aria-haspopup="dialog" t-on-click="() => planning = true">Activity</button>
                 </div>
                 <div t-if="composing" t-att-class="{ o_chatter_composer: true, o_chatter_composer_note: composing === 'note' }">
                     <textarea t-ref="box" class="o_input" rows="3" t-att-value="text"
@@ -134,6 +103,8 @@
             </t>
 
             <ActivityDialog t-if="opened" activity="opened" onClose="closeActivity" onChanged="activityChanged"/>
+            <ActivityDialog t-if="planning" model="props.model" record="props.record" onClose="() => planning = false"
+                            onChanged="activityChanged"/>
             <ul t-if="planned.length" class="o_chatter_planned" aria-label="Planned activities">
                 <li t-foreach="planned" t-as="activity" t-key="activity.id"
                     t-att-class="'o_chatter_activity o_chatter_due_' + dueOf(activity.deadline).state">

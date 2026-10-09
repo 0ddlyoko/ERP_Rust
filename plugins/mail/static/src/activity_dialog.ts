@@ -2,6 +2,7 @@ import { Component, effect, inject, load, props, resource, state, t } from "tram
 import { Icon } from "@web/core/icons";
 import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
+import { Session } from "@web/core/session";
 import { RecordSearch } from "@web/views/widgets/record_search";
 
 /** Something planned about a record, as `activity.of` and `activity.mine` describe it. */
@@ -53,14 +54,18 @@ export function dueOf(deadline: string): { text: string; state: "late" | "today"
 /**
  * An activity in a dialog: what it is, about which record, for whom, by when, and who planned it.
  * From there it is changed, marked done with what came of it, or cancelled — and, from the inbox,
- * its record opened.
+ * its record opened. Without an activity, one is planned about `model` and `record`: for the user,
+ * by the usual delay of its kind, until they say otherwise.
  */
 export class ActivityDialog extends Component {
     static template = "mail.ActivityDialog";
     static components = { Icon, RecordSearch };
 
     props = props({
-        activity: t.any<Planned>(),
+        activity: t.any<Planned>().optional(),
+        /** The record an activity is planned about, when there is none yet. */
+        model: t.string().default(""),
+        record: t.number().default(0),
         onClose: t.func<() => void>(),
         /** Called once the activity changed, was done or cancelled. */
         onChanged: t.func<() => void>(),
@@ -70,10 +75,11 @@ export class ActivityDialog extends Component {
 
     @inject(Orm) orm!: Orm;
     @inject(Notifications) notifications!: Notifications;
+    @inject(Session) session!: Session;
 
     /** The activity as last saved here, until the dialog closes. */
     @state accessor saved: Planned | null = null;
-    @state accessor editing = false;
+    @state accessor editing = this.props.activity === undefined;
     @state accessor finishing = false;
     @state accessor busy = false;
     @state accessor feedback = "";
@@ -81,7 +87,7 @@ export class ActivityDialog extends Component {
     @state accessor summary = "";
     @state accessor note = "";
     @state accessor deadline = "";
-    @state accessor assignee: [number, string] | null = null;
+    @state accessor assignee: [number, string] | null = this.props.activity === undefined ? [this.session.uid, this.session.name] : null;
 
     @resource accessor kinds: ActivityKind[] = load(() => this.orm.call<ActivityKind[]>("activity", "kinds", [], {}));
 
@@ -96,12 +102,40 @@ export class ActivityDialog extends Component {
         return () => window.removeEventListener("keydown", close);
     }
 
-    get activity(): Planned {
-        return this.saved ?? (this.props.activity as Planned);
+    /** Planning one, its kind is the first, once the kinds are read. */
+    @effect firstKind(): void {
+        if (this.creating && this.kind === null && this.kinds?.length) {
+            this.pickKind(this.kinds[0]);
+        }
+    }
+
+    get creating(): boolean {
+        return this.props.activity === undefined;
+    }
+
+    get activity(): Planned | null {
+        return this.saved ?? (this.props.activity as Planned | undefined) ?? null;
     }
 
     get due(): { text: string; state: string } {
-        return dueOf(this.activity.deadline);
+        return dueOf(this.activity?.deadline ?? this.deadline);
+    }
+
+    /** The kind shown in the header: the one being chosen while planning. */
+    get shownKind(): { name: string; icon: string | null } {
+        if (this.creating) {
+            const kind = this.kinds?.find((known) => known.id === this.kind);
+            return { name: kind?.name ?? "Activity", icon: kind?.icon ?? "calendar" };
+        }
+        return this.activity?.kind ?? { name: "", icon: null };
+    }
+
+    /** Choose a kind; planning one, its deadline moves to the kind's usual delay. */
+    pickKind(kind: ActivityKind): void {
+        this.kind = kind.id;
+        if (this.creating) {
+            this.deadline = dayFromToday(kind.delay);
+        }
     }
 
     /** A day as the user reads it: weekday, day, month and year. */
@@ -117,6 +151,9 @@ export class ActivityDialog extends Component {
 
     startEdit(): void {
         const activity = this.activity;
+        if (activity === null) {
+            return;
+        }
         this.kind = activity.kind.id;
         this.summary = activity.summary ?? "";
         this.note = activity.note ?? "";
@@ -130,25 +167,26 @@ export class ActivityDialog extends Component {
         this.assignee = choice;
     };
 
-    /** Save what was changed, then show it. */
+    /** Plan the activity, or save what was changed and show it. */
     async save(): Promise<void> {
         const kind = this.kinds?.find((known) => known.id === this.kind);
+        const activity = this.activity;
         if (kind === undefined || this.assignee === null || !this.deadline) {
             return;
         }
-        const done = await this.act(() =>
-            this.orm.call("activity", "change", [], {
-                activity: this.activity.id,
-                kind: kind.id,
-                summary: this.summary,
-                note: this.note,
-                assignee: this.assignee?.[0],
-                deadline: this.deadline,
-            }),
-        );
-        if (done) {
+        const values = { kind: kind.id, summary: this.summary, note: this.note, assignee: this.assignee[0], deadline: this.deadline };
+        if (activity === null) {
+            const planned = await this.act(() =>
+                this.orm.call("activity", "schedule", [], { model: this.props.model, record: this.props.record, ...values }),
+            );
+            if (planned) {
+                this.props.onClose();
+            }
+            return;
+        }
+        if (await this.act(() => this.orm.call("activity", "change", [], { activity: activity.id, ...values }))) {
             this.saved = {
-                ...this.activity,
+                ...activity,
                 kind: { id: kind.id, name: kind.name, icon: kind.icon },
                 summary: this.summary.trim() ? this.summary : null,
                 note: this.note.trim() ? this.note : null,
@@ -159,6 +197,15 @@ export class ActivityDialog extends Component {
         }
     }
 
+    /** Leave the changes: planning one, the dialog closes. */
+    discard(): void {
+        if (this.creating) {
+            this.props.onClose();
+            return;
+        }
+        this.editing = false;
+    }
+
     startFinish(): void {
         this.feedback = "";
         this.editing = false;
@@ -167,13 +214,15 @@ export class ActivityDialog extends Component {
 
     /** Mark it done, with what came of it: the record's thread says so. */
     async finish(): Promise<void> {
-        if (await this.act(() => this.orm.call("activity", "done", [], { activity: this.activity.id, feedback: this.feedback }))) {
+        const id = this.activity?.id;
+        if (id !== undefined && (await this.act(() => this.orm.call("activity", "done", [], { activity: id, feedback: this.feedback })))) {
             this.props.onClose();
         }
     }
 
     async cancel(): Promise<void> {
-        if (await this.act(() => this.orm.call("activity", "cancel", [], { activity: this.activity.id }))) {
+        const id = this.activity?.id;
+        if (id !== undefined && (await this.act(() => this.orm.call("activity", "cancel", [], { activity: id })))) {
             this.props.onClose();
         }
     }
