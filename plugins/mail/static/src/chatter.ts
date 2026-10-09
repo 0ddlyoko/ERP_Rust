@@ -1,9 +1,10 @@
-import { Component, inject, load, nextTick, props, resource, state, t } from "trame";
+import { Component, effect, inject, load, loading, nextTick, props, resource, state, t } from "trame";
 import { avatarStyleOf, initialsOf } from "@web/core/avatar";
 import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { formParts } from "@web/views/form/form_view";
 import { RecordSearch } from "@web/views/widgets/record_search";
+import { MessageFocus } from "./message_focus";
 
 /** A tracked field a message notes the change of, as text. */
 interface Change {
@@ -67,6 +68,7 @@ export class Chatter extends Component {
 
     @inject(Orm) orm!: Orm;
     @inject(Notifications) notifications!: Notifications;
+    @inject(MessageFocus) focus!: MessageFocus;
 
     /** What is being written: a message, a note, or nothing yet. */
     @state accessor composing: "message" | "note" | null = null;
@@ -83,8 +85,15 @@ export class Chatter extends Component {
     /** Bumped once something was said or followed, for the thread and followers to be read again. */
     @state accessor changed = 0;
 
+    /** The message just brought into sight, marked a moment. */
+    @state accessor flashed: number | null = null;
+
     /** The composer's text box, set by its template. */
     box: HTMLTextAreaElement | null = null;
+    /** The chatter's element, set by its template. */
+    element: HTMLElement | null = null;
+    /** The message the thread was read again for, once. */
+    private reread: number | null = null;
 
     @resource accessor messages: Message[] = load(
         () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
@@ -97,6 +106,45 @@ export class Chatter extends Component {
         ({ model, record }) =>
             record === null ? Promise.resolve(null) : this.orm.call<Following>("follower", "of", [], { model, record }),
     );
+
+    /**
+     * The message opened from the inbox, once in the thread: scrolled to and marked a moment. Not
+     * read yet, the thread is read again for it.
+     */
+    @effect bringFocused(): void {
+        const focus = this.focus.wanted;
+        if (focus === null || focus.model !== this.props.model || focus.record !== this.props.record || loading(() => this.messages)) {
+            return;
+        }
+        const wanted = focus.message;
+        if (!(this.messages ?? []).some((message) => message.id === wanted) && this.reread !== wanted) {
+            this.reread = wanted;
+            this.changed++;
+            return;
+        }
+        this.focus.wanted = null;
+        this.flashed = wanted;
+        void nextTick().then(() =>
+            this.element?.querySelector(`[data-message="${wanted}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        );
+        setTimeout(() => {
+            if (this.flashed === wanted) {
+                this.flashed = null;
+            }
+        }, 2400);
+    }
+
+    /** Whether a message mentions the user. */
+    mentionsMe(message: Message): boolean {
+        const me = this.info?.me;
+        return me !== null && me !== undefined && message.mentions.some(([id]) => id === me);
+    }
+
+    /** Open the followers, or close them — what each follows folded either way. */
+    toggleFollowers(): void {
+        this.followersOpen = !this.followersOpen;
+        this.choosing = null;
+    }
 
     authorOf(message: Message): string {
         return message.author?.[1] ?? "System";

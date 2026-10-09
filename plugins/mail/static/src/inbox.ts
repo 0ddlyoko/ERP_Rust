@@ -5,6 +5,7 @@ import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { Router } from "@web/core/router";
 import { systray } from "@web/web_client/systray";
+import { MessageFocus } from "./message_focus";
 
 /** A message the user was told of, as `notification.inbox` describes it. */
 interface Notice {
@@ -15,6 +16,7 @@ interface Notice {
     record: number;
     record_name: string | null;
     message: {
+        id: number;
         kind: string;
         author: [number, string] | null;
         body: string | null;
@@ -44,6 +46,7 @@ export class InboxTray extends Component {
     @inject(Router) router!: Router;
     @inject(Menus) menus!: Menus;
     @inject(Notifications) notifications!: Notifications;
+    @inject(MessageFocus) focus!: MessageFocus;
 
     @state accessor unread = 0;
     @state accessor open = false;
@@ -103,7 +106,7 @@ export class InboxTray extends Component {
         return avatarStyleOf(name);
     }
 
-    /** Open the record a notice is about, the notice read from then on. */
+    /** Open the record a notice is about, at its message, the notice read from then on. */
     async openNotice(notice: Notice): Promise<void> {
         await this.markRead([notice.id]);
         const tree = loading(() => this.menus.tree) ? [] : (this.menus.tree ?? []);
@@ -113,6 +116,7 @@ export class InboxTray extends Component {
             this.notifications.add("warning", `No menu opens ${notice.record_name ?? notice.model}.`);
             return;
         }
+        this.focus.wanted = { model: notice.model, record: notice.record, message: notice.message.id };
         await this.router.go({ action, view: "form", id: notice.record });
     }
 

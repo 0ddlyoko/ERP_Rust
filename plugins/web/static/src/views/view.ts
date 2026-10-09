@@ -64,7 +64,7 @@ export abstract class View extends Component {
         if (this.props.embedded) {
             return;
         }
-        untrack(() => this.breadcrumb.shown(this.router.route, this.kind === "form"));
+        untrack(() => this.breadcrumb.shown(this.router.route, this.kind === "form", this.kind === "list" || this.kind === "kanban"));
     }
 
     @resource accessor fields: Fields = load(

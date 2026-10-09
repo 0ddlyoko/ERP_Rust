@@ -286,6 +286,7 @@
     width: 100%;
     min-height: 72px;
     box-sizing: border-box;
+    padding: 10px 12px;
     resize: vertical;
     font: inherit;
     font-size: 13px;
@@ -335,6 +336,41 @@
 }
 
 /* Notes, whom a message was said to, and those it mentions */
+
+.o_chatter_icon.active {
+    background: var(--o-panel);
+    color: var(--o-accent-strong);
+}
+
+.o_chatter_message .o_chatter_content {
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.o_chatter_message.o_chatter_pinged .o_chatter_content {
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--o-accent) 9%, white);
+    box-shadow: inset 3px 0 0 var(--o-accent);
+}
+
+.o_chatter_flash .o_chatter_content {
+    padding: 8px 10px;
+    border-radius: 12px;
+    box-shadow: 0 0 0 2px var(--o-accent);
+    animation: o_chatter_flash 0.8s ease-in-out 2;
+}
+
+@keyframes o_chatter_flash {
+    50% {
+        background: color-mix(in oklch, var(--o-accent) 18%, white);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_chatter_flash .o_chatter_content {
+        animation: none;
+    }
+}
 
 .o_chatter_note .o_chatter_content {
     padding: 8px 10px;

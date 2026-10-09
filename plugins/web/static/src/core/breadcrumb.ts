@@ -141,9 +141,10 @@ export class Breadcrumb {
      * A view shows. Coming back to a crumb drops it and those after it, and brings back its list
      * beside. What was left joins the trail. A list opened otherwise — from the menu — forgets
      * them all; a record opened from a list has that list beside it, and the trail leads back to
-     * the list when it was itself opened from a record, or is narrowed — a project's board.
+     * the list when it was itself opened from a record, or is narrowed — a project's board. A
+     * view of several records that lists none — a dashboard — is no list a record shows beside.
      */
-    shown(route: Route, isRecord: boolean): void {
+    shown(route: Route, isRecord: boolean, listsRecords = true): void {
         const shown = `${writeRoute(route)}/${isRecord}`;
         if (shown === this.lastShown && this.leaving === null && this.returning === null && !this.picking) {
             return;
@@ -153,7 +154,7 @@ export class Breadcrumb {
         this.leaving = null;
         this.returning = null;
         this.picking = false;
-        this.fromList = isRecord ? null : listOf(route);
+        this.fromList = isRecord || !listsRecords ? null : listOf(route);
         if (returning !== null) {
             this.strip = this.trail[returning]?.strip ?? null;
             this.trail = this.trail.slice(0, returning);
