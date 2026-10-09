@@ -26,10 +26,16 @@ export interface Scope {
     range: Range | null;
     /** The days of the period before, to compare with. */
     previous: Range | null;
-    /** The field the dashboard narrows its records by, and the record chosen, if one. */
-    filter: { field: string; id: number } | null;
+    /** The field the dashboard narrows its records by, and the record chosen, if one, named. */
+    filter: { field: string; id: number; label: string; name: string } | null;
     /** The code of the currency amounts are in, when the records share one. */
     currency: string | null;
+}
+
+/** A condition records of a tile meet, named as a search chip says it: `October 2026`. */
+export interface Condition {
+    label: string;
+    domain: Domain;
 }
 
 /** A tile of a dashboard, as its `<metric>`, `<chart>` or `<records>` says. */

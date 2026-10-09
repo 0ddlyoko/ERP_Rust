@@ -11,6 +11,7 @@ import { periodLabel } from "@web/views/list/list_view";
 import {
     bucketOf,
     bucketsOf,
+    type Condition,
     counting,
     dateOf,
     type Scope,
@@ -24,8 +25,8 @@ import {
 
 /** What a tile asks of the dashboard showing it: to open records it shows. */
 export interface TileHost {
-    /** Open the tile's records a domain finds, as a list searched for them under `label`. */
-    openList(tile: Tile, domain: Domain, label: string): void;
+    /** Open the tile's records meeting these conditions, as a list searched for them, a chip each. */
+    openList(tile: Tile, conditions: Condition[]): void;
     /** Open one record of the tile. */
     openRecord(tile: Tile, id: number): void;
     /** How the user last chose to see a chart, if they did. */
@@ -91,15 +92,32 @@ abstract class DashboardTile extends Component {
     );
 
     /** The dashboard's filter, on a model that has its field. */
-    get filtered(): Domain {
+    get filtered(): Condition[] {
         const filter = this.scope.filter;
-        return filter !== null && this.fields?.[filter.field] !== undefined ? [[filter.field, "=", filter.id]] : [];
+        if (filter === null || this.fields?.[filter.field] === undefined) {
+            return [];
+        }
+        return [{ label: `${filter.label}: ${filter.name}`, domain: [[filter.field, "=", filter.id]] }];
+    }
+
+    /** The tile's own domain, named after it. */
+    get own(): Condition[] {
+        return this.tile.domain.length ? [{ label: this.tile.label, domain: this.tile.domain }] : [];
+    }
+
+    /** What the tile's records meet in the period chosen, or the one before: each condition named. */
+    conditionsIn(back: 0 | 1): Condition[] {
+        const range = back === 0 ? this.scope.range : this.scope.previous;
+        const period =
+            this.tile.date === null || range === null
+                ? []
+                : [{ label: periodLabel(range.start, this.scope.period), domain: within(this.tile.date, range) }];
+        return [...this.own, ...period, ...this.filtered];
     }
 
     /** The tile's records in the period chosen, or the one before. */
     domainIn(back: 0 | 1): Domain {
-        const range = back === 0 ? this.scope.range : this.scope.previous;
-        return and([this.tile.domain, within(this.tile.date, range), this.filtered]);
+        return and(this.conditionsIn(back).map((condition) => condition.domain));
     }
 
     /** The fields a group adds up. */
@@ -174,7 +192,7 @@ export class DashboardMetric extends DashboardTile {
 
     open(): void {
         if (this.opens) {
-            this.props.host.openList(this.tile, this.domainIn(0), this.tile.label);
+            this.props.host.openList(this.tile, this.conditionsIn(0));
         }
     }
 }
@@ -189,9 +207,10 @@ interface Bar {
     text: string;
     count: number;
     countText: string;
+    /** The records it stands for, each condition named. */
+    conditions: Condition[];
     /** Its length against the longest, as a percentage. */
     share: number;
-    domain: Domain;
     style: string;
     avatar: string;
     current: boolean;
@@ -242,7 +261,7 @@ export class DashboardChart extends DashboardTile {
         }
         const buckets = bucketsOf(period ?? "month", this.tile.last, dateOf(this.scope.until));
         const span = { start: buckets[0].start, end: buckets[buckets.length - 1].end };
-        return { domain: and([this.tile.domain, within(field, span), this.filtered]), groupBy };
+        return { domain: and([this.tile.domain, within(field, span), ...this.filtered.map((condition) => condition.domain)]), groupBy };
     }
 
     @resource accessor groups: Group[] | null = load(
@@ -263,7 +282,6 @@ export class DashboardChart extends DashboardTile {
     @computed get bars(): Bar[] {
         const groups = this.groups ?? [];
         const { field, period } = this.grouping;
-        const asked = this.asked.domain;
         let bars: Omit<Bar, "share" | "style" | "countText">[];
         if (this.timed) {
             const byStart = new Map(groups.filter((group) => typeof group.value === "string").map((group) => [bucketOf(group.value as string, period ?? "month"), group]));
@@ -278,7 +296,7 @@ export class DashboardChart extends DashboardTile {
                     value,
                     text: this.written(value),
                     count: group?.count ?? 0,
-                    domain: and([asked, within(field, bucket)]),
+                    conditions: [...this.own, { label: periodLabel(bucket.start, period ?? "month"), domain: within(field, bucket) }, ...this.filtered],
                     avatar: "",
                     current: at === buckets.length - 1,
                 };
@@ -295,7 +313,7 @@ export class DashboardChart extends DashboardTile {
                     value,
                     text: this.written(value),
                     count: group.count,
-                    domain: and([asked, group.domain]),
+                    conditions: [...this.conditionsIn(0), { label: `${this.groupLabel}: ${label}`, domain: group.domain }],
                     avatar: avatarStyleOf(label),
                     current: false,
                 };
@@ -370,7 +388,7 @@ export class DashboardChart extends DashboardTile {
 
     open(bar: Bar): void {
         if (this.tile.action !== null) {
-            this.props.host.openList(this.tile, bar.domain, `${this.tile.label}: ${bar.full}`);
+            this.props.host.openList(this.tile, bar.conditions);
         }
     }
 }
@@ -428,7 +446,7 @@ export class DashboardRecords extends DashboardTile {
 
     openAll(): void {
         if (this.opens) {
-            this.props.host.openList(this.tile, this.domainIn(0), this.tile.label);
+            this.props.host.openList(this.tile, this.conditionsIn(0));
         }
     }
 

@@ -1,6 +1,5 @@
 import { computed, load, props, resource, state } from "trame";
 import { openWith } from "@web/core/list_memory";
-import type { Domain } from "@web/core/orm";
 import { listKey } from "@web/core/router";
 import { periodLabel } from "@web/views/list/list_view";
 import { View, viewKinds, viewProps } from "@web/views/view";
@@ -13,6 +12,7 @@ import {
     type Range,
     rangeOf,
     readTile,
+    type Condition,
     type Scope,
     stepped,
     type Tile,
@@ -164,7 +164,15 @@ export class DashboardView extends View implements TileHost {
             until: range === null || range.end > today ? today : dayBefore(range.end),
             range,
             previous: rangeOf(this.period, 1, dateOf(this.day)),
-            filter: field !== null && this.filterId !== null ? { field, id: this.filterId } : null,
+            filter:
+                field !== null && this.filterId !== null
+                    ? {
+                          field,
+                          id: this.filterId,
+                          label: this.filterLabel,
+                          name: this.filterChoices?.find(([id]) => id === this.filterId)?.[1] ?? String(this.filterId),
+                      }
+                    : null,
             currency: this.currency ?? null,
         };
     }
@@ -193,12 +201,15 @@ export class DashboardView extends View implements TileHost {
         return tile.tag === "chart" && tile.chart === "columns" ? "o_dash_panel o_dash_panel_wide" : "o_dash_panel";
     }
 
-    openList(tile: Tile, domain: Domain, label: string): void {
+    openList(tile: Tile, conditions: Condition[]): void {
         if (tile.action === null) {
             return;
         }
         const route = { action: tile.action, view: null, id: null };
-        openWith(listKey(route), [{ kind: "domain", label, domain }]);
+        openWith(
+            listKey(route),
+            conditions.map(({ label, domain }) => ({ kind: "domain", label, domain })),
+        );
         void this.router.go(route);
     }
 

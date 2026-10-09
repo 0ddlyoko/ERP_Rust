@@ -5,7 +5,8 @@ import { type Facet, type Favorite, type SearchView, searchDomain, withFilterTog
 
 /**
  * The filters of a search view as chips under the search, each saying how many records it finds
- * among the action's — counted together, in one call — and ticked or unticked in one click, as
+ * among the action's that the rest of the search finds — a text searched, the records a
+ * dashboard opened — counted together, in one call, and ticked or unticked in one click, as
  * in the filters menu. `All` unticks them all. The searches the user saved follow, each applied
  * in one click. Records the view created since are added to `All` as they are, rather than
  * counted again.
@@ -47,13 +48,19 @@ export class FilterChips extends Component {
         return facet?.kind === "filters" ? facet.names : [];
     }
 
-    /** How many records the action has, then each filter finds among them. */
+    /** The action's records the search finds, its filters aside. */
+    @computed get among(): Domain {
+        const others = this.facets.filter((facet) => facet.kind !== "filters" && facet.kind !== "groupby");
+        return and([[...this.props.domain], searchDomain(this.props.view as SearchView, others)]);
+    }
+
+    /** How many records the search finds, filters aside, then each filter finds among them. */
     @resource accessor counts: number[] = load(
         () => ({
             model: this.props.model,
             domains: [
-                [...this.props.domain] as Domain,
-                ...this.filters.map((filter) => and([[...this.props.domain], filter.domain])),
+                this.among,
+                ...this.filters.map((filter) => and([this.among, filter.domain])),
                 ...this.savedSearches.map((favorite) =>
                     and([[...this.props.domain], searchDomain(this.props.view as SearchView, favorite.facets)]),
                 ),
