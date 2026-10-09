@@ -88,7 +88,10 @@ export class ListWidget extends X2ManyWidget {
         return () => document.removeEventListener("mousedown", leave, true);
     }
 
-    /** A line added then left without anything typed in it is taken away again. */
+    /**
+     * A line added then left without anything typed in it is taken away again — unless the field
+     * says `keep_empty_lines="1"`: a line whose defaults are enough.
+     */
     @effect dropUntouchedLine(): void {
         const editing = this.editing;
         const left = this.lastEditing;
@@ -276,7 +279,9 @@ export class ListWidget extends X2ManyWidget {
                 .map((name) => [name, fields[name].default]),
         );
         const key = this.addDraft(defaults);
-        this.untouched.add(key);
+        if ((this.props.attrs as Record<string, string>).keep_empty_lines !== "1") {
+            this.untouched.add(key);
+        }
         this.editing = key;
         this.focusEdited("first");
     }
