@@ -25,6 +25,8 @@ export interface ListMemory {
     order: string[] | undefined;
     /** What it gathered them by: `state`, `date_order:month`, or nothing. */
     groupBy: string | null;
+    /** The groups it had open, by their key. */
+    openGroups: string[];
 }
 
 const memories = new Map<string, ListMemory>();

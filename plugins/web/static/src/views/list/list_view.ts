@@ -91,7 +91,11 @@ export class ListView extends View {
     /** The columns' widths, once the user sized one. */
     @state accessor widths: ColumnWidths | null = null;
     /** The groups opened, by their domain: their records, or `null` while they load. */
-    @state accessor openGroups = new Map<string, Values[] | null>();
+    @state accessor openGroups = new Map<string, Values[] | null>(
+        (listMemory(listKey(this.router.route))?.openGroups ?? []).map((key) => [key, null]),
+    );
+    /** The open groups whose records are being read. */
+    private readingGroups = new Set<string>();
     /** The group a record is being created in from its title, by its key. */
     @state accessor adding: string | null = null;
     /** What a record whose title is not enough starts with, while a form completes it. */
@@ -177,7 +181,21 @@ export class ListView extends View {
             domain: this.domain,
             order: this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`],
             groupBy: this.grouping?.groupBy ?? null,
+            openGroups: [...this.openGroups.keys()],
         });
+    }
+
+    /** The groups left open, open again: their records read once the groups are. */
+    @effect readOpenGroups(): void {
+        if (loading(() => this.groups)) {
+            return;
+        }
+        for (const group of this.groups ?? []) {
+            const key = this.groupKey(group);
+            if (this.openGroups.get(key) === null && !this.readingGroups.has(key)) {
+                void this.readOpenGroup(group);
+            }
+        }
     }
 
     /** Open a form for a record not created yet. */
@@ -437,6 +455,7 @@ export class ListView extends View {
     /** Read the first records of an open group, in the order the list is sorted in. */
     private async readOpenGroup(group: Group): Promise<void> {
         const key = this.groupKey(group);
+        this.readingGroups.add(key);
         const fields = [...this.columns.map((column) => column.name), ...this.extraNames];
         const order = this.sort === null ? undefined : [`${this.sort.name} ${this.sort.descending ? "desc" : "asc"}`];
         try {
@@ -451,6 +470,8 @@ export class ListView extends View {
         } catch (error) {
             this.openGroups.delete(key);
             this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+        } finally {
+            this.readingGroups.delete(key);
         }
     }
 
