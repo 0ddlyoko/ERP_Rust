@@ -186,6 +186,86 @@
     text-align: center;
 }
 
+/* The mails a message was sent as */
+
+.o_chatter_mails {
+    position: relative;
+}
+
+.o_chatter_mail_button {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+}
+
+.o_chatter_mail_button:hover {
+    background: var(--o-panel);
+}
+
+.o_chatter_mail_sent {
+    color: #0e6b52;
+}
+
+.o_chatter_mail_outgoing {
+    color: #8a5a00;
+}
+
+.o_chatter_mail_failed {
+    color: var(--o-danger);
+}
+
+.o_chatter_mail_backdrop {
+    position: fixed;
+    z-index: 59;
+    inset: 0;
+}
+
+.o_chatter_mail_list {
+    position: fixed;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 260px;
+    margin: 0;
+    padding: 8px;
+    border-radius: 12px;
+    background: var(--o-surface);
+    box-shadow: var(--o-shadow-pop);
+    list-style: none;
+}
+
+.o_chatter_mail_list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+.o_chatter_mail_who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.o_chatter_mail_who span {
+    color: var(--o-muted);
+}
+
+.o_chatter_mail_state {
+    flex-shrink: 0;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--o-panel);
+    font-weight: 700;
+}
+
 /* Who follows the record, and whether the user does */
 
 .o_chatter_top {

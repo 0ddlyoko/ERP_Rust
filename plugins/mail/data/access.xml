@@ -1,0 +1,11 @@
+<erp>
+    <access_rule id="access_mail_admin">
+        <name>mail: administrators</name>
+        <model>mail</model>
+        <group ref="base.group_admin"/>
+        <domain_read>[]</domain_read>
+        <domain_create>[]</domain_create>
+        <domain_write>[]</domain_write>
+        <domain_delete>[]</domain_delete>
+    </access_rule>
+</erp>

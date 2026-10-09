@@ -115,6 +115,31 @@
                             <span class="o_chatter_author">{{ authorOf(message) }}</span>
                             <span class="o_chatter_date">{{ whenOf(message) }}</span>
                             <span t-if="message.kind === 'note'" class="o_chatter_badge">Note</span>
+                            <span t-if="message.mails.length" class="o_chatter_mails">
+                                <button type="button" t-att-class="'o_chatter_mail_button o_chatter_mail_' + mailState(message)"
+                                        t-att-title="'Sent by mail to ' + message.mails.length" t-att-aria-label="'Mails of this message'"
+                                        t-att-aria-expanded="mailsOf === message.id ? 'true' : 'false'"
+                                        t-on-click="(ev) => toggleMails(message, ev)">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>
+                                    </svg>
+                                </button>
+                                <Portal t-if="mailsOf === message.id" target="'body'">
+                                <div class="o_chatter_mail_backdrop" t-on-mousedown.self="() => mailsOf = null"/>
+                                <ul class="o_chatter_mail_list" t-att-style="mailsPlace">
+                                    <li t-foreach="message.mails" t-as="mail" t-key="mail_index" t-att-title="mail.error ?? null">
+                                        <span class="o_chatter_mail_who">
+                                            <strong>{{ mail.recipient ?? "—" }}</strong>
+                                            <span>{{ mail.email ?? "no address" }}</span>
+                                        </span>
+                                        <span t-att-class="'o_chatter_mail_state o_chatter_mail_' + mail.state">
+                                            {{ mail.state === 'sent' ? 'Sent' : mail.state === 'failed' ? 'Failed' : 'Outgoing' }}
+                                        </span>
+                                    </li>
+                                </ul>
+                                </Portal>
+                            </span>
                         </div>
                         <p t-if="message.kind === 'comment' &amp;&amp; message.recipients.length" class="o_chatter_to">
                             To {{ recipientsOf(message) }}

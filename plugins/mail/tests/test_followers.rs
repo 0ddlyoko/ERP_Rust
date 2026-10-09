@@ -328,3 +328,50 @@ fn test_the_thread_by_pages_and_kinds() -> Result<()> {
     assert_eq!(page(json!({"kinds": ["comment"]}))?, ["three", "one"]);
     Ok(())
 }
+
+/// A message said to people outside the application is queued as a mail to each, at their
+/// address — failed at once for one without — while a user mentioned only finds it in their inbox.
+#[test]
+fn test_messages_are_queued_as_mails_to_those_outside() -> Result<()> {
+    let app = new_app()?;
+    let acme = create(
+        &app,
+        "contact",
+        json!({"name": "Acme", "email": "hello@acme.test"}),
+    )?;
+    let nobody = create(&app, "contact", json!({"name": "No Address"}))?;
+    let claire = create(
+        &app,
+        "users",
+        json!({"name": "Claire", "login": "claire", "groups": [1]}),
+    )?;
+    let claire_contact = contact_of(&app, claire)?;
+    let deal = create(&app, "deal", json!({"name": "Mailed", "customer": acme}))?;
+    let posted = call(
+        &app,
+        None,
+        "message",
+        "post",
+        json!({"model": "deal", "record": deal, "body": "News", "internal": false,
+               "mentions": [nobody, claire_contact]}),
+    )?;
+    let mut mails: Vec<Value> = posted["mails"].as_array().expect("mails").clone();
+    mails.sort_by_key(|mail| mail["recipient"].as_str().unwrap_or_default().to_string());
+    assert_eq!(
+        mails,
+        [
+            json!({"recipient": "Acme", "email": "hello@acme.test", "state": "outgoing", "error": null}),
+            json!({"recipient": "No Address", "email": null, "state": "failed",
+                   "error": "No address to send it to"}),
+        ]
+    );
+    let note = call(
+        &app,
+        None,
+        "message",
+        "post",
+        json!({"model": "deal", "record": deal, "body": "Quiet", "internal": true, "mentions": [nobody]}),
+    )?;
+    assert_eq!(note["mails"], json!([]), "a note is mailed to nobody");
+    Ok(())
+}

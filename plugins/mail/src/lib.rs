@@ -35,13 +35,18 @@ impl Plugin for MailPlugin {
         model_manager.register_model::<models::MessageSubtype<_>>();
         model_manager.register_model::<models::Follower<_>>();
         model_manager.register_model::<models::Notification<_>>();
+        model_manager.register_model::<models::Mail<_>>();
         model_manager.tracking_hooks.push(models::note_changes);
         model_manager.create_hooks.push(models::note_creation);
         model_manager.delete_hooks.push(models::forget_deleted);
     }
 
     fn data(&self) -> Vec<&'static str> {
-        vec![include_str!("../data/mail_data.xml")]
+        vec![
+            include_str!("../data/access.xml"),
+            include_str!("../data/mail_data.xml"),
+            include_str!("../views/mail_views.xml"),
+        ]
     }
 
     fn static_files(&self) -> StaticFiles {

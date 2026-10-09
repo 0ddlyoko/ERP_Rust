@@ -27,6 +27,8 @@ interface Message {
     subtype: string | null;
     recipients: [number, string | null][];
     mentions: [number, string | null][];
+    /** The mails it was sent as, to those outside the application. */
+    mails: { recipient: string | null; email: string | null; state: "outgoing" | "sent" | "failed"; error: string | null }[];
 }
 
 /** Who follows the record and what of it, as `follower.of` describes them. */
@@ -108,6 +110,9 @@ export class Chatter extends Component {
     @state accessor changed = 0;
 
     @state accessor shown: Shown = "all";
+    /** The message whose mails are listed, and where the list stands on the page. */
+    @state accessor mailsOf: number | null = null;
+    @state accessor mailsPlace = "";
     /** The messages read past the first page. */
     @state accessor older: Message[] = [];
     /** Whether the whole thread is read. */
@@ -233,6 +238,21 @@ export class Chatter extends Component {
     /** Whether the user wrote a message: shown on their side, to tell it from the others'. */
     isMine(message: Message): boolean {
         return message.author?.[0] === this.session.uid;
+    }
+
+    /** Where the mails of a message stand, in a word: all sent, some waiting, some failed. */
+    mailState(message: Message): "sent" | "outgoing" | "failed" {
+        if (message.mails.some((mail) => mail.state === "failed")) {
+            return "failed";
+        }
+        return message.mails.some((mail) => mail.state === "outgoing") ? "outgoing" : "sent";
+    }
+
+    /** List a message's mails under its envelope, over the page: the thread scrolling would clip them. */
+    toggleMails(message: Message, event: MouseEvent): void {
+        const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        this.mailsPlace = `top: ${box.bottom + 4}px; left: ${Math.max(8, Math.min(box.left, window.innerWidth - 300))}px`;
+        this.mailsOf = this.mailsOf === message.id ? null : message.id;
     }
 
     /** Whether a message mentions the user. */

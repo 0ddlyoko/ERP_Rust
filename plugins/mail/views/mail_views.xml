@@ -1,0 +1,45 @@
+<erp>
+    <view id="view_mail_list" name="mail.list" model="mail">
+        <list>
+            <field name="create_date"/>
+            <field name="recipient"/>
+            <field name="email"/>
+            <field name="subject"/>
+            <field name="state" widget="badge" decoration-success="state === 'sent'"
+                   decoration-warning="state === 'outgoing'" decoration-danger="state === 'failed'"/>
+        </list>
+    </view>
+    <view id="view_mail_form" name="mail.form" model="mail">
+        <form>
+            <block>
+                <h1><field name="subject"/></h1>
+                <block string="To">
+                    <field name="recipient"/>
+                    <field name="email"/>
+                    <field name="message"/>
+                </block>
+                <block string="Sending">
+                    <field name="state" widget="badge"/>
+                    <field name="sent_at"/>
+                    <field name="error" invisible="!error"/>
+                </block>
+            </block>
+            <pages>
+                <page name="body" string="Body">
+                    <field name="body" widget="text" nolabel="1"/>
+                </page>
+            </pages>
+        </form>
+    </view>
+    <view id="view_mail_search" name="mail.search" model="mail">
+        <search>
+            <field name="email"/>
+            <field name="recipient"/>
+            <filter name="outgoing" string="Outgoing" domain='[["state", "=", "outgoing"]]'/>
+            <filter name="sent" string="Sent" domain='[["state", "=", "sent"]]'/>
+            <filter name="failed" string="Failed" domain='[["state", "=", "failed"]]'/>
+        </search>
+    </view>
+    <action id="action_mails" name="Emails" model="mail" views="list,form"/>
+    <menu id="menu_mails" name="Emails" parent="base.menu_technical" sequence="50" action="action_mails"/>
+</erp>

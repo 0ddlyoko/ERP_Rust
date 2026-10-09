@@ -59,12 +59,13 @@ pub struct Message<Mode: IdMode> {
 }
 
 /// The models a thread is made of, whose own changes are not noted.
-const THREAD_MODELS: [&str; 5] = [
+const THREAD_MODELS: [&str; 6] = [
     "message",
     "message_change",
     "message_subtype",
     "follower",
     "notification",
+    "mail",
 ];
 
 /// The subtype of what is said about any record.
@@ -199,12 +200,73 @@ impl Message<MultipleIds> {
             told.push((user, NotificationReason::Follower));
         }
         notify(env, message, author, told)?;
+        queue_mails(env, message, &model, record, &recipients)?;
         if let Some(me) = me {
             follow(env, &model, record, &[me])?;
         }
         let posted: Message<SingleId> = env.get_record(SingleId::from(message));
         posted.describe(env)
     }
+}
+
+/// Queue a mail of a message to each recipient who is no user of the application — users find
+/// it in their inbox — at their address as it is now; one without an address is a mail failed
+/// already, for the thread to say so.
+fn queue_mails(
+    env: &mut Environment,
+    message: u32,
+    model: &str,
+    record: u32,
+    recipients: &[u32],
+) -> Result<()> {
+    let users: Vec<u32> = users_of(env, recipients)?
+        .into_iter()
+        .map(|(_, contact)| contact)
+        .collect();
+    let outside: Vec<u32> = recipients
+        .iter()
+        .copied()
+        .filter(|contact| !users.contains(contact))
+        .collect();
+    if outside.is_empty() {
+        return Ok(());
+    }
+    let env = &mut *env.sudo();
+    let subject = env.names(model, &[record])?.remove(&record);
+    let body: Option<String> = env
+        .read("message", &MultipleIds::from(vec![message]), &["body"])?
+        .first()
+        .and_then(|row| row.get_option::<&String>("body").cloned());
+    let rows = env.read("contact", &MultipleIds::from(outside), &["email"])?;
+    let mut mails = Vec::new();
+    for row in rows {
+        let Some(contact) = row.get_option::<&u32>("id").copied() else {
+            continue;
+        };
+        let email = row
+            .get_option::<&String>("email")
+            .cloned()
+            .filter(|email| !email.trim().is_empty());
+        let mut values = MapOfFields::default();
+        values.insert("message", message);
+        values.insert("recipient", contact);
+        if let Some(subject) = &subject {
+            values.insert("subject", subject.clone());
+        }
+        if let Some(body) = &body {
+            values.insert("body", body.clone());
+        }
+        match email {
+            Some(email) => values.insert("email", email),
+            None => {
+                values.insert("state", crate::models::MailState::Failed);
+                values.insert("error", "No address to send it to");
+            }
+        }
+        mails.push(values);
+    }
+    let _: crate::models::Mail<MultipleIds> = env.create_new_records_from_maps(mails)?;
+    Ok(())
 }
 
 /// Tell users of a message in their inbox — each once, a mention before a follow — but its author.
@@ -263,6 +325,7 @@ impl Message<SingleId> {
         } else {
             json!(subtype.get_name(env)?)
         };
+        let mails = mails_of(env, self.get_id())?;
         let recipients: Contact<MultipleIds> = self.get_recipients(env)?;
         let mentions: Contact<MultipleIds> = self.get_mentions(env)?;
         let named = |env: &mut Environment, ids: &[u32]| -> Result<Value> {
@@ -283,8 +346,41 @@ impl Message<SingleId> {
             "subtype": subtype,
             "recipients": named(env, recipients.get_ids_ref())?,
             "mentions": named(env, mentions.get_ids_ref())?,
+            "mails": mails,
         }))
     }
+}
+
+/// The mails a message was sent as: to whom, at which address, and where each stands.
+fn mails_of(env: &mut Environment, message: u32) -> Result<Value> {
+    let env = &mut *env.sudo();
+    let ids = env.search_ids("mail", &make_domain!([("message", "=", message)]))?;
+    if ids.is_empty() {
+        return Ok(json!([]));
+    }
+    let rows = env.read(
+        "mail",
+        &MultipleIds::from(ids),
+        &["recipient", "email", "state", "error"],
+    )?;
+    let contacts: Vec<u32> = rows
+        .iter()
+        .filter_map(|row| row.get_option::<&u32>("recipient").copied())
+        .collect();
+    let names = env.names("contact", &contacts)?;
+    Ok(json!(
+        rows.iter()
+            .map(|row| {
+                let recipient = row.get_option::<&u32>("recipient").copied();
+                json!({
+                    "recipient": recipient.and_then(|id| names.get(&id).cloned()),
+                    "email": row.get_option::<&String>("email"),
+                    "state": row.get_option::<&String>("state"),
+                    "error": row.get_option::<&String>("error"),
+                })
+            })
+            .collect::<Vec<_>>()
+    ))
 }
 
 /// Note the changes of a record's tracked fields as a message of its thread, by whoever made
