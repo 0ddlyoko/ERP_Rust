@@ -765,24 +765,31 @@ button.o_statusbar_label:hover {
     color: var(--o-accent-strong);
 }
 
-.o_x2many_list .o_x2many_add {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    align-self: stretch;
-    height: 46px;
-    padding: 0 14px;
-    border: 1.5px dashed #c9c8e0;
-    border-radius: var(--o-radius-row);
+.o_x2many_add_row td {
+    padding: 0;
+    border: 0;
     background: transparent;
-    box-shadow: none;
-    color: var(--o-accent);
-    font-weight: 700;
 }
 
-.o_x2many_list .o_x2many_add:hover:not(:disabled) {
-    border-color: var(--o-accent);
-    background: color-mix(in oklch, var(--o-accent) 5%, white);
+.o_x2many_list .o_x2many_add {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--o-radius-row);
+    background: transparent;
+    color: var(--o-accent);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.o_x2many_list .o_x2many_add:hover,
+.o_x2many_list .o_x2many_add:focus-visible {
+    background: color-mix(in oklch, var(--o-accent) 6%, white);
 }
 
 .o_dialog.o_form_dialog {

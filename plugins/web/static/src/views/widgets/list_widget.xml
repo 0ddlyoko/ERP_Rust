@@ -44,17 +44,21 @@
                                 </button>
                             </td>
                         </tr>
-                        <tr t-if="!rows.length" class="o_list_empty">
+                        <tr t-if="editable &amp;&amp; isOne2Many" class="o_x2many_add_row">
+                            <td t-att-colspan="columns.length + (widths ? 1 : 0) + 1">
+                                <button type="button" class="o_x2many_add" t-on-click="addLine">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                    Add a line
+                                </button>
+                            </td>
+                        </tr>
+                        <tr t-elif="!rows.length" class="o_list_empty">
                             <td t-att-colspan="columns.length + (widths ? 1 : 0) + (editable || openAction !== null ? 1 : 0)">No records.</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <button t-if="editable &amp;&amp; isOne2Many" type="button" class="o_button_secondary o_x2many_add" t-on-click="addLine">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Add a line
-            </button>
             <RecordSearch t-if="editable &amp;&amp; !isOne2Many" model="model" exclude="ids" domain="domain" onPick="add" placeholder="'Add…'"/>
         </div>
     </t>
