@@ -52,3 +52,8 @@ serial_test = "3.2.0"
 syn = "2.0"
 thiserror = "2.0"
 uuid = { version = "1.16.0", features = ["v4"] }
+
+# Dependencies built optimised even in debug: hashing a password with argon2 unoptimised takes
+# seconds, which every login of the tests and of a development server pays.
+[profile.dev.package."*"]
+opt-level = 2
