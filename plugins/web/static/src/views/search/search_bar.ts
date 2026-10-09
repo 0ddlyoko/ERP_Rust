@@ -82,6 +82,17 @@ export class SearchBar extends Component {
         return text === "" ? [] : fields.filter((field) => accepts(field, text));
     }
 
+    /**
+     * A click in the bar beside its chips types in it. Not a `<label>` around them: one hands a
+     * click on a chip to the first button within, the first chip's remove.
+     */
+    focusInput(event: MouseEvent): void {
+        const target = event.target as HTMLElement;
+        if (!target.closest("button")) {
+            (event.currentTarget as HTMLElement).querySelector("input")?.focus();
+        }
+    }
+
     labelOf(facet: Facet): string {
         return facetLabel(this.props.view as SearchView, facet);
     }

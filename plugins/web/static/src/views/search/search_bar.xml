@@ -1,7 +1,7 @@
 <templates>
     <t t-name="web.SearchBar">
         <div class="o_search_bar" t-ref="element">
-            <label class="o_search">
+            <div class="o_search" t-on-click="(ev) => focusInput(ev)">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="2" stroke-linecap="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
@@ -18,7 +18,7 @@
                        t-att-aria-expanded="suggestions.length ? 'true' : 'false'" t-att-value="text"
                        t-on-input="(ev) => type(ev.target.value)" t-on-keydown="(ev) => key(ev)"
                        t-on-blur="() => type('')"/>
-            </label>
+            </div>
             <ul t-if="suggestions.length" class="o_record_search_results o_search_suggestions" role="listbox">
                 <li t-foreach="suggestions" t-as="field" t-key="field.name" role="option"
                     t-att-aria-selected="field_index === active ? 'true' : 'false'"
