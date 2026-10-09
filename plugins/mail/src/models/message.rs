@@ -73,7 +73,9 @@ const DISCUSSION: &str = "mail.subtype_discussion";
 #[erp_methods]
 impl Message<MultipleIds> {
     /// The thread of a record, newest first, for whoever may read the record; given a `field`,
-    /// only the messages noting a change of it.
+    /// only the messages noting a change of it; given `kinds`, only messages of those —
+    /// `comment`, `note`, `tracking`, `creation`. A page of it: `limit` messages past the
+    /// `offset` first ones, all of them without a limit.
     ///
     /// As sudo once the record is checked: a message is readable by whoever reads its record, a
     /// right no access rule on `message` could express.
@@ -84,14 +86,21 @@ impl Message<MultipleIds> {
         model: String,
         record: u32,
         field: Option<String>,
+        kinds: Option<Vec<String>>,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> Result<Value> {
         let _ = self;
         env.check_access(&model, Operation::Read, &[record], &[])?;
         let env = &mut *env.sudo();
-        let options = SearchOptions {
+        let mut options = SearchOptions {
             order: vec![OrderBy::desc("date"), OrderBy::desc("id")],
             ..SearchOptions::new()
-        };
+        }
+        .with_offset(offset.unwrap_or(0));
+        if let Some(limit) = limit {
+            options = options.with_limit(limit);
+        }
         let mut domain = make_domain!([
             ("model", "=", model),
             ("record", "=", i32::try_from(record)?)
@@ -100,6 +109,12 @@ impl Message<MultipleIds> {
             domain = SearchType::And(
                 Box::new(domain),
                 Box::new(make_domain!([("changes.field", "=", field)])),
+            );
+        }
+        if let Some(kinds) = kinds {
+            domain = SearchType::And(
+                Box::new(domain),
+                Box::new(make_domain!([("kind", "in", kinds)])),
             );
         }
         let messages: Message<MultipleIds> = env.search_with(&domain, &options)?;

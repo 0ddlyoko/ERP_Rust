@@ -488,7 +488,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     const aside = side();
     const sideShown = aside.length === 0 ? "false" : anyOf(aside.map((piece) => piece.shown));
     const body =
-        `<div t-att-class="${escape(`{ o_form_layout: true, o_form_with_side: ${sideShown} }`)}">` +
+        `<div t-att-class="${escape(`{ o_form_layout: true, o_form_with_side: ${sideShown}, o_form_side_below: __form.sidePlace.below }`)}">` +
         `<div class="o_form_main">${main}</div>` +
         (aside.length === 0
             ? ""

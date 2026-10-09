@@ -88,13 +88,65 @@
     font-size: 13px;
 }
 
+.o_form_body:has(.o_leader) .o_form_side {
+    top: 92px;
+}
+
+/* Holding the thread, the column is as tall as the screen: the thread scrolls within it, not the page */
+
+.o_form_side:has(.o_form_chatter) {
+    height: calc(100vh - 28px);
+    overflow-y: auto;
+}
+
+.o_form_body:has(.o_leader) .o_form_side:has(.o_form_chatter) {
+    height: calc(100vh - 106px);
+}
+
+.o_form_side .o_form_chatter {
+    flex: 1 0 360px;
+    min-height: 360px;
+}
+
+/* Under the form, across its width: the side's cards side by side, the thread under them */
+
+.o_form_layout.o_form_with_side.o_form_side_below {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.o_form_side_below .o_form_side,
+.o_form_body .o_form_side_below .o_form_side:has(.o_form_chatter) {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    align-items: start;
+    height: auto;
+    overflow: visible;
+}
+
+.o_form_side_below .o_form_side .o_form_chatter {
+    grid-column: 1 / -1;
+    min-height: 0;
+}
+
 @media (max-width: 1500px) {
     .o_form_layout.o_form_with_side {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .o_form_side {
+    .o_form_side,
+    .o_form_body .o_form_side:has(.o_form_chatter) {
         position: static;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        align-items: start;
+        height: auto;
+        overflow: visible;
+    }
+
+    .o_form_side .o_form_chatter {
+        grid-column: 1 / -1;
+        min-height: 0;
     }
 }
 

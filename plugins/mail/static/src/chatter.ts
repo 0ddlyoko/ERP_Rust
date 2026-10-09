@@ -4,6 +4,7 @@ import { Notifications } from "@web/core/notifications";
 import { Orm } from "@web/core/orm";
 import { Session } from "@web/core/session";
 import { formParts } from "@web/views/form/form_view";
+import { SidePlace } from "@web/views/form/side_place";
 import { RecordSearch } from "@web/views/widgets/record_search";
 import { MessageFocus } from "./message_focus";
 
@@ -43,6 +44,21 @@ interface Mentionable {
     name: string;
 }
 
+/** How many messages are read at a time, the next ones once nearly all are seen. */
+const PAGE = 40;
+/** How many messages left unseen below bring the next ones. */
+const AHEAD = 5;
+
+/** What the thread shows: everything, or only messages, notes or changes. */
+type Shown = "all" | "message" | "note" | "change";
+
+const KINDS: Record<Shown, string[] | null> = {
+    all: null,
+    message: ["comment"],
+    note: ["note"],
+    change: ["tracking", "creation"],
+};
+
 /** A part of a message's text: as written, or a mention of someone. */
 interface Segment {
     text: string;
@@ -55,7 +71,10 @@ interface Segment {
  * it in their inbox. Above, who follows the record — each following its discussions and the
  * changes they chose — and whether the user does.
  *
- * Read again each time the form reads its record, so a save shows what it changed.
+ * Read again each time the form reads its record, so a save shows what it changed. Read
+ * forty messages at a time, the next forty once only five are left below; narrowed to messages,
+ * notes or changes. Beside the form it scrolls within its column; the user may put it under the
+ * form instead, which a narrow screen does on its own.
  */
 export class Chatter extends Component {
     static template = "mail.Chatter";
@@ -71,6 +90,7 @@ export class Chatter extends Component {
     @inject(Notifications) notifications!: Notifications;
     @inject(MessageFocus) focus!: MessageFocus;
     @inject(Session) session!: Session;
+    @inject(SidePlace) sidePlace!: SidePlace;
 
     /** What is being written: a message, a note, or nothing yet. */
     @state accessor composing: "message" | "note" | null = null;
@@ -87,6 +107,13 @@ export class Chatter extends Component {
     /** Bumped once something was said or followed, for the thread and followers to be read again. */
     @state accessor changed = 0;
 
+    @state accessor shown: Shown = "all";
+    /** The messages read past the first page. */
+    @state accessor older: Message[] = [];
+    /** Whether the whole thread is read. */
+    @state accessor exhausted = false;
+    @state accessor loadingMore = false;
+
     /** The message just brought into sight, marked a moment. */
     @state accessor flashed: number | null = null;
 
@@ -98,10 +125,77 @@ export class Chatter extends Component {
     private reread: number | null = null;
 
     @resource accessor messages: Message[] = load(
-        () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
-        ({ model, record }) =>
-            record === null ? Promise.resolve([]) : this.orm.call<Message[]>("message", "thread", [], { model, record }),
+        () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed, shown: this.shown }),
+        async ({ model, record, shown }) => {
+            this.older = [];
+            if (record === null) {
+                this.exhausted = true;
+                return [];
+            }
+            const first = await this.orm.call<Message[]>("message", "thread", [], { model, record, kinds: KINDS[shown], limit: PAGE });
+            this.exhausted = first.length < PAGE;
+            return first;
+        },
     );
+
+    /** The messages read so far, newest first. */
+    get thread(): Message[] {
+        return [...(this.messages ?? []), ...this.older];
+    }
+
+    show(shown: Shown): void {
+        this.shown = shown;
+    }
+
+    /** Read the next messages, past those read. */
+    async loadMore(): Promise<void> {
+        if (this.exhausted || this.loadingMore || this.props.record === null || loading(() => this.messages)) {
+            return;
+        }
+        this.loadingMore = true;
+        try {
+            const next = await this.orm.call<Message[]>("message", "thread", [], {
+                model: this.props.model,
+                record: this.props.record,
+                kinds: KINDS[this.shown],
+                offset: this.thread.length,
+                limit: PAGE,
+            });
+            const known = new Set(this.thread.map((message) => message.id));
+            this.older = [...this.older, ...next.filter((message) => !known.has(message.id))];
+            this.exhausted = next.length < PAGE;
+        } finally {
+            this.loadingMore = false;
+        }
+    }
+
+    /** Once the fifth message from the last read comes into sight, the next ones are read. */
+    @effect readAhead(): (() => void) | void {
+        const count = this.thread.length;
+        if (this.exhausted || count === 0) {
+            return;
+        }
+        let observer: IntersectionObserver | null = null;
+        void nextTick().then(() => {
+            const items = this.element?.querySelectorAll(".o_chatter_message");
+            const watched = items?.[Math.max(0, count - AHEAD)];
+            if (!watched) {
+                return;
+            }
+            observer = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    void this.loadMore();
+                }
+            });
+            observer.observe(watched);
+        });
+        return () => observer?.disconnect();
+    }
+
+    /** Put the side column under the form, or back beside it. */
+    toggleBelow(): void {
+        this.sidePlace.toggle();
+    }
 
     @resource accessor info: Following | null = load(
         () => ({ model: this.props.model, record: this.props.record, version: this.props.version, changed: this.changed }),
@@ -119,7 +213,7 @@ export class Chatter extends Component {
             return;
         }
         const wanted = focus.message;
-        if (!(this.messages ?? []).some((message) => message.id === wanted) && this.reread !== wanted) {
+        if (!this.thread.some((message) => message.id === wanted) && this.reread !== wanted) {
             this.reread = wanted;
             this.changed++;
             return;

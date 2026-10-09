@@ -9,6 +9,7 @@ import { asksReload, opensRecord, View, viewKinds, viewProps } from "@web/views/
 import { companionFields } from "@web/views/widgets/decimal_widget";
 import { bodyFor } from "./form_body";
 import { type CompiledForm, compileForm, type FormButton } from "./form_compiler";
+import { SidePlace } from "./side_place";
 
 /** How long changing has to pause before the fields computed from it are asked for, in milliseconds. */
 const ONCHANGE_AFTER = 250;
@@ -60,6 +61,7 @@ export class FormView extends View {
     });
 
     @inject(Notifications) notifications!: Notifications;
+    @inject(SidePlace) sidePlace!: SidePlace;
 
     override get kind(): string {
         return "form";

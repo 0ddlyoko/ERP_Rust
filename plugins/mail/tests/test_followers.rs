@@ -290,3 +290,41 @@ fn test_followers_mentions_and_the_inbox() -> Result<()> {
     assert_eq!(info["followers"].as_array().map_or(0, Vec::len), 1);
     Ok(())
 }
+
+/// The thread is read a page at a time, newest first, and narrowed to some kinds of messages.
+#[test]
+fn test_the_thread_by_pages_and_kinds() -> Result<()> {
+    let app = new_app()?;
+    let deal = create(&app, "deal", json!({"name": "Paged"}))?;
+    for (body, internal) in [("one", false), ("two", true), ("three", false)] {
+        call(
+            &app,
+            None,
+            "message",
+            "post",
+            json!({"model": "deal", "record": deal, "body": body, "internal": internal, "mentions": []}),
+        )?;
+    }
+    let page = |args: Value| -> Result<Vec<String>> {
+        let mut args = args;
+        args["model"] = json!("deal");
+        args["record"] = json!(deal);
+        let found = call(&app, None, "message", "thread", args)?;
+        Ok(found
+            .as_array()
+            .expect("a thread")
+            .iter()
+            .map(|message| {
+                message["body"]
+                    .as_str()
+                    .unwrap_or(message["kind"].as_str().unwrap_or_default())
+                    .to_string()
+            })
+            .collect())
+    };
+    assert_eq!(page(json!({"limit": 2}))?, ["three", "two"]);
+    assert_eq!(page(json!({"offset": 2, "limit": 2}))?, ["one", "creation"]);
+    assert_eq!(page(json!({"kinds": ["note"]}))?, ["two"]);
+    assert_eq!(page(json!({"kinds": ["comment"]}))?, ["three", "one"]);
+    Ok(())
+}

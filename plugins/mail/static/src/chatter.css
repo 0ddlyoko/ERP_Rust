@@ -111,6 +111,81 @@
     font-size: 13px;
 }
 
+/* Beside the form, the thread scrolls within the column */
+
+.o_form_side .o_form_chatter {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.o_form_side .o_chatter {
+    flex: 1;
+    min-height: 0;
+}
+
+.o_form_side .o_chatter_thread {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+}
+
+.o_form_side_below .o_form_chatter,
+.o_form_side_below .o_chatter_thread {
+    overflow: visible;
+}
+
+@media (max-width: 1500px) {
+    .o_form_side .o_form_chatter,
+    .o_form_side .o_chatter_thread {
+        overflow: visible;
+    }
+
+    .o_chatter_place {
+        display: none;
+    }
+}
+
+.o_chatter_filters {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--o-panel);
+    align-self: flex-start;
+}
+
+.o_chatter_filter {
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--o-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_chatter_filter:hover {
+    color: var(--o-ink);
+}
+
+.o_chatter_filter.active {
+    background: var(--o-surface);
+    color: var(--o-ink);
+    box-shadow: 0 1px 3px rgb(26 24 56 / 0.12);
+}
+
+.o_chatter_more {
+    color: var(--o-muted);
+    font-size: 12px;
+    text-align: center;
+}
+
 /* Who follows the record, and whether the user does */
 
 .o_chatter_top {

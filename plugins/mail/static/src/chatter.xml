@@ -55,6 +55,18 @@
                         <span t-if="info.following" class="o_chatter_follow_off">Unfollow</span>
                     </button>
                 </t>
+                <button type="button" class="o_chatter_icon o_chatter_place"
+                        t-att-title="sidePlace.below ? 'Beside the form' : 'Under the form'"
+                        t-att-aria-label="sidePlace.below ? 'Beside the form' : 'Under the form'" t-on-click="toggleBelow">
+                    <svg t-if="sidePlace.below" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>
+                    </svg>
+                    <svg t-else="" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h18"/>
+                    </svg>
+                </button>
             </div>
 
             <t t-if="props.record !== null">
@@ -86,10 +98,15 @@
                 </div>
             </t>
 
+            <div t-if="props.record !== null" class="o_chatter_filters" role="group" aria-label="Show">
+                <button t-foreach="[['all', 'All'], ['message', 'Messages'], ['note', 'Notes'], ['change', 'Changes']]" t-as="option"
+                        t-key="option[0]" type="button" t-att-class="{ o_chatter_filter: true, active: shown === option[0] }"
+                        t-att-aria-pressed="shown === option[0] ? 'true' : 'false'" t-on-click="() => show(option[0])">{{ option[1] }}</button>
+            </div>
             <p t-if="props.record === null" class="o_chatter_empty">Messages will show once the record is saved.</p>
-            <p t-elif="!messages.length" class="o_chatter_empty">No messages yet.</p>
+            <p t-elif="!thread.length" class="o_chatter_empty">No messages yet.</p>
             <ol t-else="" class="o_chatter_thread">
-                <li t-foreach="messages" t-as="message" t-key="message.id"
+                <li t-foreach="thread" t-as="message" t-key="message.id"
                     t-att-data-message="message.id"
                     t-att-class="{ o_chatter_message: true, o_chatter_note: message.kind === 'note', o_chatter_pinged: mentionsMe(message), o_chatter_mine: isMine(message), o_chatter_flash: flashed === message.id }">
                     <span class="o_chatter_avatar" aria-hidden="true">{{ initialsOf(authorOf(message)) }}</span>
@@ -116,6 +133,7 @@
                         </ul>
                     </div>
                 </li>
+                <li t-if="loadingMore" class="o_chatter_more">Loading older messages…</li>
             </ol>
         </div>
     </t>
