@@ -3,6 +3,7 @@ import { openWith } from "@web/core/list_memory";
 import { listKey } from "@web/core/router";
 import { periodLabel } from "@web/views/list/list_view";
 import { View, viewKinds, viewProps } from "@web/views/view";
+import { RecordSearch } from "@web/views/widgets/record_search";
 import {
     dateOf,
     dayBefore,
@@ -51,7 +52,7 @@ function readPeriod(action: string | null): Period | null {
  */
 export class DashboardView extends View implements TileHost {
     static template = "web.DashboardView";
-    static components = { DashboardChart, DashboardMetric, DashboardRecords };
+    static components = { DashboardChart, DashboardMetric, DashboardRecords, RecordSearch };
     override props = props({ ...viewProps });
 
     get kind(): string {
@@ -134,10 +135,30 @@ export class DashboardView extends View implements TileHost {
         },
     );
 
-    chooseFilter(event: Event): void {
-        const value = Number((event.target as HTMLSelectElement).value);
-        this.filterId = Number.isInteger(value) && value > 0 ? value : null;
+    /** The model of the records the dashboard may be narrowed to: the users of a salesperson. */
+    get filterModel(): string | null {
+        const field = this.filterField;
+        return field === null ? null : (this.fields?.[field]?.relation ?? null);
     }
+
+    /** Those the records point to are the ones offered. */
+    get filterDomain(): unknown[] {
+        return [["id", "in", (this.filterChoices ?? []).map(([id]) => id)]];
+    }
+
+    /** The record the dashboard is narrowed to, by name; nothing for all of them. */
+    get filterName(): string {
+        return this.filterChoices?.find(([id]) => id === this.filterId)?.[1] ?? "";
+    }
+
+    readonly pickFilter = ([id]: [number, string]): void => {
+        this.filterId = id;
+    };
+
+    /** Emptying the search shows every record again. */
+    readonly clearFilter = (): void => {
+        this.filterId = null;
+    };
 
     /** The currency every amount is in, when the records share one: `EUR`. */
     @resource accessor currency: string | null = load(

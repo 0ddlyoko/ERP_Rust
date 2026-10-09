@@ -31,14 +31,11 @@
                 </div>
                 <Suspense>
                     <t t-set-slot="fallback"/>
-                    <label t-if="filterField" class="o_dash_filter">
+                    <div t-if="filterField &amp;&amp; filterModel" class="o_dash_filter">
                         <span>{{ filterLabel }}</span>
-                        <select t-on-change="(ev) => chooseFilter(ev)">
-                            <option value="">All</option>
-                            <option t-foreach="filterChoices" t-as="choice" t-key="choice[0]" t-att-value="choice[0]"
-                                    t-att-selected="choice[0] === filterId">{{ choice[1] }}</option>
-                        </select>
-                    </label>
+                        <RecordSearch model="filterModel" text="filterName" placeholder="'All'" domain="filterDomain"
+                                      onPick="pickFilter" onEmpty="clearFilter"/>
+                    </div>
                 </Suspense>
             </div>
             <Suspense>
