@@ -35,6 +35,8 @@ export class RecordSearch extends Component {
         onCreate: t.func<(name: string) => void>().optional(),
         onCreateEdit: t.func<(name: string) => void>().optional(),
         onBackspace: t.func<() => void>().optional(),
+        /** The list stays open once a record is picked or created, for the next: tags. */
+        keepOpen: t.boolean().default(false),
     });
 
     @inject(Orm) orm!: Orm;
@@ -117,12 +119,25 @@ export class RecordSearch extends Component {
                 return;
             case "create":
                 this.props.onCreate?.(entry.name);
-                break;
+                this.next();
+                return;
             case "createEdit":
                 this.props.onCreateEdit?.(entry.name);
                 break;
         }
         this.close();
+    }
+
+    /** Once one is chosen: the list again, for the next, when it stays open; else closed. */
+    private next(): void {
+        if (!this.props.keepOpen) {
+            this.close();
+            return;
+        }
+        clearTimeout(this.timer);
+        this.query = null;
+        this.input?.focus();
+        void this.search("");
     }
 
     /** Entering the input: the first records listed at once, its text selected to type over. */
@@ -184,7 +199,7 @@ export class RecordSearch extends Component {
 
     pick(choice: Choice): void {
         this.props.onPick(choice);
-        this.close();
+        this.next();
     }
 
     close(): void {
