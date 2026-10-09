@@ -32,7 +32,8 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith, visit_mut_pass};
 /// Embed every file under `static_dir`, relative to the plugin's manifest, into the plugin.
 ///
 /// Writes `static_files.rs` to `OUT_DIR`, defining `STATIC_FILES`: each file's path relative to
-/// the static directory, and its content. A `.ts` file is served as the `.js` it compiles to; a
+/// the static directory, and its content. `MODULE_FILES` holds each JavaScript file once more, in
+/// the form a single-file bundle needs ([`bundled_form`]), with the specifiers it imports. A `.ts` file is served as the `.js` it compiles to; a
 /// `.d.ts` file only describes types and is left out. Everything else is embedded as it is.
 ///
 /// A relative import written without extension, as TypeScript has it — `./core/session` — is
@@ -58,7 +59,9 @@ pub fn compile(static_dir: &str) {
         .map(|source| public_path(&root, source))
         .collect();
     let compiled = out.join("static");
+    let bundled = out.join("modules");
     let mut entries = Vec::new();
+    let mut modules = Vec::new();
     for source in files {
         let relative = source
             .strip_prefix(&root)
@@ -72,13 +75,11 @@ pub fn compile(static_dir: &str) {
             Some(stem) => {
                 let public = format!("{stem}.js");
                 let target = compiled.join(&public);
-                fs::create_dir_all(target.parent().expect("a file has a parent"))
-                    .expect("the output directory can be created");
                 let code = fs::read_to_string(&source)
                     .map_err(|error| format!("Cannot read {}: {error}", source.display()))
                     .and_then(|code| transpile_with(&code, &relative, &served))
                     .unwrap_or_else(|error| panic!("{error}"));
-                fs::write(&target, code).expect("the output file can be written");
+                write(&target, &code);
                 (public, target)
             }
             None => (relative, source),
@@ -88,12 +89,29 @@ pub fn compile(static_dir: &str) {
             public,
             embedded.to_string_lossy()
         ));
+        if public.ends_with(".js") {
+            let target = bundled.join(&public);
+            let (code, imports) = fs::read_to_string(&embedded)
+                .map_err(|error| format!("Cannot read {}: {error}", embedded.display()))
+                .and_then(|code| bundled_form(&code, &public))
+                .unwrap_or_else(|error| panic!("{error}"));
+            write(&target, &code);
+            modules.push(format!(
+                "    ({:?}, include_bytes!({:?}), &{:?}),\n",
+                public,
+                target.to_string_lossy(),
+                imports
+            ));
+        }
     }
 
     let table = format!(
         "/// Every file this plugin serves, relative to its static directory.\n\
-         pub static STATIC_FILES: &[(&str, &[u8])] = &[\n{}];\n",
-        entries.concat()
+         pub static STATIC_FILES: &[(&str, &[u8])] = &[\n{}];\n\n\
+         /// Every JavaScript file this plugin serves, as a bundle holds it, with what it imports.\n\
+         pub static MODULE_FILES: &[(&str, &[u8], &[&str])] = &[\n{}];\n",
+        entries.concat(),
+        modules.concat()
     );
     fs::write(out.join("static_files.rs"), table).expect("the file table can be written");
 }
@@ -135,6 +153,13 @@ pub fn templates(templates_dir: &str) {
         entries.concat()
     );
     fs::write(out.join("template_files.rs"), table).expect("the file table can be written");
+}
+
+/// Write a generated file, creating its directory.
+fn write(target: &Path, code: &str) {
+    fs::create_dir_all(target.parent().expect("a file has a parent"))
+        .expect("the output directory can be created");
+    fs::write(target, code).expect("the output file can be written");
 }
 
 /// The path a file is served at, relative to the static directory: a `.ts` as its `.js`.
@@ -191,14 +216,7 @@ pub fn transpile_source(code: &str, name: &str) -> Result<String, String> {
 /// Same, giving relative imports the extension of the file they name among `public`: the paths
 /// the plugin serves, relative to its static directory.
 pub fn transpile_with(code: &str, name: &str, public: &HashSet<String>) -> Result<String, String> {
-    let map: Arc<SourceMap> = Arc::new(SourceMap::default());
-    let file = map.new_source_file(
-        Arc::new(FileName::Custom(name.to_string())),
-        code.to_string(),
-    );
-    let diagnostics = Diagnostics::default();
-    let handler = Handler::with_emitter_writer(Box::new(diagnostics.clone()), Some(map.clone()));
-    let options: Options = serde_json::from_value(serde_json::json!({
+    let options = serde_json::json!({
         "jsc": {
             "parser": { "syntax": "typescript", "decorators": true },
             "transform": { "decoratorVersion": "2023-11", "useDefineForClassFields": true },
@@ -207,14 +225,54 @@ pub fn transpile_with(code: &str, name: &str, public: &HashSet<String>) -> Resul
         },
         "module": { "type": "es6" },
         "sourceMaps": false
-    }))
-    .expect("the options are well formed");
-
-    let compiler = Compiler::new(map);
+    });
     let resolver = WithExtensions {
         importer: name,
         public,
     };
+    process(code, name, options, resolver)
+}
+
+/// A JavaScript module as a bundle holds it, and the specifiers it imports, as written.
+///
+/// The code is the body of a function given `require`, `exports` and `module`: its imports become
+/// calls to `require`, a dynamic `import()` one made once the promise resolves, and its exports
+/// properties of `exports` read through getters, so they stay live bindings. Nothing else is
+/// lowered: the module is already what a browser runs.
+pub fn bundled_form(code: &str, name: &str) -> Result<(String, Vec<String>), String> {
+    let options = serde_json::json!({
+        "jsc": {
+            "parser": { "syntax": "ecmascript" },
+            "target": "esnext",
+            "externalHelpers": false
+        },
+        "module": { "type": "commonjs", "ignoreDynamic": false },
+        "sourceMaps": false
+    });
+    let imports = Imports::default();
+    let code = process(code, name, options, imports.clone())?;
+    let mut specifiers = imports.0.lock().expect("not poisoned").clone();
+    let mut seen = HashSet::new();
+    specifiers.retain(|specifier| seen.insert(specifier.clone()));
+    Ok((code, specifiers))
+}
+
+/// `code` compiled with swc's `options`, `pass` run over it first.
+fn process<P: VisitMut>(
+    code: &str,
+    name: &str,
+    options: serde_json::Value,
+    pass: P,
+) -> Result<String, String> {
+    let map: Arc<SourceMap> = Arc::new(SourceMap::default());
+    let file = map.new_source_file(
+        Arc::new(FileName::Custom(name.to_string())),
+        code.to_string(),
+    );
+    let diagnostics = Diagnostics::default();
+    let handler = Handler::with_emitter_writer(Box::new(diagnostics.clone()), Some(map.clone()));
+    let options: Options = serde_json::from_value(options).expect("the options are well formed");
+    let compiler = Compiler::new(map);
     GLOBALS
         .set(&Globals::new(), || {
             compiler.process_js_with_custom_pass(
@@ -223,7 +281,7 @@ pub fn transpile_with(code: &str, name: &str, public: &HashSet<String>) -> Resul
                 &handler,
                 &options,
                 SingleThreadedComments::default(),
-                |_| visit_mut_pass(resolver),
+                |_| visit_mut_pass(pass),
                 |_| noop_pass(),
             )
         })
@@ -237,6 +295,46 @@ pub fn transpile_with(code: &str, name: &str, public: &HashSet<String>) -> Resul
             };
             format!("Cannot compile {name}:\n{detail}")
         })
+}
+
+/// Collects the specifiers a module imports, statically or not.
+#[derive(Clone, Default)]
+struct Imports(Arc<Mutex<Vec<String>>>);
+
+impl Imports {
+    fn add(&self, specifier: &Str) {
+        self.0
+            .lock()
+            .expect("not poisoned")
+            .push(specifier.value.to_atom_lossy().to_string());
+    }
+}
+
+impl VisitMut for Imports {
+    fn visit_mut_import_decl(&mut self, import: &mut ImportDecl) {
+        if !import.type_only {
+            self.add(&import.src);
+        }
+    }
+
+    fn visit_mut_export_all(&mut self, export: &mut ExportAll) {
+        self.add(&export.src);
+    }
+
+    fn visit_mut_named_export(&mut self, export: &mut NamedExport) {
+        if let Some(src) = &export.src {
+            self.add(src);
+        }
+    }
+
+    fn visit_mut_call_expr(&mut self, call: &mut CallExpr) {
+        call.visit_mut_children_with(self);
+        if let (Callee::Import(_), Some(argument)) = (&call.callee, call.args.first())
+            && let Expr::Lit(Lit::Str(specifier)) = &*argument.expr
+        {
+            self.add(specifier);
+        }
+    }
 }
 
 /// Gives relative imports the extension of the file they name.
@@ -343,7 +441,7 @@ impl Write for Diagnostics {
 
 #[cfg(test)]
 mod tests {
-    use super::{complete, transpile_source, transpile_with};
+    use super::{bundled_form, complete, transpile_source, transpile_with};
     use std::collections::HashSet;
 
     #[test]
@@ -454,5 +552,31 @@ mod tests {
             !code.contains("'./core/session'") && !code.contains("\"./core/session\""),
             "{code}"
         );
+    }
+
+    /// A module becomes a function body requiring what it imported, its exports kept live.
+    #[test]
+    fn test_a_module_is_given_its_bundled_form() {
+        let (code, imports) = bundled_form(
+            "import { mount } from 'trame';\n\
+             import './core/rpc.js';\n\
+             export { Rpc } from './core/rpc.js';\n\
+             export let count = 0;\n\
+             export function bump() { count += 1; mount(); }\n\
+             export default class Main { #hidden = 1; }\n\
+             export const later = () => import('./lazy.js');\n",
+            "src/main.js",
+        )
+        .expect("compiles");
+        assert_eq!(
+            imports,
+            vec!["trame", "./core/rpc.js", "./lazy.js"],
+            "{code}"
+        );
+        assert!(code.contains("require(\"trame\")"), "{code}");
+        assert!(code.contains("require(\"./lazy.js\")"), "{code}");
+        assert!(!code.contains("import "), "{code}");
+        assert!(!code.contains("export "), "{code}");
+        assert!(code.contains("#hidden"), "nothing lowered: {code}");
     }
 }

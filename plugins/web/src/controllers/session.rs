@@ -89,6 +89,9 @@ fn login_page(
     error: Option<&str>,
 ) -> Result<Response> {
     let mut values = Values::new();
+    if let Some(debug) = request.query("debug") {
+        values.insert("debug".to_string(), Value::Text(debug.to_string()));
+    }
     values.insert("csrf_token".to_string(), Value::Text(request.csrf_token()));
     values.insert("redirect".to_string(), Value::Text(redirect.to_string()));
     values.insert("login".to_string(), Value::Text(login.to_string()));

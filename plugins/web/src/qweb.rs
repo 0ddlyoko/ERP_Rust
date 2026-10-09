@@ -4,10 +4,11 @@
 //! as values. `t-set` names a value, from `t-value` or from its rendered body. `t-out` writes a
 //! value, escaped unless it is markup. `t-if` keeps an element only when its value is set and not
 //! empty. `t-att-<name>` writes an attribute from a value, left out when there is none.
-//! `t-call-assets` loads a bundle. Anything else starting with `t-` is refused, rather than
+//! `t-call-assets` loads a bundle, each of its files apart when `debug` holds `assets`. Anything else starting with `t-` is refused, rather than
 //! silently written out.
 
 use erp::Result;
+use erp::assets::AssetRegistry;
 use erp::xml::{Element, Node};
 use std::collections::{HashMap, HashSet};
 
@@ -35,7 +36,7 @@ const MAXIMUM_DEPTH: usize = 32;
 pub struct Renderer<'a> {
     templates: &'a HashMap<String, Vec<Node>>,
     browser_templates: &'a HashSet<String>,
-    import_map: &'a str,
+    assets: &'a AssetRegistry,
     import_map_written: bool,
     depth: usize,
 }
@@ -45,12 +46,12 @@ impl<'a> Renderer<'a> {
     pub fn new(
         templates: &'a HashMap<String, Vec<Node>>,
         browser_templates: &'a HashSet<String>,
-        import_map: &'a str,
+        assets: &'a AssetRegistry,
     ) -> Self {
         Renderer {
             templates,
             browser_templates,
-            import_map,
+            assets,
             import_map_written: false,
             depth: 0,
         }
@@ -127,7 +128,7 @@ impl<'a> Renderer<'a> {
             return Ok(());
         }
         if let Some(bundle) = element.attribute("t-call-assets") {
-            self.assets(bundle, out);
+            self.assets(bundle, values, out);
             return Ok(());
         }
         let content = match element.attribute("t-out") {
@@ -168,21 +169,43 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// What a page loads for a bundle: its styles and its scripts, after the import map they need
-    /// — written once, before the first module.
-    fn assets(&mut self, bundle: &str, out: &mut String) {
-        if !self.import_map_written {
+    /// What a page loads for a bundle: its styles and its scripts, each built into one file at the
+    /// URL of its version. With `debug` holding `assets`, each file from its own URL instead, after
+    /// the import map they need — written once, before the first module.
+    fn assets(&mut self, bundle: &str, values: &Values, out: &mut String) {
+        let debug = matches!(
+            values.get("debug"),
+            Some(Value::Text(modes)) if modes.split(',').any(|mode| mode.trim() == "assets")
+        );
+        if debug {
+            if !self.import_map_written {
+                out.push_str(&format!(
+                    "<script type=\"importmap\">{}</script>",
+                    self.assets.import_map().replace("</", "<\\/")
+                ));
+                self.import_map_written = true;
+            }
+            let bundle = escape_attribute(bundle);
             out.push_str(&format!(
-                "<script type=\"importmap\">{}</script>",
-                self.import_map.replace("</", "<\\/")
+                "<link rel=\"stylesheet\" href=\"/web/assets/{bundle}.css\">\
+                 <script type=\"module\" src=\"/web/assets/{bundle}.js\"></script>"
             ));
-            self.import_map_written = true;
+            return;
         }
-        let bundle = escape_attribute(bundle);
-        out.push_str(&format!(
-            "<link rel=\"stylesheet\" href=\"/web/assets/{bundle}.css\">\
-             <script type=\"module\" src=\"/web/assets/{bundle}.js\"></script>"
-        ));
+        if let Some(built) = self.assets.stylesheet(bundle) {
+            out.push_str(&format!(
+                "<link rel=\"stylesheet\" href=\"/web/assets/{}/{}.css\">",
+                built.version,
+                escape_attribute(bundle)
+            ));
+        }
+        if let Some(built) = self.assets.script(bundle) {
+            out.push_str(&format!(
+                "<script type=\"module\" src=\"/web/assets/{}/{}.js\"></script>",
+                built.version,
+                escape_attribute(bundle)
+            ));
+        }
     }
 }
 

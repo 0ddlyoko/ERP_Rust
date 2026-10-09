@@ -95,6 +95,16 @@ fn get_as(app: &Application, cookie: &str, target: &str) -> Response {
 }
 
 /// A page of the web client, as the logged-in administrator.
+/// The URL of the page's `href` or `src` ending with `suffix`.
+fn url_in(page: &str, suffix: &str) -> String {
+    let end = page
+        .find(&format!("{suffix}\""))
+        .unwrap_or_else(|| panic!("{suffix} in {page}"))
+        + suffix.len();
+    let start = page[..end].rfind('"').expect("quoted") + 1;
+    page[start..end].to_string()
+}
+
 fn get_logged_in(app: &Application, target: &str) -> Response {
     let cookie = log_in(app);
     get_as(app, &cookie, target)
@@ -146,11 +156,11 @@ fn test_the_web_client_asks_to_log_in_first() -> Result<()> {
         "{page}"
     );
     assert!(!page.contains("o_login_error"), "no error yet");
-    assert!(page.contains("/web/assets/web.assets_login.css"));
+    let styles = url_in(&page, "/web.assets_login.css");
+    assert!(get(&app, &styles).text_body().contains(".o_login_form"));
     assert!(
-        get(&app, "/web/assets/web.assets_login.css")
-            .text_body()
-            .contains(".o_login_form")
+        !page.contains("web.assets_login.js"),
+        "a bundle without scripts loads none"
     );
     Ok(())
 }
@@ -847,11 +857,53 @@ fn test_the_web_client_component_is_in_the_backend_bundle() -> Result<()> {
     Ok(())
 }
 
-/// The page names what scripts import by name, before loading any of them.
+/// Out of debugging, a bundle is one file holding every module — those its files import by name
+/// or path with them — at the URL of its version, which a browser keeps for good.
+#[test]
+fn test_a_bundle_is_one_file_at_the_url_of_its_version() -> Result<()> {
+    let app = new_app()?;
+    let page = get_logged_in(&app, "/web").text_body();
+    let url = url_in(&page, "/web.assets_backend.js");
+    let response = get(&app, &url);
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        response.header("cache-control"),
+        Some("public, max-age=31536000, immutable")
+    );
+    let script = response.text_body();
+    for module in [
+        "define(\"web/static/src/main.js\"",
+        "define(\"web/static/src/core/session.js\"",
+        "define(\"web/static/lib/trame.js\"",
+    ] {
+        assert!(script.contains(module), "{module} in the bundle");
+    }
+    assert!(
+        script.contains("\"trame\":\"web/static/lib/trame.js\""),
+        "a name of the import map resolved to its module"
+    );
+    assert!(script.contains("load(\"web/static/src/main.js\");"));
+    assert!(
+        !script.contains("\nimport ") && !script.contains("\nexport "),
+        "no module syntax left"
+    );
+
+    let stale = get(&app, "/web/assets/0123456789abcdef/web.assets_backend.js");
+    assert_eq!(stale.status(), 200);
+    assert_eq!(stale.text_body(), script, "the current bundle");
+    assert_eq!(stale.header("cache-control"), Some("no-cache"));
+    assert_eq!(
+        get(&app, "/web/assets/0123456789abcdef/nobody.contributes.js").status(),
+        404
+    );
+    Ok(())
+}
+
+/// Debugging, the page names what scripts import by name, before loading any of them.
 #[test]
 fn test_the_web_client_page_declares_the_import_map() -> Result<()> {
     let app = new_app()?;
-    let page = get_logged_in(&app, "/web").text_body();
+    let page = get_logged_in(&app, "/web?debug=assets").text_body();
     let map = page
         .split("<script type=\"importmap\">")
         .nth(1)
@@ -1060,19 +1112,27 @@ fn test_the_web_client_page_is_rendered_from_its_template() -> Result<()> {
     for expected in [
         "<meta charset=\"utf-8\">",
         "<title>ERP</title>",
-        "<link rel=\"stylesheet\" href=\"/web/assets/web.assets_backend.css\">",
-        "<script type=\"module\" src=\"/web/assets/web.assets_backend.js\"></script>",
         "<div class=\"o_web_client_root\"></div>",
     ] {
         assert!(page.contains(expected), "{expected} in {page}");
     }
     assert!(!page.contains(" t-"), "no directive left: {page}");
+    assert!(!page.contains("importmap"), "one file needs no import map");
 
-    let styles = get(&app, "/web/assets/web.assets_backend.css").text_body();
+    let styles = get(&app, &url_in(&page, "/web.assets_backend.css")).text_body();
     assert!(
         styles.contains(".o_sidebar") && styles.contains("--o-accent"),
         "{styles}"
     );
+    let scripts = get(&app, &url_in(&page, "/web.assets_backend.js")).text_body();
+    assert!(scripts.contains("define(\"web/static/src/main.js\""));
+    let debugging = get_logged_in(&app, "/web?debug=assets").text_body();
+    for expected in [
+        "<link rel=\"stylesheet\" href=\"/web/assets/web.assets_backend.css\">",
+        "<script type=\"module\" src=\"/web/assets/web.assets_backend.js\"></script>",
+    ] {
+        assert!(debugging.contains(expected), "{expected} in {debugging}");
+    }
     let scripts = get(&app, "/web/assets/web.assets_backend.js").text_body();
     assert!(scripts.contains("import \"/static/web/src/main.js\";"));
     assert!(

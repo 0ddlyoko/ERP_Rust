@@ -333,8 +333,8 @@ impl Template<SingleId> {
             Ok((server, browser))
         })?;
         let (server, browser) = resolved.as_ref();
-        let import_map = env.model_manager.assets.import_map();
-        let html = Renderer::new(server, browser, &import_map).render(&key, &mut values)?;
+        let html =
+            Renderer::new(server, browser, &env.model_manager.assets).render(&key, &mut values)?;
         Ok(format!("<!doctype html>\n{html}\n"))
     }
 

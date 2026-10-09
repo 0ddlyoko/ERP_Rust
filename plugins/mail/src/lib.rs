@@ -2,7 +2,7 @@
 //! to its followers and those they mention, each told in their inbox. Installs itself once
 //! `base` and `web` are there.
 
-use erp::assets::{BundleContribution, StaticFiles};
+use erp::assets::{BundleContribution, ModuleFiles, StaticFiles};
 use erp::model::ModelManager;
 use erp::plugin::{Plugin, PluginInfo};
 
@@ -54,6 +54,10 @@ impl Plugin for MailPlugin {
 
     fn static_files(&self) -> StaticFiles {
         STATIC_FILES
+    }
+
+    fn module_files(&self) -> ModuleFiles {
+        MODULE_FILES
     }
 
     fn assets(&self) -> Vec<BundleContribution> {

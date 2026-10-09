@@ -28,6 +28,9 @@ impl Web {
             return Ok(Response::redirect(&format!("/login?redirect={back}")));
         }
         let mut values = Values::new();
+        if let Some(debug) = request.query("debug") {
+            values.insert("debug".to_string(), Value::Text(debug.to_string()));
+        }
         values.insert(
             "session_info".to_string(),
             Value::Markup(script_json(&session_info(env, request)?)),
@@ -57,10 +60,10 @@ impl Web {
 
     /// A bundle, as one file per kind: `/web/assets/<bundle>.js`, `.css` or `.xml`.
     ///
-    /// The JavaScript is a module importing each file of the bundle in order: the files stay
-    /// separate modules, each at its own URL, so their relative imports resolve as written. The
-    /// styles are the bundle's CSS files, one after the other. The templates are those served from
-    /// the bundle's `.xml` files, every extension applied.
+    /// What debugging wants, each browser asking whether it changed: the JavaScript is a module
+    /// importing each file of the bundle from its own URL, so every file stays where it was
+    /// written. The styles are the bundle's CSS files, one after the other. The templates are
+    /// those served from the bundle's `.xml` files, every extension applied.
     #[erp(route = "/web/assets/<file>", auth = "none")]
     pub fn bundle(
         &self,
@@ -68,14 +71,17 @@ impl Web {
         request: &Request,
         file: String,
     ) -> Result<Response> {
-        let not_found = || HttpError::not_found("No installed plugin contributes to this bundle");
-        let Some((name, kind)) = file.rsplit_once('.') else {
-            return Err(not_found().into());
-        };
-        let (body, content_type) = match kind {
-            "js" => (scripts(env, name), "text/javascript; charset=utf-8"),
-            "css" => (styles(env, name), "text/css; charset=utf-8"),
-            "xml" => (
+        let assets = &env.model_manager.assets;
+        let (body, content_type) = match file.rsplit_once('.') {
+            Some((name, "js")) => (
+                assets.script_imports(name),
+                "text/javascript; charset=utf-8",
+            ),
+            Some((name, "css")) => (
+                assets.stylesheet(name).map(|built| built.content.clone()),
+                "text/css; charset=utf-8",
+            ),
+            Some((name, "xml")) => (
                 Template::<SingleId>::bundle_markup(env, name.to_string())?
                     .as_ref()
                     .clone(),
@@ -84,49 +90,51 @@ impl Web {
             _ => (None, ""),
         };
         let Some(body) = body else {
-            return Err(not_found().into());
+            return Err(bundle_not_found().into());
         };
         Ok(cached(request, body.into_bytes(), content_type))
     }
+
+    /// A bundle built into one file, at the version its URL names:
+    /// `/web/assets/<version>/<bundle>.js` or `.css`.
+    ///
+    /// Every module of the JavaScript is in it, those its files import included, so a page loads
+    /// a bundle in one request. Kept for good by the browser, the version changing with the
+    /// content; a page asking for another version — rendered before the plugins changed — is
+    /// answered the current one, which it must ask about again.
+    #[erp(route = "/web/assets/<version>/<file>", auth = "none")]
+    pub fn built_bundle(
+        &self,
+        env: &mut Environment,
+        request: &Request,
+        version: String,
+        file: String,
+    ) -> Result<Response> {
+        let assets = &env.model_manager.assets;
+        let (built, content_type) = match file.rsplit_once('.') {
+            Some((name, "js")) => (assets.script(name), "text/javascript; charset=utf-8"),
+            Some((name, "css")) => (assets.stylesheet(name), "text/css; charset=utf-8"),
+            _ => (None, ""),
+        };
+        let Some(built) = built else {
+            return Err(bundle_not_found().into());
+        };
+        if built.version != version {
+            return Ok(cached(
+                request,
+                built.content.clone().into_bytes(),
+                content_type,
+            ));
+        }
+        Ok(
+            Response::file(built.content.clone().into_bytes(), content_type)
+                .with_header("Cache-Control", "public, max-age=31536000, immutable"),
+        )
+    }
 }
 
-fn scripts(env: &Environment, bundle: &str) -> Option<String> {
-    let assets = &env.model_manager.assets;
-    if !assets.bundles().contains(&bundle) {
-        return None;
-    }
-    let mut module = format!("// Bundle {bundle}\n");
-    for path in assets.bundle(bundle) {
-        if !path.ends_with(".js") {
-            continue;
-        }
-        if let Some((plugin, rest)) = path.split_once("/static/") {
-            module.push_str(&format!("import \"/static/{plugin}/{rest}\";\n"));
-        }
-    }
-    Some(module)
-}
-
-/// The CSS files of a bundle, each preceded by its path, so the browser shows where a rule is from.
-fn styles(env: &Environment, bundle: &str) -> Option<String> {
-    let assets = &env.model_manager.assets;
-    if !assets.bundles().contains(&bundle) {
-        return None;
-    }
-    let mut sheet = String::new();
-    for path in assets.bundle(bundle) {
-        if !path.ends_with(".css") {
-            continue;
-        }
-        if let Some(content) = assets.file(&path) {
-            sheet.push_str(&format!("/* {path} */\n"));
-            sheet.push_str(&String::from_utf8_lossy(content));
-            if !sheet.ends_with('\n') {
-                sheet.push('\n');
-            }
-        }
-    }
-    Some(sheet)
+fn bundle_not_found() -> HttpError {
+    HttpError::not_found("No installed plugin contributes to this bundle")
 }
 
 /// What the web client knows of its session from the start, so it begins without asking: who is

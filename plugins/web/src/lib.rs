@@ -3,7 +3,7 @@
 //! Installs itself once `base` is there, so every application that has users also serves them a
 //! face without anybody asking for it.
 
-use erp::assets::{BundleContribution, StaticFiles, TemplateFiles};
+use erp::assets::{BundleContribution, ModuleFiles, StaticFiles, TemplateFiles};
 use erp::http::ControllerRegistry;
 use erp::model::ModelManager;
 use erp::plugin::{Plugin, PluginInfo};
@@ -63,6 +63,10 @@ impl Plugin for WebPlugin {
 
     fn static_files(&self) -> StaticFiles {
         STATIC_FILES
+    }
+
+    fn module_files(&self) -> ModuleFiles {
+        MODULE_FILES
     }
 
     fn template_files(&self) -> TemplateFiles {

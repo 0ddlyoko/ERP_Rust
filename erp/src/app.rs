@@ -592,6 +592,9 @@ impl Application {
         self.model_manager
             .assets
             .register(plugin_name, plugin.static_files(), plugin.assets());
+        self.model_manager
+            .assets
+            .register_modules(plugin_name, plugin.module_files());
         self.model_manager.assets.register_imports(plugin.imports());
         self.model_manager
             .assets

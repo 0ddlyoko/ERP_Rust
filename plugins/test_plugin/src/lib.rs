@@ -1,6 +1,6 @@
 use crate::models::machine_discounted::MachineDiscounted;
 use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
-use erp::assets::{BundleContribution, StaticFiles};
+use erp::assets::{BundleContribution, ModuleFiles, StaticFiles};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 
@@ -29,6 +29,10 @@ impl Plugin for TestPlugin {
 
     fn static_files(&self) -> StaticFiles {
         STATIC_FILES
+    }
+
+    fn module_files(&self) -> ModuleFiles {
+        MODULE_FILES
     }
 
     /// Two bundles from the same files, the way the back office and the site share a plugin.

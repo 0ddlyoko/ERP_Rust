@@ -14,7 +14,7 @@ pub use plugin_manager::{PluginManager, plugin_build_symbol, plugin_symbol};
 pub use record::{BootRecords, note_parameter, parameter};
 pub(crate) use record::{PluginRow, installed_version, note_plugin, plugin_row, record_plugin};
 
-use crate::assets::{BundleContribution, StaticFiles, TemplateFiles};
+use crate::assets::{BundleContribution, ModuleFiles, StaticFiles, TemplateFiles};
 use crate::environment::Environment;
 use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
@@ -71,6 +71,12 @@ pub trait Plugin: Any + Send + Sync {
     /// `include!(concat!(env!("OUT_DIR"), "/static_files.rs"))` then `STATIC_FILES`, from a build
     /// script calling `erp_assets_build::compile`. Reachable as `<plugin>/static/<path>`.
     fn static_files(&self) -> StaticFiles {
+        &[]
+    }
+
+    /// Its JavaScript files as a single-file bundle holds them, embedded with them: `MODULE_FILES`
+    /// of the same `static_files.rs`. A file left out is loaded from its own URL.
+    fn module_files(&self) -> ModuleFiles {
         &[]
     }
 
