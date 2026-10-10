@@ -67,6 +67,8 @@ impl<'mm> Environment<'mm> {
         Ok(true)
     }
 
+    /// Write `values` on the records through the model's `write`; the checks the written fields
+    /// concern run after, and a refusal undoes the write.
     pub fn write<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -75,7 +77,54 @@ impl<'mm> Environment<'mm> {
     ) -> Result<()> {
         self.model_manager.try_get_model(model_name)?;
         let ids: MultipleIds = ids.clone().into();
-        self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))
+        if !self.has_checks(model_name) {
+            return self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,));
+        }
+        let written: Vec<String> = values.fields.keys().cloned().collect();
+        self.savepoint(|env| {
+            env.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))?;
+            let written: Vec<&str> = written.iter().map(String::as_str).collect();
+            env.run_checks(model_name, &ids, Some(&written))
+        })
+    }
+
+    /// Whether the model declares `check_*` methods.
+    pub(crate) fn has_checks(&self, model_name: &str) -> bool {
+        self.model_manager
+            .try_get_model(model_name)
+            .is_ok_and(|model| !model.checks.is_empty())
+    }
+
+    /// Run the model's checks on `ids`: all of them once created, those concerned by the fields
+    /// `written` once written.
+    pub(crate) fn run_checks(
+        &mut self,
+        model_name: &str,
+        ids: &MultipleIds,
+        written: Option<&[&str]>,
+    ) -> Result<()> {
+        if ids.get_ids_ref().is_empty() {
+            return Ok(());
+        }
+        let checks = self.model_manager.try_get_model(model_name)?.checks.clone();
+        for check in checks {
+            if written.is_some_and(|written| !check.concerns(written)) {
+                continue;
+            }
+            if check.per_record {
+                for id in ids.get_ids_ref().clone() {
+                    self.call_method::<(), ()>(
+                        model_name,
+                        &check.method,
+                        &MultipleIds::from(id),
+                        &(),
+                    )?;
+                }
+            } else {
+                self.call_method::<(), ()>(model_name, &check.method, ids, &())?;
+            }
+        }
+        Ok(())
     }
 
     /// What writing does, below every override of `write`.

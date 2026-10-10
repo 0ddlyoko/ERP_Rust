@@ -39,7 +39,26 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
     pub methods: MethodRegistry,
+    /// The `check_*` methods run once records are created or written.
+    pub checks: Vec<Check>,
     stored_fields: Vec<String>,
+}
+
+/// A `check_*` method refusing records that break a rule: run after they are created, and after
+/// they are written — only when one of the fields it is `on` changes, if it names some.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Check {
+    pub method: String,
+    pub on: Vec<&'static str>,
+    /// Declared on one record: run for each record in turn.
+    pub per_record: bool,
+}
+
+impl Check {
+    /// Whether writing these fields asks for the check.
+    pub fn concerns(&self, written: &[&str]) -> bool {
+        self.on.is_empty() || self.on.iter().any(|field| written.contains(field))
+    }
 }
 
 impl FinalInternalModel {
@@ -55,6 +74,7 @@ impl FinalInternalModel {
             models: HashMap::new(),
             fields: HashMap::new(),
             methods: MethodRegistry::default(),
+            checks: Vec::new(),
             stored_fields: Vec::new(),
         }
     }

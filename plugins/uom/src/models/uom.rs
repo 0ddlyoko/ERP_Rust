@@ -4,7 +4,6 @@ use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
-use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 
 #[selection]
@@ -143,25 +142,5 @@ impl Uom<MultipleIds> {
             }
         }
         Ok(())
-    }
-
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Uom::<MultipleIds>::from_ids(ids.clone(), env).check_ratios(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_ratios(env)
-        })
     }
 }

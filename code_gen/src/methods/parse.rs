@@ -1,3 +1,4 @@
+use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{Error, FnArg, ImplItemFn, Pat, PatType, Result, ReturnType, Type};
 
@@ -19,6 +20,8 @@ pub struct ParsedMethod {
     pub ret: Type,
     /// Whether the method answers to a remote caller.
     pub is_rpc: bool,
+    /// For a `check_*` method, the fields whose writing runs it.
+    pub on: Option<Vec<String>>,
     /// Whether the method declared a `super` cursor.
     ///
     /// Optional, because most implementations never call the one they override, and a parameter
@@ -28,20 +31,49 @@ pub struct ParsedMethod {
     pub item: ImplItemFn,
 }
 
-/// Whether the method is reachable from outside the process.
+/// What the `#[erp(...)]` attributes of a method say.
+#[derive(Default)]
+pub struct MethodAttributes {
+    pub is_rpc: bool,
+    /// For a `check_*` method: the fields whose writing runs it, every write when none.
+    pub on: Option<Vec<String>>,
+}
+
+/// Whether the method is reachable from outside the process, and the fields a check is `on`.
 ///
 /// Overridability is not asked for — every method of an `#[erp_methods]` block has it, the block
 /// being the boundary. Being callable remotely is asked for every time, because the two are
 /// different trust boundaries: a plugin calling a method already runs in process with full access
 /// to the database, a remote caller does not. Forgetting the attribute leaves an endpoint that
 /// does not exist, which is the safe direction to fail in.
-pub fn read_rpc_attribute(item: &ImplItemFn) -> Result<bool> {
-    let mut is_rpc = false;
+pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
+    let mut attributes = MethodAttributes::default();
     for attr in item.attrs.iter().filter(|a| a.meta.path().is_ident("erp")) {
         attr.parse_args_with(|input: syn::parse::ParseStream| {
             let key: syn::Ident = input.parse()?;
             match key.to_string().as_str() {
-                "rpc" => Ok(()),
+                "rpc" => {
+                    if attributes.is_rpc {
+                        return Err(Error::new(attr.span(), "Duplicate #[erp(rpc)]"));
+                    }
+                    attributes.is_rpc = true;
+                    Ok(())
+                }
+                "on" => {
+                    if !item.sig.ident.to_string().starts_with("check_") {
+                        return Err(Error::new(
+                            key.span(),
+                            "Only a check_* method is run `on` fields being written",
+                        ));
+                    }
+                    input.parse::<syn::Token![=]>()?;
+                    let content;
+                    syn::bracketed!(content in input);
+                    let fields =
+                        content.parse_terminated(<syn::LitStr as Parse>::parse, syn::Token![,])?;
+                    attributes.on = Some(fields.iter().map(syn::LitStr::value).collect());
+                    Ok(())
+                }
                 "overridable" => Err(Error::new(
                     key.span(),
                     "Every method of an #[erp_methods] block is overridable, so this is not \
@@ -50,16 +82,12 @@ pub fn read_rpc_attribute(item: &ImplItemFn) -> Result<bool> {
                 )),
                 other => Err(Error::new(
                     key.span(),
-                    format!("Unknown key {other}. The only key on a method is: rpc"),
+                    format!("Unknown key {other}. The keys on a method are: rpc, on"),
                 )),
             }
         })?;
-        if is_rpc {
-            return Err(Error::new(attr.span(), "Duplicate #[erp(rpc)]"));
-        }
-        is_rpc = true;
     }
-    Ok(is_rpc)
+    Ok(attributes)
 }
 
 /// Split a method into the pieces the generator needs.
@@ -70,7 +98,7 @@ pub fn read_rpc_attribute(item: &ImplItemFn) -> Result<bool> {
 /// `&self` works on the records of the block — several on `Model<MultipleIds>`, one on
 /// `Model<SingleId>` — and a method without it works on the model.
 pub fn parse_method(item: ImplItemFn, block: MethodReceiver) -> Result<ParsedMethod> {
-    let is_rpc = read_rpc_attribute(&item)?;
+    let MethodAttributes { is_rpc, on } = read_method_attributes(&item)?;
     let signature_help = "A method of an #[erp_methods] block takes &self — or nothing, to work \
                           on the model — an &mut Environment, its own arguments, and may end with \
                           a `sup: Super` cursor";
@@ -114,6 +142,7 @@ pub fn parse_method(item: ImplItemFn, block: MethodReceiver) -> Result<ParsedMet
         args,
         ret,
         is_rpc,
+        on,
         has_sup,
         item,
     })

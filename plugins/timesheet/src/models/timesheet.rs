@@ -75,21 +75,13 @@ impl Timesheet<MultipleIds> {
         for entry in &mut values {
             project_of_task(env, entry)?;
         }
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Timesheet::<MultipleIds>::from_ids(ids.get_ids_ref().clone(), env)
-                .check_entries(env)?;
-            Ok(ids)
-        })
+        sup.call_with(values, env)
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
         let mut values = values;
         project_of_task(env, &mut values)?;
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_entries(env)
-        })
+        sup.call_with(values, env)
     }
 }
 

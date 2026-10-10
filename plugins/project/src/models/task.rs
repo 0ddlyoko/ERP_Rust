@@ -156,6 +156,7 @@ impl Task<SingleId> {
 #[erp_methods]
 impl Task<MultipleIds> {
     /// A task's column is one of its project's board — none without a project.
+    #[erp(on = ["stage", "project"])]
     pub fn check_stages(&self, env: &mut Environment) -> Result<()> {
         for task in self {
             let stage: Stage<SingleId> = task.get_stage(env)?;
@@ -307,7 +308,6 @@ impl Task<MultipleIds> {
             .map(|task| task.contains_key("depends_on") || task.contains_key("parent"))
             .collect();
         let created = sup.call_with(values, env)?;
-        Task::<MultipleIds>::from_ids(created.get_ids_ref().clone(), env).check_stages(env)?;
         let linked: Vec<u32> = created
             .get_ids_ref()
             .iter()
@@ -340,11 +340,7 @@ impl Task<MultipleIds> {
         } else {
             Task::from_ids(Vec::<u32>::new(), env)
         };
-        let placed = moved || values.contains_key("project");
         sup.call_with(values, env)?;
-        if placed {
-            self.check_stages(env)?;
-        }
         if moved {
             for task in self {
                 if !matches!(

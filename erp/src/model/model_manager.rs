@@ -182,6 +182,36 @@ impl ModelManager {
             .register(model_name, method_name, link, receiver, plugin_name);
     }
 
+    /// Run `method` after records of the model are created, and after they are written — only
+    /// when a field of `on` changes, if it names some. Declared once however many blocks name it.
+    pub fn register_check(
+        &mut self,
+        model_name: &str,
+        method: &str,
+        on: &[&'static str],
+        per_record: bool,
+    ) {
+        let checks = &mut self
+            .models
+            .entry(model_name.to_string())
+            .or_insert_with(|| FinalInternalModel::new(model_name))
+            .checks;
+        match checks.iter_mut().find(|check| check.method == method) {
+            Some(check) => {
+                for field in on {
+                    if !check.on.contains(field) {
+                        check.on.push(field);
+                    }
+                }
+            }
+            None => checks.push(erp_internal_types::model::Check {
+                method: method.to_string(),
+                on: on.to_vec(),
+                per_record,
+            }),
+        }
+    }
+
     /// Execute some final modification when models are registered, like:
     /// - Linking M2O => O2M (as there is already a link between O2M => M2O)
     pub fn post_register(&mut self) {

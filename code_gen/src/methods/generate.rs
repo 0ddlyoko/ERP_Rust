@@ -49,6 +49,20 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             );
         });
 
+        if let Some(per_record) = check_receiver(method) {
+            let on = method.on.clone().unwrap_or_default();
+            registrations.push(quote! {
+                model_manager.register_check(
+                    <#many as erp::types::model::CommonModel<
+                        erp::types::field::MultipleIds,
+                    >>::_get_model_name(),
+                    #name,
+                    &[#(#on),*],
+                    #per_record,
+                );
+            });
+        }
+
         if method.is_rpc {
             let rpc_ident = &names.rpc;
             links.push(rpc_wrapper(method, &names, &self_ty, &many));
@@ -102,6 +116,20 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
 
         #registration
     })
+}
+
+/// Whether a method is a check run after records are created or written — a `check_*` method on
+/// records or on one record, taking nothing more and yielding nothing — and if so, whether it is
+/// run for each record in turn.
+fn check_receiver(method: &ParsedMethod) -> Option<bool> {
+    let is_unit = matches!(&method.ret, Type::Tuple(tuple) if tuple.elems.is_empty());
+    let is_check =
+        method.name.to_string().starts_with("check_") && method.args.is_empty() && is_unit;
+    match method.receiver {
+        MethodReceiver::Records if is_check => Some(false),
+        MethodReceiver::Record if is_check => Some(true),
+        _ => None,
+    }
 }
 
 /// Names the generated items answer to.

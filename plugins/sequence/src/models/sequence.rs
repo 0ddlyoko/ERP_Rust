@@ -3,7 +3,6 @@ use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, NaiveDate, SingleId};
-use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 
 #[selection]
@@ -167,25 +166,5 @@ impl Sequence<MultipleIds> {
             }
         }
         Ok(())
-    }
-
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Sequence::<MultipleIds>::from_ids(ids.clone(), env).check_series(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_series(env)
-        })
     }
 }

@@ -4,7 +4,6 @@ use currency::models::BaseCurrency;
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, SingleId};
-use erp::types::model::MapOfFields;
 use product::models::{BaseProduct, BaseProductCategory, Product, ProductCategory};
 
 #[selection]
@@ -111,26 +110,6 @@ impl PricelistItem<MultipleIds> {
             }
         }
         Ok(())
-    }
-
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            PricelistItem::<MultipleIds>::from_ids(ids.clone(), env).check_items(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_items(env)
-        })
     }
 }
 

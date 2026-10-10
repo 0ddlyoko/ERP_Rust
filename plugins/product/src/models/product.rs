@@ -158,18 +158,7 @@ impl Product<MultipleIds> {
                 product.insert("purchase_uom", uom);
             }
         }
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Product::<MultipleIds>::from_ids(ids.clone(), env).check_product(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_product(env)
-        })
+        sup.call_with(values, env)
     }
 
     /// Archive the products: they are no longer offered, and stay where they are used.

@@ -2,7 +2,6 @@ use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, SingleId};
-use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use uom::models::Uom;
 
@@ -19,6 +18,7 @@ pub struct UomProduct<Mode: IdMode> {
 impl UomProduct<MultipleIds> {
     /// A unit products use cannot move to another category: their quantities and prices would
     /// suddenly count something else.
+    #[erp(on = ["category"])]
     pub fn check_not_used(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
         for uom in self {
@@ -37,12 +37,5 @@ impl UomProduct<MultipleIds> {
             }
         }
         Ok(())
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        if values.contains_key("category") {
-            self.check_not_used(env)?;
-        }
-        sup.call_with(values, env)
     }
 }

@@ -33,22 +33,6 @@ impl Parameter<MultipleIds> {
         Ok(())
     }
 
-    pub fn create(
-        &self,
-        env: &mut Environment,
-        values: Vec<MapOfFields>,
-        sup: Super,
-    ) -> Result<MultipleIds> {
-        let ids: MultipleIds = sup.call_with(values, env)?;
-        Parameter::<MultipleIds>::from_ids(ids.get_ids_ref().clone(), env).check_keys(env)?;
-        Ok(ids)
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        sup.call_with(values, env)?;
-        self.check_keys(env)
-    }
-
     /// The value kept under a key, if any; read as sudo, parameters being the database's —
     /// all of them at once while the application loads.
     pub fn value_of(env: &mut Environment, key: String) -> Result<Option<String>> {

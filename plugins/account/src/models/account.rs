@@ -151,17 +151,6 @@ impl Account<MultipleIds> {
                 account.insert("reconcile", true);
             }
         }
-        env.savepoint(|env| {
-            let ids: MultipleIds = sup.call_with(values, env)?;
-            Account::<MultipleIds>::from_ids(ids.clone(), env).check_accounts(env)?;
-            Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_accounts(env)
-        })
+        sup.call_with(values, env)
     }
 }

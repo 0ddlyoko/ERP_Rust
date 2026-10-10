@@ -40,6 +40,7 @@ impl<'mm> Environment<'mm> {
     /// Goes through the model's `default_get` for the fields left out that declare no default and
     /// are not computed, then its `create`, so what a plugin overrode there runs. A declared
     /// default is filled after `create`, as before: an override still sees what was left out.
+    /// The model's checks run on what was created, which is undone when one refuses it.
     pub fn create_records(
         &mut self,
         model_name: &str,
@@ -65,12 +66,24 @@ impl<'mm> Environment<'mm> {
                 }
             }
         }
-        self.call_method::<CreateArgs, MultipleIds>(
-            model_name,
-            CREATE,
-            &MultipleIds::default(),
-            &(data,),
-        )
+        if !self.has_checks(model_name) {
+            return self.call_method::<CreateArgs, MultipleIds>(
+                model_name,
+                CREATE,
+                &MultipleIds::default(),
+                &(data,),
+            );
+        }
+        self.savepoint(|env| {
+            let ids = env.call_method::<CreateArgs, MultipleIds>(
+                model_name,
+                CREATE,
+                &MultipleIds::default(),
+                &(data,),
+            )?;
+            env.run_checks(model_name, &ids, None)?;
+            Ok(ids)
+        })
     }
 
     /// What a new record of the model starts with, for these fields: through the model's

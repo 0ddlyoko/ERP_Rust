@@ -134,7 +134,6 @@ impl Journal<MultipleIds> {
         env.savepoint(|env| {
             let ids: MultipleIds = sup.call_with(values, env)?;
             for journal in Journal::<MultipleIds>::from_ids(ids.clone(), env) {
-                journal.check_journal(env)?;
                 let code = journal.get_code(env)?.trim().to_uppercase();
                 let name = journal.get_name(env)?.clone();
                 let numbering: Sequence<SingleId> = journal.get_sequence(env)?;
@@ -165,16 +164,6 @@ impl Journal<MultipleIds> {
                 }
             }
             Ok(ids)
-        })
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            for journal in self {
-                journal.check_journal(env)?;
-            }
-            Ok(())
         })
     }
 }

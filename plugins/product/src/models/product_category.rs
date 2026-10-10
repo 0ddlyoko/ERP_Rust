@@ -2,7 +2,6 @@ use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
-use erp::types::model::MapOfFields;
 
 /// A family of products, within a parent family: `All / Saleable / Office furniture`.
 #[derive(Model)]
@@ -62,12 +61,5 @@ impl ProductCategory<MultipleIds> {
             category.set_complete_name(complete, env)?;
         }
         Ok(())
-    }
-
-    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        env.savepoint(|env| {
-            sup.call_with(values, env)?;
-            self.check_no_cycle(env)
-        })
     }
 }
