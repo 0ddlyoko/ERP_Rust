@@ -61,7 +61,7 @@
         </xpath>
     </view>
     <view id="view_product_form_sale" name="product.form.sale" inherit="product.view_product_form">
-        <xpath expr="//field[@name='sale_ok']" position="after">
+        <xpath expr="//field[@name='description_sale']" position="before">
             <field name="invoice_policy"/>
         </xpath>
         <xpath expr="//form" position="inside">

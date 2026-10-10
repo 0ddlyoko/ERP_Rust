@@ -203,7 +203,7 @@
     <action id="action_supplierinfo" name="Vendor prices" model="product_supplierinfo" views="list,form"/>
 
     <view id="view_product_form_purchase" name="product.form.purchase" inherit="product.view_product_form">
-        <xpath expr="//field[@name='purchase_ok']" position="after">
+        <xpath expr="//field[@name='description_purchase']" position="before">
             <field name="purchase_method"/>
             <field name="sellers" widget="list"/>
         </xpath>

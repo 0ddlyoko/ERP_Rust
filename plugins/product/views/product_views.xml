@@ -20,6 +20,8 @@
                 <h1><field name="name"/></h1>
                 <block string="General">
                     <field name="product_type"/>
+                    <field name="sale_ok"/>
+                    <field name="purchase_ok"/>
                     <field name="category" no_create="1"/>
                     <field name="default_code"/>
                     <field name="barcode"/>
@@ -34,12 +36,10 @@
                 </block>
             </block>
             <pages>
-                <page name="sales" string="Sales">
-                    <field name="sale_ok"/>
+                <page name="sales" string="Sales" invisible="!sale_ok">
                     <field name="description_sale" widget="text"/>
                 </page>
-                <page name="purchase" string="Purchase">
-                    <field name="purchase_ok"/>
+                <page name="purchase" string="Purchase" invisible="!purchase_ok">
                     <field name="description_purchase" widget="text"/>
                 </page>
                 <page name="inventory" string="Inventory" invisible="product_type === 'service'">

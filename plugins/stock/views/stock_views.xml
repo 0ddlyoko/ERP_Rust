@@ -303,8 +303,11 @@
     <action id="action_picking_types" name="Operation types" model="stock_picking_type" views="list,form"/>
 
     <view id="view_product_form_stock" name="product.form.stock" inherit="product.view_product_form">
-        <xpath expr="//field[@name='weight']" position="before">
+        <xpath expr="//field[@name='purchase_ok']" position="after">
             <field name="is_storable" invisible="product_type !== 'goods'"/>
+        </xpath>
+        <xpath expr="//page[@name='inventory']" position="attributes">
+            <attribute name="invisible">product_type !== 'goods' || !is_storable</attribute>
         </xpath>
         <xpath expr="//form" position="inside">
             <related invisible="product_type !== 'goods' || !is_storable">
