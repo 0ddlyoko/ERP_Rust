@@ -1,3 +1,4 @@
+use crate::models::activity_type::{ActivityType, BaseActivityType};
 use crate::models::follower::{contact_of, follow};
 use crate::models::{Message, MessageKind};
 use base::models::{BaseUsers, Users};
@@ -11,21 +12,6 @@ use erp::types::field::{IdMode, MultipleIds, NaiveDate, Reference, SingleId, Utc
 use erp::types::model::MapOfFields;
 use erp_search::{OrderBy, SearchOptions};
 use erp_search_code_gen::make_domain;
-
-/// A kind of thing to do about a record — a call, a meeting — with the icon it is shown with and
-/// how many days ahead one is planned by default. Declared in data, as subtypes are.
-#[derive(Model)]
-#[erp(id = "activity_type", order = "sequence, id")]
-#[allow(dead_code)]
-pub struct ActivityType<Mode: IdMode> {
-    pub id: Mode,
-    name: String,
-    icon: Option<String>,
-    #[erp(default = 0)]
-    delay: i32,
-    #[erp(default = 10)]
-    sequence: i32,
-}
 
 /// Something someone has to do about a record by a day: call the customer, send the quote.
 ///

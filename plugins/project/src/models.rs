@@ -1,11 +1,11 @@
-mod checklist;
-mod project;
-mod stage;
-mod tag;
-mod task;
+mod project_checklist_item;
+mod project_project;
+mod project_stage;
+mod project_tag;
+mod project_task;
 
-pub use checklist::{BaseProjectChecklistItem, ChecklistItem};
-pub use project::{BaseProjectProject, Project};
-pub use stage::{BaseProjectStage, Stage};
-pub use tag::{BaseProjectTag, Tag, TagColor};
-pub use task::{BaseProjectTask, Priority, Task, TaskStatus};
+pub use project_checklist_item::{BaseProjectChecklistItem, ChecklistItem};
+pub use project_project::{BaseProjectProject, Project};
+pub use project_stage::{BaseProjectStage, Stage};
+pub use project_tag::{BaseProjectTag, Tag, TagColor};
+pub use project_task::{BaseProjectTask, Priority, Task, TaskStatus};

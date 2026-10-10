@@ -1,4 +1,4 @@
-use crate::models::extensions::{ProductPurchase, billed_on_receipt};
+use crate::models::product::{ProductPurchase, billed_on_receipt};
 use crate::models::purchase_order::{BasePurchaseOrder, PurchaseOrder, PurchaseState};
 use account::models::{
     BaseAccountInvoiceLine, BaseAccountTax, FiscalPosition, InvoiceLine, Move, MoveState, MoveType,

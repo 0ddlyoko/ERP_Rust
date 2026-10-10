@@ -1,5 +1,5 @@
-use crate::models::extensions::{InvoicePolicy, ProductSale};
-use crate::models::pricelist::Pricelist;
+use crate::models::product::{InvoicePolicy, ProductSale};
+use crate::models::product_pricelist::Pricelist;
 use crate::models::sale_order::{BaseSaleOrder, SaleOrder, SaleState};
 use account::models::{
     BaseAccountInvoiceLine, BaseAccountTax, FiscalPosition, InvoiceLine, Move, MoveState, MoveType,

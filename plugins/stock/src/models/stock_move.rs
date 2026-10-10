@@ -1,8 +1,8 @@
-use crate::models::extensions::{ProductCategoryStock, StockCostMethod};
-use crate::models::location::{BaseStockLocation, Location};
-use crate::models::picking::{BaseStockPicking, Picking};
-use crate::models::quant::Quant;
-use crate::models::valuation_layer::ValuationLayer;
+use crate::models::product_category::{ProductCategoryStock, StockCostMethod};
+use crate::models::stock_location::{BaseStockLocation, Location};
+use crate::models::stock_picking::{BaseStockPicking, Picking};
+use crate::models::stock_quant::Quant;
+use crate::models::stock_valuation_layer::ValuationLayer;
 use crate::valuation::{self, CostMethod, Layer};
 use code_gen::{Model, erp_methods, selection};
 use currency::models::Currency;

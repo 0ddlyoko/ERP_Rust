@@ -1,4 +1,4 @@
-use crate::models::machine_discounted::MachineDiscounted;
+use crate::models::machine::MachineDiscounted;
 use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
 use erp::assets::{BundleContribution, ModuleFiles, StaticFiles};
 use erp::model::ModelManager;

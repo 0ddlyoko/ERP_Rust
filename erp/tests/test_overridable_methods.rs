@@ -4,7 +4,7 @@ use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
 use test_plugin::TestPlugin;
-use test_plugin::models::machine_discounted::MachineDiscounted;
+use test_plugin::models::machine::MachineDiscounted;
 use test_utilities::TestLibPlugin;
 use test_utilities::models::Machine;
 

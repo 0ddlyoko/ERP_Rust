@@ -1,5 +1,5 @@
-use crate::models::extensions::ContactSale;
-use crate::models::pricelist::{BaseProductPricelist, Pricelist};
+use crate::models::contact::ContactSale;
+use crate::models::product_pricelist::{BaseProductPricelist, Pricelist};
 use crate::models::sale_order_line::{BaseSaleOrderLine, InvoiceStatus, SaleOrderLine};
 use account::models::{
     BaseAccountFiscalPosition, BaseAccountMove, BaseAccountPaymentTerm, ContactAccount,

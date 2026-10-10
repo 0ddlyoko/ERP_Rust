@@ -1,6 +1,6 @@
 use crate::models::account::BaseAccount;
+use crate::models::account_tax::{BaseAccountTax, Tax};
 use crate::models::company::CompanyAccount;
-use crate::models::tax::{BaseAccountTax, Tax};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -60,17 +60,4 @@ impl ProductAccount<MultipleIds> {
         }
         sup.call_with(values, env)
     }
-}
-
-/// Where the sales and purchases of a category's products are recorded.
-#[derive(Model)]
-#[erp(id = "product_category")]
-#[erp(derived_model = "product::models")]
-#[allow(dead_code)]
-pub struct ProductCategoryAccount<Mode: IdMode> {
-    id: Mode,
-    #[erp(label = "Income account", ondelete = "restrict")]
-    income_account: Reference<BaseAccount, SingleId>,
-    #[erp(label = "Expense account", ondelete = "restrict")]
-    expense_account: Reference<BaseAccount, SingleId>,
 }

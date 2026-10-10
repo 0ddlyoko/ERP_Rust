@@ -1,5 +1,6 @@
+use crate::models::BasePage;
 use code_gen::Model;
-use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+use erp::types::field::{IdMode, MultipleIds, Reference};
 
 /// A notebook owns its pages: a page removed from it is deleted rather than left on its own.
 #[derive(Model)]
@@ -10,13 +11,4 @@ pub struct Notebook<Mode: IdMode> {
     name: String,
     #[erp(inverse = "notebook", owned)]
     pages: Reference<BasePage, MultipleIds>,
-}
-
-#[derive(Model)]
-#[erp(id = "page")]
-#[allow(dead_code)]
-pub struct Page<Mode: IdMode> {
-    pub id: Mode,
-    text: String,
-    notebook: Reference<BaseNotebook, SingleId>,
 }

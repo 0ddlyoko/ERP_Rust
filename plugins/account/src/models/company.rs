@@ -1,6 +1,6 @@
 use crate::models::account::{Account, BaseAccount};
-use crate::models::journal::{BaseAccountJournal, Journal};
-use crate::models::tax::BaseAccountTax;
+use crate::models::account_journal::{BaseAccountJournal, Journal};
+use crate::models::account_tax::BaseAccountTax;
 use base::models::Company;
 use code_gen::{Model, erp_methods};
 use erp::Result;
