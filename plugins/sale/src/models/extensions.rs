@@ -6,9 +6,8 @@ use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
-use product::models::Product;
 use uom::conversion::Rounding;
-use uom::models::Uom;
+use uom::models::{BaseUom, Uom};
 
 #[selection]
 pub enum InvoicePolicy {
@@ -37,6 +36,7 @@ pub struct ContactSale<Mode: IdMode> {
 #[allow(dead_code)]
 pub struct ProductSale<Mode: IdMode> {
     id: Mode,
+    uom: Reference<BaseUom, SingleId>,
     #[erp(label = "Invoicing policy")]
     invoice_policy: InvoicePolicy,
     #[erp(label = "Sales order lines", inverse = "product")]
@@ -61,17 +61,12 @@ impl ProductSale<MultipleIds> {
     pub fn compute_sales(&self, env: &mut Environment) -> Result<()> {
         for product in self {
             let env = &mut *env.sudo();
-            let owner: Product<SingleId> = env.get_record(product.get_id().into());
-            let unit: Uom<SingleId> = owner.get_uom(env)?;
+            let unit: Uom<SingleId> = product.get_uom(env)?;
             let lines: SaleOrderLine<MultipleIds> = product.get_sale_lines(env)?;
-            let mut confirmed = Vec::new();
-            for line in &lines {
+            let confirmed = lines.filtered(env, |line, env| {
                 let order: SaleOrder<SingleId> = line.get_order(env)?;
-                if order.is_state(env, SaleState::Sale)? {
-                    confirmed.push(line.get_id());
-                }
-            }
-            let confirmed: SaleOrderLine<MultipleIds> = SaleOrderLine::from_ids(confirmed, env);
+                order.is_state(env, SaleState::Sale)
+            })?;
             let mut sold = Decimal::ZERO;
             for line in &confirmed {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;

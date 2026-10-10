@@ -9,7 +9,7 @@ use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
 use product::models::{BaseProduct, Product};
 use uom::conversion::Rounding;
-use uom::models::Uom;
+use uom::models::{BaseUom, Uom};
 
 #[selection]
 pub enum BillPolicy {
@@ -49,6 +49,7 @@ pub struct SupplierInfo<Mode: IdMode> {
 #[allow(dead_code)]
 pub struct ProductPurchase<Mode: IdMode> {
     id: Mode,
+    uom: Reference<BaseUom, SingleId>,
     #[erp(label = "Bill control")]
     purchase_method: BillPolicy,
     #[erp(label = "Vendors", inverse = "product")]
@@ -76,18 +77,12 @@ impl ProductPurchase<MultipleIds> {
     pub fn compute_purchases(&self, env: &mut Environment) -> Result<()> {
         for product in self {
             let env = &mut *env.sudo();
-            let owner: Product<SingleId> = env.get_record(product.get_id().into());
-            let unit: Uom<SingleId> = owner.get_uom(env)?;
+            let unit: Uom<SingleId> = product.get_uom(env)?;
             let lines: PurchaseOrderLine<MultipleIds> = product.get_purchase_lines(env)?;
-            let mut purchase_orders = lines.get_order::<PurchaseOrder<_>>(env)?;
-            let mut confirmed = Vec::new();
-            for line in &lines {
+            let confirmed = lines.filtered(env, |line, env| {
                 let order: PurchaseOrder<SingleId> = line.get_order(env)?;
-                if order.is_state(env, PurchaseState::Purchase)? {
-                    confirmed.push(line.get_id());
-                }
-            }
-            let confirmed = PurchaseOrderLine::from_ids(confirmed, env);
+                order.is_state(env, PurchaseState::Purchase)
+            })?;
             let mut bought = Decimal::ZERO;
             for line in &confirmed {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;

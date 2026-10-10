@@ -275,6 +275,35 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             env.read(#model_name_multi, &self.id, fields)
         }
 
+        /// The records `keep` holds for, in their order.
+        pub fn filtered(
+            &self,
+            env: &mut erp::environment::Environment,
+            mut keep: impl FnMut(&#struct_name_ident<erp::types::field::SingleId>, &mut erp::environment::Environment) -> ::core::result::Result<bool, #err>,
+        ) -> ::core::result::Result<Self, #err> {
+            let mut kept = Vec::new();
+            for record in self {
+                if keep(&record, env)? {
+                    kept.push(record.get_id());
+                }
+            }
+            Ok(Self::from_ids(kept, env))
+        }
+
+        /// The records ordered by what `key` gives each, those giving the same keeping their order.
+        pub fn sorted_by_key<K: Ord>(
+            &self,
+            env: &mut erp::environment::Environment,
+            mut key: impl FnMut(&#struct_name_ident<erp::types::field::SingleId>, &mut erp::environment::Environment) -> ::core::result::Result<K, #err>,
+        ) -> ::core::result::Result<Self, #err> {
+            let mut keyed = Vec::new();
+            for record in self {
+                keyed.push((key(&record, env)?, record.get_id()));
+            }
+            keyed.sort_by(|left, right| left.0.cmp(&right.0));
+            Ok(Self::from_ids(keyed.into_iter().map(|(_, id)| id).collect::<Vec<u32>>(), env))
+        }
+
     };
 
     let verbs_single = quote! {
@@ -315,6 +344,16 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             env: &mut erp::environment::Environment,
         ) -> ::core::result::Result<u32, #err> {
             env.delete(#model_name_single, &self.id)
+        }
+
+        /// The record as a recordset when `keep` holds for it, an empty one otherwise.
+        pub fn filtered(
+            &self,
+            env: &mut erp::environment::Environment,
+            mut keep: impl FnMut(&Self, &mut erp::environment::Environment) -> ::core::result::Result<bool, #err>,
+        ) -> ::core::result::Result<#struct_name_ident<erp::types::field::MultipleIds>, #err> {
+            let kept: Vec<u32> = if !self.is_empty() && keep(self, env)? { vec![self.get_id()] } else { Vec::new() };
+            Ok(#struct_name_ident::<erp::types::field::MultipleIds>::from_ids(kept, env))
         }
     };
 
@@ -383,6 +422,48 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             #struct_name_ident<Mode>: erp::model::Model<Mode>,
         {
             #(#impl_model_setters)*
+        }
+
+        /// Records of both, each once, those of the left first: `orders | other_orders`.
+        impl<Mode: erp::types::field::IdMode, Other: erp::types::field::IdMode> ::std::ops::BitOr<&#struct_name_ident<Other>> for &#struct_name_ident<Mode> {
+            type Output = #struct_name_ident<erp::types::field::MultipleIds>;
+
+            fn bitor(self, other: &#struct_name_ident<Other>) -> Self::Output {
+                let mut ids: Vec<u32> = AsRef::<[u32]>::as_ref(&self.id).to_vec();
+                for id in AsRef::<[u32]>::as_ref(&other.id) {
+                    if !ids.contains(id) {
+                        ids.push(*id);
+                    }
+                }
+                <#struct_name_ident<erp::types::field::MultipleIds> as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::create_instance(ids.into())
+            }
+        }
+
+        impl<Mode: erp::types::field::IdMode, Other: erp::types::field::IdMode> ::std::ops::BitOr<#struct_name_ident<Other>> for #struct_name_ident<Mode> {
+            type Output = #struct_name_ident<erp::types::field::MultipleIds>;
+
+            fn bitor(self, other: #struct_name_ident<Other>) -> Self::Output {
+                &self | &other
+            }
+        }
+
+        /// Records of both, one after the other, those in both twice: `lines + other_lines`.
+        impl<Mode: erp::types::field::IdMode, Other: erp::types::field::IdMode> ::std::ops::Add<&#struct_name_ident<Other>> for &#struct_name_ident<Mode> {
+            type Output = #struct_name_ident<erp::types::field::MultipleIds>;
+
+            fn add(self, other: &#struct_name_ident<Other>) -> Self::Output {
+                let mut ids: Vec<u32> = AsRef::<[u32]>::as_ref(&self.id).to_vec();
+                ids.extend_from_slice(AsRef::<[u32]>::as_ref(&other.id));
+                <#struct_name_ident<erp::types::field::MultipleIds> as erp::types::model::CommonModel<erp::types::field::MultipleIds>>::create_instance(ids.into())
+            }
+        }
+
+        impl<Mode: erp::types::field::IdMode, Other: erp::types::field::IdMode> ::std::ops::Add<#struct_name_ident<Other>> for #struct_name_ident<Mode> {
+            type Output = #struct_name_ident<erp::types::field::MultipleIds>;
+
+            fn add(self, other: #struct_name_ident<Other>) -> Self::Output {
+                &self + &other
+            }
         }
 
         impl<Mode: erp::types::field::IdMode + PartialEq> PartialEq for #struct_name_ident<Mode> {

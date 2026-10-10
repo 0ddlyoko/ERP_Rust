@@ -174,7 +174,8 @@ impl FinalInternalField {
         if field_descriptor.description.is_some() {
             self.description = field_descriptor.description.clone();
         }
-        self.required = field_descriptor.required;
+        // A struct naming a field it extends without repeating `required` keeps it required.
+        self.required |= field_descriptor.required;
         // Never taken back: a struct extending a model can hide a field, and no struct can
         // reveal one that another decided to hide. A password is hidden whatever it declares,
         // because a field whose whole purpose is to be unreadable should not depend on the
