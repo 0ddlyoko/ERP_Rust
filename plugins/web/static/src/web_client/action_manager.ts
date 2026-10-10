@@ -46,10 +46,14 @@ export class ActionManager extends Component {
         return narrowed(this.props.action.domain, this.router.route);
     }
 
-    /** What a record created here starts with: the action's defaults, and the record of `by`. */
+    /** What a record created here starts with: the action's defaults, and the record of `by`, by its name once read. */
     get defaults(): Record<string, unknown> {
         const by = byOf(this.router.route);
-        return by === null ? { ...this.props.action.defaults } : { ...this.props.action.defaults, [by.field]: by.id };
+        if (by === null) {
+            return { ...this.props.action.defaults };
+        }
+        const name = loading(() => this.byName) ? null : this.byName;
+        return { ...this.props.action.defaults, [by.field]: name === null ? by.id : [by.id, name] };
     }
 
     /** The name of the record of `by`, which names the list: the project of a board. */
