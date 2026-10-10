@@ -298,3 +298,31 @@ fn test_a_field_takes_any_enum_of_its_family() -> Result<()> {
     env.close()?;
     Ok(())
 }
+
+/// An enum is compared with as it is in a domain, alone or in a list.
+#[test]
+fn test_an_enum_is_searched_as_it_is() -> Result<()> {
+    let app = new_app()?;
+    let mut env = app.new_env()?;
+    for state in ["draft", "sent", "paid"] {
+        let mut order = MapOfFields::new(HashMap::new());
+        order.insert("name", state);
+        order.insert("state", SaleOrderState::from_key(state));
+        env.create_records("sale_order", vec![order])?;
+    }
+    let paid = env.search_ids(
+        "sale_order",
+        &erp_search_code_gen::make_domain!([("state", "=", SaleOrderState::Paid)]),
+    )?;
+    assert_eq!(paid.len(), 1);
+    let open = env.search_ids(
+        "sale_order",
+        &erp_search_code_gen::make_domain!([(
+            "state",
+            "in",
+            vec![SaleOrderState::Draft, SaleOrderState::Sent]
+        )]),
+    )?;
+    assert_eq!(open.len(), 2);
+    Ok(())
+}

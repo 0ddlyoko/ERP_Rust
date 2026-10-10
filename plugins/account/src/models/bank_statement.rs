@@ -7,7 +7,6 @@ use code_gen::{Model, erp_methods, selection};
 use currency::models::Currency;
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::Selection;
 use erp::types::field::{
     Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, SingleId,
 };
@@ -185,22 +184,14 @@ impl BankStatementLine<SingleId> {
         }
         let receivables: Account<MultipleIds> = env.search(&make_domain!([
             "|",
-            (
-                "account_type",
-                "=",
-                AccountType::AssetReceivable.key().as_str()
-            ),
-            (
-                "account_type",
-                "=",
-                AccountType::LiabilityPayable.key().as_str()
-            )
+            ("account_type", "=", AccountType::AssetReceivable),
+            ("account_type", "=", AccountType::LiabilityPayable)
         ]))?;
         accounts.extend(receivables.get_ids_ref().iter().copied());
         let open: MoveLine<MultipleIds> = env.search(&make_domain!([
             ("account", "in", accounts),
             ("reconciled", "=", false),
-            ("parent_state", "=", MoveState::Posted.key().as_str())
+            ("parent_state", "=", MoveState::Posted)
         ]))?;
         // Money in settles what is owed to the company — debits — and money out the reverse.
         let mut by_reference = Vec::new();

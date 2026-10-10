@@ -6,7 +6,6 @@
 use crate::models::{InvoiceLine, LineKind, Move, MoveLine, MoveState, Tax, TaxDocument};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::Selection;
 use erp::types::field::{Decimal, MultipleIds, SingleId};
 use erp_search_code_gen::make_domain;
 use std::collections::BTreeMap;
@@ -14,11 +13,8 @@ use std::collections::BTreeMap;
 /// Every posted entry balances, and so do all of them together.
 pub fn check_balanced(env: &mut Environment) -> Result<()> {
     let env = &mut *env.sudo();
-    let entries: Move<MultipleIds> = env.search(&make_domain!([(
-        "state",
-        "=",
-        MoveState::Posted.key().as_str()
-    )]))?;
+    let entries: Move<MultipleIds> =
+        env.search(&make_domain!([("state", "=", MoveState::Posted)]))?;
     let mut debit_all = Decimal::ZERO;
     let mut credit_all = Decimal::ZERO;
     for entry in &entries {
@@ -33,11 +29,8 @@ pub fn check_balanced(env: &mut Environment) -> Result<()> {
         debit_all += debit;
         credit_all += credit;
     }
-    let lines: MoveLine<MultipleIds> = env.search(&make_domain!([(
-        "parent_state",
-        "=",
-        MoveState::Posted.key().as_str()
-    )]))?;
+    let lines: MoveLine<MultipleIds> =
+        env.search(&make_domain!([("parent_state", "=", MoveState::Posted)]))?;
     let balance: Decimal = lines.sum(env, |line, env| Ok(*line.get_balance(env)?))?;
     if debit_all != credit_all || !balance.is_zero() {
         return Err(format!(
@@ -52,11 +45,8 @@ pub fn check_balanced(env: &mut Environment) -> Result<()> {
 /// items in the invoice's currency add up to the shares the engine computes.
 pub fn check_invoice_taxes(env: &mut Environment) -> Result<()> {
     let env = &mut *env.sudo();
-    let entries: Move<MultipleIds> = env.search(&make_domain!([(
-        "state",
-        "=",
-        MoveState::Posted.key().as_str()
-    )]))?;
+    let entries: Move<MultipleIds> =
+        env.search(&make_domain!([("state", "=", MoveState::Posted)]))?;
     for entry in &entries {
         let move_type = *entry.get_move_type(env)?;
         if !move_type.is_invoice() {

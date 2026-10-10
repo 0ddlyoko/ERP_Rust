@@ -3,7 +3,6 @@ use code_gen::{Model, erp_methods, selection};
 use currency::models::BaseCurrency;
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::Selection;
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
@@ -78,10 +77,7 @@ impl Journal<SingleId> {
     ) -> Result<Journal<SingleId>> {
         let env = &mut *env.sudo();
         let found: Journal<MultipleIds> = env.search_with(
-            &make_domain!([
-                ("journal_type", "=", journal_type.key().as_str()),
-                ("active", "=", true)
-            ]),
+            &make_domain!([("journal_type", "=", journal_type), ("active", "=", true)]),
             &erp_search::SearchOptions::new()
                 .order_by(erp_search::OrderBy::asc("sequence_order"))
                 .order_by(erp_search::OrderBy::asc("id")),

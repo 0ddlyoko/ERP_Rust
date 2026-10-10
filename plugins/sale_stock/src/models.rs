@@ -1,7 +1,7 @@
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{Decimal, FieldType, IdMode, MultipleIds, Reference, Selection, SingleId};
+use erp::types::field::{Decimal, FieldType, IdMode, MultipleIds, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use product::models::{Product, ProductType};
@@ -249,7 +249,7 @@ impl PickingSale<MultipleIds> {
 fn delivered_quantity(env: &mut Environment, line: u32) -> Result<Decimal> {
     let moves: StockMove<MultipleIds> = env.search(&make_domain!([
         ("sale_line", "=", line),
-        ("state", "=", MoveStatus::Done.key().as_str())
+        ("state", "=", MoveStatus::Done)
     ]))?;
     let mut delivered = Decimal::ZERO;
     for stock_move in &moves {

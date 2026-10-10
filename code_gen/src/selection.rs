@@ -219,6 +219,15 @@ pub fn expand(args: EnumArgs, mut item: ItemEnum) -> syn::Result<TokenStream> {
         #default
         #item
 
+        /// The value a domain compares the field with: `("state", "=", SaleState::Sale)`.
+        impl ::core::convert::From<#name> for erp::search::RightTuple {
+            fn from(value: #name) -> Self {
+                erp::search::RightTuple::String(
+                    erp::types::field::Selection::key(&value).as_str().to_string(),
+                )
+            }
+        }
+
         impl erp::types::field::Selection for #name {
             type Root = #root;
             type Parent = #parent;

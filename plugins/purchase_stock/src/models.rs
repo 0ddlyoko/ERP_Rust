@@ -2,9 +2,7 @@ use code_gen::{Model, erp_methods, selection};
 use currency::models::Currency;
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{
-    Command, Decimal, FieldType, IdMode, MultipleIds, Reference, Selection, SingleId,
-};
+use erp::types::field::{Command, Decimal, FieldType, IdMode, MultipleIds, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use product::models::{Product, ProductType};
@@ -288,7 +286,7 @@ impl PickingPurchase<MultipleIds> {
 fn received_quantity(env: &mut Environment, line: u32) -> Result<Decimal> {
     let moves: StockMove<MultipleIds> = env.search(&make_domain!([
         ("purchase_line", "=", line),
-        ("state", "=", MoveStatus::Done.key().as_str())
+        ("state", "=", MoveStatus::Done)
     ]))?;
     let mut received = Decimal::ZERO;
     for stock_move in &moves {

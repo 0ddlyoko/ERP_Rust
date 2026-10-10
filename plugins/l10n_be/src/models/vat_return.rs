@@ -4,7 +4,7 @@ use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::model::ModelVerbs;
-use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, Selection, SingleId};
+use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use period::period_of;
@@ -90,7 +90,7 @@ pub fn grid_amounts(
 ) -> Result<BTreeMap<String, Decimal>> {
     let env = &mut *env.sudo();
     let items: MoveLine<MultipleIds> = env.search(&make_domain!([
-        ("parent_state", "=", MoveState::Posted.key().as_str()),
+        ("parent_state", "=", MoveState::Posted),
         ("date", ">=", date_from),
         ("date", "<=", date_to)
     ]))?;
