@@ -6,8 +6,7 @@ use base::models::BaseContact;
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, Selection, SingleId};
-use erp_search_code_gen::make_domain;
+use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
 use product::models::{BaseProduct, Product};
 use uom::conversion::Rounding;
 use uom::models::Uom;
@@ -54,9 +53,19 @@ pub struct ProductPurchase<Mode: IdMode> {
     purchase_method: BillPolicy,
     #[erp(label = "Vendors", inverse = "product")]
     sellers: Reference<BaseProductSupplierinfo, MultipleIds>,
-    #[erp(label = "Purchase orders", compute = "compute_purchases")]
+    #[erp(label = "Purchase order lines", inverse = "product")]
+    purchase_lines: Reference<BasePurchaseOrderLine, MultipleIds>,
+    #[erp(
+        label = "Purchase orders",
+        compute = "compute_purchases",
+        depends = ["purchase_lines.order.state", "purchase_lines.product_qty", "purchase_lines.uom", "uom"]
+    )]
     purchase_orders: Reference<BasePurchaseOrder, MultipleIds>,
-    #[erp(label = "Purchased", compute = "compute_purchases")]
+    #[erp(
+        label = "Purchased",
+        compute = "compute_purchases",
+        depends = ["purchase_lines.order.state", "purchase_lines.product_qty", "purchase_lines.uom", "uom"]
+    )]
     purchased_qty: Decimal,
 }
 
@@ -66,70 +75,31 @@ impl ProductPurchase<MultipleIds> {
     /// unit.
     pub fn compute_purchases(&self, env: &mut Environment) -> Result<()> {
         for product in self {
-            let (orders, bought) = {
-                let env = &mut *env.sudo();
-                let lines: PurchaseOrderLine<MultipleIds> = env.search(&make_domain!([
-                    ("product", "=", product.get_id()),
-                    ("order.state", "=", PurchaseState::Purchase.key().as_str())
-                ]))?;
-                let owner: Product<SingleId> = env.get_record(product.get_id().into());
-                let unit: Uom<SingleId> = owner.get_uom(env)?;
-                let mut orders: Vec<u32> = Vec::new();
-                let mut bought = Decimal::ZERO;
-                for line in &lines {
-                    let order: PurchaseOrder<SingleId> = line.get_order(env)?;
-                    if !orders.contains(&order.get_id()) {
-                        orders.push(order.get_id());
-                    }
-                    let line_unit: Uom<SingleId> = line.get_uom(env)?;
-                    let quantity = *line.get_product_qty(env)?;
-                    bought +=
-                        line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
+            let env = &mut *env.sudo();
+            let owner: Product<SingleId> = env.get_record(product.get_id().into());
+            let unit: Uom<SingleId> = owner.get_uom(env)?;
+            let lines: PurchaseOrderLine<MultipleIds> = product.get_purchase_lines(env)?;
+            let mut purchase_orders = lines.get_order::<PurchaseOrder<_>>(env)?;
+            let mut confirmed = Vec::new();
+            for line in &lines {
+                let order: PurchaseOrder<SingleId> = line.get_order(env)?;
+                if order.is_state(env, PurchaseState::Purchase)? {
+                    confirmed.push(line.get_id());
                 }
-                (orders, bought)
-            };
-            let orders: PurchaseOrder<MultipleIds> = PurchaseOrder::from_ids(orders, env);
+            }
+            let confirmed = PurchaseOrderLine::from_ids(confirmed, env);
+            let mut bought = Decimal::ZERO;
+            for line in &confirmed {
+                let line_unit: Uom<SingleId> = line.get_uom(env)?;
+                let quantity = *line.get_product_qty(env)?;
+                bought += line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
+            }
+            let orders: PurchaseOrder<MultipleIds> = confirmed.get_order(env)?;
             product.set_purchase_orders(&orders, env)?;
             product.set_purchased_qty(bought, env)?;
         }
         Ok(())
     }
-
-    /// The confirmed purchase orders holding the product, and how much of it they bought, in its
-    /// unit.
-    pub fn test_do_not_edit(&self, env: &mut Environment) -> Result<()> {
-        for product in self {
-            let (orders, bought) = {
-                let env = &mut *env.sudo();
-                let lines: PurchaseOrderLine<MultipleIds> = env.search(&make_domain!([
-                    ("product", "=", product.get_id()),
-                    ("order.state", "=", PurchaseState::Purchase.key().as_str())
-                ]))?;
-                let owner: Product<SingleId> = env.get_record(product.get_id().into());
-                let unit: Uom<SingleId> = owner.get_uom(env)?;
-                let mut orders: PurchaseOrder<MultipleIds> = env.get_empty_record();
-                orders += 
-                let mut orders: Vec<u32> = Vec::new();
-                let mut bought = Decimal::ZERO;
-                for line in &lines {
-                    let order: PurchaseOrder<SingleId> = line.get_order(env)?;
-                    if !orders.contains(&order.get_id()) {
-                        orders.push(order.get_id());
-                    }
-                    let line_unit: Uom<SingleId> = line.get_uom(env)?;
-                    let quantity = *line.get_product_qty(env)?;
-                    bought +=
-                        line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
-                }
-                (orders, bought)
-            };
-            let orders: PurchaseOrder<MultipleIds> = PurchaseOrder::from_ids(orders, env);
-            product.set_purchase_orders(&orders, env)?;
-            product.set_purchased_qty(bought, env)?;
-        }
-        Ok(())
-    }
-
 }
 
 #[erp_methods]
