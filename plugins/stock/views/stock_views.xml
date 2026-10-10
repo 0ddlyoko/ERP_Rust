@@ -311,9 +311,9 @@
         </xpath>
         <xpath expr="//form" position="inside">
             <related invisible="product_type !== 'goods' || !is_storable">
-                <link name="quants" count="qty_available" note="free_qty" string="On hand" action="stock.action_quants"
+                <link name="quants" sequence="30" count="qty_available" note="free_qty" string="On hand" action="stock.action_quants"
                       by="product" icon="warehouse"/>
-                <link name="valuation_layers" count="stock_value" string="Stock value" action="stock.action_valuation"
+                <link name="valuation_layers" sequence="40" count="stock_value" string="Stock value" action="stock.action_valuation"
                       by="product" icon="coins"/>
             </related>
         </xpath>

@@ -209,7 +209,7 @@
         </xpath>
         <xpath expr="//form" position="inside">
             <related>
-                <link name="purchase_orders" count="purchased_qty" note="purchase_orders" string="Purchased" action="purchase.action_orders"
+                <link name="purchase_orders" sequence="20" invisible="!purchase_ok" count="purchased_qty" note="purchase_orders" string="Purchased" action="purchase.action_orders"
                       icon="shopping-bag"/>
             </related>
         </xpath>

@@ -43,6 +43,12 @@ function anyOf(conditions: string[]): string {
     return conditions.map((condition) => `(${condition})`).join(" || ");
 }
 
+/** When every one of `conditions` holds: `true` when none is asked. */
+function allOf(conditions: string[]): string {
+    const asked = conditions.filter((condition) => condition !== "true");
+    return asked.length === 0 ? "true" : asked.map((condition) => `(${condition})`).join(" && ");
+}
+
 function shownUnless(element: Element): string {
     const invisible = element.getAttribute("invisible");
     return invisible === null ? "true" : `!(${invisible})`;
@@ -450,7 +456,9 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     };
 
     /**
-     * The records the form's one2many and many2many hold, each a link opening them. A link counts
+     * The records the form's one2many and many2many hold, each a link opening them, in the order of
+     * their `sequence`, then as declared; one shows while neither it nor its `<related>` is
+     * invisible. A link counts
      * them, or shows the field its `count` names — a quantity the model computes, such as what is
      * on hand. Under it, the field its `note` names, with its label; else the records' names, for
      * a link counting them.
@@ -460,16 +468,22 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     const relatedXml = (): string => {
         const links = Array.from(root.children)
             .filter((element) => element.tagName === "related")
-            .flatMap((element) => {
-                condition(element, "invisible");
-                return Array.from(element.children).filter((child) => child.tagName === "link");
-            });
+            .flatMap((group) => {
+                condition(group, "invisible");
+                return Array.from(group.children)
+                    .filter((child) => child.tagName === "link")
+                    .map((link) => {
+                        condition(link, "invisible");
+                        return { link, shown: allOf([shownUnless(group), shownUnless(link)]) };
+                    });
+            })
+            .map((entry, at) => ({ ...entry, at, sequence: Number(entry.link.getAttribute("sequence") ?? Number.POSITIVE_INFINITY) }))
+            .sort((one, other) => one.sequence - other.sequence || one.at - other.at);
         if (links.length === 0) {
             return "";
         }
         const items = links
-            .map((link) => {
-                condition(link, "invisible");
+            .map(({ link, shown }) => {
                 const column = shownColumn(link);
                 relatedFields.push({ name: link.getAttribute("name") ?? "", action: link.getAttribute("action") ?? "" });
                 const name = fieldName(link);
@@ -493,7 +507,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                           : "";
                 const none = counted === null ? `!__form.relatedRecords(${name}).length` : `!Number(__form.current[${escape(JSON.stringify(counted))}])`;
                 return (
-                    `<div class="o_related_item"${ifShown(shownUnless(link))}>` +
+                    `<div class="o_related_item"${ifShown(shown)}>` +
                     `<button type="button" t-att-class="{ o_related_link: true, o_related_none: ${none} }" ` +
                     `t-on-click="() => __form.followLink(${action}, ${name}, ${by})">` +
                     `<span class="o_related_icon"><Icon name="${icon}"/></span>` +
@@ -504,11 +518,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 );
             })
             .join("");
-        const shown = anyOf(
-            Array.from(root.children)
-                .filter((element) => element.tagName === "related")
-                .map(shownUnless),
-        );
+        const shown = anyOf(links.map((entry) => entry.shown));
         return `<nav class="o_related" aria-label="Related documents"${ifShown(`!__form.isNew && (${shown})`)}>${items}</nav>`;
     };
 
