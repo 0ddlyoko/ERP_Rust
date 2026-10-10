@@ -290,6 +290,40 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             Ok(Self::from_ids(kept, env))
         }
 
+        /// No record of the model.
+        pub fn empty(env: &erp::environment::Environment) -> Self {
+            Self::from_ids(Vec::<u32>::new(), env)
+        }
+
+        /// Whether this holds no record.
+        pub fn is_empty(&self) -> bool {
+            self.id.get_ids_ref().is_empty()
+        }
+
+        /// The one record this holds, keeping what it was loaded with; refused for none or several.
+        pub fn ensure_one(&self) -> ::core::result::Result<#struct_name_ident<erp::types::field::SingleId>, #err> {
+            match self.id.as_single() {
+                Ok(single) if !erp::types::field::IdMode::is_empty(&single) => Ok(
+                    <#struct_name_ident<erp::types::field::SingleId> as erp::types::model::CommonModel<erp::types::field::SingleId>>::create_instance(single),
+                ),
+                Ok(_) => Err(format!("Expected one record of {}, found none", #model_name_multi).into()),
+                Err(count) => Err(format!("Expected one record of {}, found {count}", #model_name_multi).into()),
+            }
+        }
+
+        /// What `value` gives each record, added up: zero for none.
+        pub fn sum<N: ::core::default::Default + ::core::ops::Add<Output = N>>(
+            &self,
+            env: &mut erp::environment::Environment,
+            mut value: impl FnMut(&#struct_name_ident<erp::types::field::SingleId>, &mut erp::environment::Environment) -> ::core::result::Result<N, #err>,
+        ) -> ::core::result::Result<N, #err> {
+            let mut total = N::default();
+            for record in self {
+                total = total + value(&record, env)?;
+            }
+            Ok(total)
+        }
+
         /// The records ordered by what `key` gives each, those giving the same keeping their order.
         pub fn sorted_by_key<K: Ord>(
             &self,
@@ -422,6 +456,15 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
             #struct_name_ident<Mode>: erp::model::Model<Mode>,
         {
             #(#impl_model_setters)*
+
+            /// The same records, as another struct of the model — an extension's, to reach its
+            /// fields — still loading along with what these load with.
+            pub fn as_model<To>(&self) -> To
+            where
+                To: erp::model::Model<Mode, BaseModel = <Self as erp::types::model::CommonModel<Mode>>::BaseModel>,
+            {
+                <To as erp::types::model::CommonModel<Mode>>::create_instance(self.id.clone())
+            }
         }
 
         /// Records of both, each once, those of the left first: `orders | other_orders`.

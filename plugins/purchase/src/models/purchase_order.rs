@@ -10,8 +10,7 @@ use erp::Result;
 use erp::environment::Environment;
 use erp::serde_json::{Value, json};
 use erp::types::field::{
-    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, Selection, SingleId,
-    Utc,
+    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, SingleId, Utc,
 };
 use erp::types::model::MapOfFields;
 use sequence::models::Sequence;
@@ -114,7 +113,7 @@ pub struct PurchaseOrder<Mode: IdMode> {
 #[erp_methods]
 impl PurchaseOrder<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: PurchaseState) -> Result<bool> {
-        Ok(self.get_state(env)?.key() == state.key())
+        Ok(*self.get_state(env)? == state)
     }
 
     /// The order's currency, the company's when none is set.

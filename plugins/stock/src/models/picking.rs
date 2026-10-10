@@ -8,8 +8,8 @@ use erp::Result;
 use erp::environment::Environment;
 use erp::serde_json::{Value, json};
 use erp::types::field::{
-    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, Selection, SingleId,
-    Timestamp, Utc,
+    Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, SingleId, Timestamp,
+    Utc,
 };
 use erp::types::model::MapOfFields;
 use sequence::models::Sequence;
@@ -71,7 +71,7 @@ pub struct Picking<Mode: IdMode> {
 #[erp_methods]
 impl Picking<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: PickingState) -> Result<bool> {
-        Ok(self.get_state(env)?.key() == state.key())
+        Ok(*self.get_state(env)? == state)
     }
 
     /// The kind of the transfer: receipt, delivery or internal.

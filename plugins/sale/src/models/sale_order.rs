@@ -11,7 +11,6 @@ use currency::models::{BaseCurrency, Currency};
 use erp::Result;
 use erp::environment::Environment;
 use erp::serde_json::{Value, json};
-use erp::types::field::Selection;
 use erp::types::field::{
     Command, Decimal, FieldType, IdMode, MultipleIds, NaiveDate, Reference, SingleId, TimeDelta,
     Utc,
@@ -135,7 +134,7 @@ pub struct SaleOrder<Mode: IdMode> {
 #[erp_methods]
 impl SaleOrder<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: SaleState) -> Result<bool> {
-        Ok(self.get_state(env)?.key() == state.key())
+        Ok(*self.get_state(env)? == state)
     }
 
     /// The order's currency, the company's when none is set.
