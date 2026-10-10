@@ -115,7 +115,7 @@ impl SaleOrderProject<MultipleIds> {
     pub fn on_confirmed(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         for order in self {
-            let order: SaleOrder<SingleId> = env.get_record(order.get_id().into());
+            let order: SaleOrder<SingleId> = order.as_model();
             let lines: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
             let mut own_project: Option<u32> = None;
             for line in &lines {
@@ -175,12 +175,11 @@ fn sell_hours(env: &mut Environment, project: u32) -> Result<()> {
         ("project", "=", project),
         ("sale_line", "!=", false)
     ]))?;
-    let mut sold = Decimal::ZERO;
-    for task in &tasks {
-        let task: TaskSale<SingleId> = env.get_record(task.get_id().into());
+    let sold: Decimal = tasks.sum(env, |task, env| {
+        let task: TaskSale<SingleId> = task.as_model();
         let line: SaleOrderLine<SingleId> = task.get_sale_line(env)?;
-        sold += *line.get_product_uom_qty(env)?;
-    }
+        Ok(*line.get_product_uom_qty(env)?)
+    })?;
     let project: Project<SingleId> = env.get_record(project.into());
     project.set_planned_hours(sold, env)
 }
@@ -246,7 +245,7 @@ fn lines_of(env: &mut Environment, entries: &[u32]) -> Result<SaleOrderLine<Mult
     let env = &mut *env.sudo();
     let entries = Timesheet::<MultipleIds>::from_ids(entries.to_vec(), env);
     let tasks: Task<MultipleIds> = entries.get_task(env)?;
-    let tasks: TaskSale<MultipleIds> = TaskSale::from_ids(tasks.get_ids(), env);
+    let tasks: TaskSale<MultipleIds> = tasks.as_model();
     tasks.get_sale_line(env)
 }
 

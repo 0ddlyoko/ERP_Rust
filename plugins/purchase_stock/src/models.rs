@@ -143,15 +143,14 @@ impl PurchaseOrderStock<MultipleIds> {
     /// The transfers receiving the order, or sending it back.
     pub fn compute_pickings(&self, env: &mut Environment) -> Result<()> {
         for order in self {
-            let order_record: PurchaseOrder<SingleId> = env.get_record(order.get_id().into());
+            let order_record: PurchaseOrder<SingleId> = order.as_model();
             let lines: PurchaseOrderLine<MultipleIds> = order_record.get_lines(env)?;
             let line_ids = lines.get_ids_ref().clone();
-            let pickings: Picking<MultipleIds> = {
-                let env = &mut *env.sudo();
+            let pickings: Picking<MultipleIds> = env.sudo_with(|env| {
                 let moves: StockMove<MultipleIds> =
                     env.search(&make_domain!([("purchase_line", "in", line_ids)]))?;
-                moves.get_picking(env)?
-            };
+                moves.get_picking(env)
+            })?;
             order.set_pickings(&pickings, env)?;
         }
         Ok(())
@@ -160,7 +159,7 @@ impl PurchaseOrderStock<MultipleIds> {
     /// Nothing, part or all of the goods ordered received.
     pub fn compute_receipt_status(&self, env: &mut Environment) -> Result<()> {
         for order in self {
-            let order_record: PurchaseOrder<SingleId> = env.get_record(order.get_id().into());
+            let order_record: PurchaseOrder<SingleId> = order.as_model();
             let status = if !order_record.is_state(env, PurchaseState::Purchase)? {
                 ReceiptStatus::No
             } else {
@@ -192,7 +191,7 @@ impl PurchaseOrderStock<MultipleIds> {
     pub fn on_confirmed(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         for order in self {
-            let order: PurchaseOrder<SingleId> = env.get_record(order.get_id().into());
+            let order: PurchaseOrder<SingleId> = order.as_model();
             let rows = receivable(env, &order)?;
             if rows.is_empty() {
                 continue;
@@ -272,10 +271,9 @@ impl PickingPurchase<MultipleIds> {
     pub fn on_done(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         let env = &mut *env.sudo();
-        let pickings: Picking<MultipleIds> = Picking::from_ids(self.get_ids(), env);
+        let pickings: Picking<MultipleIds> = self.as_model();
         let moves: StockMove<MultipleIds> = pickings.get_moves(env)?;
-        let moves: StockMovePurchase<MultipleIds> =
-            StockMovePurchase::from_ids(moves.get_ids(), env);
+        let moves: StockMovePurchase<MultipleIds> = moves.as_model();
         let lines: PurchaseOrderLine<MultipleIds> = moves.get_purchase_line(env)?;
         for line in &lines {
             let received = received_quantity(env, line.get_id())?;

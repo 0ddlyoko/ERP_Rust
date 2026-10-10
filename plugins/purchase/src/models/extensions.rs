@@ -83,12 +83,11 @@ impl ProductPurchase<MultipleIds> {
                 let order: PurchaseOrder<SingleId> = line.get_order(env)?;
                 order.is_state(env, PurchaseState::Purchase)
             })?;
-            let mut bought = Decimal::ZERO;
-            for line in &confirmed {
+            let bought: Decimal = confirmed.sum(env, |line, env| {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;
                 let quantity = *line.get_product_qty(env)?;
-                bought += line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
-            }
+                line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)
+            })?;
             let orders: PurchaseOrder<MultipleIds> = confirmed.get_order(env)?;
             product.set_purchase_orders(&orders, env)?;
             product.set_purchased_qty(bought, env)?;
@@ -157,17 +156,16 @@ impl MovePurchase<MultipleIds> {
         let reversal: Move<SingleId> = env.get_record(reversal.into());
         let copies: InvoiceLine<MultipleIds> = reversal.get_invoice_lines(env)?;
         for origin in self {
-            let origin: Move<SingleId> = env.get_record(origin.get_id().into());
+            let origin: Move<SingleId> = origin.as_model();
             let originals: InvoiceLine<MultipleIds> = origin.get_invoice_lines(env)?;
             for (original, copy) in originals.into_iter().zip(copies.clone()) {
-                let original: InvoiceLinePurchase<SingleId> =
-                    env.get_record(original.get_id().into());
+                let original: InvoiceLinePurchase<SingleId> = original.as_model();
                 let order_lines: PurchaseOrderLine<MultipleIds> =
                     original.get_purchase_lines(env)?;
-                if order_lines.get_ids_ref().is_empty() {
+                if order_lines.is_empty() {
                     continue;
                 }
-                let copy: InvoiceLinePurchase<SingleId> = env.get_record(copy.get_id().into());
+                let copy: InvoiceLinePurchase<SingleId> = copy.as_model();
                 copy.set_purchase_lines(&order_lines, env)?;
             }
         }
@@ -181,7 +179,7 @@ pub fn billed_on_receipt(env: &mut Environment, product: &Product<SingleId>) -> 
         return Ok(false);
     }
     let env = &mut *env.sudo();
-    let product: ProductPurchase<SingleId> = env.get_record(product.get_id().into());
+    let product: ProductPurchase<SingleId> = product.as_model();
     Ok(matches!(
         *product.get_purchase_method(env)?,
         BillPolicy::Receive

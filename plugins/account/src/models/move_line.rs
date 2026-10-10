@@ -13,6 +13,7 @@ use code_gen::{Model, erp_methods, selection};
 use currency::models::{BaseCurrency, Currency};
 use erp::Result;
 use erp::environment::Environment;
+use erp::model::ModelVerbs;
 use erp::types::field::{Command, FieldType};
 use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, SingleId};
 use erp::types::model::MapOfFields;
@@ -576,15 +577,9 @@ impl MoveLine<MultipleIds> {
             ]))?;
         let lines: MoveLine<MultipleIds> = MoveLine::from_ids(group, env);
         let fulls: FullReconcile<MultipleIds> = lines.get_full_reconcile(env)?;
-        env.delete(
-            "account_partial_reconcile",
-            &MultipleIds::from(partials.get_ids_ref().clone()),
-        )?;
-        if !fulls.get_ids_ref().is_empty() {
-            env.delete(
-                "account_full_reconcile",
-                &MultipleIds::from(fulls.get_ids_ref().clone()),
-            )?;
+        partials.delete(env)?;
+        if !fulls.is_empty() {
+            fulls.delete(env)?;
         }
         lines.refresh_residuals(env)
     }

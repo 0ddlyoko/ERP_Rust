@@ -208,7 +208,7 @@ impl PurchaseOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+                let partner: ContactAccount<SingleId> = partner.as_model();
                 partner.get_supplier_payment_term(env)?
             };
             order.set_payment_term(&term, env)?;
@@ -224,7 +224,7 @@ impl PurchaseOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+                let partner: ContactAccount<SingleId> = partner.as_model();
                 partner.get_fiscal_position(env)?
             };
             order.set_fiscal_position(&position, env)?;
@@ -398,7 +398,7 @@ impl PurchaseOrder<MultipleIds> {
                     .into());
                 }
                 let lines: PurchaseOrderLine<MultipleIds> = order.get_lines(env)?;
-                if lines.get_ids_ref().is_empty() {
+                if lines.is_empty() {
                     return Err(format!("{} has no line to confirm", order.get_name(env)?).into());
                 }
                 order.set_state(PurchaseState::Purchase, env)?;

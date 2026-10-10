@@ -104,15 +104,14 @@ impl SaleOrderStock<MultipleIds> {
     /// The transfers delivering the order, or bringing it back.
     pub fn compute_pickings(&self, env: &mut Environment) -> Result<()> {
         for order in self {
-            let order_record: SaleOrder<SingleId> = env.get_record(order.get_id().into());
+            let order_record: SaleOrder<SingleId> = order.as_model();
             let lines: SaleOrderLine<MultipleIds> = order_record.get_lines(env)?;
             let line_ids = lines.get_ids_ref().clone();
-            let pickings: Picking<MultipleIds> = {
-                let env = &mut *env.sudo();
+            let pickings: Picking<MultipleIds> = env.sudo_with(|env| {
                 let moves: StockMove<MultipleIds> =
                     env.search(&make_domain!([("sale_line", "in", line_ids)]))?;
-                moves.get_picking(env)?
-            };
+                moves.get_picking(env)
+            })?;
             order.set_pickings(&pickings, env)?;
         }
         Ok(())
@@ -121,7 +120,7 @@ impl SaleOrderStock<MultipleIds> {
     /// Nothing, part or all of the goods ordered delivered.
     pub fn compute_delivery_status(&self, env: &mut Environment) -> Result<()> {
         for order in self {
-            let order_record: SaleOrder<SingleId> = env.get_record(order.get_id().into());
+            let order_record: SaleOrder<SingleId> = order.as_model();
             let status = if !order_record.is_state(env, sale::models::SaleState::Sale)? {
                 DeliveryStatus::No
             } else {
@@ -152,7 +151,7 @@ impl SaleOrderStock<MultipleIds> {
     pub fn on_confirmed(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         for order in self {
-            let order: SaleOrder<SingleId> = env.get_record(order.get_id().into());
+            let order: SaleOrder<SingleId> = order.as_model();
             let rows = deliverable(env, &order)?;
             if rows.is_empty() {
                 continue;
@@ -233,9 +232,9 @@ impl PickingSale<MultipleIds> {
     pub fn on_done(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         let env = &mut *env.sudo();
-        let pickings: Picking<MultipleIds> = Picking::from_ids(self.get_ids(), env);
+        let pickings: Picking<MultipleIds> = self.as_model();
         let moves: StockMove<MultipleIds> = pickings.get_moves(env)?;
-        let moves: StockMoveSale<MultipleIds> = StockMoveSale::from_ids(moves.get_ids(), env);
+        let moves: StockMoveSale<MultipleIds> = moves.as_model();
         let lines: SaleOrderLine<MultipleIds> = moves.get_sale_line(env)?;
         for line in &lines {
             let delivered = delivered_quantity(env, line.get_id())?;

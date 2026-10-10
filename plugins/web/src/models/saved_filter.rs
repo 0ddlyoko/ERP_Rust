@@ -104,7 +104,7 @@ impl SavedFilter<MultipleIds> {
         let env = &mut *env.sudo();
         let mine: SavedFilter<MultipleIds> =
             env.search(&make_domain!([("id", "=", id), ("user", "=", uid)]))?;
-        if mine.get_ids_ref().is_empty() {
+        if mine.is_empty() {
             return Err(format!("Saved search #{id} is not one of yours").into());
         }
         mine.delete(env)?;

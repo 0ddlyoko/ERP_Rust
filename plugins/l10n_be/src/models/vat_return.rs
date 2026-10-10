@@ -100,7 +100,7 @@ pub fn grid_amounts(
         .collect();
     for item in &items {
         let tags: TaxTag<MultipleIds> = item.get_tax_tags(env)?;
-        if tags.get_ids_ref().is_empty() {
+        if tags.is_empty() {
             continue;
         }
         let balance = *item.get_balance(env)?;

@@ -49,11 +49,8 @@ impl TaskTimesheet<MultipleIds> {
     pub fn compute_hours(&self, env: &mut Environment) -> Result<()> {
         for task in self {
             let entries: Timesheet<MultipleIds> = task.get_timesheets(env)?;
-            let mut spent = Decimal::ZERO;
-            for entry in &entries {
-                spent += *entry.get_hours(env)?;
-            }
-            let own: Task<SingleId> = env.get_record(task.get_id().into());
+            let spent: Decimal = entries.sum(env, |entry, env| Ok(*entry.get_hours(env)?))?;
+            let own: Task<SingleId> = task.as_model();
             let planned = *own.get_planned_hours(env)?;
             task.set_spent_hours(spent, env)?;
             task.set_remaining_hours(planned - spent, env)?;
@@ -87,11 +84,8 @@ impl ProjectTimesheet<MultipleIds> {
     pub fn compute_hours(&self, env: &mut Environment) -> Result<()> {
         for project in self {
             let entries: Timesheet<MultipleIds> = project.get_timesheets(env)?;
-            let mut spent = Decimal::ZERO;
-            for entry in &entries {
-                spent += *entry.get_hours(env)?;
-            }
-            let own: Project<SingleId> = env.get_record(project.get_id().into());
+            let spent: Decimal = entries.sum(env, |entry, env| Ok(*entry.get_hours(env)?))?;
+            let own: Project<SingleId> = project.as_model();
             let planned = *own.get_planned_hours(env)?;
             project.set_spent_hours(spent, env)?;
             project.set_remaining_hours(planned - spent, env)?;

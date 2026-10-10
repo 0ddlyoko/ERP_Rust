@@ -13,6 +13,7 @@ use code_gen::{Model, erp_methods, selection};
 use currency::models::{BaseCurrency, Currency};
 use erp::Result;
 use erp::environment::Environment;
+use erp::model::ModelVerbs;
 use erp::serde_json::{Value, json};
 use erp::types::field::Selection;
 use erp::types::field::{
@@ -250,7 +251,7 @@ impl Move<SingleId> {
         let env = &mut *env.sudo();
         let mut account: Account<SingleId> = env.get_record(SingleId::empty());
         if !partner.is_empty() {
-            let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+            let partner: ContactAccount<SingleId> = partner.as_model();
             account = if sale {
                 partner.get_account_receivable(env)?
             } else {
@@ -441,7 +442,7 @@ impl Move<SingleId> {
     fn settled_by_reversal(&self, env: &mut Environment) -> Result<bool> {
         let env = &mut *env.sudo();
         let reversals: Move<MultipleIds> = self.get_reversals(env)?;
-        if reversals.get_ids_ref().is_empty() {
+        if reversals.is_empty() {
             return Ok(false);
         }
         let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
@@ -461,11 +462,8 @@ impl Move<SingleId> {
     fn clear_items(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
         let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
-        if !lines.get_ids_ref().is_empty() {
-            env.delete(
-                "account_move_line",
-                &MultipleIds::from(lines.get_ids_ref().clone()),
-            )?;
+        if !lines.is_empty() {
+            lines.delete(env)?;
         }
         Ok(())
     }
@@ -495,7 +493,7 @@ impl Move<SingleId> {
                 .into());
             }
             let lines: InvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
-            if lines.get_ids_ref().is_empty() {
+            if lines.is_empty() {
                 return Err(
                     format!("The {} has no line to post", move_type_label(move_type)).into(),
                 );
@@ -709,15 +707,14 @@ impl Move<MultipleIds> {
                 entry.set_payment_term(None::<&PaymentTerm<SingleId>>, env)?;
                 continue;
             }
-            let term: PaymentTerm<SingleId> = {
-                let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+            let term: PaymentTerm<SingleId> = env.sudo_with(|env| {
+                let partner: ContactAccount<SingleId> = partner.as_model();
                 if move_type.is_sale() {
-                    partner.get_customer_payment_term(env)?
+                    partner.get_customer_payment_term(env)
                 } else {
-                    partner.get_supplier_payment_term(env)?
+                    partner.get_supplier_payment_term(env)
                 }
-            };
+            })?;
             entry.set_payment_term(&term, env)?;
         }
         Ok(())
@@ -731,11 +728,10 @@ impl Move<MultipleIds> {
                 entry.set_fiscal_position(None::<&FiscalPosition<SingleId>>, env)?;
                 continue;
             }
-            let position: FiscalPosition<SingleId> = {
-                let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
-                partner.get_fiscal_position(env)?
-            };
+            let position: FiscalPosition<SingleId> = env.sudo_with(|env| {
+                let partner: ContactAccount<SingleId> = partner.as_model();
+                partner.get_fiscal_position(env)
+            })?;
             entry.set_fiscal_position(&position, env)?;
         }
         Ok(())
@@ -957,9 +953,7 @@ impl Move<MultipleIds> {
                         line.get_matched_debits(env)?;
                     let matched_credits: crate::models::reconcile::PartialReconcile<MultipleIds> =
                         line.get_matched_credits(env)?;
-                    if !matched_debits.get_ids_ref().is_empty()
-                        || !matched_credits.get_ids_ref().is_empty()
-                    {
+                    if !matched_debits.is_empty() || !matched_credits.is_empty() {
                         return Err(format!(
                             "{} is matched with a payment: undo the matching first",
                             entry.get_name(env)?

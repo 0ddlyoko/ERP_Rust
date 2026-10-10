@@ -270,7 +270,7 @@ impl Follower<MultipleIds> {
     pub fn forget(&self, env: &mut Environment, follower: u32) -> Result<()> {
         let _ = self;
         let follower = Self::own_or_changeable(env, follower)?;
-        follower.delete(&mut *env.sudo())?;
+        follower.delete(&mut env.sudo())?;
         Ok(())
     }
 

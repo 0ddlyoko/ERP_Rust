@@ -220,7 +220,7 @@ impl Activity<MultipleIds> {
     pub fn cancel(&self, env: &mut Environment, activity: u32) -> Result<()> {
         let _ = self;
         let planned = Self::readable(env, activity)?;
-        planned.delete(&mut *env.sudo())?;
+        planned.delete(&mut env.sudo())?;
         Ok(())
     }
 }

@@ -248,7 +248,7 @@ impl BankStatementLine<SingleId> {
             return Ok(());
         }
         let chosen: MoveLine<MultipleIds> = self.get_to_match(env)?;
-        let candidates = if chosen.get_ids_ref().is_empty() {
+        let candidates = if chosen.is_empty() {
             self.find_matches(env)?
         } else {
             chosen.get_ids_ref().clone()
@@ -339,7 +339,7 @@ impl BankStatementLine<SingleId> {
         entry.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
         let entry: Move<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
         entry.action_post(env)?;
-        let entry: Move<SingleId> = env.get_record(entry.get_ids_ref()[0].into());
+        let entry: Move<SingleId> = entry.ensure_one()?;
         let new_items: MoveLine<MultipleIds> = entry.get_lines(env)?;
         for (settled_item, account) in settled {
             let mut pair = vec![settled_item];

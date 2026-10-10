@@ -182,18 +182,17 @@ impl InvoiceLine<MultipleIds> {
             {
                 let env = &mut *env.sudo();
                 if !product.is_empty() {
-                    let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
+                    let product: ProductAccount<SingleId> = product.as_model();
                     account = if sale {
                         product.get_income_account(env)?
                     } else {
                         product.get_expense_account(env)?
                     };
                     if account.is_empty() {
-                        let product: Product<SingleId> = env.get_record(product.get_id().into());
+                        let product: Product<SingleId> = product.as_model();
                         let category: product::models::ProductCategory<SingleId> =
                             product.get_category(env)?;
-                        let category: ProductCategoryAccount<SingleId> =
-                            env.get_record(category.get_id().into());
+                        let category: ProductCategoryAccount<SingleId> = category.as_model();
                         account = if sale {
                             category.get_income_account(env)?
                         } else {
@@ -232,14 +231,13 @@ impl InvoiceLine<MultipleIds> {
                 continue;
             }
             let sale = line.invoice(env)?.is_sale_document(env)?;
-            let uom: Uom<SingleId> = {
-                let env = &mut *env.sudo();
+            let uom: Uom<SingleId> = env.sudo_with(|env| {
                 if sale {
-                    product.get_uom(env)?
+                    product.get_uom(env)
                 } else {
-                    product.get_purchase_uom(env)?
+                    product.get_purchase_uom(env)
                 }
-            };
+            })?;
             line.set_uom(&uom, env)?;
         }
         Ok(())
@@ -299,20 +297,19 @@ impl InvoiceLine<MultipleIds> {
         for line in self {
             let product: Product<SingleId> = line.get_product(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::from_ids(Vec::<u32>::new(), env), env)?;
+                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
             let invoice = line.invoice(env)?;
             let sale = invoice.is_sale_document(env)?;
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
+            let taxes: Tax<MultipleIds> = env.sudo_with(|env| {
+                let product: ProductAccount<SingleId> = product.as_model();
                 if sale {
-                    product.get_taxes(env)?
+                    product.get_taxes(env)
                 } else {
-                    product.get_supplier_taxes(env)?
+                    product.get_supplier_taxes(env)
                 }
-            };
+            })?;
             let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
             let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);

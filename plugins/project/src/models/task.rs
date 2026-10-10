@@ -338,7 +338,7 @@ impl Task<MultipleIds> {
         let parents_before: Task<MultipleIds> = if relinked {
             self.get_parent(env)?
         } else {
-            Task::from_ids(Vec::<u32>::new(), env)
+            Task::empty(env)
         };
         sup.call_with(values, env)?;
         if moved {
@@ -384,7 +384,7 @@ impl Task<MultipleIds> {
     /// Blocked while held up, in progress again once no longer; up to the tasks they are subtasks
     /// of, whose subtasks changed.
     pub fn refresh_blocked(&self, env: &mut Environment) -> Result<()> {
-        if self.get_ids_ref().is_empty() {
+        if self.is_empty() {
             return Ok(());
         }
         let mut changed = Vec::new();

@@ -63,7 +63,7 @@ fn valuation_of(env: &mut Environment, product: &Product<SingleId>) -> Result<Op
     let env = &mut *env.sudo();
     let category: ProductCategory<SingleId> = product.get_category(env)?;
     let name = category.get_complete_name(env)?.clone();
-    let category: ProductCategoryValuation<SingleId> = env.get_record(category.get_id().into());
+    let category: ProductCategoryValuation<SingleId> = category.as_model();
     let valuation: Account<SingleId> = category.get_stock_valuation_account(env)?;
     if valuation.is_empty() {
         return Ok(None);
@@ -99,7 +99,7 @@ impl StockMoveAccount<MultipleIds> {
     pub fn on_moved(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         for stock_move in self {
-            let record: StockMove<SingleId> = env.get_record(stock_move.get_id().into());
+            let record: StockMove<SingleId> = stock_move.as_model();
             let value = *record.get_value(env)?;
             if value.is_zero() {
                 continue;

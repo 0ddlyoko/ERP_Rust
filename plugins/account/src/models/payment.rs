@@ -92,7 +92,7 @@ impl Payment<SingleId> {
         let customer = matches!(*self.get_partner_type(env)?, PartnerType::Customer);
         let partner: Contact<SingleId> = self.get_partner(env)?;
         let env = &mut *env.sudo();
-        let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+        let partner: ContactAccount<SingleId> = partner.as_model();
         let account: Account<SingleId> = if customer {
             partner.get_account_receivable(env)?
         } else {
@@ -198,14 +198,14 @@ impl Payment<SingleId> {
         entry.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
         let entry: Move<MultipleIds> = env.sudo().create_new_records_from_maps(vec![entry])?;
         entry.action_post(&mut env.sudo())?;
-        let entry: Move<SingleId> = env.get_record(entry.get_ids_ref()[0].into());
+        let entry: Move<SingleId> = entry.ensure_one()?;
         let name = entry.get_name(&mut env.sudo())?.clone();
         self.set_move_id(&entry, env)?;
         self.set_state(PaymentStatus::Posted, env)?;
         self.set_name(name, env)?;
 
         let invoices: Move<MultipleIds> = self.get_invoices(env)?;
-        if !invoices.get_ids_ref().is_empty() {
+        if !invoices.is_empty() {
             let lines = {
                 let sudo = &mut *env.sudo();
                 let items: MoveLine<MultipleIds> = (invoices + entry).get_lines(sudo)?;

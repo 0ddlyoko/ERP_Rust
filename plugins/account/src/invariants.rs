@@ -38,10 +38,7 @@ pub fn check_balanced(env: &mut Environment) -> Result<()> {
         "=",
         MoveState::Posted.key().as_str()
     )]))?;
-    let mut balance = Decimal::ZERO;
-    for line in &lines {
-        balance += *line.get_balance(env)?;
-    }
+    let balance: Decimal = lines.sum(env, |line, env| Ok(*line.get_balance(env)?))?;
     if debit_all != credit_all || !balance.is_zero() {
         return Err(format!(
             "The trial balance does not balance: {debit_all} debited, {credit_all} credited"

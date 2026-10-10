@@ -104,7 +104,7 @@ impl PurchaseOrderLine<SingleId> {
             return Ok(None);
         }
         let quantity = *self.get_product_qty(env)?;
-        let product: ProductPurchase<SingleId> = env.get_record(product.get_id().into());
+        let product: ProductPurchase<SingleId> = product.as_model();
         product.vendor_price(env, vendor.get_id(), quantity)
     }
 }
@@ -214,14 +214,13 @@ impl PurchaseOrderLine<MultipleIds> {
         for line in self {
             let product: Product<SingleId> = line.get_product(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::from_ids(Vec::<u32>::new(), env), env)?;
+                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
-                product.get_supplier_taxes(env)?
-            };
+            let taxes: Tax<MultipleIds> = env.sudo_with(|env| {
+                let product: ProductAccount<SingleId> = product.as_model();
+                product.get_supplier_taxes(env)
+            })?;
             let order: PurchaseOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;

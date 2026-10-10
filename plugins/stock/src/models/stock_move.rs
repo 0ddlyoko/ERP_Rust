@@ -255,7 +255,7 @@ impl StockMove<SingleId> {
     fn cost_method(env: &mut Environment, product: Product<SingleId>) -> Result<CostMethod> {
         let env = &mut *env.sudo();
         let category: ProductCategory<SingleId> = product.get_category(env)?;
-        let category: ProductCategoryStock<SingleId> = env.get_record(category.get_id().into());
+        let category: ProductCategoryStock<SingleId> = category.as_model();
         Ok(match *category.get_cost_method(env)? {
             StockCostMethod::Standard => CostMethod::Standard,
             StockCostMethod::Fifo => CostMethod::Fifo,

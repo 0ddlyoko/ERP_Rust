@@ -87,7 +87,7 @@ fn parcel(name: &str, weight: i32) -> MapOfFields {
 }
 
 fn count(env: &mut Environment) -> Result<u32> {
-    Ok(env.count("parcel", &erp::search::SearchType::Nothing)?)
+    env.count("parcel", &erp::search::SearchType::Nothing)
 }
 
 /// A record breaking a check is refused, and nothing of the creation is kept.

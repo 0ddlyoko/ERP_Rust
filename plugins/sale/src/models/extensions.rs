@@ -67,12 +67,11 @@ impl ProductSale<MultipleIds> {
                 let order: SaleOrder<SingleId> = line.get_order(env)?;
                 order.is_state(env, SaleState::Sale)
             })?;
-            let mut sold = Decimal::ZERO;
-            for line in &confirmed {
+            let sold: Decimal = confirmed.sum(env, |line, env| {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;
                 let quantity = *line.get_product_uom_qty(env)?;
-                sold += line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
-            }
+                line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)
+            })?;
             let orders: SaleOrder<MultipleIds> = confirmed.get_order(env)?;
             product.set_sale_orders(&orders, env)?;
             product.set_sold_qty(sold, env)?;
@@ -111,15 +110,15 @@ impl MoveSale<MultipleIds> {
         let reversal: Move<SingleId> = env.get_record(reversal.into());
         let copies: InvoiceLine<MultipleIds> = reversal.get_invoice_lines(env)?;
         for origin in self {
-            let origin: Move<SingleId> = env.get_record(origin.get_id().into());
+            let origin: Move<SingleId> = origin.as_model();
             let originals: InvoiceLine<MultipleIds> = origin.get_invoice_lines(env)?;
             for (original, copy) in originals.into_iter().zip(copies.clone()) {
-                let original: InvoiceLineSale<SingleId> = env.get_record(original.get_id().into());
+                let original: InvoiceLineSale<SingleId> = original.as_model();
                 let order_lines: SaleOrderLine<MultipleIds> = original.get_sale_lines(env)?;
-                if order_lines.get_ids_ref().is_empty() {
+                if order_lines.is_empty() {
                     continue;
                 }
-                let copy: InvoiceLineSale<SingleId> = env.get_record(copy.get_id().into());
+                let copy: InvoiceLineSale<SingleId> = copy.as_model();
                 copy.set_sale_lines(&order_lines, env)?;
             }
         }

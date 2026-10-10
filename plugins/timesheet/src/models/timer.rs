@@ -66,7 +66,7 @@ impl Timer<MultipleIds> {
         values.insert("started", Utc::now());
         values.insert_option("task", task);
         let started: Timer<MultipleIds> = env.sudo().create_new_records_from_maps(vec![values])?;
-        let timer: Timer<SingleId> = env.get_record(started.get_ids_ref()[0].into());
+        let timer: Timer<SingleId> = started.ensure_one()?;
         timer.describe(env)
     }
 

@@ -103,8 +103,8 @@ impl Project<MultipleIds> {
         for project in &projects {
             let template: Project<SingleId> = project.get_template(env)?;
             let stages: Stage<MultipleIds> = project.get_stages(env)?;
-            if !template.is_empty() && stages.get_ids_ref().is_empty() {
-                let project: Project<SingleId> = env.get_record(project.get_id().into());
+            if !template.is_empty() && stages.is_empty() {
+                let project: Project<SingleId> = project.as_model();
                 project.copy_board(env, &template)?;
             }
         }

@@ -203,14 +203,13 @@ impl SaleOrderLine<MultipleIds> {
         for line in self {
             let product = line.product_record(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::from_ids(Vec::<u32>::new(), env), env)?;
+                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
-            let taxes: Tax<MultipleIds> = {
-                let env = &mut *env.sudo();
-                let product: ProductAccount<SingleId> = env.get_record(product.get_id().into());
-                product.get_taxes(env)?
-            };
+            let taxes: Tax<MultipleIds> = env.sudo_with(|env| {
+                let product: ProductAccount<SingleId> = product.as_model();
+                product.get_taxes(env)
+            })?;
             let order: SaleOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
@@ -276,7 +275,7 @@ impl SaleOrderLine<MultipleIds> {
             let product = line.product_record(env)?;
             let by_delivery = !product.is_empty() && {
                 let env = &mut *env.sudo();
-                let product: ProductSale<SingleId> = env.get_record(product.get_id().into());
+                let product: ProductSale<SingleId> = product.as_model();
                 matches!(*product.get_invoice_policy(env)?, InvoicePolicy::Delivery)
             };
             let due = if by_delivery {

@@ -95,6 +95,6 @@ impl CompanyAccount<SingleId> {
     /// The accounting settings of the current company.
     pub fn current(env: &mut Environment) -> Result<CompanyAccount<SingleId>> {
         let company = Company::current(env)?;
-        Ok(env.get_record(company.get_id().into()))
+        Ok(company.as_model())
     }
 }

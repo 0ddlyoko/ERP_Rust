@@ -242,7 +242,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let env = &mut *env.sudo();
-                let partner: ContactSale<SingleId> = env.get_record(partner.get_id().into());
+                let partner: ContactSale<SingleId> = partner.as_model();
                 partner.get_pricelist(env)?
             };
             order.set_pricelist(&pricelist, env)?;
@@ -258,7 +258,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+                let partner: ContactAccount<SingleId> = partner.as_model();
                 partner.get_customer_payment_term(env)?
             };
             order.set_payment_term(&term, env)?;
@@ -274,7 +274,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let env = &mut *env.sudo();
-                let partner: ContactAccount<SingleId> = env.get_record(partner.get_id().into());
+                let partner: ContactAccount<SingleId> = partner.as_model();
                 partner.get_fiscal_position(env)?
             };
             order.set_fiscal_position(&position, env)?;
@@ -469,7 +469,7 @@ impl SaleOrder<MultipleIds> {
                     .into());
                 }
                 let lines: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
-                if lines.get_ids_ref().is_empty() {
+                if lines.is_empty() {
                     return Err(format!("{} has no line to confirm", order.get_name(env)?).into());
                 }
                 order.set_state(SaleState::Sale, env)?;

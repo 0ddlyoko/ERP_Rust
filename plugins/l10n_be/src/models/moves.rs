@@ -21,7 +21,7 @@ impl MoveBe<MultipleIds> {
     pub fn assign_payment_reference(&self, env: &mut Environment, sup: Super) -> Result<()> {
         let mut others = Vec::new();
         for entry in self {
-            let entry: Move<SingleId> = env.get_record(entry.get_id().into());
+            let entry: Move<SingleId> = entry.as_model();
             let customer = matches!(
                 *entry.get_move_type(env)?,
                 MoveType::OutInvoice | MoveType::OutRefund

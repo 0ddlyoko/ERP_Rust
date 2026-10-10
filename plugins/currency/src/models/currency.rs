@@ -54,7 +54,7 @@ impl Currency<SingleId> {
     /// The currency the current company keeps its books in.
     pub fn of_company(env: &mut Environment) -> Result<Currency<SingleId>> {
         let company = Company::current(env)?;
-        let company: CompanyCurrency<SingleId> = env.get_record(company.get_id().into());
+        let company: CompanyCurrency<SingleId> = company.as_model();
         let env = &mut *env.sudo();
         company.get_currency(env)
     }
