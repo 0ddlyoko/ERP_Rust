@@ -1,6 +1,6 @@
 <templates>
     <t t-name="web.ListView">
-        <div class="o_list_view">
+        <div class="o_list_view" t-ref="element">
             <div class="o_control_panel">
                 <button t-if="!props.onChoose" type="button" class="o_button_primary" t-att-disabled="running" t-on-click="create">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -92,6 +92,10 @@
                                 </tbody>
                             </t>
                             <tbody>
+                                <tr t-if="editing !== null &amp;&amp; editing.id === null &amp;&amp; editableAt === 'top'"
+                                    class="o_list_row o_list_editing o_list_new" t-on-keydown="(ev) => rowKey(ev)">
+                                    <t t-call="web.ListEditedCells"/>
+                                </tr>
                                 <t t-foreach="lines" t-as="line" t-key="line.key">
                                     <tr t-if="line.kind === 'group'" class="o_list_group"
                                         t-att-aria-expanded="isOpen(line.group) ? 'true' : 'false'"
@@ -129,6 +133,10 @@
                                     <tr t-elif="line.kind === 'loading'" class="o_list_empty">
                                         <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
                                     </tr>
+                                    <tr t-elif="isEditing(line.record)" class="o_list_row o_list_editing" t-att-data-id="line.record.id"
+                                        t-on-keydown="(ev) => rowKey(ev)">
+                                        <t t-call="web.ListEditedCells"/>
+                                    </tr>
                                     <tr t-else="" t-att-class="rowClass(line.record)" t-att-data-id="line.record.id" tabindex="-1"
                                         t-on-click="() => choose(line.record)">
                                         <td class="o_list_select" t-on-click.stop="() => {}">
@@ -144,7 +152,11 @@
                                         <td t-if="widths" class="o_list_filler"/>
                                     </tr>
                                 </t>
-                                <tr t-if="lines.length === 0" class="o_list_empty">
+                                <tr t-if="editing !== null &amp;&amp; editing.id === null &amp;&amp; editableAt === 'bottom'"
+                                    class="o_list_row o_list_editing o_list_new" t-on-keydown="(ev) => rowKey(ev)">
+                                    <t t-call="web.ListEditedCells"/>
+                                </tr>
+                                <tr t-if="lines.length === 0 &amp;&amp; !(editing !== null &amp;&amp; editing.id === null)" class="o_list_empty">
                                     <td t-att-colspan="columns.length + (widths ? 2 : 1)">No records.</td>
                                 </tr>
                             </tbody>
@@ -172,5 +184,13 @@
             </div>
             <FormDialog t-if="completing" model="props.resModel" defaults="completing" onCreated="completed" onClose="closeForm"/>
         </div>
+    </t>
+    <t t-name="web.ListEditedCells">
+        <td class="o_list_select"/>
+        <td t-foreach="columns" t-as="column" t-key="column.name" t-att-class="cellClass(column)">
+            <t t-component="widgetFor(column)" record="editingValues" model="props.resModel" name="column.name"
+               field="column.field" attrs="column.attrs" readonly="cellReadonly(column)" onChange="rowChanger(column.name)"/>
+        </td>
+        <td t-if="widths" class="o_list_filler"/>
     </t>
 </templates>

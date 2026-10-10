@@ -581,3 +581,23 @@ fn test_views_and_menus() -> Result<()> {
     );
     Ok(())
 }
+
+/// A product has one line per location: a second one there is refused.
+#[test]
+fn test_one_stock_line_per_location() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let pen = goods(&mut env, "Pen", "average", "2")?;
+    transfer_and_validate(&mut env, "in_type", &[(pen, "10", "2")])?;
+    let stock_location = warehouse_field(&mut env, "lot_stock")?;
+    let second = env.call_rpc(
+        "stock_quant",
+        "create",
+        &json!({"values": {"product": pen, "location": stock_location, "inventory_quantity": "4"}}),
+    );
+    let error = second
+        .expect_err("a second line at the same place")
+        .to_string();
+    assert!(error.contains("already has a line"), "{error}");
+    Ok(())
+}

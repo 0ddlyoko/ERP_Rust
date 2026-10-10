@@ -759,7 +759,7 @@ export class FormView extends View {
  * A value of a line, as the server reads it, from its shape alone — the form does not know the
  * line's fields: a record as `[id, name]` by its id, records as such by their ids.
  */
-function asSent(value: unknown): unknown {
+export function asSent(value: unknown): unknown {
     const isNamed = (item: unknown): boolean =>
         Array.isArray(item) && item.length === 2 && typeof item[0] === "number" && (typeof item[1] === "string" || item[1] === null);
     if (isNamed(value)) {

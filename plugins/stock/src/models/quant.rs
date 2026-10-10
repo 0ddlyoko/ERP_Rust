@@ -17,7 +17,11 @@ pub struct Quant<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     product: Reference<BaseProduct, SingleId>,
-    #[erp(required, ondelete = "cascade")]
+    #[erp(
+        required,
+        ondelete = "cascade",
+        domain = r#"[["usage", "=", "internal"]]"#
+    )]
     location: Reference<BaseStockLocation, SingleId>,
     #[erp(label = "On hand", default = 0.0)]
     quantity: Decimal,
@@ -142,6 +146,32 @@ impl Quant<SingleId> {
 
 #[erp_methods]
 impl Quant<MultipleIds> {
+    /// One line per product and location: a count entered for a place already holding the
+    /// product goes on its line, rather than splitting what is there in two.
+    pub fn check_one_per_location(&self, env: &mut Environment) -> Result<()> {
+        let env = &mut *env.sudo();
+        for quant in self {
+            let product: Product<SingleId> = quant.get_product(env)?;
+            let location: Location<SingleId> = quant.get_location(env)?;
+            let same = env.count(
+                "stock_quant",
+                &make_domain!([
+                    ("product", "=", product.get_id()),
+                    ("location", "=", location.get_id())
+                ]),
+            )?;
+            if same > 1 {
+                let product_name = product.get_display_name(env)?.clone();
+                let location_name = location.get_complete_name(env)?.clone();
+                return Err(format!(
+                    "{product_name} already has a line at {location_name}: count it there"
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+
     pub fn compute_inventory_diff(&self, env: &mut Environment) -> Result<()> {
         for quant in self {
             let diff = match quant.get_inventory_quantity(env)?.copied() {
@@ -151,6 +181,30 @@ impl Quant<MultipleIds> {
             quant.set_inventory_diff(diff, env)?;
         }
         Ok(())
+    }
+
+    pub fn create(
+        &self,
+        env: &mut Environment,
+        values: Vec<MapOfFields>,
+        sup: Super,
+    ) -> Result<MultipleIds> {
+        env.savepoint(|env| {
+            let ids: MultipleIds = sup.call_with(values, env)?;
+            Quant::<MultipleIds>::from_ids(ids.clone(), env).check_one_per_location(env)?;
+            Ok(ids)
+        })
+    }
+
+    pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
+        let moved = values.contains_key("product") || values.contains_key("location");
+        env.savepoint(|env| {
+            sup.call_with(values, env)?;
+            if moved {
+                self.check_one_per_location(env)?;
+            }
+            Ok(())
+        })
     }
 
     /// Make what was counted what is on hand: the difference moves from or to the inventory

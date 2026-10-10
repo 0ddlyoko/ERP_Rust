@@ -783,3 +783,19 @@ body.o_resizing * {
     font-size: 12px;
     white-space: nowrap;
 }
+
+/* A row edited in place: its fields as inputs, the row marked */
+
+.o_list_row.o_list_editing {
+    background: color-mix(in oklch, var(--o-accent) 6%, var(--o-surface));
+    box-shadow: inset 3px 0 0 var(--o-accent);
+}
+
+.o_list_editing td {
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.o_list_editing .o_input {
+    height: 32px;
+}

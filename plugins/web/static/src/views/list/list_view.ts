@@ -6,6 +6,7 @@ import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Domain, Group, Values } from "@web/core/orm";
 import { FormDialog } from "@web/views/form/form_dialog";
+import { asSent } from "@web/views/form/form_view";
 import { groupCreateFields, groupValue, needsForm, titleField } from "@web/views/group_create";
 import { favoritesOf, forgetFavorite, saveFavorite } from "@web/views/search/favorites";
 import { FilterChips } from "@web/views/search/filter_chips";
@@ -98,6 +99,11 @@ export class ListView extends View {
         takeOpening(this.memoryKey) ?? searchFacets(this.memoryKey) ?? listMemory(this.memoryKey)?.facets ?? null;
     @state accessor sort: Sort | null = listMemory(this.memoryKey)?.sort ?? null;
     @state accessor actionsOpen = false;
+    /** The row edited in place: a record's, by its id, or a new one's, `null`; what it holds and what changed. */
+    @state accessor editing: { id: number | null; values: Values; changes: Values } | null = null;
+    @state accessor savingRow = false;
+    /** The list's element, set by its template. */
+    element: HTMLElement | null = null;
     @state accessor confirming: Confirming | null = null;
     @state accessor running = false;
     /** The columns' widths, once the user sized one. */
@@ -221,9 +227,122 @@ export class ListView extends View {
         }
     }
 
-    /** Open a form for a record not created yet. */
-    create(): void {
-        this.router.go({ ...this.router.route, view: "form", id: null });
+    /**
+     * A record not created yet: a row to fill in, in a list whose XML says `editable`; else a
+     * form for it.
+     */
+    async create(): Promise<void> {
+        if (!this.editsInPlace) {
+            this.router.go({ ...this.router.route, view: "form", id: null });
+            return;
+        }
+        if (!(await this.leaveRow())) {
+            return;
+        }
+        const names = this.columns.map((column) => column.name);
+        const values = { ...(await this.orm.defaultGet(this.props.resModel, names)), ...this.props.defaults };
+        this.editing = { id: null, values, changes: {} };
+        await nextTick();
+        this.element?.querySelector<HTMLElement>(".o_list_editing input:not([disabled]), .o_list_editing select")?.focus();
+    }
+
+    /** Where rows are edited in place, as the list's `editable` says: new ones added at the top or the bottom. */
+    get editableAt(): "top" | "bottom" | null {
+        const at = this.listAttrs.editable;
+        return at === "top" || at === "bottom" ? at : null;
+    }
+
+    /** Rows are edited in place: the list says so, shows no groups, and is not choosing records. */
+    get editsInPlace(): boolean {
+        return this.editableAt !== null && this.grouping === null && this.props.onChoose === undefined;
+    }
+
+    /** The row being edited, as its widgets show it. */
+    get editingValues(): Values {
+        return this.editing === null ? {} : { ...this.editing.values, ...this.editing.changes };
+    }
+
+    isEditing(record: Values): boolean {
+        return this.editing !== null && this.editing.id === this.idOf(record);
+    }
+
+    /** A column the user does not change in a row: the field cannot be, or the list says so. */
+    cellReadonly(column: Column): boolean {
+        return column.field.readonly === true || column.attrs.readonly === "1" || column.attrs.readonly === "true";
+    }
+
+    readonly rowChanger = (name: string) => (value: unknown): void => {
+        if (this.editing !== null) {
+            this.editing = { ...this.editing, changes: { ...this.editing.changes, [name]: value } };
+        }
+    };
+
+    /** Enter saves the row, Escape gives up its changes — unless what the user typed in took the key. */
+    rowKey(event: KeyboardEvent): void {
+        if (event.defaultPrevented) {
+            return;
+        }
+        if (event.key === "Enter" && !(event.target instanceof HTMLTextAreaElement)) {
+            event.preventDefault();
+            void this.leaveRow();
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            this.editing = null;
+        }
+    }
+
+    /** A press out of the row being edited saves it: the user moved on. */
+    @effect saveOnLeaving(): (() => void) | void {
+        if (this.editing === null) {
+            return;
+        }
+        const leave = (event: MouseEvent): void => {
+            const target = event.target as Element | null;
+            if (target?.closest(".o_list_editing, .o_record_search_results, .o_dialog_backdrop, .o_control_panel") == null) {
+                void this.leaveRow();
+            }
+        };
+        document.addEventListener("mousedown", leave);
+        return () => document.removeEventListener("mousedown", leave);
+    }
+
+    /**
+     * Save the row being edited and stop editing it: created, or its changes written. A new row
+     * left untouched is dropped. `false` when the server refused it, the row still edited to mend.
+     */
+    async leaveRow(): Promise<boolean> {
+        const editing = this.editing;
+        if (editing === null || this.savingRow) {
+            return editing === null;
+        }
+        if (Object.keys(editing.changes).length === 0) {
+            this.editing = null;
+            return true;
+        }
+        this.savingRow = true;
+        try {
+            const sent = Object.fromEntries(
+                Object.entries(editing.id === null ? { ...editing.values, ...editing.changes } : editing.changes)
+                    .filter(([name]) => name !== "id")
+                    .map(([name, value]) => [name, asSent(value)]),
+            );
+            if (editing.id === null) {
+                await this.orm.create(this.props.resModel, sent);
+                this.added++;
+            } else {
+                await this.orm.write(this.props.resModel, [editing.id], sent);
+            }
+            this.editing = null;
+            refresh(() => this.records);
+            refresh(() => this.total);
+            refresh(() => this.totals);
+            return true;
+        } catch (error) {
+            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+            return false;
+        } finally {
+            this.savingRow = false;
+        }
     }
 
     @resource accessor searchArch: string = load(
@@ -744,7 +863,19 @@ export class ListView extends View {
             this.props.onChoose([this.idOf(record)]);
             return;
         }
+        if (this.editsInPlace) {
+            void this.editRow(record);
+            return;
+        }
         this.router.go({ ...this.router.route, view: "form", id: this.idOf(record) });
+    }
+
+    /** Edit a row in place, once the one being edited is saved. */
+    private async editRow(record: Values): Promise<void> {
+        if (this.isEditing(record) || !(await this.leaveRow())) {
+            return;
+        }
+        this.editing = { id: this.idOf(record), values: record, changes: {} };
     }
 
     /** Pick the records selected, while choosing. */

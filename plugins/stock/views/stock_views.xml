@@ -197,16 +197,16 @@
     <action id="action_moves" name="Moves analysis" model="stock_move" views="list,form"/>
 
     <view id="view_quant_list" name="stock_quant.list" model="stock_quant">
-        <list>
+        <list editable="bottom">
             <buttons>
                 <button name="action_apply_inventory" type="method" string="Apply counts"/>
             </buttons>
             <field name="product"/>
             <field name="location"/>
-            <field name="quantity"/>
-            <field name="reserved_quantity"/>
+            <field name="quantity" readonly="1"/>
+            <field name="reserved_quantity" readonly="1"/>
             <field name="inventory_quantity"/>
-            <field name="inventory_diff"/>
+            <field name="inventory_diff" readonly="1"/>
         </list>
     </view>
     <view id="view_quant_form" name="stock_quant.form" model="stock_quant">
