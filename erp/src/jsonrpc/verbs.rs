@@ -3,6 +3,7 @@
 //! They are reserved names: a method exposed under one of them would be unreachable, so that is
 //! refused when it is registered rather than discovered when a call goes somewhere unexpected.
 
+use crate::Result;
 use crate::access::Operation;
 use crate::database::{FieldType as StoredValue, Group, GroupBy};
 use crate::environment::{Environment, LineKey, Onchange};
@@ -17,9 +18,6 @@ use serde::Deserialize;
 use serde::de::DeserializeSeed;
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// An operation the protocol answers to on every model.
 ///

@@ -4,16 +4,14 @@
 //! ordinary boot, which would otherwise undo whatever users changed in records a file declared.
 
 use base::BasePlugin;
+use erp::Result;
 use erp::app::{Application, DataUpdate, LaunchArgs};
 use erp::data;
 use erp::database::cache::CacheDatabase;
 use erp_search_code_gen::make_domain;
 use erp_types::field::{MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
-use std::error::Error;
 use test_utilities::{SeedPlugin, TestLibPlugin};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Start the application on this database, as a restart of the server would.
 fn boot(database: &CacheDatabase, update: DataUpdate) -> Result<Application> {

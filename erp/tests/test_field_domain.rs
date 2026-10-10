@@ -1,13 +1,11 @@
 //! A relation's domain, declared on its field: given to clients, so they offer only the records it
 //! matches, and changed by an extension like any other attribute of the field.
 
+use erp::Result;
 use erp::app::Application;
 use erp_types::field::IdMode;
 use erp_types::model::MapOfFields;
 use serde_json::{Value, json};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod library {
     use code_gen::Model;

@@ -19,7 +19,6 @@ use crate::environment::Environment;
 use crate::http::ControllerRegistry;
 use crate::model::ModelManager;
 use std::any::Any;
-use std::error::Error;
 
 /// Identifies the build of `erp` the calling code was compiled against.
 ///
@@ -121,7 +120,7 @@ pub trait Plugin: Any + Send + Sync {
     /// Post-Initialize this plugin
     ///
     /// This method is called once this plugin is fully initialized (after the call to init_models)
-    fn post_init(&mut self, _env: &mut Environment) -> Result<(), Box<dyn Error + Send + Sync>> {
+    fn post_init(&mut self, _env: &mut Environment) -> crate::Result<()> {
         Ok(())
     }
 

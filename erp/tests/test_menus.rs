@@ -2,6 +2,7 @@
 
 use base::models::Menu;
 use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD};
+use erp::Result;
 use erp::app::Application;
 use erp::data;
 use erp::model::ModelManager;
@@ -9,9 +10,6 @@ use erp::plugin::Plugin;
 use erp_types::field::{IdMode, MultipleIds, Password};
 use erp_types::model::MapOfFields;
 use serde_json::{Value, json};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// A plugin shipping data files only, menus among them.
 struct DataPlugin {

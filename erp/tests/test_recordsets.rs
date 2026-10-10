@@ -1,13 +1,12 @@
 //! Working on recordsets as a whole: keeping those a condition holds for, ordering them, and
 //! putting two together — each record once, or one after the other.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod models {
     use code_gen::Model;
@@ -159,10 +158,12 @@ fn test_errors_say_whose_they_are() -> Result<()> {
     assert_eq!(answer["error"]["data"]["kind"], "input", "{answer}");
     assert_eq!(answer["error"]["data"]["field"], "shelf", "{answer}");
 
-    use erp::errors::{ErrorKind, InternalError, kind_of};
-    let refused: Box<dyn Error + Send + Sync> = "Closed on Sundays".into();
-    assert_eq!(kind_of(&*refused), ErrorKind::Business);
-    let broken: Box<dyn Error + Send + Sync> = InternalError::new("a bug").into();
-    assert_eq!(kind_of(&*broken), ErrorKind::Internal);
+    use erp::errors::ErrorKind;
+    assert_eq!(
+        erp::Error::from("Closed on Sundays").kind(),
+        ErrorKind::Business
+    );
+    let broken: Box<dyn Error + Send + Sync> = erp::Error::internal("a bug").into();
+    assert_eq!(erp::Error::from(broken).kind(), ErrorKind::Internal);
     Ok(())
 }

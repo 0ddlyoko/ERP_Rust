@@ -152,6 +152,6 @@ impl Account<MultipleIds> {
                 account.insert("reconcile", true);
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 }

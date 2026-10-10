@@ -1,13 +1,11 @@
 //! Methods marked `#[erp(check)]` run on their own once records are created or written: a refusal
 //! undoes the work, and a check naming fields runs only when one of them is written.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod models {
     use code_gen::{Model, erp_methods};

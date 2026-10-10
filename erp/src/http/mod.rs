@@ -70,7 +70,7 @@ pub fn handle(app: &Application, request: Request) -> Response {
 fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Response {
     let mut env = match app.new_env() {
         Ok(env) => env,
-        Err(error) => return failure(&*error),
+        Err(error) => return failure(&error),
     };
     let cookie = request
         .cookie(SESSION_COOKIE)
@@ -78,7 +78,7 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
     let caller = match cookie {
         Some(token) => match identify(app, &mut env, token) {
             Ok(caller) => caller,
-            Err(error) => return failure(&*error),
+            Err(error) => return failure(&error),
         },
         None => None,
     };
@@ -96,7 +96,7 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
     match answer {
         Ok(response) => match env.close() {
             Ok(()) => response,
-            Err(error) => failure(&*error),
+            Err(error) => failure(&error),
         },
         // Dropping the environment rolls the transaction back.
         Err(error) => {
@@ -104,8 +104,8 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
                 refusal(refused)
             } else if let Some(denied) = error.downcast_ref::<AccessDenied>() {
                 refusal(&HttpError::new(403, denied.to_string()))
-            } else if crate::errors::kind_of(&*error) == crate::errors::ErrorKind::Internal {
-                failure(&*error)
+            } else if error.kind() == crate::errors::ErrorKind::Internal {
+                failure(&error)
             } else {
                 refusal(&HttpError::new(400, error.to_string()))
             }
@@ -117,11 +117,7 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
 ///
 /// As root: looking a session up is the process asking on its own account, before anybody is
 /// identified.
-fn identify(
-    app: &Application,
-    env: &mut Environment,
-    token: &str,
-) -> Result<Option<u32>, Box<dyn std::error::Error + Send + Sync>> {
+fn identify(app: &Application, env: &mut Environment, token: &str) -> crate::Result<Option<u32>> {
     let Some(resolve) = app.model_manager.identities.resolver() else {
         return Ok(None);
     };

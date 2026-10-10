@@ -37,10 +37,10 @@ impl ContactBe<MultipleIds> {
             .into_iter()
             .map(checked)
             .collect::<Result<Vec<_>>>()?;
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        sup.call_with(checked(values)?, env)
+        Ok(sup.call_with(checked(values)?, env)?)
     }
 }

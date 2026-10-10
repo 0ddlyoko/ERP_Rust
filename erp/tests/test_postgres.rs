@@ -833,7 +833,7 @@ fn test_records_linked_are_replaced_whole() -> Result<()> {
             "write",
             &serde_json::json!({"ids": [order.get_id()], "values": values}),
         )?;
-        env.close()
+        Ok(env.close()?)
     };
     let linked = |field: &str| -> Result<Vec<u32>> {
         let mut env = app.new_env()?;

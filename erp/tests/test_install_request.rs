@@ -1,11 +1,9 @@
 //! A unit of work asking for plugins to be installed: asked once it is committed, never when it
 //! is rolled back.
 
+use erp::Result;
 use erp::app::Application;
 use erp::plugin::take_requested_installs;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[test]
 fn test_installs_are_asked_once_committed() -> Result<()> {

@@ -239,8 +239,9 @@ impl<'mm> Environment<'mm> {
     ) -> Result<Vec<u32>> {
         let options = self.ordered(model_name, options)?;
         self.prepare_search(model_name, domain, &options)?;
-        self.database
-            .find_ids(model_name, domain, self.model_manager, &options)
+        Ok(self
+            .database
+            .find_ids(model_name, domain, self.model_manager, &options)?)
     }
 
     /// The order the lines of a one2many come in: their model's. A field of it being computed
@@ -393,7 +394,9 @@ impl<'mm> Environment<'mm> {
         let domain = self.readable_domain(model_name, domain)?;
         self.refuse_unstored_in_domain(model_name, &domain)?;
         self.save_domain_fields_to_db(model_name, &domain)?;
-        self.database.count(model_name, &domain, self.model_manager)
+        Ok(self
+            .database
+            .count(model_name, &domain, self.model_manager)?)
     }
 
     /// The records matching a domain, as the caller may read them, gathered as `group_by` says —
@@ -445,8 +448,9 @@ impl<'mm> Environment<'mm> {
         let mut fields: Vec<&str> = sums.to_vec();
         fields.extend(group_by.map(|group_by| group_by.field.as_str()));
         self.save_fields_to_db(model_name, &fields)?;
-        self.database
-            .read_group(model_name, &domain, group_by, sums, self.model_manager)
+        Ok(self
+            .database
+            .read_group(model_name, &domain, group_by, sums, self.model_manager)?)
     }
 
     /// Read fields of records, addressing the model and its fields by name.

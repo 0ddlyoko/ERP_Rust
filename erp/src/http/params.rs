@@ -1,3 +1,4 @@
+use crate::Result;
 use crate::environment::Environment;
 use crate::model::Model;
 use erp_search_code_gen::make_domain;
@@ -5,8 +6,6 @@ use erp_types::field::SingleId;
 use erp_types::model::CommonModel;
 use std::error::Error;
 use std::fmt;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// A value a controller method can take from a request parameter.
 ///

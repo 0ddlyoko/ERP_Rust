@@ -159,7 +159,7 @@ impl Product<MultipleIds> {
                 product.insert("purchase_uom", uom);
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// Archive the products: they are no longer offered, and stay where they are used.

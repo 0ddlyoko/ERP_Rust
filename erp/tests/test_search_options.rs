@@ -32,7 +32,7 @@ fn seed(env: &mut erp::environment::Environment, names: &[&str]) -> Result<()> {
 }
 
 fn all(env: &mut erp::environment::Environment, options: &SearchOptions) -> Result<Vec<u32>> {
-    env.search_ids_with("invoice", &make_domain!([]), options)
+    Ok(env.search_ids_with("invoice", &make_domain!([]), options)?)
 }
 
 /// Without a deterministic order, `limit` and `offset` would slice an arbitrary permutation.

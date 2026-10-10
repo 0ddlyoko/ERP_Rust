@@ -6,6 +6,7 @@
 
 use base::BasePlugin;
 use base::models::{Group, Users};
+use erp::Result;
 use erp::access::{Access, AccessDenied, Operation, Rule};
 use erp::app::Application;
 use erp::environment::Environment;
@@ -15,12 +16,9 @@ use erp_search_code_gen::make_domain;
 use erp_types::field::{FieldType, IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use serde_json::json;
-use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use test_utilities::TestLibPlugin;
 use test_utilities::models::{SaleOrder, SaleOrderLine, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
     Application::new_test_installed(
@@ -133,10 +131,10 @@ fn tag_values(name: &str) -> MapOfFields {
 }
 
 /// The refusal behind an error, which must be one.
-fn refusal(error: Box<dyn Error + Send + Sync>) -> AccessDenied {
-    match error.downcast::<AccessDenied>() {
-        Ok(denied) => *denied,
-        Err(other) => panic!("expected an access refusal, got: {other}"),
+fn refusal(error: erp::Error) -> AccessDenied {
+    match error.downcast_ref::<AccessDenied>() {
+        Some(denied) => denied.clone(),
+        None => panic!("expected an access refusal, got: {error}"),
     }
 }
 

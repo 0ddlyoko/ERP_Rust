@@ -4,6 +4,7 @@
 //! to be kept. That is the difference between a field the database holds and one the code
 //! produces, and it decides what can be searched, sorted and flushed.
 
+use erp::Result;
 use erp::app::Application;
 use erp_search::{OrderBy, SearchOptions, SearchType};
 use erp_search_code_gen::make_domain;
@@ -11,12 +12,9 @@ use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::error::Error;
 use std::io;
 use std::sync::Once;
 use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Application {
     let mut app = Application::new_test();

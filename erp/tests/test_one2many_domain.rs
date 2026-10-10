@@ -1,13 +1,11 @@
 //! A one2many declaring a domain holds only the records pointing back that match it: as read,
 //! once one is added or changed, and once a field its domain reads along a path changes.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod models {
     use code_gen::Model;

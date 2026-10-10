@@ -3,6 +3,7 @@
 //! Records are addressed by a stable external identifier, `module.name`, rather than by the
 //! technical id the database hands out. That is what lets one plugin reference another's data,
 //! and what lets a file be loaded again without duplicating anything.
+use crate::Result;
 use crate::environment::Environment;
 use crate::model::Model;
 use erp_search::SearchType;
@@ -10,10 +11,7 @@ use erp_search_code_gen::make_domain;
 use erp_types::field::{FieldKind, FieldType, IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
-use std::error::Error;
 use thiserror::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Model holding the external identifier registry.
 const MODEL_DATA: &str = "model_data";

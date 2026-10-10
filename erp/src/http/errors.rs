@@ -40,10 +40,7 @@ impl HttpError {
     }
 
     /// Say which parameter a reading error came from, when it is the caller's mistake.
-    pub fn about_parameter(
-        name: &str,
-        error: Box<dyn std::error::Error + Send + Sync>,
-    ) -> Box<dyn std::error::Error + Send + Sync> {
+    pub fn about_parameter(name: &str, error: crate::Error) -> crate::Error {
         match error.downcast_ref::<ParamError>() {
             Some(param) => HttpError::bad_parameter(name, param).into(),
             None => error,

@@ -1,27 +1,23 @@
 //! Controllers: methods of plugins that answer URLs, overridden the way model methods are.
 
 use base::BasePlugin;
+use erp::Result;
 use erp::app::Application;
 use erp::http::{self, ControllerRegistry, Request, Response};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
 use erp_search::SearchType;
-use std::error::Error;
 use test_utilities::TestLibPlugin;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod shop {
     use code_gen::{Controller, erp_routes};
+    use erp::Result;
     use erp::environment::Environment;
     use erp::http::{HttpError, Request, Response};
     use erp::types::field::SingleId;
     use erp::types::model::MapOfFields;
     use erp_search::SearchType;
-    use std::error::Error;
     use test_utilities::models::Tag;
-
-    type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
     #[derive(Controller)]
     #[erp(id = "shop")]
@@ -72,10 +68,9 @@ mod shop {
             let mut values = MapOfFields::default();
             values.insert("name", "written before failing");
             env.create_records("tag", vec![values])?;
-            Err(erp::errors::InternalError::new(
+            Err(erp::Error::internal(
                 "failed on purpose, with details nobody outside should see",
-            )
-            .into())
+            ))
         }
 
         #[erp(route = "/shop/refused", methods = ["POST"])]
@@ -126,11 +121,9 @@ mod shop {
 
 mod branded {
     use code_gen::{Controller, erp_routes};
+    use erp::Result;
     use erp::environment::Environment;
     use erp::http::{Request, Response};
-    use std::error::Error;
-
-    type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
     /// Extends `shop` from another plugin.
     #[derive(Controller)]
@@ -168,6 +161,7 @@ mod branded {
 
 mod clash {
     use code_gen::{Controller, erp_routes};
+    use erp::Result;
     use erp::environment::Environment;
     use erp::http::{Request, Response};
     use std::error::Error;

@@ -321,7 +321,7 @@ impl PurchaseOrderLine<MultipleIds> {
                 return Err("An order line's quantity is not negative".into());
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// Lines of a cancelled order stay as they are; those of a confirmed order keep their
@@ -364,7 +364,7 @@ impl PurchaseOrderLine<MultipleIds> {
                 }
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// Lines billed already stay on their order.
@@ -378,6 +378,6 @@ impl PurchaseOrderLine<MultipleIds> {
                 .into());
             }
         }
-        sup.call(env)
+        Ok(sup.call(env)?)
     }
 }

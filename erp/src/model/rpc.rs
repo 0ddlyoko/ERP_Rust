@@ -5,13 +5,11 @@
 //! run it. A method is in this registry only because it was marked, so one that was never marked
 //! does not exist over the wire — it is not forbidden, there is nothing to forbid.
 
+use crate::Result;
 use crate::environment::Environment;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::error::Error;
 use thiserror::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Anything a caller can reach by name: one of the protocol's own operations, or a method a
 /// model exposed.

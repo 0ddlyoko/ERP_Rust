@@ -1,15 +1,13 @@
 //! An empty many2one reads as an empty record: still a recordset, whose fields read as their
 //! type's default, whose relations are empty in turn, and where writing saves nothing.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use serde_json::json;
-use std::error::Error;
 use test_utilities::models::{SaleOrder, SaleOrderLine, SaleOrderState, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Application {
     let mut app = Application::new_test();

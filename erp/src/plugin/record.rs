@@ -3,6 +3,7 @@
 //! The table is what the application reads at boot to know which plugins to load again, so a
 //! plugin is installed once its row says so, and stays installed across restarts.
 
+use crate::Result;
 use crate::environment::Environment;
 use crate::plugin::PluginInfo;
 use erp_search::SearchType;
@@ -10,9 +11,6 @@ use erp_search_code_gen::make_domain;
 use erp_types::field::{FieldType, IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 const PLUGIN_MODEL: &str = "plugin";
 const PARAMETER_MODEL: &str = "parameter";

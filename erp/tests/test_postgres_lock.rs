@@ -4,17 +4,15 @@
 //! Skipped, not failed, when no server is reachable.
 use base::BasePlugin;
 use base::models::Contact;
+use erp::Result;
 use erp::app::Application;
 use erp::config::Config;
 use erp::data;
 use erp::database::{DatabaseConfig, DatabaseType};
 use erp_types::field::SingleId;
 use erp_types::model::MapOfFields;
-use std::error::Error;
 use std::sync::Barrier;
 use std::time::Duration;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn config(schema: &str) -> Config {
     let plugins = std::env::temp_dir().join("erp_postgres_lock_plugins");

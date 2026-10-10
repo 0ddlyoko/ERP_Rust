@@ -28,18 +28,14 @@ impl<'mm> Environment<'mm> {
         Err(Self::required_error(model_name, field))
     }
 
-    pub(super) fn required_error(
-        model_name: &str,
-        field: &FinalInternalField,
-    ) -> Box<dyn Error + Send + Sync> {
-        crate::errors::InputError::on(
+    pub(super) fn required_error(model_name: &str, field: &FinalInternalField) -> crate::Error {
+        crate::Error::input(
             field.name.clone(),
             format!(
                 "Field \"{}\" of model \"{model_name}\" is required: it cannot be left empty",
                 field.name
             ),
         )
-        .into()
     }
 
     /// Note records whose required one2many or many2many a change may have emptied, to check

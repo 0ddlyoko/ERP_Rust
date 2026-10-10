@@ -5,11 +5,9 @@
 //! parent in place; one in `primary` mode is new markup, its parent's final form changed by its own
 //! specifications. Extensions apply in their `order`, lowest first.
 
+use crate::Result;
 use crate::xml::{Node, XmlError, apply_extension, parse_fragment};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Where an extension stands among those of one parent: compared field by field, lowest first.
 pub type Order = (usize, String, i64);
@@ -109,6 +107,6 @@ fn apply<T>(row: &Arch<T>, nodes: &mut Vec<Node>) -> Result<()> {
 }
 
 /// An error about a piece of markup, naming it.
-pub fn failed<T>(row: &Arch<T>, error: &XmlError) -> Box<dyn Error + Send + Sync> {
+pub fn failed<T>(row: &Arch<T>, error: &XmlError) -> crate::Error {
     format!("{}: {error}", row.label).into()
 }

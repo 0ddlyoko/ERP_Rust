@@ -4,6 +4,7 @@
 //! The implementation is split across submodules by responsibility; they all extend the same
 //! [`Environment`] type.
 
+use crate::Result;
 use crate::database::{Database, DatabaseType};
 use crate::errors::MaximumRecursionDepthCompute;
 use crate::model::{Model, ModelManager};
@@ -18,7 +19,6 @@ use erp_types::field::{FieldDepend, FieldReference, FieldReferenceType};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::error::Error;
 use uuid::Uuid;
 
 mod access;
@@ -56,8 +56,6 @@ const MAX_CALL_DEPTH: usize = 200;
 /// Enough to turn a loop over a page of records into one query, small enough that a loop over a
 /// whole table does not pull it all into memory at the first read.
 const PREFETCH_MAX: usize = 1000;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub fn make_cache(model_manager: &ModelManager) -> Cache {
     let mut cache = HashMap::new();

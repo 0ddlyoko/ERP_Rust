@@ -33,6 +33,6 @@ impl MoveBe<MultipleIds> {
                 others.push(entry.get_id());
             }
         }
-        sup.call_on(others, env)
+        Ok(sup.call_on(others, env)?)
     }
 }

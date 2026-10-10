@@ -20,7 +20,6 @@ use crate::environment::Environment;
 use erp_types::field::{EmptyValue, FieldType, Reference};
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{BaseModel, CommonModel};
-use std::error::Error;
 use std::sync::Arc;
 
 // We need to make another trait here to be able to implement methods, as we are in another crate.
@@ -31,11 +30,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// on an empty record.
     ///
     /// If error, returns the error
-    pub fn get<'a, E>(
-        &self,
-        field_name: &str,
-        env: &'a mut Environment,
-    ) -> Result<&'a E, Box<dyn Error + Send + Sync>>
+    pub fn get<'a, E>(&self, field_name: &str, env: &'a mut Environment) -> crate::Result<&'a E>
     where
         &'a FieldType: Into<Option<&'a E>>,
         E: EmptyValue,
@@ -54,7 +49,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
         &self,
         field_name: &str,
         env: &'a mut Environment,
-    ) -> Result<Option<&'a E>, Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<Option<&'a E>>
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
@@ -70,11 +65,7 @@ impl<BM: BaseModel> dyn Model<SingleId, BaseModel = BM> {
     /// reading a field of one of them loads it for all.
     ///
     /// If error, returns the error
-    pub fn get_reference<M, BM2>(
-        &self,
-        field_name: &str,
-        env: &mut Environment,
-    ) -> Result<M, Box<dyn Error + Send + Sync>>
+    pub fn get_reference<M, BM2>(&self, field_name: &str, env: &mut Environment) -> crate::Result<M>
     where
         M: Model<SingleId, BaseModel = BM2>,
         BM2: BaseModel,
@@ -113,7 +104,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
         &self,
         field_name: &str,
         env: &'a mut Environment,
-    ) -> Result<Vec<&'a E>, Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<Vec<&'a E>>
     where
         &'a FieldType: Into<Option<&'a E>>,
         E: EmptyValue,
@@ -137,7 +128,7 @@ impl<BM: BaseModel> dyn Model<MultipleIds, BaseModel = BM> {
         &self,
         field_name: &str,
         env: &'a mut Environment,
-    ) -> Result<Vec<Option<&'a E>>, Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<Vec<Option<&'a E>>>
     where
         &'a FieldType: Into<Option<&'a E>>,
     {
@@ -164,7 +155,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         &self,
         field_name: &str,
         env: &mut Environment,
-    ) -> Result<M, Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<M>
     where
         M: Model<MultipleIds, BaseModel = BM2>,
         BM2: BaseModel,
@@ -214,12 +205,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
     }
 
     /// Changes the value of the given field to the given value
-    pub fn set<E>(
-        &self,
-        field_name: &str,
-        value: E,
-        env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>>
+    pub fn set<E>(&self, field_name: &str, value: E, env: &mut Environment) -> crate::Result<()>
     where
         E: Into<FieldType>,
     {
@@ -234,7 +220,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         field_name: &str,
         value: Option<E>,
         env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<()>
     where
         E: Into<FieldType>,
     {
@@ -249,7 +235,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         field_name: &str,
         value: Reference<E, SingleId>,
         env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<()>
     where
         E: BaseModel,
     {
@@ -264,7 +250,7 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         field_name: &str,
         value: Reference<E, MultipleIds>,
         env: &mut Environment,
-    ) -> Result<(), Box<dyn Error + Send + Sync>>
+    ) -> crate::Result<()>
     where
         E: BaseModel,
     {

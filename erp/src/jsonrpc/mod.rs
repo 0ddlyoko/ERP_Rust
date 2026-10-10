@@ -161,7 +161,7 @@ fn identify(
     // user nobody authenticated as happens to be allowed to read.
     let mut root = env
         .as_root()
-        .map_err(|error| internal("Cannot act as root to resolve a token", &*error))?;
+        .map_err(|error| internal("Cannot act as root to resolve a token", &error))?;
     match resolve(&mut root, token) {
         Ok(Some(uid)) => Ok(Some(uid)),
         Ok(None) => Err(RpcError::unauthorized()),
@@ -186,7 +186,7 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
     // returns, and rolls back by being dropped when it does not.
     let mut env = app
         .new_env()
-        .map_err(|error| internal("Cannot open a unit of work for a call", &*error))?;
+        .map_err(|error| internal("Cannot open a unit of work for a call", &error))?;
 
     // Before the method is even looked up. Who is asking is settled first, so that what exists
     // is not something an unidentified caller can map out by trying names.
@@ -222,22 +222,24 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
         Ok(result) => env
             .close()
             .map(|()| result)
-            .map_err(|error| internal("Cannot save what a call did", &*error)),
+            .map_err(|error| internal("Cannot save what a call did", &error)),
         // Dropping the environment rolls the transaction back, so nothing a failed call did
         // survives it.
         //
         // A call that failed reading its own parameters is the caller's mistake, not the
         // operation's; a business or input refusal is told as it is, anything internal is not.
-        Err(error) => Err(if error.downcast_ref::<serde_json::Error>().is_some() {
-            RpcError::invalid_params(error.to_string())
-        } else {
-            match crate::errors::kind_of(&*error) {
-                crate::errors::ErrorKind::Business => RpcError::business(error.to_string()),
-                crate::errors::ErrorKind::Input { field } => {
-                    RpcError::input(error.to_string(), field)
+        Err(error) => Err(
+            if let Some(parsing) = error.downcast_ref::<serde_json::Error>() {
+                RpcError::invalid_params(parsing.to_string())
+            } else {
+                match error.kind() {
+                    crate::errors::ErrorKind::Business => RpcError::business(error.to_string()),
+                    crate::errors::ErrorKind::Input { field } => {
+                        RpcError::input(error.to_string(), field)
+                    }
+                    crate::errors::ErrorKind::Internal => internal("A call failed", &error),
                 }
-                crate::errors::ErrorKind::Internal => internal("A call failed", &*error),
-            }
-        }),
+            },
+        ),
     }
 }

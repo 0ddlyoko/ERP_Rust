@@ -285,7 +285,8 @@ fn renamed_body(method: &ParsedRoute, body: &Ident, sup_ty: &TokenStream) -> Tok
     }
 }
 
-/// The name the author wrote, now resolving to the top of the chain.
+/// The name the author wrote, now resolving to the top of the chain, answering the error type
+/// the author declared.
 fn dispatcher(method: &ParsedRoute) -> TokenStream {
     let name = &method.name;
     let name_str = name.to_string();
@@ -310,11 +311,12 @@ fn dispatcher(method: &ParsedRoute) -> TokenStream {
             #(#params,)*
         ) #output {
             let _ = self;
-            env.call_controller(
+            let answer = env.call_controller(
                 <Self as erp::http::Controller>::controller_name(),
                 #name_str,
                 &(request.clone(), #(#values,)*),
-            )
+            );
+            ::core::result::Result::map_err(answer, ::core::convert::Into::into)
         }
     }
 }
@@ -339,6 +341,11 @@ fn link_fn(
             let _ = sup;
             controller.#body(env, &args.0, #(#forwarded,)*)
         }
+    };
+    // Boxed for the chain, which lives below the ORM; boxing an `erp::Error` keeps it whole.
+    let call = quote! {
+        let answer = { #call };
+        ::core::result::Result::map_err(answer, ::core::convert::Into::into)
     };
     quote! {
         #[doc(hidden)]
@@ -381,10 +388,7 @@ fn http_fn(method: &ParsedRoute, http: &Ident, self_ty: &Type) -> TokenStream {
         fn #http(
             env: &mut erp::environment::Environment,
             request: &erp::http::Request,
-        ) -> ::core::result::Result<
-            erp::http::Response,
-            ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
-        > {
+        ) -> ::core::result::Result<erp::http::Response, erp::Error> {
             #(#reads)*
             #call
             Ok(response)

@@ -1,11 +1,9 @@
+use crate::Result;
 use crate::environment::Environment;
 use crate::http::{Request, Response};
 use erp_internal_types::MethodRegistry;
 use erp_types::method::{MethodFn, Receiver};
 use std::collections::HashMap;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// What a route calls: reads its parameters out of the request, and calls the method by its own
 /// name so the call goes through the override chain.

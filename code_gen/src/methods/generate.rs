@@ -211,7 +211,8 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
 }
 
 /// The name the author wrote, now resolving to the top of the chain: on the records, the record,
-/// or — for a method without `self` — no record at all.
+/// or — for a method without `self` — no record at all. Answers the error type the author
+/// declared, so a method still written against a boxed error keeps compiling.
 fn dispatcher(method: &ParsedMethod, many: &Type) -> TokenStream {
     let name = &method.name;
     let output = &method.item.sig.output;
@@ -250,14 +251,15 @@ fn dispatcher(method: &ParsedMethod, many: &Type) -> TokenStream {
             use erp::types::model::BaseModel;
             let ids: erp::types::field::MultipleIds = #ids;
             let args = (#(#values,)*);
-            env.call_method(
+            let answer = env.call_method(
                 <#many as erp::types::model::CommonModel<
                     erp::types::field::MultipleIds,
                 >>::_get_model_name(),
                 #method_name,
                 &ids,
                 &args,
-            )
+            );
+            ::core::result::Result::map_err(answer, ::core::convert::Into::into)
         }
     }
 }
@@ -288,6 +290,11 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
             let _ = sup;
             #target #body(env, #(#forwarded,)*)
         }
+    };
+    // Boxed for the chain, which lives below the ORM; boxing an `erp::Error` keeps it whole.
+    let call = quote! {
+        let answer = { #call };
+        ::core::result::Result::map_err(answer, ::core::convert::Into::into)
     };
     let record = record_of(method, self_ty, quote! { ids });
 
@@ -432,10 +439,7 @@ fn rpc_wrapper(method: &ParsedMethod, names: &Names, self_ty: &Type, many: &Type
             env: &mut erp::environment::Environment,
             _model: &str,
             params: &erp::serde_json::Value,
-        ) -> ::core::result::Result<
-            erp::serde_json::Value,
-            ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>,
-        > {
+        ) -> ::core::result::Result<erp::serde_json::Value, erp::Error> {
             #(#arg_bounds)*
             #ret_bound
 

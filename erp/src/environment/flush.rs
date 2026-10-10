@@ -421,9 +421,9 @@ impl<'mm> Environment<'mm> {
                 .filter(|(id, _)| !onchange::is_virtual(**id))
                 .map(|(id, values)| (*id, *values))
                 .collect();
-            return self.database.update(model_name, &real);
+            return Ok(self.database.update(model_name, &real)?);
         }
-        self.database.update(model_name, data)
+        Ok(self.database.update(model_name, data)?)
     }
 
     /// Insert new data to the database.
@@ -435,6 +435,6 @@ impl<'mm> Environment<'mm> {
         model_name: &str,
         data: &[&MapOfFields],
     ) -> Result<Vec<u32>> {
-        self.database.create(model_name, data)
+        Ok(self.database.create(model_name, data)?)
     }
 }

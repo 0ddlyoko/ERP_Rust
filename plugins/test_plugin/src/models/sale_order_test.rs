@@ -96,6 +96,6 @@ impl SaleOrderTest2<MultipleIds> {
                 handed_down.push(record.get_id());
             }
         }
-        parent.call_on(handed_down, env)
+        Ok(parent.call_on(handed_down, env)?)
     }
 }

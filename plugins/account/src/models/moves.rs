@@ -880,7 +880,7 @@ impl Move<MultipleIds> {
                 entry.insert("currency", currency);
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// A posted entry keeps what it recorded; a cancelled one stays as it was.
@@ -908,7 +908,7 @@ impl Move<MultipleIds> {
                 }
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// Only an entry that never got a number may be deleted: a numbered one is cancelled, so the
@@ -923,7 +923,7 @@ impl Move<MultipleIds> {
                 .into());
             }
         }
-        sup.call(env)
+        Ok(sup.call(env)?)
     }
 
     /// Post the entries: invoices get their journal items, every entry is checked to balance,

@@ -402,7 +402,7 @@ impl StockMove<MultipleIds> {
                 }
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
@@ -436,7 +436,7 @@ impl StockMove<MultipleIds> {
                 }
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     /// Done moves stay; the others go with what they promised.
@@ -447,7 +447,7 @@ impl StockMove<MultipleIds> {
             }
             stock_move.unreserve(env)?;
         }
-        sup.call(env)
+        Ok(sup.call(env)?)
     }
 
     /// What follows a move done, valued: nothing here; accounting books the value it moved.

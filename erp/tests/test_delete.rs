@@ -1,13 +1,11 @@
+use erp::Result;
 use erp::app::Application;
 use erp::database::Database;
 use erp_search_code_gen::make_domain;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use std::error::Error;
 use test_utilities::models::{SaleOrder, SaleOrderLine, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Application {
     let mut app = Application::new_test();

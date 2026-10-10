@@ -218,7 +218,7 @@ impl<'mm> Environment<'mm> {
                         env.call_method::<(), ()>(&model, &method, &MultipleIds::from(ids), &())?;
                     }
                 }
-                Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+                Ok::<(), crate::Error>(())
             })?;
         }
         Ok(result)
@@ -711,14 +711,13 @@ impl<'mm> Environment<'mm> {
         if fits {
             return Ok(());
         }
-        Err(crate::errors::InputError::on(
+        Err(crate::Error::input(
             field.name.clone(),
             format!(
                 "Field \"{}\" of model \"{model_name}\" holds a {}, not a {given}",
                 field.name, field.kind
             ),
-        )
-        .into())
+        ))
     }
 
     /// Refuse a key the field's enums do not have, naming those they do.
@@ -740,15 +739,14 @@ impl<'mm> Environment<'mm> {
             .iter()
             .map(|choice| choice.key.as_str())
             .collect();
-        Err(crate::errors::InputError::on(
+        Err(crate::Error::input(
             field.name.clone(),
             format!(
                 "\"{key}\" is not a value of field \"{}\" of model \"{model_name}\": {}",
                 field.name,
                 known.join(", ")
             ),
-        )
-        .into())
+        ))
     }
 
     pub(super) fn save_field_to_cache<Mode: IdMode>(

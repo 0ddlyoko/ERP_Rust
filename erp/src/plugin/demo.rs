@@ -7,12 +7,10 @@
 //!
 //! [`Plugin::demo`]: crate::plugin::Plugin::demo
 
+use crate::Result;
 use crate::environment::Environment;
 use erp_types::field::SingleId;
 use erp_types::model::MapOfFields;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// The parameter saying whether the database wants demo data.
 pub const DEMO_PARAMETER: &str = "demo_data";

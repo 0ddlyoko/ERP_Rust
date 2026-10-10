@@ -2,12 +2,10 @@
 //! companies their company field offers.
 
 use base::BasePlugin;
+use erp::Result;
 use erp::app::Application;
 use erp::data;
 use serde_json::{Value, json};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
     Application::new_test_installed(

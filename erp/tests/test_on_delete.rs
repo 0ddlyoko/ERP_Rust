@@ -1,13 +1,11 @@
 //! What becomes of records pointing to one being deleted: emptied, deleted with it, or holding
 //! the deletion back — as their many2one says, or as an extension of their model changed it to.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{FieldType, IdMode, MultipleIds};
 use erp_types::model::MapOfFields;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod library {
     use code_gen::Model;

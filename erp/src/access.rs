@@ -4,12 +4,11 @@
 //! records of a model, and models belong to plugins — so whichever plugin defines them registers
 //! how to load them here, and `erp` never names it.
 
+use crate::Result;
 use crate::environment::Environment;
 use erp_search::SearchType;
 use std::error::Error;
 use std::fmt;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// What a caller is trying to do to records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

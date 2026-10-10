@@ -1,3 +1,4 @@
+use crate::Result;
 use crate::config::Config;
 use crate::database::cache::CacheDatabase;
 use crate::database::postgres::{ConnectionPool, PinnedTransaction, PostgresDatabase};
@@ -9,11 +10,8 @@ use crate::plugin::Plugin;
 use crate::plugin::PluginManager;
 use crate::util::dependency::CircularDependencyError;
 use std::any::Any;
-use std::error::Error;
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Which installed plugins have their data loaded again although their version did not change.
 ///
@@ -411,7 +409,7 @@ impl Application {
     }
 
     pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<()> {
-        self.plugin_manager.register_plugin(plugin)
+        Ok(self.plugin_manager.register_plugin(plugin)?)
     }
 
     fn initialize_db(&mut self) -> Result<()> {

@@ -4,11 +4,9 @@
 //! a model, and models belong to plugins — so whichever plugin defines them registers the answer
 //! here, and `erp` never names it.
 
+use crate::Result;
 use crate::environment::Environment;
-use std::error::Error;
 use std::sync::OnceLock;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Who a bearer token belongs to.
 ///

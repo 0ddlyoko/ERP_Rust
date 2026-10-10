@@ -3,16 +3,14 @@
 //! Exposure is asked for every time, never inferred: a method nobody marked does not exist over
 //! the wire, and forgetting the mark leaves a missing endpoint rather than an open one.
 
+use erp::Result;
 use erp::app::Application;
 use erp_types::field::{IdMode, MultipleIds};
 use erp_types::model::MapOfFields;
 use serde_json::json;
 use std::collections::HashMap;
-use std::error::Error;
 use test_plugin::TestPlugin;
 use test_utilities::TestLibPlugin;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app(with_override: bool) -> Result<Application> {
     let mut app = Application::new_test();

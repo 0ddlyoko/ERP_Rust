@@ -37,64 +37,98 @@ pub struct MissingRecords {
     pub ids: Vec<u32>,
 }
 
-/// A business rule refuses what was asked: the user is told why, and may act on it — a carton
-/// loaded past what it holds, an invoice posted in a locked period.
+/// Why something failed, sorted the way whoever answers a caller needs it: a business rule
+/// refusing, what the user gave not holding, or the server failing. Each holds the error itself
+/// — a plugin's own type among them, found again with [`Error::downcast_ref`] — so nothing of it
+/// is lost.
+///
+/// `?` sorts on its own: a message is a business refusal, JSON that does not parse is an input
+/// one, an error of the database or of the ORM's own limits is internal, and a plugin says for
+/// its own types with a `From`.
+#[derive(Debug)]
+pub enum Error {
+    /// A business rule refuses what was asked: the user is told why, and may act on it.
+    Business(Box<dyn std::error::Error + Send + Sync>),
+    /// What the user gave does not hold, naming the field when there is one, for the client to
+    /// point at it.
+    Input {
+        error: Box<dyn std::error::Error + Send + Sync>,
+        field: Option<String>,
+    },
+    /// Something went wrong on the inside: logged in full, the user only told that it failed.
+    Internal(Box<dyn std::error::Error + Send + Sync>),
+}
+
+/// A message, as the error a variant holds when there is nothing more to say.
 #[derive(Debug, Clone, Error)]
-#[error("{message}")]
-pub struct BusinessError {
-    pub message: String,
-}
+#[error("{0}")]
+pub struct Message(pub String);
 
-impl BusinessError {
-    pub fn new(message: impl Into<String>) -> Self {
-        BusinessError {
-            message: message.into(),
-        }
-    }
-}
-
-/// What the user gave does not hold — a required field left empty, a value of the wrong kind —
-/// naming the field when there is one, for the client to point at it.
-#[derive(Debug, Clone, Error)]
-#[error("{message}")]
-pub struct InputError {
-    pub message: String,
-    pub field: Option<String>,
-}
-
-impl InputError {
-    pub fn new(message: impl Into<String>) -> Self {
-        InputError {
-            message: message.into(),
-            field: None,
-        }
+impl Error {
+    /// A business rule refusing, with this message.
+    pub fn business(message: impl Into<String>) -> Self {
+        Error::Business(Box::new(Message(message.into())))
     }
 
-    /// Given for `field`.
-    pub fn on(field: impl Into<String>, message: impl Into<String>) -> Self {
-        InputError {
-            message: message.into(),
+    /// What was given for `field` not holding.
+    pub fn input(field: impl Into<String>, message: impl Into<String>) -> Self {
+        Error::Input {
+            error: Box::new(Message(message.into())),
             field: Some(field.into()),
         }
     }
-}
 
-/// Something went wrong on the inside: logged in full, the user only told that it failed.
-#[derive(Debug, Clone, Error)]
-#[error("{message}")]
-pub struct InternalError {
-    pub message: String,
-}
+    /// The server failing, with this message for the log.
+    pub fn internal(message: impl Into<String>) -> Self {
+        Error::Internal(Box::new(Message(message.into())))
+    }
 
-impl InternalError {
-    pub fn new(message: impl Into<String>) -> Self {
-        InternalError {
-            message: message.into(),
+    /// The error a variant holds.
+    pub fn inner(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        match self {
+            Error::Business(error) | Error::Internal(error) | Error::Input { error, .. } => {
+                &**error
+            }
+        }
+    }
+
+    /// The error held, as the type it was raised with: a plugin's own, an [`AccessDenied`].
+    ///
+    /// [`AccessDenied`]: crate::access::AccessDenied
+    pub fn downcast_ref<T: std::error::Error + 'static>(&self) -> Option<&T> {
+        self.inner().downcast_ref::<T>()
+    }
+
+    /// Whether the error held is of that type.
+    pub fn is<T: std::error::Error + 'static>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Which of the three it is.
+    pub fn kind(&self) -> ErrorKind {
+        match self {
+            Error::Business(_) => ErrorKind::Business,
+            Error::Input { field, .. } => ErrorKind::Input {
+                field: field.clone(),
+            },
+            Error::Internal(_) => ErrorKind::Internal,
         }
     }
 }
 
-/// Which of the three an error is, as whoever answers a caller sorts it.
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.inner(), f)
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.inner())
+    }
+}
+
+/// Which of the three an [`Error`] is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
     Business,
@@ -102,22 +136,87 @@ pub enum ErrorKind {
     Internal,
 }
 
-/// Sort an error: one marked as input or internal is; one the database or the ORM's own
-/// limits raised is internal; any other — the plain messages plugins refuse with — is business.
-pub fn kind_of(error: &(dyn std::error::Error + 'static)) -> ErrorKind {
-    if let Some(input) = error.downcast_ref::<InputError>() {
-        return ErrorKind::Input {
-            field: input.field.clone(),
-        };
+impl From<&str> for Error {
+    fn from(message: &str) -> Self {
+        Error::business(message)
     }
-    let internal = error.is::<InternalError>()
-        || error.is::<crate::database::ErrorType>()
-        || error.is::<postgres::Error>()
-        || error.is::<MaximumRecursionDepthCompute>()
-        || error.is::<MaximumCallDepth>();
-    if internal {
-        ErrorKind::Internal
-    } else {
-        ErrorKind::Business
+}
+
+impl From<String> for Error {
+    fn from(message: String) -> Self {
+        Error::business(message)
+    }
+}
+
+/// An error boxed by a crate below the ORM: an [`Error`] boxed on the way comes back as it was,
+/// JSON that does not parse is an input one, an error of the database or of the ORM's own limits
+/// is internal, any other a business one — the plain messages those crates refuse with.
+impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
+    fn from(error: Box<dyn std::error::Error + Send + Sync>) -> Self {
+        let error = match error.downcast::<Error>() {
+            Ok(error) => return *error,
+            Err(error) => error,
+        };
+        if error.is::<serde_json::Error>() {
+            return Error::Input { error, field: None };
+        }
+        let internal = error.is::<crate::database::ErrorType>()
+            || error.is::<postgres::Error>()
+            || error.is::<std::io::Error>()
+            || error.is::<erp_types::field::HashError>()
+            || error.is::<MaximumRecursionDepthCompute>()
+            || error.is::<MaximumCallDepth>();
+        if internal {
+            Error::Internal(error)
+        } else {
+            Error::Business(error)
+        }
+    }
+}
+
+macro_rules! sorted {
+    ($variant:ident: $($ty:ty),* $(,)?) => {
+        $(
+            impl From<$ty> for Error {
+                fn from(error: $ty) -> Self {
+                    Error::$variant(Box::new(error))
+                }
+            }
+        )*
+    };
+}
+
+sorted!(Internal:
+    crate::database::ErrorType,
+    postgres::Error,
+    std::io::Error,
+    std::num::ParseIntError,
+    std::num::TryFromIntError,
+    MaximumRecursionDepthCompute,
+    MaximumCallDepth,
+    erp_types::field::HashError,
+);
+sorted!(Business:
+    MissingRecords,
+    crate::access::AccessDenied,
+    crate::http::HttpError,
+    crate::model::ModelNotFound,
+    crate::model::MethodNotRegistered,
+    crate::model::FieldNotFound,
+    crate::model::MethodNotExposed,
+    crate::http::ParamError,
+    crate::data::DataError,
+    crate::xml::XmlError,
+    crate::util::dependency::CircularDependencyError,
+    erp_types::field::ParseFieldTypeError,
+);
+
+/// JSON that does not parse is what the caller sent: a request's body, a call's parameters.
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        Error::Input {
+            error: Box::new(error),
+            field: None,
+        }
     }
 }

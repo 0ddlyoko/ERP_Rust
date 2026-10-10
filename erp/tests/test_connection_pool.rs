@@ -6,6 +6,7 @@
 //!
 //! Skipped, not failed, when no server answers.
 
+use erp::Result;
 use erp::app::Application;
 use erp::config::Config;
 use erp::database::{Database, DatabaseConfig, DatabaseType};
@@ -13,11 +14,8 @@ use erp_search_code_gen::make_domain;
 use erp_types::field::MultipleIds;
 use erp_types::model::MapOfFields;
 use std::collections::HashMap;
-use std::error::Error;
 use std::time::Duration;
 use test_utilities::models::{Invoice, SaleOrder, SaleOrderLine, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// A pool whose connections are revalidated after `revalidate_after` seconds idle.
 fn config(schema: &str, pool_size: u32, revalidate_after: u64) -> Config {

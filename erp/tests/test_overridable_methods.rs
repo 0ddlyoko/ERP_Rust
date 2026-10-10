@@ -1,14 +1,12 @@
+use erp::Result;
 use erp::app::Application;
 use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
-use std::error::Error;
 use test_plugin::TestPlugin;
 use test_plugin::models::machine_discounted::MachineDiscounted;
 use test_utilities::TestLibPlugin;
 use test_utilities::models::Machine;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// Only the plugin that declares `daily_rate`.
 fn base_only() -> Result<Application> {
@@ -418,7 +416,7 @@ fn one_link(
     _env: &mut dyn erp_types::environment::ErasedEnvironment,
     _args: &(),
     _sup: erp_types::method::Super<'_, (), i32>,
-) -> Result<i32> {
+) -> std::result::Result<i32, Box<dyn std::error::Error + Send + Sync>> {
     Ok(1)
 }
 

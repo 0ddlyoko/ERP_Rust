@@ -1,14 +1,12 @@
 //! A required field is never left empty: not when a record is created, nor when it is written,
 //! nor when a one2many lets go of a record whose many2one is required.
 
+use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp_types::field::{IdMode, MultipleIds};
 use erp_types::model::MapOfFields;
 use serde_json::json;
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 mod storage {
     use code_gen::Model;

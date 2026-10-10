@@ -1,3 +1,4 @@
+use erp::Result;
 use erp::app::Application;
 use erp_types::cache::{Dirty, Update};
 use erp_types::field::SingleId;
@@ -5,8 +6,6 @@ use erp_types::model::MapOfFields;
 use std::error::Error;
 use std::fmt;
 use test_utilities::models::{SaleOrder, SaleOrderLine, Tag};
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug, Clone)]
 pub struct UselessError {}
@@ -54,7 +53,7 @@ fn test_savepoint_rollback() -> Result<()> {
         assert_eq!(*sale_order_line.get_total_price(env)?, 420);
 
         // Throw a random error to rollback what we did here
-        Err(Box::new(UselessError {}))
+        Err(erp::Error::Business(Box::new(UselessError {})))
     });
 
     // Check if it has not been committed

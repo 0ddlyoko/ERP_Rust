@@ -6,14 +6,12 @@
 
 use base::models::{Session, Users};
 use base::{BasePlugin, DEFAULT_ADMIN_PASSWORD};
+use erp::Result;
 use erp::app::Application;
 use erp::jsonrpc;
 use erp_types::field::{IdMode, MultipleIds, Password, SingleId, TimeDelta, Utc};
 use erp_types::model::MapOfFields;
 use serde_json::{Value, json};
-use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn new_app() -> Result<Application> {
     Application::new_test_installed(

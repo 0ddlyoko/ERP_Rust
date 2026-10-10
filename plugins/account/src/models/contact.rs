@@ -93,7 +93,7 @@ impl ContactBank<MultipleIds> {
                 bank.insert("iban", normalize_iban(&iban)?);
             }
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
@@ -101,7 +101,7 @@ impl ContactBank<MultipleIds> {
         if let Some(iban) = values.get_option::<&String>("iban").cloned() {
             values.insert("iban", normalize_iban(&iban)?);
         }
-        sup.call_with(values, env)
+        Ok(sup.call_with(values, env)?)
     }
 }
 

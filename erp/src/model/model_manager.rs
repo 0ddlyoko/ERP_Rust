@@ -21,12 +21,11 @@ use std::collections::{HashMap, HashSet};
 ///
 /// For what a plugin declares and others extend or supply: records to bring in line with what
 /// the loaded plugin ships, or a check that must also cover what later plugins bring.
-pub type LoadHook =
-    fn(&mut Environment, &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+pub type LoadHook = fn(&mut Environment, &str) -> crate::Result<()>;
 
 /// A check a plugin asks to run once the plugins are loaded — at start, or after one is installed
 /// — rather than after each: what it checks covers what every plugin brings.
-pub type CheckHook = fn(&mut Environment) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+pub type CheckHook = fn(&mut Environment) -> crate::Result<()>;
 
 /// A tracked field of one record that changed: what it held, and what it holds now.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,23 +38,16 @@ pub struct TrackedChange {
 /// Work a plugin asks to do when tracked fields of a record changed, given the model, the
 /// record's id, who changed them and what changed. Runs before the changes are saved, so what it
 /// writes is saved with them.
-pub type TrackingHook = fn(
-    &mut Environment,
-    &str,
-    u32,
-    Option<u32>,
-    &[TrackedChange],
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+pub type TrackingHook =
+    fn(&mut Environment, &str, u32, Option<u32>, &[TrackedChange]) -> crate::Result<()>;
 
 /// Work a plugin asks to do once records are created, given the model and their ids, as whoever
 /// created them.
-pub type CreateHook =
-    fn(&mut Environment, &str, &[u32]) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+pub type CreateHook = fn(&mut Environment, &str, &[u32]) -> crate::Result<()>;
 
 /// Work a plugin asks to do once records are deleted, given the model and their ids: removing
 /// what pointed at them without a relation the ORM knows of.
-pub type DeleteHook =
-    fn(&mut Environment, &str, &[u32]) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+pub type DeleteHook = fn(&mut Environment, &str, &[u32]) -> crate::Result<()>;
 
 /// When a record was created, filled in by the ORM on every model.
 pub const CREATE_DATE: &str = "create_date";
@@ -374,7 +366,7 @@ impl ModelManager {
         &self,
         model_name: &str,
         field_name: &str,
-    ) -> Result<Option<erp_search::SearchType>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> crate::Result<Option<erp_search::SearchType>> {
         let field = self
             .try_get_model(model_name)?
             .try_get_internal_field(field_name)?;

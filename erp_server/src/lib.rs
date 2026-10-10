@@ -139,7 +139,7 @@ pub async fn load(mut app: Application) -> Result<Application, Box<dyn Error + S
 /// An error of an application about to be dropped, as text: one a plugin's code made has its
 /// code in the plugin's library, which closes with the application — reading it afterwards
 /// would print nothing, and crash.
-fn owned(error: Box<dyn Error + Send + Sync>) -> Box<dyn Error + Send + Sync> {
+fn owned(error: erp::Error) -> Box<dyn Error + Send + Sync> {
     error.to_string().into()
 }
 

@@ -14,7 +14,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 /// `model_data` lives in `base`, so both plugins are needed.
 fn new_app() -> Result<Application> {
-    Application::new_test_installed(
+    Ok(Application::new_test_installed(
         || -> Vec<Box<dyn erp::plugin::Plugin>> {
             vec![
                 Box::new(BasePlugin {}),
@@ -23,7 +23,7 @@ fn new_app() -> Result<Application> {
             ]
         },
         &["seed_plugin"],
-    )
+    )?)
 }
 
 /// Records declared in a data file exist once the plugin is loaded.
