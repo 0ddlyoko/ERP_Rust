@@ -79,8 +79,8 @@ impl ProductPurchase<MultipleIds> {
     /// The confirmed purchase orders holding the product, and how much of it they bought, in its
     /// unit.
     pub fn compute_purchases(&self, env: &mut Environment) -> Result<()> {
+        let env = &mut *env.sudo();
         for product in self {
-            let env = &mut *env.sudo();
             let unit: Uom<SingleId> = product.get_uom(env)?;
             let confirmed: PurchaseOrderLine<MultipleIds> = product.get_purchased_lines(env)?;
             let bought: Decimal = confirmed.sum(env, |line, env| {

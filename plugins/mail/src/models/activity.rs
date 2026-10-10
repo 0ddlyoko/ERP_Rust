@@ -50,6 +50,17 @@ pub struct Activity<Mode: IdMode> {
     deadline: NaiveDate,
 }
 
+/// What an activity is and by when, as `schedule` and `change` receive it: a blank summary or
+/// note is none.
+#[derive(Clone, erp::serde::Deserialize)]
+#[serde(crate = "erp::serde")]
+pub struct ActivityPlan {
+    pub kind: u32,
+    pub summary: Option<String>,
+    pub note: Option<String>,
+    pub deadline: NaiveDate,
+}
+
 #[erp_methods]
 impl Activity<MultipleIds> {
     /// The kinds of activities that may be planned.
@@ -113,17 +124,13 @@ impl Activity<MultipleIds> {
 
     /// Plan something to do about a record the user may read, for someone — the user by default.
     #[erp(rpc)]
-    #[allow(clippy::too_many_arguments)]
     pub fn schedule(
         &self,
         env: &mut Environment,
         model: String,
         record: u32,
-        kind: u32,
-        summary: Option<String>,
-        note: Option<String>,
         assignee: Option<u32>,
-        deadline: NaiveDate,
+        plan: ActivityPlan,
     ) -> Result<u32> {
         let _ = self;
         env.check_access(&model, Operation::Read, &[record], &[])?;
@@ -132,13 +139,13 @@ impl Activity<MultipleIds> {
         let mut values = MapOfFields::default();
         values.insert("model", model.clone());
         values.insert("record", i32::try_from(record)?);
-        values.insert("kind", kind);
+        values.insert("kind", plan.kind);
         values.insert("assignee", assignee);
-        values.insert("deadline", deadline);
-        if let Some(summary) = summary.filter(|text| !text.trim().is_empty()) {
+        values.insert("deadline", plan.deadline);
+        if let Some(summary) = plan.summary.filter(|text| !text.trim().is_empty()) {
             values.insert("summary", summary);
         }
-        if let Some(note) = note.filter(|text| !text.trim().is_empty()) {
+        if let Some(note) = plan.note.filter(|text| !text.trim().is_empty()) {
             values.insert("note", note);
         }
         let created: Activity<MultipleIds> = env.create_new_records_from_maps(vec![values])?;
@@ -185,27 +192,23 @@ impl Activity<MultipleIds> {
 
     /// Change what an activity is, who does it or by when: the new assignee follows its record.
     #[erp(rpc)]
-    #[allow(clippy::too_many_arguments)]
     pub fn change(
         &self,
         env: &mut Environment,
         activity: u32,
-        kind: u32,
-        summary: Option<String>,
-        note: Option<String>,
         assignee: u32,
-        deadline: NaiveDate,
+        plan: ActivityPlan,
     ) -> Result<()> {
         let _ = self;
         let planned = Self::readable(env, activity)?;
         let env = &mut *env.sudo();
         let given = |text: Option<String>| text.filter(|text| !text.trim().is_empty());
         let mut values = MapOfFields::default();
-        values.insert("kind", kind);
-        values.insert_option("summary", given(summary));
-        values.insert_option("note", given(note));
+        values.insert("kind", plan.kind);
+        values.insert_option("summary", given(plan.summary));
+        values.insert_option("note", given(plan.note));
         values.insert("assignee", assignee);
-        values.insert("deadline", deadline);
+        values.insert("deadline", plan.deadline);
         env.write("activity", &SingleId::from(activity), values)?;
         if let Some(contact) = contact_of(env, assignee)? {
             let model = planned.get_model(env)?.clone();

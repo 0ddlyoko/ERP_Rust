@@ -6,9 +6,9 @@ use base::models::View;
 use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, NaiveDate, SingleId};
+use erp::types::field::{IdMode, SingleId};
 use erp::types::model::MapOfFields;
-use erp_test_support::{admin_env, user_env, xml_id};
+use erp_test_support::{admin_env, date, user_env, xml_id};
 use sequence::SequencePlugin;
 use sequence::models::Sequence;
 use serde_json::json;
@@ -23,10 +23,6 @@ fn new_app() -> Result<Application> {
         ],
         "sequence",
     )
-}
-
-fn date(text: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a date")
 }
 
 fn new_series(env: &mut Environment, code: &str, prefix: &str, reset: &str) -> Result<u32> {

@@ -322,8 +322,11 @@ fn test_the_thread_by_pages_and_kinds() -> Result<()> {
             })
             .collect())
     };
-    assert_eq!(page(json!({"limit": 2}))?, ["three", "two"]);
-    assert_eq!(page(json!({"offset": 2, "limit": 2}))?, ["one", "creation"]);
+    assert_eq!(page(json!({"page": {"limit": 2}}))?, ["three", "two"]);
+    assert_eq!(
+        page(json!({"page": {"offset": 2, "limit": 2}}))?,
+        ["one", "creation"]
+    );
     assert_eq!(page(json!({"kinds": ["note"]}))?, ["two"]);
     assert_eq!(page(json!({"kinds": ["comment"]}))?, ["three", "one"]);
     Ok(())
@@ -397,8 +400,8 @@ fn test_activities_are_planned_then_done() -> Result<()> {
         None,
         "activity",
         "schedule",
-        json!({"model": "deal", "record": deal, "kind": call_kind, "summary": "Ask the budget",
-               "assignee": claire, "deadline": today}),
+        json!({"model": "deal", "record": deal, "assignee": claire,
+               "plan": {"kind": call_kind, "summary": "Ask the budget", "deadline": today}}),
     )?;
     let listed = call(
         &app,
@@ -469,8 +472,8 @@ fn test_an_activity_is_changed() -> Result<()> {
         None,
         "activity",
         "schedule",
-        json!({"model": "deal", "record": deal, "kind": call_kind, "summary": "Ask the budget",
-               "deadline": today.to_string()}),
+        json!({"model": "deal", "record": deal,
+               "plan": {"kind": call_kind, "summary": "Ask the budget", "deadline": today.to_string()}}),
     )?;
     let listed = call(
         &app,
@@ -488,8 +491,8 @@ fn test_an_activity_is_changed() -> Result<()> {
         None,
         "activity",
         "change",
-        json!({"activity": planned, "kind": meeting_kind, "summary": " ", "note": "At their office",
-               "assignee": claire, "deadline": later}),
+        json!({"activity": planned, "assignee": claire,
+               "plan": {"kind": meeting_kind, "summary": " ", "note": "At their office", "deadline": later}}),
     )?;
     let listed = call(
         &app,

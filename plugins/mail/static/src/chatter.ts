@@ -148,7 +148,7 @@ export class Chatter extends Component {
                 this.exhausted = true;
                 return [];
             }
-            const first = await this.orm.call<Message[]>("message", "thread", [], { model, record, kinds: KINDS[shown], limit: PAGE });
+            const first = await this.orm.call<Message[]>("message", "thread", [], { model, record, kinds: KINDS[shown], page: { limit: PAGE } });
             this.exhausted = first.length < PAGE;
             return first;
         },
@@ -174,8 +174,7 @@ export class Chatter extends Component {
                 model: this.props.model,
                 record: this.props.record,
                 kinds: KINDS[this.shown],
-                offset: this.thread.length,
-                limit: PAGE,
+                page: { offset: this.thread.length, limit: PAGE },
             });
             const known = new Set(this.thread.map((message) => message.id));
             this.older = [...this.older, ...next.filter((message) => !known.has(message.id))];

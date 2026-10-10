@@ -7,21 +7,16 @@ use base::BasePlugin;
 use contacts::ContactsPlugin;
 use currency::CurrencyPlugin;
 use erp::Result;
-use erp::environment::Environment;
-use erp_test_support::{admin_env, xml_id};
+use erp_test_support::{admin_env, read, xml_id};
 use mail::MailPlugin;
 use product::ProductPlugin;
 use purchase::PurchasePlugin;
 use purchase_stock::PurchaseStockPlugin;
 use sequence::SequencePlugin;
-use serde_json::{Value, json};
+use serde_json::json;
 use stock::StockPlugin;
 use uom::UomPlugin;
 use web::WebPlugin;
-
-fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
-    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
-}
 
 /// Demo data asked for, the purchases installed bring their orders: three confirmed, each with
 /// its receipt, one sent to its vendor.

@@ -5,12 +5,9 @@ mod common;
 use account::models::{FiscalPosition, Journal, PaymentTerm, Tax, TaxDocument};
 use common::*;
 use erp::Result;
-use erp::types::field::{NaiveDate, SingleId};
+use erp::types::field::SingleId;
+use erp_test_support::date;
 use serde_json::json;
-
-fn date(text: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a date")
-}
 
 /// The test chart installs, with its accounts named `code name`.
 #[test]

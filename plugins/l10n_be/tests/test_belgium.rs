@@ -8,8 +8,8 @@ use currency::CurrencyPlugin;
 use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
-use erp::types::field::{Decimal, NaiveDate};
-use erp_test_support::{admin_env, d, xml_id};
+use erp::types::field::Decimal;
+use erp_test_support::{admin_env, create, d, date, xml_id};
 use l10n_be::L10nBePlugin;
 use l10n_be::models::grid_amounts;
 use mail::MailPlugin;
@@ -43,17 +43,8 @@ fn be(env: &mut Environment, name: &str) -> u32 {
     xml_id(env, &format!("l10n_be.{name}"))
 }
 
-fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
-    let ids = env.call_rpc(model, "create", &json!({ "values": values }))?;
-    Ok(ids[0].as_u64().ok_or("an id")? as u32)
-}
-
 fn read(env: &mut Environment, model: &str, id: u32, field: &str) -> Result<Value> {
     Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": [field]}))?[0][field].clone())
-}
-
-fn date(text: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a date")
 }
 
 /// A posted document of `move_type` dated `on`, one line per `(price, tax)`.

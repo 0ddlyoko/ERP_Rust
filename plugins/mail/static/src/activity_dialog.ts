@@ -174,17 +174,18 @@ export class ActivityDialog extends Component {
         if (kind === undefined || this.assignee === null || !this.deadline) {
             return;
         }
-        const values = { kind: kind.id, summary: this.summary, note: this.note, assignee: this.assignee[0], deadline: this.deadline };
+        const assignee = this.assignee[0];
+        const plan = { kind: kind.id, summary: this.summary, note: this.note, deadline: this.deadline };
         if (activity === null) {
             const planned = await this.act(() =>
-                this.orm.call("activity", "schedule", [], { model: this.props.model, record: this.props.record, ...values }),
+                this.orm.call("activity", "schedule", [], { model: this.props.model, record: this.props.record, assignee, plan }),
             );
             if (planned) {
                 this.props.onClose();
             }
             return;
         }
-        if (await this.act(() => this.orm.call("activity", "change", [], { activity: activity.id, ...values }))) {
+        if (await this.act(() => this.orm.call("activity", "change", [], { activity: activity.id, assignee, plan }))) {
             this.saved = {
                 ...activity,
                 kind: { id: kind.id, name: kind.name, icon: kind.icon },

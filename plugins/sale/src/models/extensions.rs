@@ -63,8 +63,8 @@ pub struct ProductSale<Mode: IdMode> {
 impl ProductSale<MultipleIds> {
     /// The confirmed sales orders holding the product, and how much of it they sold, in its unit.
     pub fn compute_sales(&self, env: &mut Environment) -> Result<()> {
+        let env = &mut *env.sudo();
         for product in self {
-            let env = &mut *env.sudo();
             let unit: Uom<SingleId> = product.get_uom(env)?;
             let confirmed: SaleOrderLine<MultipleIds> = product.get_sold_lines(env)?;
             let sold: Decimal = confirmed.sum(env, |line, env| {

@@ -73,12 +73,20 @@ const THREAD_MODELS: [&str; 8] = [
 /// The subtype of what is said about any record.
 const DISCUSSION: &str = "mail.subtype_discussion";
 
+/// A part of a thread: `limit` messages past the `offset` first ones, all of them without a
+/// limit.
+#[derive(Clone, Default, erp::serde::Deserialize)]
+#[serde(crate = "erp::serde")]
+pub struct ThreadPage {
+    pub offset: Option<usize>,
+    pub limit: Option<usize>,
+}
+
 #[erp_methods]
 impl Message<MultipleIds> {
     /// The thread of a record, newest first, for whoever may read the record; given a `field`,
     /// only the messages noting a change of it; given `kinds`, only messages of those —
-    /// `comment`, `note`, `tracking`, `creation`. A page of it: `limit` messages past the
-    /// `offset` first ones, all of them without a limit.
+    /// `comment`, `note`, `tracking`, `creation`. Given a `page`, only that part of it.
     ///
     /// As sudo once the record is checked: a message is readable by whoever reads its record, a
     /// right no access rule on `message` could express.
@@ -90,18 +98,18 @@ impl Message<MultipleIds> {
         record: u32,
         field: Option<String>,
         kinds: Option<Vec<String>>,
-        offset: Option<usize>,
-        limit: Option<usize>,
+        page: Option<ThreadPage>,
     ) -> Result<Value> {
         let _ = self;
         env.check_access(&model, Operation::Read, &[record], &[])?;
         let env = &mut *env.sudo();
+        let page = page.unwrap_or_default();
         let mut options = SearchOptions {
             order: vec![OrderBy::desc("date"), OrderBy::desc("id")],
             ..SearchOptions::new()
         }
-        .with_offset(offset.unwrap_or(0));
-        if let Some(limit) = limit {
+        .with_offset(page.offset.unwrap_or(0));
+        if let Some(limit) = page.limit {
             options = options.with_limit(limit);
         }
         let mut domain = make_domain!([

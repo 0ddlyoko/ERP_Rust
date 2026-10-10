@@ -10,7 +10,7 @@ use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp::plugin::Plugin;
-use erp_test_support::{admin_env, xml_id};
+use erp_test_support::{admin_env, read, xml_id};
 use mail::MailPlugin;
 use product::ProductPlugin;
 use sale::SalePlugin;
@@ -49,10 +49,6 @@ fn turn_demo(app: &Application, on: bool) -> Result<()> {
         &json!({ "ids": [settings], "values": { "demo_data": on } }),
     )?;
     env.close()
-}
-
-fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
-    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
 }
 
 fn count(env: &mut Environment, model: &str) -> Result<u64> {

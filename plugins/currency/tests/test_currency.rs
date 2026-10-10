@@ -8,9 +8,9 @@ use currency::models::{CompanyCurrency, Currency};
 use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, NaiveDate, SingleId};
+use erp::types::field::{IdMode, SingleId};
 use erp::types::model::MapOfFields;
-use erp_test_support::{admin_env, d, user_env, xml_id};
+use erp_test_support::{admin_env, d, date, user_env, xml_id};
 use serde_json::json;
 use web::WebPlugin;
 
@@ -25,10 +25,6 @@ fn new_app() -> Result<Application> {
         },
         &["currency"],
     )
-}
-
-fn date(text: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a date")
 }
 
 fn currency(env: &mut Environment, code: &str) -> Result<Currency<SingleId>> {

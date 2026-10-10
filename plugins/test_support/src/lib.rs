@@ -13,7 +13,8 @@ use erp::database::cache::CacheDatabase;
 use erp::database::{DatabaseConfig, DatabaseType};
 use erp::environment::Environment;
 use erp::plugin::Plugin;
-use erp::types::field::{Decimal, FieldType, IdMode};
+use erp::serde_json::{Value, json};
+use erp::types::field::{Decimal, FieldType, IdMode, NaiveDate};
 use erp::types::model::MapOfFields;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::str::FromStr;
@@ -22,6 +23,42 @@ use std::sync::{Arc, Condvar, Mutex, PoisonError};
 /// A decimal written in the test, `d("12.50")`.
 pub fn d(value: &str) -> Decimal {
     Decimal::from_str(value).unwrap_or_else(|_| panic!("{value} is not a decimal"))
+}
+
+/// A decimal the web client was sent, as a string or a number.
+pub fn amount(value: &Value) -> Decimal {
+    d(value.as_str().unwrap_or(&value.to_string()))
+}
+
+/// A date written in the test, `date("2025-01-31")`.
+pub fn date(text: &str) -> NaiveDate {
+    NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a date")
+}
+
+/// The ids of a list the web client was sent.
+pub fn ids(value: &Value) -> Vec<u32> {
+    value
+        .as_array()
+        .expect("ids")
+        .iter()
+        .map(|id| id.as_u64().expect("id") as u32)
+        .collect()
+}
+
+/// A record of `model` created as the web client would, from its `values`.
+pub fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
+    let ids = env.call_rpc(model, "create", &json!({ "values": values }))?;
+    Ok(ids[0].as_u64().ok_or("an id")? as u32)
+}
+
+/// `method` of `model` called on `ids` as the web client would, with no arguments.
+pub fn call(env: &mut Environment, model: &str, method: &str, ids: &[u32]) -> Result<Value> {
+    env.call_rpc(model, method, &json!({ "ids": ids }))
+}
+
+/// The `fields` of a record as the web client reads them.
+pub fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
+    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
 }
 
 /// The schema a test works in: its name, shortened and made unique when too long for PostgreSQL.

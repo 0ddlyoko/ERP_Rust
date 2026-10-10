@@ -10,7 +10,7 @@ use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp::plugin::Plugin;
-use erp_test_support::{admin_env, xml_id};
+use erp_test_support::{admin_env, create, read, xml_id};
 use mail::MailPlugin;
 use product::ProductPlugin;
 use project::ProjectPlugin;
@@ -43,15 +43,6 @@ fn plugins() -> Vec<Box<dyn Plugin>> {
 
 fn new_app() -> Result<Application> {
     erp_test_support::app(plugins, &["sale_project", "account_test_chart"])
-}
-
-fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
-    let ids = env.call_rpc(model, "create", &json!({ "values": values }))?;
-    Ok(ids[0].as_u64().ok_or("an id")? as u32)
-}
-
-fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
-    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
 }
 
 fn number(value: &Value) -> f64 {

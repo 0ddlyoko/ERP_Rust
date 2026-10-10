@@ -10,11 +10,11 @@ use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
 use erp::types::field::Decimal;
-use erp_test_support::{admin_env, d, xml_id};
+use erp_test_support::{admin_env, amount, call, create, d, read, xml_id};
 use mail::MailPlugin;
 use product::ProductPlugin;
 use sequence::SequencePlugin;
-use serde_json::{Value, json};
+use serde_json::json;
 use stock::StockPlugin;
 use stock_account::StockAccountPlugin;
 use uom::UomPlugin;
@@ -40,23 +40,6 @@ fn new_app() -> Result<Application> {
         },
         &["stock_account", "account_test_chart"],
     )
-}
-
-fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
-    let ids = env.call_rpc(model, "create", &json!({ "values": values }))?;
-    Ok(ids[0].as_u64().ok_or("an id")? as u32)
-}
-
-fn call(env: &mut Environment, model: &str, method: &str, ids: &[u32]) -> Result<Value> {
-    env.call_rpc(model, method, &json!({ "ids": ids }))
-}
-
-fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
-    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
-}
-
-fn amount(value: &Value) -> Decimal {
-    d(value.as_str().unwrap_or(&value.to_string()))
 }
 
 struct Accounts {

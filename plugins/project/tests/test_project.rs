@@ -6,7 +6,7 @@ use base::models::View;
 use erp::Result;
 use erp::app::Application;
 use erp::environment::Environment;
-use erp_test_support::{admin_env, user_env, xml_id};
+use erp_test_support::{admin_env, create, read, user_env, xml_id};
 use mail::MailPlugin;
 use project::ProjectPlugin;
 use sequence::SequencePlugin;
@@ -26,15 +26,6 @@ fn new_app() -> Result<Application> {
         },
         &["project"],
     )
-}
-
-fn create(env: &mut Environment, model: &str, values: Value) -> Result<u32> {
-    let ids = env.call_rpc(model, "create", &json!({ "values": values }))?;
-    Ok(ids[0].as_u64().expect("an id") as u32)
-}
-
-fn read(env: &mut Environment, model: &str, id: u32, fields: &[&str]) -> Result<Value> {
-    Ok(env.call_rpc(model, "read", &json!({"ids": [id], "fields": fields}))?[0].clone())
 }
 
 /// The columns of a project, left to right, as `(id, name)`.
