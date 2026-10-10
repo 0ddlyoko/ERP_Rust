@@ -127,9 +127,10 @@ impl ValuationLayer<SingleId> {
         let quantity: Decimal = open.iter().map(|(layer, _)| layer.remaining_quantity).sum();
         let value: Decimal = open.iter().map(|(layer, _)| layer.remaining_value).sum();
         if quantity > Decimal::ZERO {
-            let env = &mut *env.sudo();
             let product: Product<SingleId> = env.get_record(product.into());
-            product.set_standard_price((value / quantity).round_dp(6), env)?;
+            product.as_sudo(env, |product, env| {
+                product.set_standard_price((value / quantity).round_dp(6), env)
+            })?;
         }
         Ok(())
     }

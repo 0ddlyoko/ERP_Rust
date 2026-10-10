@@ -171,12 +171,11 @@ impl Timer<SingleId> {
         task: &Task<SingleId>,
         description: Option<String>,
     ) -> Result<Value> {
-        {
-            let sudo = &mut *env.sudo();
-            self.set_project((!project.is_empty()).then_some(project), sudo)?;
-            self.set_task((!task.is_empty()).then_some(task), sudo)?;
-            self.set_name(description, sudo)?;
-        }
+        self.as_sudo(env, |timer, env| {
+            timer.set_project((!project.is_empty()).then_some(project), env)?;
+            timer.set_task((!task.is_empty()).then_some(task), env)?;
+            timer.set_name(description, env)
+        })?;
         self.describe(env)
     }
 

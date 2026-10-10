@@ -707,8 +707,8 @@ impl Move<MultipleIds> {
                 entry.set_payment_term(None::<&PaymentTerm<SingleId>>, env)?;
                 continue;
             }
-            let term: PaymentTerm<SingleId> = env.sudo_with(|env| {
-                let partner: ContactAccount<SingleId> = partner.as_model();
+            let partner: ContactAccount<SingleId> = partner.as_model();
+            let term: PaymentTerm<SingleId> = partner.as_sudo(env, |partner, env| {
                 if move_type.is_sale() {
                     partner.get_customer_payment_term(env)
                 } else {
@@ -728,10 +728,9 @@ impl Move<MultipleIds> {
                 entry.set_fiscal_position(None::<&FiscalPosition<SingleId>>, env)?;
                 continue;
             }
-            let position: FiscalPosition<SingleId> = env.sudo_with(|env| {
-                let partner: ContactAccount<SingleId> = partner.as_model();
-                partner.get_fiscal_position(env)
-            })?;
+            let partner: ContactAccount<SingleId> = partner.as_model();
+            let position: FiscalPosition<SingleId> =
+                partner.as_sudo(env, |partner, env| partner.get_fiscal_position(env))?;
             entry.set_fiscal_position(&position, env)?;
         }
         Ok(())

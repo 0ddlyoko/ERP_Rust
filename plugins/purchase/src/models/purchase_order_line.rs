@@ -217,10 +217,9 @@ impl PurchaseOrderLine<MultipleIds> {
                 line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
-            let taxes: Tax<MultipleIds> = env.sudo_with(|env| {
-                let product: ProductAccount<SingleId> = product.as_model();
-                product.get_supplier_taxes(env)
-            })?;
+            let product: ProductAccount<SingleId> = product.as_model();
+            let taxes: Tax<MultipleIds> =
+                product.as_sudo(env, |product, env| product.get_supplier_taxes(env))?;
             let order: PurchaseOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;

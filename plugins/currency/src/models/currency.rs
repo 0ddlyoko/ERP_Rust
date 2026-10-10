@@ -55,8 +55,7 @@ impl Currency<SingleId> {
     pub fn of_company(env: &mut Environment) -> Result<Currency<SingleId>> {
         let company = Company::current(env)?;
         let company: CompanyCurrency<SingleId> = company.as_model();
-        let env = &mut *env.sudo();
-        company.get_currency(env)
+        company.as_sudo(env, |company, env| company.get_currency(env))
     }
 
     /// The rate in force on `date`: the latest one set on or before it, 1 without any — and 1

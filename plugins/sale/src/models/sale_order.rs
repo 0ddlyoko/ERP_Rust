@@ -241,9 +241,8 @@ impl SaleOrder<MultipleIds> {
             let pricelist: Pricelist<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
-                let env = &mut *env.sudo();
                 let partner: ContactSale<SingleId> = partner.as_model();
-                partner.get_pricelist(env)?
+                partner.as_sudo(env, |partner, env| partner.get_pricelist(env))?
             };
             order.set_pricelist(&pricelist, env)?;
         }
@@ -257,9 +256,8 @@ impl SaleOrder<MultipleIds> {
             let term: PaymentTerm<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
-                let env = &mut *env.sudo();
                 let partner: ContactAccount<SingleId> = partner.as_model();
-                partner.get_customer_payment_term(env)?
+                partner.as_sudo(env, |partner, env| partner.get_customer_payment_term(env))?
             };
             order.set_payment_term(&term, env)?;
         }
@@ -273,9 +271,8 @@ impl SaleOrder<MultipleIds> {
             let position: FiscalPosition<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
-                let env = &mut *env.sudo();
                 let partner: ContactAccount<SingleId> = partner.as_model();
-                partner.get_fiscal_position(env)?
+                partner.as_sudo(env, |partner, env| partner.get_fiscal_position(env))?
             };
             order.set_fiscal_position(&position, env)?;
         }

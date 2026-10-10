@@ -231,7 +231,7 @@ impl InvoiceLine<MultipleIds> {
                 continue;
             }
             let sale = line.invoice(env)?.is_sale_document(env)?;
-            let uom: Uom<SingleId> = env.sudo_with(|env| {
+            let uom: Uom<SingleId> = product.as_sudo(env, |product, env| {
                 if sale {
                     product.get_uom(env)
                 } else {
@@ -302,8 +302,8 @@ impl InvoiceLine<MultipleIds> {
             }
             let invoice = line.invoice(env)?;
             let sale = invoice.is_sale_document(env)?;
-            let taxes: Tax<MultipleIds> = env.sudo_with(|env| {
-                let product: ProductAccount<SingleId> = product.as_model();
+            let product: ProductAccount<SingleId> = product.as_model();
+            let taxes: Tax<MultipleIds> = product.as_sudo(env, |product, env| {
                 if sale {
                     product.get_taxes(env)
                 } else {

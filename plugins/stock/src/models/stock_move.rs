@@ -203,12 +203,11 @@ impl StockMove<SingleId> {
             (true, false) => -self.value_out(env, product, quantity)?,
             _ => Decimal::ZERO,
         };
-        {
-            let env = &mut *env.sudo();
-            self.set_state(MoveStatus::Done, env)?;
-            self.set_value(value, env)?;
-            self.set_date_done(Utc::now(), env)?;
-        }
+        self.as_sudo(env, |stock_move, env| {
+            stock_move.set_state(MoveStatus::Done, env)?;
+            stock_move.set_value(value, env)?;
+            stock_move.set_date_done(Utc::now(), env)
+        })?;
         StockMove::<MultipleIds>::from_ids(vec![self.get_id()], env).on_moved(env)
     }
 

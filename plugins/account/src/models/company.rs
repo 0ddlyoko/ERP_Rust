@@ -72,8 +72,7 @@ impl CompanyAccount<SingleId> {
 
     /// The journal exchange differences are recorded in.
     pub fn exchange_journal(&self, env: &mut Environment) -> Result<Journal<SingleId>> {
-        let env = &mut *env.sudo();
-        self.get_journal_exchange(env)
+        self.as_sudo(env, |company, env| company.get_journal_exchange(env))
     }
 
     /// Refuse touching an entry dated `date` when the books are locked up to it.

@@ -62,9 +62,10 @@ impl Quant<SingleId> {
     /// Add `delta` of `product` at `location`, in the product's unit.
     pub fn add(env: &mut Environment, product: u32, location: u32, delta: Decimal) -> Result<()> {
         let quant = Self::of(env, product, location)?;
-        let env = &mut *env.sudo();
-        let quantity = *quant.get_quantity(env)? + delta;
-        quant.set_quantity(quantity, env)
+        quant.as_sudo(env, |quant, env| {
+            let quantity = *quant.get_quantity(env)? + delta;
+            quant.set_quantity(quantity, env)
+        })
     }
 
     /// The quants of `product` at these locations.
