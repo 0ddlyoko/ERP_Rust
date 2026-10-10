@@ -1,5 +1,5 @@
 use crate::models::pricelist::BaseProductPricelist;
-use crate::models::sale_order::{BaseSaleOrder, SaleOrder, SaleState};
+use crate::models::sale_order::{BaseSaleOrder, SaleOrder};
 use crate::models::sale_order_line::{BaseSaleOrderLine, SaleOrderLine};
 use account::models::{InvoiceLine, Move};
 use code_gen::{Model, erp_methods, selection};
@@ -39,18 +39,22 @@ pub struct ProductSale<Mode: IdMode> {
     uom: Reference<BaseUom, SingleId>,
     #[erp(label = "Invoicing policy")]
     invoice_policy: InvoicePolicy,
-    #[erp(label = "Sales order lines", inverse = "product")]
-    sale_lines: Reference<BaseSaleOrderLine, MultipleIds>,
+    #[erp(
+        label = "Sold lines",
+        inverse = "product",
+        domain = r#"[["order.state", "=", "sale"]]"#
+    )]
+    sold_lines: Reference<BaseSaleOrderLine, MultipleIds>,
     #[erp(
         label = "Sales orders",
         compute = "compute_sales",
-        depends = ["sale_lines.order.state", "sale_lines.product_uom_qty", "sale_lines.uom", "uom"]
+        depends = ["sold_lines.order.state", "sold_lines.product_uom_qty", "sold_lines.uom", "uom"]
     )]
     sale_orders: Reference<BaseSaleOrder, MultipleIds>,
     #[erp(
         label = "Sold",
         compute = "compute_sales",
-        depends = ["sale_lines.order.state", "sale_lines.product_uom_qty", "sale_lines.uom", "uom"]
+        depends = ["sold_lines.order.state", "sold_lines.product_uom_qty", "sold_lines.uom", "uom"]
     )]
     sold_qty: Decimal,
 }
@@ -62,11 +66,7 @@ impl ProductSale<MultipleIds> {
         for product in self {
             let env = &mut *env.sudo();
             let unit: Uom<SingleId> = product.get_uom(env)?;
-            let lines: SaleOrderLine<MultipleIds> = product.get_sale_lines(env)?;
-            let confirmed = lines.filtered(env, |line, env| {
-                let order: SaleOrder<SingleId> = line.get_order(env)?;
-                order.is_state(env, SaleState::Sale)
-            })?;
+            let confirmed: SaleOrderLine<MultipleIds> = product.get_sold_lines(env)?;
             let sold: Decimal = confirmed.sum(env, |line, env| {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;
                 let quantity = *line.get_product_uom_qty(env)?;

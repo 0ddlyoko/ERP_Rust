@@ -1,4 +1,4 @@
-use crate::models::purchase_order::{BasePurchaseOrder, PurchaseOrder, PurchaseState};
+use crate::models::purchase_order::{BasePurchaseOrder, PurchaseOrder};
 use crate::models::purchase_order_line::{BasePurchaseOrderLine, PurchaseOrderLine};
 use crate::vendor_price::{self, VendorPrice};
 use account::models::{InvoiceLine, Move};
@@ -54,18 +54,22 @@ pub struct ProductPurchase<Mode: IdMode> {
     purchase_method: BillPolicy,
     #[erp(label = "Vendors", inverse = "product")]
     sellers: Reference<BaseProductSupplierinfo, MultipleIds>,
-    #[erp(label = "Purchase order lines", inverse = "product")]
-    purchase_lines: Reference<BasePurchaseOrderLine, MultipleIds>,
+    #[erp(
+        label = "Purchased lines",
+        inverse = "product",
+        domain = r#"[["order.state", "=", "purchase"]]"#
+    )]
+    purchased_lines: Reference<BasePurchaseOrderLine, MultipleIds>,
     #[erp(
         label = "Purchase orders",
         compute = "compute_purchases",
-        depends = ["purchase_lines.order.state", "purchase_lines.product_qty", "purchase_lines.uom", "uom"]
+        depends = ["purchased_lines.order.state", "purchased_lines.product_qty", "purchased_lines.uom", "uom"]
     )]
     purchase_orders: Reference<BasePurchaseOrder, MultipleIds>,
     #[erp(
         label = "Purchased",
         compute = "compute_purchases",
-        depends = ["purchase_lines.order.state", "purchase_lines.product_qty", "purchase_lines.uom", "uom"]
+        depends = ["purchased_lines.order.state", "purchased_lines.product_qty", "purchased_lines.uom", "uom"]
     )]
     purchased_qty: Decimal,
 }
@@ -78,11 +82,7 @@ impl ProductPurchase<MultipleIds> {
         for product in self {
             let env = &mut *env.sudo();
             let unit: Uom<SingleId> = product.get_uom(env)?;
-            let lines: PurchaseOrderLine<MultipleIds> = product.get_purchase_lines(env)?;
-            let confirmed = lines.filtered(env, |line, env| {
-                let order: PurchaseOrder<SingleId> = line.get_order(env)?;
-                order.is_state(env, PurchaseState::Purchase)
-            })?;
+            let confirmed: PurchaseOrderLine<MultipleIds> = product.get_purchased_lines(env)?;
             let bought: Decimal = confirmed.sum(env, |line, env| {
                 let line_unit: Uom<SingleId> = line.get_uom(env)?;
                 let quantity = *line.get_product_qty(env)?;
