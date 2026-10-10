@@ -17,9 +17,10 @@ mod models {
 
     type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-    /// How many times stamps were counted.
-    pub static STAMPS_COUNTED: std::sync::atomic::AtomicUsize =
-        std::sync::atomic::AtomicUsize::new(0);
+    thread_local! {
+        /// How many times stamps were counted, by the test running on this thread.
+        pub static STAMPS_COUNTED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
 
     #[derive(Model)]
     #[erp(id = "parcel", methods)]
@@ -47,7 +48,7 @@ mod models {
         /// Stamps are counted only when they change.
         #[erp(on = ["stamps"])]
         pub fn check_stamps(&self, env: &mut Environment) -> Result<()> {
-            STAMPS_COUNTED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            STAMPS_COUNTED.set(STAMPS_COUNTED.get() + 1);
             for parcel in self {
                 if *parcel.get_stamps(env)? > 10 {
                     return Err("At most ten stamps".into());
@@ -134,10 +135,10 @@ fn test_a_check_on_fields_runs_when_they_change() -> Result<()> {
 
     let ids = env.create_records("parcel", vec![parcel("Letters", 1)])?;
     let letters = Parcel::<MultipleIds>::from_ids(ids.get_ids_ref().clone(), &env).ensure_one()?;
-    let counted = models::STAMPS_COUNTED.load(std::sync::atomic::Ordering::SeqCst);
+    let counted = models::STAMPS_COUNTED.get();
     letters.set_weight(3, &mut env)?;
     assert_eq!(
-        models::STAMPS_COUNTED.load(std::sync::atomic::Ordering::SeqCst),
+        models::STAMPS_COUNTED.get(),
         counted,
         "not run when stamps are not written"
     );

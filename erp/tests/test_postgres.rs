@@ -1753,6 +1753,42 @@ fn test_lines_of_each_record_load_together() -> Result<()> {
     Ok(())
 }
 
+/// A one2many declaring a domain reads only the matching records from the database, and follows
+/// a line changed out of it once saved and read again in another transaction.
+#[test]
+fn test_a_one2many_domain_reads_from_the_database() -> Result<()> {
+    let app = app_or_skip!("t_o2m_domain");
+    let mut env = app.new_env()?;
+    let mut order = MapOfFields::new(HashMap::new());
+    order.insert("name", "filtered");
+    let order: SaleOrder<SingleId> = env.create_new_record_from_map(order)?;
+    let mut lines = Vec::new();
+    for price in [50, 150, 300] {
+        let mut line = MapOfFields::new(HashMap::new());
+        line.insert("order", order.get_id());
+        line.insert("price", price);
+        let line: SaleOrderLine<SingleId> = env.create_new_record_from_map(line)?;
+        lines.push(line.get_id());
+    }
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let order: SaleOrder<SingleId> = SaleOrder::from_id(order.get_id(), &env);
+    let expensive: SaleOrderLine<MultipleIds> = order.get_expensive_lines(&mut env)?;
+    assert_eq!(expensive.get_ids(), [lines[1], lines[2]]);
+    let cheaper: SaleOrderLine<SingleId> = SaleOrderLine::from_id(lines[2], &env);
+    cheaper.set_price(80, &mut env)?;
+    let expensive: SaleOrderLine<MultipleIds> = order.get_expensive_lines(&mut env)?;
+    assert_eq!(expensive.get_ids(), [lines[1]]);
+    env.close()?;
+
+    let mut env = app.new_env()?;
+    let order: SaleOrder<SingleId> = SaleOrder::from_id(order.get_id(), &env);
+    let expensive: SaleOrderLine<MultipleIds> = order.get_expensive_lines(&mut env)?;
+    assert_eq!(expensive.get_ids(), [lines[1]]);
+    Ok(())
+}
+
 /// A search reading its records reads them in the same query.
 #[test]
 fn test_read_matching_is_one_query() -> Result<()> {

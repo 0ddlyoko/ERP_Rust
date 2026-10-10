@@ -124,6 +124,9 @@ pub struct ModelManager {
     pub(crate) current_plugin_loading: Option<String>,
     /// The demo documents of each plugin loaded, by its name.
     pub(crate) demo: HashMap<String, Vec<&'static str>>,
+    /// For a field — model then name — the one2many fields whose domain reads it, which writing
+    /// it leaves stale: the order states a product's confirmed lines are filtered by.
+    pub(crate) domain_dependents: HashMap<(String, String), Vec<(String, String)>>,
 }
 
 impl ModelManager {
@@ -223,6 +226,101 @@ impl ModelManager {
         self._post_register_contact_fields();
         self._post_register_m2o_links();
         self._post_register_compute_links();
+        self._post_register_domain_dependents();
+    }
+
+    /// Whether the one2many `model_name.field_name` filters its records by a domain.
+    pub fn has_one2many_domain(&self, model_name: &str, field_name: &str) -> bool {
+        self.models
+            .get(model_name)
+            .and_then(|model| model.fields.get(field_name))
+            .is_some_and(|field| {
+                field.domain.is_some()
+                    && matches!(
+                        &field.inverse,
+                        Some(FieldReference {
+                            inverse_field: FieldReferenceType::O2M { .. },
+                            ..
+                        })
+                    )
+            })
+    }
+
+    /// The domain a one2many filters its records by, as its field declares it; `None` for one
+    /// holding every record pointing back.
+    pub fn one2many_domain(
+        &self,
+        model_name: &str,
+        field_name: &str,
+    ) -> Result<Option<erp_search::SearchType>, Box<dyn std::error::Error + Send + Sync>> {
+        let field = self
+            .try_get_model(model_name)?
+            .try_get_internal_field(field_name)?;
+        let Some(FieldReference {
+            inverse_field: FieldReferenceType::O2M { .. },
+            ..
+        }) = &field.inverse
+        else {
+            return Ok(None);
+        };
+        let Some(domain) = field.domain else {
+            return Ok(None);
+        };
+        serde_json::from_str(domain).map(Some).map_err(|error| {
+            format!("The domain of {model_name}.{field_name} is no domain: {error}").into()
+        })
+    }
+
+    /// Note, for every field a one2many's domain reads — along its path, `order.state` reading
+    /// the line's order and the order's state — that the one2many depends on it.
+    ///
+    /// Panics on a one2many whose domain does not parse or names no field: it would filter
+    /// nothing, or fail on every read.
+    fn _post_register_domain_dependents(&mut self) {
+        let mut dependents: HashMap<(String, String), Vec<(String, String)>> = HashMap::new();
+        for (model_name, model) in &self.models {
+            for (field_name, field) in &model.fields {
+                let Some(FieldReference {
+                    target_model,
+                    inverse_field: FieldReferenceType::O2M { .. },
+                }) = &field.inverse
+                else {
+                    continue;
+                };
+                let Some(domain) = self
+                    .one2many_domain(model_name, field_name)
+                    .unwrap_or_else(|error| panic!("{error}"))
+                else {
+                    continue;
+                };
+                for left in domain.get_fields() {
+                    let mut at = target_model.to_string();
+                    for segment in &left.path {
+                        let Some(read) = self
+                            .models
+                            .get(&at)
+                            .and_then(|model| model.fields.get(segment))
+                        else {
+                            panic!(
+                                "The domain of {model_name}.{field_name} reads {}, which {at} has no field for",
+                                left.path.join(".")
+                            );
+                        };
+                        dependents
+                            .entry((at.clone(), segment.clone()))
+                            .or_default()
+                            .push((model_name.clone(), field_name.clone()));
+                        match &read.inverse {
+                            Some(FieldReference { target_model, .. }) => {
+                                at = target_model.to_string()
+                            }
+                            None => break,
+                        }
+                    }
+                }
+            }
+        }
+        self.domain_dependents = dependents;
     }
 
     /// Give every model the fields the ORM fills in on its own: when each record was created and

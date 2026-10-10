@@ -379,10 +379,16 @@ impl<'mm> Environment<'mm> {
                     result.insert(*id, vec![]);
                 }
 
+                let pointing = self.pointing_within_domain(
+                    model_name,
+                    field_name,
+                    target_model,
+                    make_domain!([(inverse_field, "=", ids_not_in_cache)]),
+                )?;
                 let database_result = self.database.search(
                     target_model,
                     &[inverse_field],
-                    &make_domain!([(inverse_field, "=", ids_not_in_cache)]),
+                    &pointing,
                     self.model_manager,
                     &SearchOptions::default(),
                 )?;
@@ -428,6 +434,38 @@ impl<'mm> Environment<'mm> {
             .into());
         }
         Ok(result)
+    }
+
+    /// Forget the one2many fields whose domain reads `model_name.field_name`, on every record:
+    /// what they hold may no longer match.
+    fn forget_domain_dependents(&mut self, model_name: &str, field_name: &str) {
+        if self.model_manager.domain_dependents.is_empty() {
+            return;
+        }
+        let key = (model_name.to_string(), field_name.to_string());
+        let Some(dependents) = self.model_manager.domain_dependents.get(&key) else {
+            return;
+        };
+        for (model, field) in dependents {
+            self.cache.invalidate_field_everywhere(model, field);
+        }
+    }
+
+    /// The records of `target_model` pointing back, `pointing`, narrowed to the domain of the
+    /// one2many `model_name.field_name` when it has one — its fields saved first, so the
+    /// database sees them as the cache does.
+    pub(super) fn pointing_within_domain(
+        &mut self,
+        model_name: &str,
+        field_name: &str,
+        target_model: &str,
+        pointing: SearchType,
+    ) -> Result<SearchType> {
+        let Some(domain) = self.model_manager.one2many_domain(model_name, field_name)? else {
+            return Ok(pointing);
+        };
+        self.save_domain_fields_to_db(target_model, &domain)?;
+        Ok(SearchType::And(Box::new(pointing), Box::new(domain)))
     }
 
     /// Save given field to cache.
@@ -571,6 +609,7 @@ impl<'mm> Environment<'mm> {
         let value = Self::without_empty_references(value);
         // Loading a value from the database also lands here, and changes no rule.
         if matches!(update_dirty, Dirty::UpdateDirty) {
+            self.forget_domain_dependents(model_name, field_name);
             self.forget_access_of(model_name, ids.get_ids_ref())?;
             self.forget_shared_of(model_name);
             if self.is_rule_target(model_name, field_name)
@@ -758,7 +797,13 @@ impl<'mm> Environment<'mm> {
                     Ok(())
                 }
                 FieldReferenceType::M2O { inverse_fields } => {
-                    // TODO Later, when we will be able to create a O2M linked to a M2O but with a domain, we need to adapt this code to filter it
+                    let filtered: HashSet<&String> = inverse_fields
+                        .iter()
+                        .filter(|inverse| {
+                            self.model_manager
+                                .has_one2many_domain(target_model, inverse)
+                        })
+                        .collect();
 
                     let new_id = match value.clone() {
                         None => None,
@@ -882,6 +927,10 @@ impl<'mm> Environment<'mm> {
                         // We only modify if the target model is present in cache
                         if let Some(cache_model) = cache_models.get_model_mut(new_id) {
                             for inverse_field in inverse_fields {
+                                if filtered.contains(inverse_field) {
+                                    cache_model.remove_field(inverse_field);
+                                    continue;
+                                }
                                 let cache_field = cache_model.get_field_mut(inverse_field);
                                 // If this field is not in cache, we do nothing
                                 if let Some(cache_field) = cache_field {

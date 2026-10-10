@@ -26,6 +26,8 @@ pub struct SaleOrder<Mode: IdMode> {
     total_price: i32,
     #[erp(inverse = "order")]
     lines: Reference<BaseSaleOrderLine, MultipleIds>,
+    #[erp(inverse = "order", domain = r#"[["price", ">", 100]]"#)]
+    expensive_lines: Reference<BaseSaleOrderLine, MultipleIds>,
     #[erp(relation = "sale_order_tag_rel")]
     tags: Reference<BaseTag, MultipleIds>,
 }

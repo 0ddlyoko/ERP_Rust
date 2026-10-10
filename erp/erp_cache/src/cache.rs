@@ -180,6 +180,12 @@ impl Cache {
             .invalidate_field(field_name, ids);
     }
 
+    /// Forget a field's value on every record of the model, so the next read loads it again.
+    pub fn invalidate_field_everywhere(&mut self, model_name: &str, field_name: &str) {
+        self.get_cache_models_mut(model_name)
+            .invalidate_field_everywhere(field_name);
+    }
+
     /// Forget the given records: values, dirty flags and pending recomputations.
     pub fn remove_records<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) {
         let cache_models = self.get_cache_models_mut(model_name);

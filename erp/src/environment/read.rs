@@ -797,7 +797,12 @@ impl<'mm> Environment<'mm> {
                     result.insert(id.get_id(), vec![]);
                 }
 
-                let pointing = make_domain!([(inverse_field, "=", ids_not_in_cache)]);
+                let pointing = self.pointing_within_domain(
+                    model_name,
+                    field_name,
+                    target_model,
+                    make_domain!([(inverse_field, "=", ids_not_in_cache)]),
+                )?;
                 let options = self.lines_order(target_model)?;
                 let sorted: Vec<&str> = options
                     .order
