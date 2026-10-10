@@ -114,7 +114,27 @@ impl RpcError {
     }
 
     pub fn internal(detail: impl Into<String>) -> Self {
-        Self::new(-32603, detail)
+        Self::new(-32603, detail).with_kind("internal", None)
+    }
+
+    /// A business rule refused the call: told as it is, for the user to act on.
+    pub fn business(detail: impl Into<String>) -> Self {
+        Self::call_failed(detail).with_kind("business", None)
+    }
+
+    /// What the caller gave does not hold, naming the field when there is one.
+    pub fn input(detail: impl Into<String>, field: Option<String>) -> Self {
+        Self::call_failed(detail).with_kind("input", field)
+    }
+
+    /// Say which of business, input or internal the error is, and the field it is about.
+    fn with_kind(mut self, kind: &str, field: Option<String>) -> Self {
+        let mut data = serde_json::json!({ "kind": kind });
+        if let Some(field) = field {
+            data["field"] = Value::String(field);
+        }
+        self.data = Some(data);
+        self
     }
 
     /// The caller presented a token that names nobody.

@@ -142,3 +142,27 @@ fn test_naming_a_field_again_keeps_it_required() {
     let book = app.model_manager.get_model("book");
     assert!(book.get_internal_field("shelf").required);
 }
+
+/// A required field left empty is an input error naming the field, told as such to a remote
+/// caller; any other refusal is a business one, and the server's own failures are internal.
+#[test]
+fn test_errors_say_whose_they_are() -> Result<()> {
+    let app = new_app();
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "book.create",
+        "params": {"values": {"name": "Loose", "pages": 10}},
+        "id": 1
+    })
+    .to_string();
+    let answer = erp::jsonrpc::handle(&app, None, &body).expect("answered");
+    assert_eq!(answer["error"]["data"]["kind"], "input", "{answer}");
+    assert_eq!(answer["error"]["data"]["field"], "shelf", "{answer}");
+
+    use erp::errors::{ErrorKind, InternalError, kind_of};
+    let refused: Box<dyn Error + Send + Sync> = "Closed on Sundays".into();
+    assert_eq!(kind_of(&*refused), ErrorKind::Business);
+    let broken: Box<dyn Error + Send + Sync> = InternalError::new("a bug").into();
+    assert_eq!(kind_of(&*broken), ErrorKind::Internal);
+    Ok(())
+}

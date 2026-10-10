@@ -104,8 +104,10 @@ fn answer(app: &Application, call: HttpFn, auth: Auth, request: &Request) -> Res
                 refusal(refused)
             } else if let Some(denied) = error.downcast_ref::<AccessDenied>() {
                 refusal(&HttpError::new(403, denied.to_string()))
-            } else {
+            } else if crate::errors::kind_of(&*error) == crate::errors::ErrorKind::Internal {
                 failure(&*error)
+            } else {
+                refusal(&HttpError::new(400, error.to_string()))
             }
         }
     }

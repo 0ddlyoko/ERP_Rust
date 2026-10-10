@@ -120,7 +120,7 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         const { field } = columnOf(element);
         const byModel = field.required && !field.readonly && field.type !== "bool";
         const isRequired = required === null ? String(byModel) : `!!(${required})`;
-        return `o_form_required: ${isRequired}, o_form_missing: __form.tried && ${isRequired} && __form.isBlank(${name})`;
+        return `o_form_required: ${isRequired}, o_form_missing: (__form.tried && ${isRequired} && __form.isBlank(${name})) || __form.refusedField === ${name}`;
     };
     const ifShown = (shown: string): string => (shown === "true" ? "" : ` t-if="${escape(shown)}"`);
     /** A mark beside a field the server could not compute, saying why when hovered. */

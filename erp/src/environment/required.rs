@@ -32,9 +32,12 @@ impl<'mm> Environment<'mm> {
         model_name: &str,
         field: &FinalInternalField,
     ) -> Box<dyn Error + Send + Sync> {
-        format!(
-            "Field \"{}\" of model \"{model_name}\" is required: it cannot be left empty",
-            field.name
+        crate::errors::InputError::on(
+            field.name.clone(),
+            format!(
+                "Field \"{}\" of model \"{model_name}\" is required: it cannot be left empty",
+                field.name
+            ),
         )
         .into()
     }

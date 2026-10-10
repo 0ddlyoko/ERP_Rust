@@ -29,14 +29,24 @@ impl<'mm> Environment<'mm> {
     /// them through a cascade is not held to the caller's rights: the field asked for it.
     ///
     /// Goes through the model's `delete`, so what a plugin overrode there runs — for records
-    /// deleted by a cascade too.
+    /// deleted by a cascade too. The checks of what the records led back to run once done: an
+    /// order losing a line is checked again.
     pub fn delete<Mode: IdMode>(&mut self, model_name: &str, ids: &Mode) -> Result<u32> {
         if ids.is_empty() {
             return Ok(0);
         }
         self.model_manager.try_get_model(model_name)?;
         let ids: MultipleIds = ids.clone().into();
-        self.call_method::<DeleteArgs, u32>(model_name, DELETE, &ids, &())
+        if !self.has_checks(model_name) {
+            return self.call_method::<DeleteArgs, u32>(model_name, DELETE, &ids, &());
+        }
+        self.checked(
+            |env| {
+                env.note_checks_of_deletion(model_name, &ids)?;
+                env.call_method::<DeleteArgs, u32>(model_name, DELETE, &ids, &())
+            },
+            |_, _| Ok(()),
+        )
     }
 
     /// What deleting does, below every override of `delete`: for records a cascade is deleting,

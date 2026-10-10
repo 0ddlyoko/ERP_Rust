@@ -154,6 +154,28 @@ impl<'mm> Environment<'mm> {
         Ok(())
     }
 
+    /// Note the checks deleting `ids` of `model_name` concerns: those of other records the
+    /// deleted ones lead back to — an order losing a line — read before the rows are gone.
+    pub(crate) fn note_checks_of_deletion(
+        &mut self,
+        model_name: &str,
+        ids: &MultipleIds,
+    ) -> Result<()> {
+        let written: Vec<String> = self
+            .model_manager
+            .check_links
+            .iter()
+            .filter(|((model, _), links)| {
+                model == model_name
+                    && links
+                        .iter()
+                        .any(|link| !(link.model == model_name && link.steps.is_empty()))
+            })
+            .map(|((_, field), _)| field.clone())
+            .collect();
+        self.note_checks(model_name, ids, &written, false)
+    }
+
     /// Create or write through `work`, then note the checks it concerns; once the outermost is
     /// done, run every check noted, in sudo — so a record created with its lines is checked with
     /// all of them, not as each comes. A failure forgets the checks noted.
@@ -179,6 +201,7 @@ impl<'mm> Environment<'mm> {
             // A rule holds whoever wrote: checks read what they need, whatever the caller's rights.
             self.sudo_with(|env| {
                 for (model, method, per_record, ids) in pending {
+                    let (ids, _) = env.present(&model, ids)?;
                     if ids.is_empty() {
                         continue;
                     }
@@ -688,9 +711,12 @@ impl<'mm> Environment<'mm> {
         if fits {
             return Ok(());
         }
-        Err(format!(
-            "Field \"{}\" of model \"{model_name}\" holds a {}, not a {given}",
-            field.name, field.kind
+        Err(crate::errors::InputError::on(
+            field.name.clone(),
+            format!(
+                "Field \"{}\" of model \"{model_name}\" holds a {}, not a {given}",
+                field.name, field.kind
+            ),
         )
         .into())
     }
@@ -714,10 +740,13 @@ impl<'mm> Environment<'mm> {
             .iter()
             .map(|choice| choice.key.as_str())
             .collect();
-        Err(format!(
-            "\"{key}\" is not a value of field \"{}\" of model \"{model_name}\": {}",
-            field.name,
-            known.join(", ")
+        Err(crate::errors::InputError::on(
+            field.name.clone(),
+            format!(
+                "\"{key}\" is not a value of field \"{}\" of model \"{model_name}\": {}",
+                field.name,
+                known.join(", ")
+            ),
         )
         .into())
     }

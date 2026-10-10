@@ -4,6 +4,7 @@ import { listMemory } from "@web/core/list_memory";
 import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
 import type { Fields } from "@web/core/models";
+import { RpcError } from "@web/core/rpc";
 import type { Values } from "@web/core/orm";
 import { asksReload, opensRecord, View, viewKinds, viewProps } from "@web/views/view";
 import { companionFields } from "@web/views/widgets/decimal_widget";
@@ -92,6 +93,8 @@ export class FormView extends View {
     /** The button whose method runs, by its position in the bar, until it is done. */
     @state accessor pressing: number | null = null;
     @state accessor failure: string | null = null;
+    /** The field the server refused what was given for, marked until the next save. */
+    @state accessor refusedField: string | null = null;
     @state accessor openPages = new Map<number, number>();
     /** Whether a save was tried: required fields left empty are shown from then on. */
     @state accessor tried = false;
@@ -450,6 +453,7 @@ export class FormView extends View {
         this.changes = {};
         this.forgetComputed();
         this.failure = null;
+        this.refusedField = null;
         this.tried = false;
     }
 
@@ -556,6 +560,7 @@ export class FormView extends View {
         const notice = this.notifications.add("info", "Saving…", { sticky: true });
         this.saving = true;
         this.failure = null;
+        this.refusedField = null;
         try {
             const model = this.props.resModel;
             const id = this.props.resId;
@@ -588,6 +593,7 @@ export class FormView extends View {
             this.notifications.add("success", `${this.title} saved.`);
             return true;
         } catch (error) {
+            this.refusedField = error instanceof RpcError && error.kind === "input" ? error.field : null;
             this.refuse(error instanceof Error ? error.message : String(error));
             return false;
         } finally {

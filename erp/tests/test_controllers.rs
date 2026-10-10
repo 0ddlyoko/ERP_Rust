@@ -72,7 +72,16 @@ mod shop {
             let mut values = MapOfFields::default();
             values.insert("name", "written before failing");
             env.create_records("tag", vec![values])?;
-            Err("failed on purpose, with details nobody outside should see".into())
+            Err(erp::errors::InternalError::new(
+                "failed on purpose, with details nobody outside should see",
+            )
+            .into())
+        }
+
+        #[erp(route = "/shop/refused", methods = ["POST"])]
+        pub fn refused(&self, env: &mut Environment, request: &Request) -> Result<Response> {
+            let _ = (env, request);
+            Err("The shop is closed on Sundays".into())
         }
 
         /// Called by another server, which holds no token of a browser's.
@@ -418,6 +427,16 @@ fn test_a_fixed_segment_wins_over_a_parameter() -> Result<()> {
     Ok(())
 }
 
+/// A refusal the user may act on is told as it is.
+#[test]
+fn test_a_refusal_is_told() -> Result<()> {
+    let app = shop_app()?;
+    let response = post(&app, "/shop/refused");
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.text_body(), "The shop is closed on Sundays");
+    Ok(())
+}
+
 /// A failure is answered in general terms, and nothing the request wrote survives it.
 #[test]
 fn test_a_failing_controller_rolls_back() -> Result<()> {
@@ -514,6 +533,7 @@ fn test_the_registry_lists_its_routes() -> Result<()> {
             "POST /shop/broken shop.broken",
             "POST /shop/hook shop.hook",
             "POST /shop/new shop.create",
+            "POST /shop/refused shop.refused",
         ]
     );
     Ok(())

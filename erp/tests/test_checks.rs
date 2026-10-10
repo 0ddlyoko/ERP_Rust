@@ -20,6 +20,8 @@ mod models {
     thread_local! {
         /// How many times stamps were counted, by the test running on this thread.
         pub static STAMPS_COUNTED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+        /// How many cartons had their load checked, by the test running on this thread.
+        pub static LOADS_CHECKED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     }
 
     #[derive(Model)]
@@ -51,6 +53,7 @@ mod models {
         #[erp(check = ["parcels.weight"])]
         pub fn check_load(&self, env: &mut Environment) -> Result<()> {
             for carton in self {
+                LOADS_CHECKED.set(LOADS_CHECKED.get() + 1);
                 let parcels: Parcel<MultipleIds> = carton.get_parcels(env)?;
                 if parcels.sum(env, |parcel, env| Ok(*parcel.get_weight(env)?))? > 100 {
                     return Err("A carton holds at most 100 kg".into());
@@ -298,5 +301,39 @@ fn test_a_check_follows_a_longer_path() -> Result<()> {
         .set_weight(80, &mut env)
         .expect_err("160 kg in the truck");
     assert_eq!(error.to_string(), "A truck carries at most 150 kg");
+    Ok(())
+}
+
+/// Deleting a record a check reaches through a path checks again what it led back to; a record
+/// deleted itself is not checked.
+#[test]
+fn test_a_deletion_checks_what_it_led_to() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    let carton_id = env
+        .create_records("carton", vec![named("Kitchen")])?
+        .get_ids_ref()[0];
+    let ids = env.create_records(
+        "parcel",
+        vec![
+            parcel_in("Pans", 40, carton_id),
+            parcel_in("Plates", 50, carton_id),
+        ],
+    )?;
+    let checked = models::LOADS_CHECKED.get();
+    env.delete("parcel", &MultipleIds::from(ids.get_ids_ref()[0]))?;
+    assert_eq!(
+        models::LOADS_CHECKED.get(),
+        checked + 1,
+        "the carton is checked again"
+    );
+
+    let checked = models::LOADS_CHECKED.get();
+    env.delete("carton", &MultipleIds::from(carton_id))?;
+    assert_eq!(
+        models::LOADS_CHECKED.get(),
+        checked,
+        "a deleted carton is not checked"
+    );
     Ok(())
 }

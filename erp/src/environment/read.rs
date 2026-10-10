@@ -206,7 +206,11 @@ impl<'mm> Environment<'mm> {
 
     /// These records, each once and in the order given, split into those that exist and those
     /// that do not; id 0 is neither. Checked as [`Environment::existing`] does, through the cache.
-    fn present(&mut self, model_name: &str, ids: Vec<u32>) -> Result<(Vec<u32>, Vec<u32>)> {
+    pub(crate) fn present(
+        &mut self,
+        model_name: &str,
+        ids: Vec<u32>,
+    ) -> Result<(Vec<u32>, Vec<u32>)> {
         self.model_manager.try_get_model(model_name)?;
         let mut seen = HashSet::with_capacity(ids.len());
         let ids = MultipleIds::from(

@@ -1,7 +1,11 @@
 import { inject, state, untrack } from "trame";
 import { Session } from "./session";
 
-/** What the server answered instead of a result: the JSON-RPC error, as it was sent. */
+/**
+ * What the server answered instead of a result: the JSON-RPC error, as it was sent. Its `kind`
+ * says whose it is — a business rule refusing, what the user gave not holding (about `field`
+ * when there is one), or the server failing — when the server said so.
+ */
 export class RpcError extends Error {
     constructor(
         readonly code: number,
@@ -10,6 +14,17 @@ export class RpcError extends Error {
     ) {
         super(message);
         this.name = "RpcError";
+    }
+
+    get kind(): "business" | "input" | "internal" | null {
+        const kind = (this.data as { kind?: unknown } | undefined)?.kind;
+        return kind === "business" || kind === "input" || kind === "internal" ? kind : null;
+    }
+
+    /** The field a refused input is about, if any. */
+    get field(): string | null {
+        const field = (this.data as { field?: unknown } | undefined)?.field;
+        return typeof field === "string" ? field : null;
     }
 }
 

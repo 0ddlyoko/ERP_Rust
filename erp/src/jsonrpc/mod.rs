@@ -127,11 +127,11 @@ fn answer(app: &Application, credentials: Option<&str>, request: Request) -> Opt
     })
 }
 
-/// The server failing a call through no fault of the caller: said in the log, for whoever runs
-/// the server, as well as to the caller.
+/// The server failing a call through no fault of the caller: said in full in the log, for
+/// whoever runs the server; the caller is only told it failed.
 fn internal(what: &str, error: &(dyn std::error::Error + Send + Sync)) -> RpcError {
     tracing::error!(%error, "{what}");
-    RpcError::internal(error.to_string())
+    RpcError::internal("Something went wrong on the server; it was logged")
 }
 
 /// What a panic said, when it said it with text.
@@ -227,11 +227,17 @@ fn run(app: &Application, credentials: Option<&str>, request: &Request) -> Resul
         // survives it.
         //
         // A call that failed reading its own parameters is the caller's mistake, not the
-        // operation's, and the specification has a code for each.
+        // operation's; a business or input refusal is told as it is, anything internal is not.
         Err(error) => Err(if error.downcast_ref::<serde_json::Error>().is_some() {
             RpcError::invalid_params(error.to_string())
         } else {
-            RpcError::call_failed(error.to_string())
+            match crate::errors::kind_of(&*error) {
+                crate::errors::ErrorKind::Business => RpcError::business(error.to_string()),
+                crate::errors::ErrorKind::Input { field } => {
+                    RpcError::input(error.to_string(), field)
+                }
+                crate::errors::ErrorKind::Internal => internal("A call failed", &*error),
+            }
         }),
     }
 }
