@@ -156,9 +156,10 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
         <Self as CommonModel<Mode>>::BaseModel::_get_model_name()
     }
 
-    /// Returns given optional references field.
+    /// The records a field holds across these records, each once, in order.
     ///
-    /// If error, returns the error
+    /// Their fields load along with those of every record the same field holds for the records
+    /// next to these — the lines of all the products looped over — as a many2one's do.
     pub fn get_references<M, BM2>(
         &self,
         field_name: &str,
@@ -185,10 +186,31 @@ impl<Mode: IdMode, BM: BaseModel> dyn Model<Mode, BaseModel = BM> {
                 }
             })
             .collect();
-        // Remove duplicated ids
-        let mut reference: Reference<BM2, MultipleIds> = ids.into();
-        reference.remove_dup();
-        Ok(reference.get_multiple::<M>())
+        let mut ids = ids;
+        let mut seen = std::collections::HashSet::new();
+        ids.retain(|id| seen.insert(*id));
+        let mut targets: Vec<u32> = self
+            .get_id_mode()
+            .prefetch_ids()
+            .iter()
+            .flat_map(|other| {
+                match env
+                    .cache
+                    .get_field_from_cache(model_name, field_name, *other)
+                {
+                    Some(FieldType::Ref(target)) => vec![*target],
+                    Some(FieldType::Refs(targets)) => targets.clone(),
+                    _ => vec![],
+                }
+            })
+            .chain(ids.iter().copied())
+            .collect();
+        targets.sort_unstable();
+        targets.dedup();
+        Ok(M::create_instance(MultipleIds::within(
+            ids,
+            Arc::from(targets),
+        )))
     }
 
     /// Changes the value of the given field to the given value

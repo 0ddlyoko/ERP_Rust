@@ -1718,6 +1718,41 @@ fn test_queries_do_not_grow_with_the_records() -> Result<()> {
     Ok(())
 }
 
+/// The lines of each order looped over, and a field of each line, cost the same few queries
+/// whatever the number of orders: every order's lines load with those of the others.
+#[test]
+fn test_lines_of_each_record_load_together() -> Result<()> {
+    let app = app_or_skip!("t_lines_together");
+    let queries_for = |count: usize| -> Result<u32> {
+        let mut env = app.new_env()?;
+        let mut orders = Vec::with_capacity(count);
+        for index in 0..count {
+            let mut order = MapOfFields::new(HashMap::new());
+            order.insert("name", format!("order {index}"));
+            let order: SaleOrder<SingleId> = env.create_new_record_from_map(order)?;
+            for _ in 0..2 {
+                let mut line = MapOfFields::new(HashMap::new());
+                line.insert("order", order.get_id());
+                let _: SaleOrderLine<SingleId> = env.create_new_record_from_map(line)?;
+            }
+            orders.push(order.get_id());
+        }
+        env.close()?;
+
+        let mut env = app.new_env()?;
+        erp::request_log::start();
+        for order in SaleOrder::<MultipleIds>::from_ids(orders, &env) {
+            let lines: SaleOrderLine<MultipleIds> = order.get_lines(&mut env)?;
+            for line in &lines {
+                line.get_price(&mut env)?;
+            }
+        }
+        Ok(erp::request_log::current().queries)
+    };
+    assert_eq!(queries_for(2)?, queries_for(10)?);
+    Ok(())
+}
+
 /// A search reading its records reads them in the same query.
 #[test]
 fn test_read_matching_is_one_query() -> Result<()> {

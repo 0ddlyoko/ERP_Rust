@@ -65,6 +65,15 @@ pub struct MultipleIds {
 }
 
 impl MultipleIds {
+    /// These ids, loading their fields with those of `prefetch`: the records their recordset was
+    /// reached along with.
+    pub fn within(ids: Vec<u32>, prefetch: Arc<[u32]>) -> Self {
+        MultipleIds {
+            ids,
+            prefetch: Some(prefetch),
+        }
+    }
+
     /// The one record these ids name — none when empty — with the recordset it was taken from;
     /// how many they are when several.
     pub fn as_single(&self) -> Result<SingleId, usize> {
