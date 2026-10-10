@@ -28,7 +28,7 @@ pub enum TagColor {
 #[derive(Model)]
 #[erp(id = "project_tag", order = "name, id")]
 #[allow(dead_code)]
-pub struct Tag<Mode: IdMode> {
+pub struct ProjectTag<Mode: IdMode> {
     id: Mode,
     #[erp(index = "trigram")]
     name: String,

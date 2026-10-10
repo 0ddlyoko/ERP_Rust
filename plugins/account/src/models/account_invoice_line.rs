@@ -1,8 +1,8 @@
 use crate::models::account::{Account, BaseAccount};
-use crate::models::account_fiscal_position::FiscalPosition;
-use crate::models::account_journal::Journal;
-use crate::models::account_move::{BaseAccountMove, Move, MoveType};
-use crate::models::account_tax::{BaseAccountTax, Tax};
+use crate::models::account_fiscal_position::AccountFiscalPosition;
+use crate::models::account_journal::AccountJournal;
+use crate::models::account_move::{AccountMove, BaseAccountMove, MoveType};
+use crate::models::account_tax::{AccountTax, BaseAccountTax};
 use crate::models::account_tax_repartition::TaxDocument;
 use crate::models::company::CompanyAccount;
 use crate::models::product::ProductAccount;
@@ -28,7 +28,7 @@ use uom::models::{BaseUom, Uom};
     methods
 )]
 #[allow(dead_code)]
-pub struct InvoiceLine<Mode: IdMode> {
+pub struct AccountInvoiceLine<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     move_id: Reference<BaseAccountMove, SingleId>,
@@ -105,8 +105,8 @@ pub struct InvoiceLine<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl InvoiceLine<SingleId> {
-    fn invoice(&self, env: &mut Environment) -> Result<Move<SingleId>> {
+impl AccountInvoiceLine<SingleId> {
+    fn invoice(&self, env: &mut Environment) -> Result<AccountMove<SingleId>> {
         self.get_move_id(env)
     }
 
@@ -115,7 +115,7 @@ impl InvoiceLine<SingleId> {
         let invoice = self.invoice(env)?;
         let currency = invoice.currency_or_company(env)?;
         let rounding = *currency.get_rounding(&mut env.sudo())?;
-        let taxes: Tax<MultipleIds> = self.get_taxes(env)?;
+        let taxes: AccountTax<MultipleIds> = self.get_taxes(env)?;
         let mut specs = Vec::new();
         for tax in &taxes {
             specs.push(tax.spec(env, document)?);
@@ -140,7 +140,7 @@ impl InvoiceLine<SingleId> {
 }
 
 #[erp_methods]
-impl InvoiceLine<MultipleIds> {
+impl AccountInvoiceLine<MultipleIds> {
     /// The product's description for this side of the business, else its name.
     pub fn compute_name(&self, env: &mut Environment) -> Result<()> {
         for line in self {
@@ -203,7 +203,7 @@ impl InvoiceLine<MultipleIds> {
                     }
                 }
                 if account.is_empty() {
-                    let journal: Journal<SingleId> = invoice.get_journal(env)?;
+                    let journal: AccountJournal<SingleId> = invoice.get_journal(env)?;
                     if !journal.is_empty() {
                         account = journal.get_default_account(env)?;
                     }
@@ -217,7 +217,7 @@ impl InvoiceLine<MultipleIds> {
                     };
                 }
             }
-            let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
+            let position: AccountFiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
             let account = position.map_account(env, account)?;
             line.set_account(&account, env)?;
         }
@@ -299,22 +299,22 @@ impl InvoiceLine<MultipleIds> {
         for line in self {
             let product: Product<SingleId> = line.get_product(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
+                line.set_taxes(&AccountTax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
             let invoice = line.invoice(env)?;
             let sale = invoice.is_sale_document(env)?;
             let product: ProductAccount<SingleId> = product.as_model();
-            let taxes: Tax<MultipleIds> = product.as_sudo(env, |product, env| {
+            let taxes: AccountTax<MultipleIds> = product.as_sudo(env, |product, env| {
                 if sale {
                     product.get_taxes(env)
                 } else {
                     product.get_supplier_taxes(env)
                 }
             })?;
-            let position: FiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
+            let position: AccountFiscalPosition<SingleId> = invoice.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            let mapped: AccountTax<MultipleIds> = AccountTax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }
         Ok(())

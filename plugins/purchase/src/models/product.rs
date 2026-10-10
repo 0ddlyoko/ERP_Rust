@@ -1,4 +1,4 @@
-use crate::models::product_supplierinfo::{BaseProductSupplierinfo, SupplierInfo};
+use crate::models::product_supplierinfo::{BaseProductSupplierinfo, ProductSupplierinfo};
 use crate::models::purchase_order::{BasePurchaseOrder, PurchaseOrder};
 use crate::models::purchase_order_line::{BasePurchaseOrderLine, PurchaseOrderLine};
 use crate::vendor_price::{self, VendorPrice};
@@ -82,9 +82,9 @@ impl ProductPurchase<SingleId> {
         env: &mut Environment,
         vendor: u32,
         quantity: Decimal,
-    ) -> Result<Option<SupplierInfo<SingleId>>> {
+    ) -> Result<Option<ProductSupplierinfo<SingleId>>> {
         let env = &mut *env.sudo();
-        let sellers: SupplierInfo<MultipleIds> = self.get_sellers(env)?;
+        let sellers: ProductSupplierinfo<MultipleIds> = self.get_sellers(env)?;
         let mut prices = Vec::new();
         for seller in &sellers {
             let partner: base::models::Contact<SingleId> = seller.get_partner(env)?;

@@ -1,9 +1,9 @@
 use crate::models::product::{InvoicePolicy, ProductSale};
-use crate::models::product_pricelist::Pricelist;
+use crate::models::product_pricelist::ProductPricelist;
 use crate::models::sale_order::{BaseSaleOrder, SaleOrder, SaleState};
 use account::models::{
-    BaseAccountInvoiceLine, BaseAccountTax, FiscalPosition, InvoiceLine, Move, MoveState, MoveType,
-    ProductAccount, Tax, TaxDocument,
+    AccountFiscalPosition, AccountInvoiceLine, AccountMove, AccountTax, BaseAccountInvoiceLine,
+    BaseAccountTax, MoveState, MoveType, ProductAccount, TaxDocument,
 };
 use account::tax_engine::{self, LineInput};
 use code_gen::{Model, erp_methods, selection};
@@ -179,7 +179,7 @@ impl SaleOrderLine<MultipleIds> {
             let order: SaleOrder<SingleId> = line.get_order(env)?;
             let quantity = *line.get_product_uom_qty(env)?;
             let date = *order.get_date_order(env)?;
-            let pricelist: Pricelist<SingleId> = order.get_pricelist(env)?;
+            let pricelist: ProductPricelist<SingleId> = order.get_pricelist(env)?;
             let mut price = pricelist.price_of(env, product.clone(), quantity, date)?;
             let uom: Uom<SingleId> = line.get_uom(env)?;
             if !uom.is_empty() {
@@ -203,15 +203,15 @@ impl SaleOrderLine<MultipleIds> {
         for line in self {
             let product = line.product_record(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
+                line.set_taxes(&AccountTax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
             let product: ProductAccount<SingleId> = product.as_model();
-            let taxes: Tax<MultipleIds> = product.get_taxes(&mut env.sudo())?;
+            let taxes: AccountTax<MultipleIds> = product.get_taxes(&mut env.sudo())?;
             let order: SaleOrder<SingleId> = line.get_order(env)?;
-            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
+            let position: AccountFiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            let mapped: AccountTax<MultipleIds> = AccountTax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }
         Ok(())
@@ -228,7 +228,7 @@ impl SaleOrderLine<MultipleIds> {
             }
             let currency = order.currency_or_company(env)?;
             let rounding = *currency.get_rounding(&mut env.sudo())?;
-            let taxes: Tax<MultipleIds> = line.get_taxes(env)?;
+            let taxes: AccountTax<MultipleIds> = line.get_taxes(env)?;
             let mut specs = Vec::new();
             for tax in &taxes {
                 specs.push(tax.spec(env, TaxDocument::Invoice)?);
@@ -254,9 +254,9 @@ impl SaleOrderLine<MultipleIds> {
             let mut invoiced = Decimal::ZERO;
             {
                 let env = &mut *env.sudo();
-                let invoice_lines: InvoiceLine<MultipleIds> = line.get_invoice_lines(env)?;
+                let invoice_lines: AccountInvoiceLine<MultipleIds> = line.get_invoice_lines(env)?;
                 for invoice_line in &invoice_lines {
-                    let invoice: Move<SingleId> = invoice_line.get_move_id(env)?;
+                    let invoice: AccountMove<SingleId> = invoice_line.get_move_id(env)?;
                     if invoice.is_empty() || matches!(*invoice.get_state(env)?, MoveState::Cancel) {
                         continue;
                     }

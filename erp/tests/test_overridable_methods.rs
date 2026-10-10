@@ -4,7 +4,7 @@ use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::{CommonModel, MapOfFields};
 use std::collections::HashMap;
 use test_plugin::TestPlugin;
-use test_plugin::models::machine::MachineDiscounted;
+use test_plugin::models::machine::MachineTestPlugin;
 use test_utilities::TestLibPlugin;
 use test_utilities::models::Machine;
 
@@ -214,7 +214,7 @@ fn test_a_sibling_call_reaches_the_head_of_the_chain() -> Result<()> {
     let mut env = app.new_env()?;
     let ids = machine(&mut env, &[("base_rate", 100), ("discount", 30)])?;
 
-    let record: MachineDiscounted<MultipleIds> = env.get_record(ids);
+    let record: MachineTestPlugin<MultipleIds> = env.get_record(ids);
     assert_eq!(
         record.weekly_rate(&mut env)?,
         490,
@@ -403,7 +403,7 @@ fn test_a_method_of_the_model_is_overridden() -> Result<()> {
     let mut env = app.new_env()?;
     assert_eq!(Machine::<MultipleIds>::standard_rate(&mut env)?, 90);
     assert_eq!(
-        MachineDiscounted::<MultipleIds>::standard_rate(&mut env)?,
+        MachineTestPlugin::<MultipleIds>::standard_rate(&mut env)?,
         90
     );
     let answer = env.call_rpc("machine", "standard_rate", &serde_json::json!({}))?;

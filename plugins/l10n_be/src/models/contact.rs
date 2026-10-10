@@ -10,7 +10,7 @@ use erp::types::model::MapOfFields;
 #[erp(id = "contact", methods)]
 #[erp(derived_model = "base::models")]
 #[allow(dead_code)]
-pub struct ContactBe<Mode: IdMode> {
+pub struct ContactL10nBe<Mode: IdMode> {
     id: Mode,
 }
 
@@ -26,7 +26,7 @@ fn checked(mut values: MapOfFields) -> Result<MapOfFields> {
 }
 
 #[erp_methods]
-impl ContactBe<MultipleIds> {
+impl ContactL10nBe<MultipleIds> {
     pub fn create(
         &self,
         env: &mut Environment,

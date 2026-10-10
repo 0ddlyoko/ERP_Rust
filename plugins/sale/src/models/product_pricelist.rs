@@ -1,5 +1,5 @@
 use crate::models::product_pricelist_item::{
-    BaseProductPricelistItem, PricelistCompute, PricelistItem, PricelistScope,
+    BaseProductPricelistItem, PricelistCompute, PricelistScope, ProductPricelistItem,
 };
 use crate::pricing::{self, Pricing, Query, Rule, Scope};
 use code_gen::{Model, erp_methods};
@@ -13,7 +13,7 @@ use product::models::{Product, ProductCategory};
 #[derive(Model)]
 #[erp(id = "product_pricelist", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct Pricelist<Mode: IdMode> {
+pub struct ProductPricelist<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(ondelete = "restrict", description = "Left empty, the company's")]
@@ -27,11 +27,11 @@ pub struct Pricelist<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Pricelist<SingleId> {
+impl ProductPricelist<SingleId> {
     /// The rules of the pricelist, as the pricing engine reads them.
     pub fn rules(&self, env: &mut Environment) -> Result<Vec<Rule>> {
         let env = &mut *env.sudo();
-        let items: PricelistItem<MultipleIds> = self.get_items(env)?;
+        let items: ProductPricelistItem<MultipleIds> = self.get_items(env)?;
         let mut rules = Vec::new();
         for item in &items {
             let product: Product<SingleId> = item.get_product(env)?;

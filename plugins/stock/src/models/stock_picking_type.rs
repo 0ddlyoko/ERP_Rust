@@ -20,7 +20,7 @@ pub enum PickingKind {
 #[derive(Model)]
 #[erp(id = "stock_picking_type", order = "sequence, id")]
 #[allow(dead_code)]
-pub struct PickingType<Mode: IdMode> {
+pub struct StockPickingType<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(label = "Type of operation")]

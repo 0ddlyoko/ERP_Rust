@@ -1,18 +1,18 @@
 use crate::models::timesheet::{BaseTimesheet, Timesheet};
-use crate::models::timesheet_timer::Timer;
+use crate::models::timesheet_timer::TimesheetTimer;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
 use erp_search_code_gen::make_domain;
-use project::models::Task;
+use project::models::ProjectTask;
 
 /// The time logged on a task, against the hours planned for it.
 #[derive(Model)]
 #[erp(id = "project_task", methods)]
 #[erp(derived_model = "project::models")]
 #[allow(dead_code)]
-pub struct TaskTimesheet<Mode: IdMode> {
+pub struct ProjectTaskTimesheet<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Timesheets", inverse = "task")]
     timesheets: Reference<BaseTimesheet, MultipleIds>,
@@ -27,14 +27,14 @@ pub struct TaskTimesheet<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl TaskTimesheet<MultipleIds> {
+impl ProjectTaskTimesheet<MultipleIds> {
     /// Whether the caller's timer runs on the task.
     pub fn compute_timer_running(&self, env: &mut Environment) -> Result<()> {
         let running: Vec<u32> = match env.uid() {
             Some(uid) => {
-                let timers: Timer<MultipleIds> =
+                let timers: TimesheetTimer<MultipleIds> =
                     env.sudo().search(&make_domain!([("user", "=", uid)]))?;
-                let on: Task<MultipleIds> = timers.get_task(&mut env.sudo())?;
+                let on: ProjectTask<MultipleIds> = timers.get_task(&mut env.sudo())?;
                 on.get_ids()
             }
             None => Vec::new(),
@@ -50,7 +50,7 @@ impl TaskTimesheet<MultipleIds> {
         for task in self {
             let entries: Timesheet<MultipleIds> = task.get_timesheets(env)?;
             let spent: Decimal = entries.sum(env, |entry, env| Ok(*entry.get_hours(env)?))?;
-            let own: Task<SingleId> = task.as_model();
+            let own: ProjectTask<SingleId> = task.as_model();
             let planned = *own.get_planned_hours(env)?;
             task.set_spent_hours(spent, env)?;
             task.set_remaining_hours(planned - spent, env)?;

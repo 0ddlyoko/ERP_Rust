@@ -34,30 +34,30 @@ impl Plugin for AccountPlugin {
 
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::Account<_>>();
-        model_manager.register_model::<models::TaxTag<_>>();
-        model_manager.register_model::<models::Tax<_>>();
-        model_manager.register_model::<models::TaxRepartition<_>>();
-        model_manager.register_model::<models::Journal<_>>();
-        model_manager.register_model::<models::PaymentTerm<_>>();
-        model_manager.register_model::<models::PaymentTermLine<_>>();
-        model_manager.register_model::<models::FiscalPosition<_>>();
-        model_manager.register_model::<models::FiscalPositionTax<_>>();
-        model_manager.register_model::<models::FiscalPositionAccount<_>>();
+        model_manager.register_model::<models::AccountTaxTag<_>>();
+        model_manager.register_model::<models::AccountTax<_>>();
+        model_manager.register_model::<models::AccountTaxRepartition<_>>();
+        model_manager.register_model::<models::AccountJournal<_>>();
+        model_manager.register_model::<models::AccountPaymentTerm<_>>();
+        model_manager.register_model::<models::AccountPaymentTermLine<_>>();
+        model_manager.register_model::<models::AccountFiscalPosition<_>>();
+        model_manager.register_model::<models::AccountFiscalPositionTax<_>>();
+        model_manager.register_model::<models::AccountFiscalPositionAccount<_>>();
         model_manager.register_model::<models::CompanyAccount<_>>();
         model_manager.register_model::<models::ContactAccount<_>>();
         model_manager.register_model::<models::ContactBank<_>>();
         model_manager.register_model::<models::ProductAccount<_>>();
         model_manager.register_model::<models::ProductCategoryAccount<_>>();
-        model_manager.register_model::<models::Move<_>>();
-        model_manager.register_model::<models::InvoiceLine<_>>();
-        model_manager.register_model::<models::MoveLine<_>>();
-        model_manager.register_model::<models::PartialReconcile<_>>();
-        model_manager.register_model::<models::FullReconcile<_>>();
-        model_manager.register_model::<models::Payment<_>>();
-        model_manager.register_model::<models::BankStatement<_>>();
-        model_manager.register_model::<models::BankStatementLine<_>>();
-        model_manager.register_model::<models::TrialBalance<_>>();
-        model_manager.register_model::<models::TrialBalanceLine<_>>();
+        model_manager.register_model::<models::AccountMove<_>>();
+        model_manager.register_model::<models::AccountInvoiceLine<_>>();
+        model_manager.register_model::<models::AccountMoveLine<_>>();
+        model_manager.register_model::<models::AccountPartialReconcile<_>>();
+        model_manager.register_model::<models::AccountFullReconcile<_>>();
+        model_manager.register_model::<models::AccountPayment<_>>();
+        model_manager.register_model::<models::AccountBankStatement<_>>();
+        model_manager.register_model::<models::AccountBankStatementLine<_>>();
+        model_manager.register_model::<models::AccountTrialBalance<_>>();
+        model_manager.register_model::<models::AccountTrialBalanceLine<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

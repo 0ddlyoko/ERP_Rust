@@ -1,5 +1,5 @@
-use crate::models::machine::MachineDiscounted;
-use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
+use crate::models::machine::MachineTestPlugin;
+use crate::models::sale_order_test::{SaleOrderTest, SaleOrderTestTestPlugin};
 use erp::assets::{BundleContribution, ModuleFiles, StaticFiles};
 use erp::model::ModelManager;
 use erp::plugin::Plugin;
@@ -18,8 +18,8 @@ impl Plugin for TestPlugin {
     fn init_models(&self, model_manager: &mut ModelManager) {
         tracing::debug!("init_models");
         model_manager.register_model::<SaleOrderTest<_>>();
-        model_manager.register_model::<SaleOrderTest2<_>>();
-        model_manager.register_model::<MachineDiscounted<_>>();
+        model_manager.register_model::<SaleOrderTestTestPlugin<_>>();
+        model_manager.register_model::<MachineTestPlugin<_>>();
     }
 
     /// `machine` is declared by `test_lib_plugin`, which must therefore be loaded first.

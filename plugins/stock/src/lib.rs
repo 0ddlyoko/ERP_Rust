@@ -29,13 +29,13 @@ impl Plugin for StockPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::Location<_>>();
-        model_manager.register_model::<models::Warehouse<_>>();
-        model_manager.register_model::<models::PickingType<_>>();
-        model_manager.register_model::<models::Picking<_>>();
+        model_manager.register_model::<models::StockLocation<_>>();
+        model_manager.register_model::<models::StockWarehouse<_>>();
+        model_manager.register_model::<models::StockPickingType<_>>();
+        model_manager.register_model::<models::StockPicking<_>>();
         model_manager.register_model::<models::StockMove<_>>();
-        model_manager.register_model::<models::Quant<_>>();
-        model_manager.register_model::<models::ValuationLayer<_>>();
+        model_manager.register_model::<models::StockQuant<_>>();
+        model_manager.register_model::<models::StockValuationLayer<_>>();
         model_manager.register_model::<models::ProductCategoryStock<_>>();
         model_manager.register_model::<models::ProductStock<_>>();
     }

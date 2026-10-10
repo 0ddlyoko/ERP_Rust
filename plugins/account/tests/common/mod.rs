@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use account::AccountPlugin;
-use account::models::{Move, MoveLine, Payment};
+use account::models::{AccountMove, AccountMoveLine, AccountPayment};
 use account::testing::TestChartPlugin;
 use base::BasePlugin;
 use contacts::ContactsPlugin;
@@ -98,7 +98,7 @@ pub fn post(env: &mut Environment, entry: u32) -> Result<()> {
     Ok(())
 }
 
-pub fn entry(env: &mut Environment, id: u32) -> Move<SingleId> {
+pub fn entry(env: &mut Environment, id: u32) -> AccountMove<SingleId> {
     env.get_record(id.into())
 }
 
@@ -113,7 +113,7 @@ pub fn decimal(value: &Value) -> Decimal {
 /// The journal items of an entry, as `(account code, debit, credit)` by account code.
 pub fn items(env: &mut Environment, id: u32) -> Result<Vec<(String, Decimal, Decimal)>> {
     let entry = entry(env, id);
-    let lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+    let lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
     let mut rows = Vec::new();
     for line in &lines {
         let account: account::models::Account<SingleId> = line.get_account(env)?;
@@ -133,7 +133,7 @@ pub fn check_books(env: &mut Environment) -> Result<()> {
 }
 
 /// Register and confirm the payment of what is left on invoices.
-pub fn pay(env: &mut Environment, invoices: &[u32]) -> Result<Payment<SingleId>> {
+pub fn pay(env: &mut Environment, invoices: &[u32]) -> Result<AccountPayment<SingleId>> {
     let answer = call(env, "account_move", "action_register_payment", invoices)?;
     let payment = answer["id"].as_u64().ok_or("a payment")? as u32;
     call(env, "account_payment", "action_post", &[payment])?;

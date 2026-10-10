@@ -1,7 +1,7 @@
 use crate::models::account::Account;
-use crate::models::account_journal::{BaseAccountJournal, Journal, JournalType};
-use crate::models::account_move::{BaseAccountMove, Move};
-use crate::models::account_move_line::{LineKind, MoveLine};
+use crate::models::account_journal::{AccountJournal, BaseAccountJournal, JournalType};
+use crate::models::account_move::{AccountMove, BaseAccountMove};
+use crate::models::account_move_line::{AccountMoveLine, LineKind};
 use crate::models::company::CompanyAccount;
 use crate::models::contact::ContactAccount;
 use base::models::{BaseContact, Contact};
@@ -53,7 +53,7 @@ pub enum PaymentStatus {
     methods
 )]
 #[allow(dead_code)]
-pub struct Payment<Mode: IdMode> {
+pub struct AccountPayment<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Number", default = "/", index = "trigram")]
     name: String,
@@ -86,7 +86,7 @@ pub struct Payment<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Payment<SingleId> {
+impl AccountPayment<SingleId> {
     /// The account the payment settles: the partner's receivable or payable.
     fn counterpart_account(&self, env: &mut Environment) -> Result<Account<SingleId>> {
         let customer = matches!(*self.get_partner_type(env)?, PartnerType::Customer);
@@ -115,7 +115,7 @@ impl Payment<SingleId> {
     /// the bank account itself.
     fn liquidity_account(&self, env: &mut Environment) -> Result<Account<SingleId>> {
         let inbound = matches!(*self.get_payment_type(env)?, PaymentType::Inbound);
-        let journal: Journal<SingleId> = self.get_journal(env)?;
+        let journal: AccountJournal<SingleId> = self.get_journal(env)?;
         let env = &mut *env.sudo();
         let outstanding: Account<SingleId> = if inbound {
             journal.get_outstanding_receipt_account(env)?
@@ -157,7 +157,7 @@ impl Payment<SingleId> {
         };
         let balance = currency.convert(env, amount, company_currency, date)?;
         let partner: Contact<SingleId> = self.get_partner(env)?;
-        let journal: Journal<SingleId> = self.get_journal(env)?;
+        let journal: AccountJournal<SingleId> = self.get_journal(env)?;
         let liquidity = self.liquidity_account(env)?;
         let counterpart = self.counterpart_account(env)?;
         let memo = self.get_memo(env)?.cloned().unwrap_or_default();
@@ -196,19 +196,20 @@ impl Payment<SingleId> {
         entry.insert("currency", currency.get_id());
         entry.insert("reference", memo.clone());
         entry.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
-        let entry: Move<MultipleIds> = env.sudo().create_new_records_from_maps(vec![entry])?;
+        let entry: AccountMove<MultipleIds> =
+            env.sudo().create_new_records_from_maps(vec![entry])?;
         entry.action_post(&mut env.sudo())?;
-        let entry: Move<SingleId> = entry.ensure_one()?;
+        let entry: AccountMove<SingleId> = entry.ensure_one()?;
         let name = entry.get_name(&mut env.sudo())?.clone();
         self.set_move_id(&entry, env)?;
         self.set_state(PaymentStatus::Posted, env)?;
         self.set_name(name, env)?;
 
-        let invoices: Move<MultipleIds> = self.get_invoices(env)?;
+        let invoices: AccountMove<MultipleIds> = self.get_invoices(env)?;
         if !invoices.is_empty() {
             let lines = {
                 let sudo = &mut *env.sudo();
-                let items: MoveLine<MultipleIds> = (invoices + entry).get_lines(sudo)?;
+                let items: AccountMoveLine<MultipleIds> = (invoices + entry).get_lines(sudo)?;
                 items.filtered(sudo, |line, sudo| {
                     let account: Account<SingleId> = line.get_account(sudo)?;
                     Ok(account.get_id() == counterpart.get_id() && !*line.get_reconciled(sudo)?)
@@ -221,7 +222,7 @@ impl Payment<SingleId> {
 }
 
 #[erp_methods]
-impl Payment<MultipleIds> {
+impl AccountPayment<MultipleIds> {
     /// A payment is dated today, in the company's currency, through the first bank journal,
     /// unless said otherwise; a customer pays in, a vendor is paid.
     pub fn create(
@@ -241,7 +242,7 @@ impl Payment<MultipleIds> {
                 .get_option::<&u32>("journal")
                 .is_none_or(|id| *id == 0)
             {
-                let bank = Journal::first_of_type(env, JournalType::Bank)?;
+                let bank = AccountJournal::first_of_type(env, JournalType::Bank)?;
                 if let Some(bank) = bank.get_optional_id() {
                     payment.insert("journal", bank);
                 }
@@ -311,11 +312,12 @@ impl Payment<MultipleIds> {
     pub fn action_cancel(&self, env: &mut Environment) -> Result<bool> {
         env.savepoint(|env| {
             for payment in self {
-                let entry: Move<SingleId> = payment.get_move_id(env)?;
+                let entry: AccountMove<SingleId> = payment.get_move_id(env)?;
                 if !entry.is_empty() {
-                    let lines: MoveLine<MultipleIds> = entry.get_lines(&mut env.sudo())?;
+                    let lines: AccountMoveLine<MultipleIds> = entry.get_lines(&mut env.sudo())?;
                     lines.unreconcile_lines(env)?;
-                    let entry: Move<MultipleIds> = Move::from_ids(vec![entry.get_id()], env);
+                    let entry: AccountMove<MultipleIds> =
+                        AccountMove::from_ids(vec![entry.get_id()], env);
                     entry.button_draft(&mut env.sudo())?;
                     entry.button_cancel(&mut env.sudo())?;
                 }
@@ -335,7 +337,7 @@ impl Payment<MultipleIds> {
                 );
             }
             payment.set_state(PaymentStatus::Draft, env)?;
-            payment.set_move_id(None::<&Move<SingleId>>, env)?;
+            payment.set_move_id(None::<&AccountMove<SingleId>>, env)?;
         }
         Ok(true)
     }

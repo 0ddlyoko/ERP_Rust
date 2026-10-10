@@ -1,4 +1,4 @@
-use crate::models::project_task::TaskSale;
+use crate::models::project_task::ProjectTaskSaleProject;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -6,7 +6,7 @@ use erp::types::field::{Decimal, IdMode, MultipleIds, SingleId};
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use product::models::Product;
-use project::models::Task;
+use project::models::ProjectTask;
 use sale::models::{InvoicePolicy, ProductSale, SaleOrderLine};
 use timesheet::models::Timesheet;
 
@@ -15,12 +15,12 @@ use timesheet::models::Timesheet;
 #[erp(id = "timesheet", methods)]
 #[erp(derived_model = "timesheet::models")]
 #[allow(dead_code)]
-pub struct TimesheetSale<Mode: IdMode> {
+pub struct TimesheetSaleProject<Mode: IdMode> {
     id: Mode,
 }
 
 #[erp_methods]
-impl TimesheetSale<MultipleIds> {
+impl TimesheetSaleProject<MultipleIds> {
     pub fn create(
         &self,
         env: &mut Environment,
@@ -52,8 +52,8 @@ impl TimesheetSale<MultipleIds> {
 fn lines_of(env: &mut Environment, entries: &[u32]) -> Result<SaleOrderLine<MultipleIds>> {
     let env = &mut *env.sudo();
     let entries = Timesheet::<MultipleIds>::from_ids(entries.to_vec(), env);
-    let tasks: Task<MultipleIds> = entries.get_task(env)?;
-    let tasks: TaskSale<MultipleIds> = tasks.as_model();
+    let tasks: ProjectTask<MultipleIds> = entries.get_task(env)?;
+    let tasks: ProjectTaskSaleProject<MultipleIds> = tasks.as_model();
     tasks.get_sale_line(env)
 }
 

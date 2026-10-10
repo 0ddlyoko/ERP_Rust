@@ -1,5 +1,5 @@
-use crate::models::product_category::ProductCategoryValuation;
-use account::models::{Account, BaseAccountMove, Journal, Move};
+use crate::models::product_category::ProductCategoryStockAccount;
+use account::models::{Account, AccountJournal, AccountMove, BaseAccountMove};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::data;
@@ -9,14 +9,14 @@ use erp::types::field::{
 };
 use erp::types::model::MapOfFields;
 use product::models::{Product, ProductCategory};
-use stock::models::{Location, LocationUsage, StockMove};
+use stock::models::{LocationUsage, StockLocation, StockMove};
 
 /// The journal entry booking what a move did to the stock's value.
 #[derive(Model)]
 #[erp(id = "stock_move", methods)]
 #[erp(derived_model = "stock::models")]
 #[allow(dead_code)]
-pub struct StockMoveAccount<Mode: IdMode> {
+pub struct StockMoveStockAccount<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Valuation entry", ondelete = "set_null")]
     account_move: Reference<BaseAccountMove, SingleId>,
@@ -27,7 +27,7 @@ struct Valuation {
     valuation: Account<SingleId>,
     input: Account<SingleId>,
     output: Account<SingleId>,
-    journal: Journal<SingleId>,
+    journal: AccountJournal<SingleId>,
 }
 
 /// The accounts and journal valuing `product`'s stock; `None` when its category books nothing.
@@ -35,7 +35,7 @@ fn valuation_of(env: &mut Environment, product: &Product<SingleId>) -> Result<Op
     let env = &mut *env.sudo();
     let category: ProductCategory<SingleId> = product.get_category(env)?;
     let name = category.get_complete_name(env)?.clone();
-    let category: ProductCategoryValuation<SingleId> = category.as_model();
+    let category: ProductCategoryStockAccount<SingleId> = category.as_model();
     let valuation: Account<SingleId> = category.get_stock_valuation_account(env)?;
     if valuation.is_empty() {
         return Ok(None);
@@ -48,7 +48,7 @@ fn valuation_of(env: &mut Environment, product: &Product<SingleId>) -> Result<Op
         )
         .into());
     }
-    let mut journal: Journal<SingleId> = category.get_stock_journal(env)?;
+    let mut journal: AccountJournal<SingleId> = category.get_stock_journal(env)?;
     if journal.is_empty() {
         let id = data::resolve(env, "stock_account.journal_stock")?
             .ok_or("The stock journal is missing")?;
@@ -63,7 +63,7 @@ fn valuation_of(env: &mut Environment, product: &Product<SingleId>) -> Result<Op
 }
 
 #[erp_methods]
-impl StockMoveAccount<MultipleIds> {
+impl StockMoveStockAccount<MultipleIds> {
     /// Book the value a move added to the stock or took from it: against the stock input
     /// account for goods coming from or going back to a vendor, against the stock output
     /// account for the others — sales, their returns, inventory differences. Nothing for a
@@ -91,14 +91,14 @@ impl StockMoveAccount<MultipleIds> {
                 None => record.get_name(env)?.clone(),
             };
             let label = format!("{source} — {}", product.get_display_name(&mut env.sudo())?);
-            let (source, destination): (Location<SingleId>, Location<SingleId>) = {
+            let (source, destination): (StockLocation<SingleId>, StockLocation<SingleId>) = {
                 let env = &mut *env.sudo();
                 (record.get_location(env)?, record.get_location_dest(env)?)
             };
             let vendor_side = {
                 let env = &mut *env.sudo();
                 let usage =
-                    |location: &Location<SingleId>, env: &mut Environment| -> Result<bool> {
+                    |location: &StockLocation<SingleId>, env: &mut Environment| -> Result<bool> {
                         Ok(!location.is_empty()
                             && matches!(*location.get_usage(env)?, LocationUsage::Supplier))
                     };
@@ -131,7 +131,7 @@ impl StockMoveAccount<MultipleIds> {
                 ])]),
             );
             let env = &mut *env.sudo();
-            let entry: Move<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
+            let entry: AccountMove<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
             entry.action_post(env)?;
             stock_move.set_account_move(
                 Reference::<BaseAccountMove, SingleId>::from(entry.get_ids_ref()[0]),

@@ -1,7 +1,7 @@
 //! A small chart for tests: the accounts, taxes, journals and terms a scenario needs, without
 //! a localization. Registered by tests only, as a plugin of its own.
 
-use crate::models::{Account, CompanyAccount, Journal, Tax};
+use crate::models::{Account, AccountJournal, AccountTax, CompanyAccount};
 use erp::Result;
 use erp::environment::Environment;
 use erp::model::ModelManager;
@@ -41,11 +41,11 @@ impl Plugin for TestChartPlugin {
         company.set_account_exchange_gain(&gain, env)?;
         let loss = account(env, "a_exchange_loss")?;
         company.set_account_exchange_loss(&loss, env)?;
-        let journal: Journal<SingleId> = env.named("account_test_chart.journal_exchange")?;
+        let journal: AccountJournal<SingleId> = env.named("account_test_chart.journal_exchange")?;
         company.set_journal_exchange(&journal, env)?;
-        let sale_tax: Tax<SingleId> = env.named("account_test_chart.tax_sale_21")?;
+        let sale_tax: AccountTax<SingleId> = env.named("account_test_chart.tax_sale_21")?;
         company.set_sale_tax(&sale_tax, env)?;
-        let purchase_tax: Tax<SingleId> = env.named("account_test_chart.tax_purchase_21")?;
+        let purchase_tax: AccountTax<SingleId> = env.named("account_test_chart.tax_purchase_21")?;
         company.set_purchase_tax(&purchase_tax, env)
     }
 

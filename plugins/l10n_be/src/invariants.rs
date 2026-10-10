@@ -2,7 +2,7 @@
 //! at a Belgian rate — 21, 12, 6 or 0 % — and the return's 71 or 72 is what its grids leave.
 
 use crate::models::grid_amounts;
-use account::models::{LineKind, MoveLine, MoveState, Tax};
+use account::models::{AccountMoveLine, AccountTax, LineKind, MoveState};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, MultipleIds, NaiveDate, SingleId};
@@ -14,12 +14,12 @@ const BELGIAN_RATES: [u32; 4] = [21, 12, 6, 0];
 pub fn check_books(env: &mut Environment) -> Result<()> {
     account::invariants::check_books(env)?;
     let env = &mut *env.sudo();
-    let items: MoveLine<MultipleIds> = env.search(&make_domain!([
+    let items: AccountMoveLine<MultipleIds> = env.search(&make_domain!([
         ("parent_state", "=", MoveState::Posted),
         ("display_type", "=", LineKind::Tax)
     ]))?;
     for item in &items {
-        let tax: Tax<SingleId> = item.get_tax_line(env)?;
+        let tax: AccountTax<SingleId> = item.get_tax_line(env)?;
         let rate = *tax.get_amount(env)?;
         if !BELGIAN_RATES
             .iter()

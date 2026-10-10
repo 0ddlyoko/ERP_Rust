@@ -8,14 +8,14 @@ use erp::types::field::{IdMode, MultipleIds, SingleId};
 #[erp(id = "machine", methods)]
 #[erp(derived_model = "test_utilities::models")]
 #[allow(dead_code)]
-pub struct MachineDiscounted<Mode: IdMode> {
+pub struct MachineTestPlugin<Mode: IdMode> {
     id: Mode,
     #[erp(default = 0)]
     discount: i32,
 }
 
 #[erp_methods]
-impl MachineDiscounted<SingleId> {
+impl MachineTestPlugin<SingleId> {
     /// Overrides a method of one record: says the machine is discounted, after what the one
     /// below said.
     pub fn label(&self, env: &mut Environment, sup: Super) -> Result<String> {
@@ -25,7 +25,7 @@ impl MachineDiscounted<SingleId> {
 }
 
 #[erp_methods]
-impl MachineDiscounted<MultipleIds> {
+impl MachineTestPlugin<MultipleIds> {
     /// Overrides a method of the model: new machines start 10 lower.
     pub fn standard_rate(env: &mut Environment, sup: Super) -> Result<i32> {
         Ok(sup.call(env)? - 10)

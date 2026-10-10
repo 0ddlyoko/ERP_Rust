@@ -7,7 +7,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference};
 #[erp(id = "account_invoice_line")]
 #[erp(derived_model = "account::models")]
 #[allow(dead_code)]
-pub struct InvoiceLinePurchase<Mode: IdMode> {
+pub struct AccountInvoiceLinePurchase<Mode: IdMode> {
     id: Mode,
     #[erp(
         label = "Purchase order lines",

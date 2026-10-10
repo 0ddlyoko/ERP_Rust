@@ -6,7 +6,9 @@ use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use product::models::{Product, ProductType};
 use sale::models::{SaleOrder, SaleOrderLine};
-use stock::models::{BaseStockPicking, Picking, PickingState, PickingType, StockMove, Warehouse};
+use stock::models::{
+    BaseStockPicking, PickingState, StockMove, StockPicking, StockPickingType, StockWarehouse,
+};
 
 #[selection]
 pub enum DeliveryStatus {
@@ -26,7 +28,7 @@ pub enum DeliveryStatus {
 #[erp(id = "sale_order", methods)]
 #[erp(derived_model = "sale::models")]
 #[allow(dead_code)]
-pub struct SaleOrderStock<Mode: IdMode> {
+pub struct SaleOrderSaleStock<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Deliveries", compute = "compute_pickings", depends = ["lines.moves.picking"])]
     pickings: Reference<BaseStockPicking, MultipleIds>,
@@ -60,14 +62,14 @@ fn deliverable(env: &mut Environment, order: &SaleOrder<SingleId>) -> Result<Vec
 }
 
 #[erp_methods]
-impl SaleOrderStock<MultipleIds> {
+impl SaleOrderSaleStock<MultipleIds> {
     /// The transfers delivering the order, or bringing it back.
     pub fn compute_pickings(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let order_record: SaleOrder<SingleId> = order.as_model();
             let lines: SaleOrderLine<MultipleIds> = order_record.get_lines(env)?;
             let line_ids = lines.get_ids_ref().clone();
-            let pickings: Picking<MultipleIds> = env.sudo_with(|env| {
+            let pickings: StockPicking<MultipleIds> = env.sudo_with(|env| {
                 let moves: StockMove<MultipleIds> =
                     env.search(&make_domain!([("sale_line", "in", line_ids)]))?;
                 moves.get_picking(env)
@@ -116,11 +118,12 @@ impl SaleOrderStock<MultipleIds> {
             if rows.is_empty() {
                 continue;
             }
-            let warehouse = Warehouse::main(env)?;
+            let warehouse = StockWarehouse::main(env)?;
             if warehouse.is_empty() {
                 return Err("No warehouse delivers the order".into());
             }
-            let delivery_type: PickingType<SingleId> = warehouse.get_out_type(&mut env.sudo())?;
+            let delivery_type: StockPickingType<SingleId> =
+                warehouse.get_out_type(&mut env.sudo())?;
             let partner: base::models::Contact<SingleId> = order.get_partner(env)?;
             let mut moves = Vec::new();
             for (line, quantity, product) in rows {
@@ -144,8 +147,9 @@ impl SaleOrderStock<MultipleIds> {
                 FieldType::Commands(vec![erp::types::field::Command::Create(moves)]),
             );
             let env = &mut *env.sudo();
-            let picking: Picking<SingleId> = env.create_new_record_from_map(picking)?;
-            Picking::<MultipleIds>::from_ids(vec![picking.get_id()], env).action_confirm(env)?;
+            let picking: StockPicking<SingleId> = env.create_new_record_from_map(picking)?;
+            StockPicking::<MultipleIds>::from_ids(vec![picking.get_id()], env)
+                .action_confirm(env)?;
         }
         Ok(())
     }
@@ -153,7 +157,7 @@ impl SaleOrderStock<MultipleIds> {
     /// Cancelling an order cancels the deliveries not done; one delivered must come back first.
     pub fn on_cancelled(&self, env: &mut Environment, sup: Super) -> Result<()> {
         for order in self {
-            let pickings: Picking<MultipleIds> = order.get_pickings(env)?;
+            let pickings: StockPicking<MultipleIds> = order.get_pickings(env)?;
             let env = &mut *env.sudo();
             let mut open = Vec::new();
             for picking in &pickings {
@@ -169,7 +173,7 @@ impl SaleOrderStock<MultipleIds> {
                 }
             }
             if !open.is_empty() {
-                Picking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
+                StockPicking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
             }
         }
         sup.call(env)

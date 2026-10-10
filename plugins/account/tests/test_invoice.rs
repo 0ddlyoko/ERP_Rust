@@ -3,7 +3,7 @@
 
 mod common;
 
-use account::models::{Move, MoveState, PaymentState};
+use account::models::{AccountMove, MoveState, PaymentState};
 use common::*;
 use erp::Result;
 use erp::types::field::SingleId;
@@ -369,7 +369,7 @@ fn test_vendor_credit_notes() -> Result<()> {
         "action_reverse_and_reconcile",
         &[bill],
     )?;
-    let refund: Move<erp::types::field::MultipleIds> = env.search(
+    let refund: AccountMove<erp::types::field::MultipleIds> = env.search(
         &erp_search_code_gen::make_domain!([("move_type", "=", "in_refund")]),
     )?;
     let refund = refund.get_ids_ref()[0];
@@ -408,7 +408,7 @@ fn test_installments() -> Result<()> {
     )?;
     post(&mut env, invoice)?;
     let entry = entry(&mut env, invoice);
-    let lines: account::models::MoveLine<erp::types::field::MultipleIds> =
+    let lines: account::models::AccountMoveLine<erp::types::field::MultipleIds> =
         entry.get_lines(&mut env)?;
     let mut receivables = Vec::new();
     for item in &lines {

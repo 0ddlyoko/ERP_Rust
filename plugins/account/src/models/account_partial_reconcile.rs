@@ -1,5 +1,5 @@
 use crate::models::account_full_reconcile::BaseAccountFullReconcile;
-use crate::models::account_move_line::{BaseAccountMoveLine, MoveLine};
+use crate::models::account_move_line::{AccountMoveLine, BaseAccountMoveLine};
 use code_gen::Model;
 use currency::models::Currency;
 use erp::Result;
@@ -10,7 +10,7 @@ use erp::types::field::{Decimal, IdMode, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "account_partial_reconcile")]
 #[allow(dead_code)]
-pub struct PartialReconcile<Mode: IdMode> {
+pub struct AccountPartialReconcile<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     debit_line: Reference<BaseAccountMoveLine, SingleId>,
@@ -43,7 +43,7 @@ pub(crate) fn prorata(
 /// The rounding of the currency a journal item is in: its own, else the company's.
 pub(crate) fn currency_rounding(env: &mut Environment, line: u32) -> Result<Decimal> {
     let env = &mut *env.sudo();
-    let line: MoveLine<SingleId> = env.get_record(line.into());
+    let line: AccountMoveLine<SingleId> = env.get_record(line.into());
     let currency: Currency<SingleId> = line.get_currency(env)?;
     let currency = if currency.is_empty() {
         Currency::of_company(env)?

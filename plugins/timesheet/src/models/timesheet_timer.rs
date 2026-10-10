@@ -10,14 +10,14 @@ use erp::types::field::{
 };
 use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
-use project::models::{BaseProjectProject, BaseProjectTask, Project, Task};
+use project::models::{BaseProjectProject, BaseProjectTask, ProjectProject, ProjectTask};
 
 /// Time someone is spending right now, on a task, on a project, or on nothing said yet: one per
 /// person, from when it was started until it is stopped and logged, or discarded.
 #[derive(Model)]
 #[erp(id = "timesheet_timer", methods)]
 #[allow(dead_code)]
-pub struct Timer<Mode: IdMode> {
+pub struct TimesheetTimer<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade", index)]
     user: Reference<BaseUsers, SingleId>,
@@ -31,7 +31,7 @@ pub struct Timer<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Timer<MultipleIds> {
+impl TimesheetTimer<MultipleIds> {
     /// The caller's timer, if one runs: when it started, on which task, and what for.
     #[erp(rpc)]
     pub fn timer_status(&self, env: &mut Environment) -> Result<Value> {
@@ -48,7 +48,7 @@ impl Timer<MultipleIds> {
     pub fn timer_start(&self, env: &mut Environment, task: Option<u32>) -> Result<Value> {
         let _ = self;
         if let Some(running) = Self::current(env)? {
-            let on: Task<SingleId> = running.get_task(&mut env.sudo())?;
+            let on: ProjectTask<SingleId> = running.get_task(&mut env.sudo())?;
             if on.get_optional_id() == task || task.is_none() {
                 return running.describe(env);
             }
@@ -65,8 +65,9 @@ impl Timer<MultipleIds> {
         values.insert("user", uid);
         values.insert("started", Utc::now());
         values.insert_option("task", task);
-        let started: Timer<MultipleIds> = env.sudo().create_new_records_from_maps(vec![values])?;
-        let timer: Timer<SingleId> = started.ensure_one()?;
+        let started: TimesheetTimer<MultipleIds> =
+            env.sudo().create_new_records_from_maps(vec![values])?;
+        let timer: TimesheetTimer<SingleId> = started.ensure_one()?;
         timer.describe(env)
     }
 
@@ -93,7 +94,7 @@ impl Timer<MultipleIds> {
     }
 }
 
-impl Timer<MultipleIds> {
+impl TimesheetTimer<MultipleIds> {
     /// What `timer_stop` does.
     pub(crate) fn stop(
         env: &mut Environment,
@@ -104,8 +105,8 @@ impl Timer<MultipleIds> {
         let Some(timer) = Self::current(env)? else {
             return Ok(json!({ "running": false }));
         };
-        let on: Task<SingleId> = timer.get_task(&mut env.sudo())?;
-        let within: Project<SingleId> = timer.get_project(&mut env.sudo())?;
+        let on: ProjectTask<SingleId> = timer.get_task(&mut env.sudo())?;
+        let within: ProjectProject<SingleId> = timer.get_project(&mut env.sudo())?;
         if on.is_empty() && within.is_empty() && task.is_none() && project.is_none() {
             return Ok(json!({ "running": true, "needs_project": true }));
         }
@@ -116,33 +117,35 @@ impl Timer<MultipleIds> {
     /// What `timer_discard` does.
     pub(crate) fn discard(env: &mut Environment) -> Result<Value> {
         if let Some(timer) = Self::current(env)? {
-            Timer::<MultipleIds>::from_ids(vec![timer.get_id()], env).delete(&mut env.sudo())?;
+            TimesheetTimer::<MultipleIds>::from_ids(vec![timer.get_id()], env)
+                .delete(&mut env.sudo())?;
         }
         Ok(json!({ "running": false }))
     }
 
     /// The caller's running timer.
-    pub(crate) fn current(env: &mut Environment) -> Result<Option<Timer<SingleId>>> {
+    pub(crate) fn current(env: &mut Environment) -> Result<Option<TimesheetTimer<SingleId>>> {
         let Some(uid) = env.uid() else {
             return Ok(None);
         };
-        let found: Timer<MultipleIds> = env.sudo().search(&make_domain!([("user", "=", uid)]))?;
+        let found: TimesheetTimer<MultipleIds> =
+            env.sudo().search(&make_domain!([("user", "=", uid)]))?;
         Ok(found.into_iter().next())
     }
 }
 
-impl Timer<SingleId> {
+impl TimesheetTimer<SingleId> {
     /// What a client shows of the timer.
     fn describe(&self, env: &mut Environment) -> Result<Value> {
         let env = &mut *env.sudo();
-        let task: Task<SingleId> = self.get_task(env)?;
+        let task: ProjectTask<SingleId> = self.get_task(env)?;
         let task = if task.is_empty() {
             Value::Null
         } else {
             let number = task.get_number(env)?.clone();
             json!([task.get_id(), format!("{number} {}", task.get_name(env)?)])
         };
-        let project: Project<SingleId> = self.get_project(env)?;
+        let project: ProjectProject<SingleId> = self.get_project(env)?;
         let project = if project.is_empty() {
             Value::Null
         } else {
@@ -167,8 +170,8 @@ impl Timer<SingleId> {
     pub(crate) fn remember(
         &self,
         env: &mut Environment,
-        project: &Project<SingleId>,
-        task: &Task<SingleId>,
+        project: &ProjectProject<SingleId>,
+        task: &ProjectTask<SingleId>,
         description: Option<String>,
     ) -> Result<Value> {
         self.as_sudo(env, |timer, env| {
@@ -181,7 +184,7 @@ impl Timer<SingleId> {
 
     /// Put the timer on a task.
     fn set_task_id(&self, task: Option<u32>, env: &mut Environment) -> Result<()> {
-        let task: Option<Task<SingleId>> = task.map(|id| env.get_record(id.into()));
+        let task: Option<ProjectTask<SingleId>> = task.map(|id| env.get_record(id.into()));
         self.set_task(task.as_ref(), &mut env.sudo())
     }
 
@@ -197,9 +200,9 @@ impl Timer<SingleId> {
         let started = *self.get_started(&mut env.sudo())?;
         let minutes = ((Utc::now() - started).num_seconds().max(0) + 59) / 60;
         let hours = Decimal::from(minutes.max(1)) / Decimal::from(60);
-        let own: Task<SingleId> = self.get_task(&mut env.sudo())?;
+        let own: ProjectTask<SingleId> = self.get_task(&mut env.sudo())?;
         let mut values = MapOfFields::default();
-        let within: Project<SingleId> = self.get_project(&mut env.sudo())?;
+        let within: ProjectProject<SingleId> = self.get_project(&mut env.sudo())?;
         match own.get_optional_id().or(task) {
             Some(task) => values.insert("task", task),
             None => values.insert(
@@ -214,7 +217,8 @@ impl Timer<SingleId> {
         let description = description.or(self.get_name(&mut env.sudo())?.cloned());
         values.insert_option("name", description);
         let entry: Timesheet<MultipleIds> = env.create_new_records_from_maps(vec![values])?;
-        Timer::<MultipleIds>::from_ids(vec![self.get_id()], env).delete(&mut env.sudo())?;
+        TimesheetTimer::<MultipleIds>::from_ids(vec![self.get_id()], env)
+            .delete(&mut env.sudo())?;
         Ok(entry.get_ids_ref()[0])
     }
 }

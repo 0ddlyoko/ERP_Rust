@@ -1,5 +1,5 @@
 use crate::models::account_payment_term_line::{
-    BaseAccountPaymentTermLine, PaymentTermLine, PaymentTermValue,
+    AccountPaymentTermLine, BaseAccountPaymentTermLine, PaymentTermValue,
 };
 use crate::payment_terms::{self, Installment, InstallmentValue};
 use code_gen::{Model, erp_methods};
@@ -11,7 +11,7 @@ use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, Sing
 #[derive(Model)]
 #[erp(id = "account_payment_term", order = "name, id", methods)]
 #[allow(dead_code)]
-pub struct PaymentTerm<Mode: IdMode> {
+pub struct AccountPaymentTerm<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(label = "Description on invoices")]
@@ -23,14 +23,14 @@ pub struct PaymentTerm<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl PaymentTerm<SingleId> {
+impl AccountPaymentTerm<SingleId> {
     /// The installments of the term, in order.
     pub fn installments(&self, env: &mut Environment) -> Result<Vec<Installment>> {
         if self.is_empty() {
             return Ok(Vec::new());
         }
         let env = &mut *env.sudo();
-        let lines: PaymentTermLine<MultipleIds> = self.get_lines(env)?;
+        let lines: AccountPaymentTermLine<MultipleIds> = self.get_lines(env)?;
         let mut rows = Vec::new();
         for line in &lines {
             rows.push((
@@ -74,7 +74,7 @@ impl PaymentTerm<SingleId> {
 }
 
 #[erp_methods]
-impl PaymentTerm<MultipleIds> {
+impl AccountPaymentTerm<MultipleIds> {
     /// A term with installments ends with its balance; one without falls due at once.
     #[erp(check = ["lines.value", "lines.value_amount", "lines.days", "lines.end_of_month", "lines.days_after_end_of_month", "lines.sequence"])]
     pub fn check_terms(&self, env: &mut Environment) -> Result<()> {

@@ -50,7 +50,7 @@ impl SaleOrderTest<MultipleIds> {
 #[erp(id = "sale_order_test", methods)]
 #[erp(derived_model = "")]
 #[allow(dead_code)]
-pub struct SaleOrderTest2<Mode: IdMode> {
+pub struct SaleOrderTestTestPlugin<Mode: IdMode> {
     id: Mode,
     #[erp(description = "New name of the SO")]
     name: String,
@@ -66,7 +66,7 @@ pub struct SaleOrderTest2<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl SaleOrderTest2<MultipleIds> {
+impl SaleOrderTestTestPlugin<MultipleIds> {
     /// Extends the base: calls it, then appends to what it produced.
     pub fn compute_label(&self, env: &mut Environment, parent: Super) -> Result<()> {
         assert!(parent.exists(), "the base implementation must be reachable");

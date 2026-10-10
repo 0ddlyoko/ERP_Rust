@@ -29,12 +29,12 @@ impl Plugin for PurchasePlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::SupplierInfo<_>>();
+        model_manager.register_model::<models::ProductSupplierinfo<_>>();
         model_manager.register_model::<models::ProductPurchase<_>>();
         model_manager.register_model::<models::PurchaseOrder<_>>();
         model_manager.register_model::<models::PurchaseOrderLine<_>>();
-        model_manager.register_model::<models::InvoiceLinePurchase<_>>();
-        model_manager.register_model::<models::MovePurchase<_>>();
+        model_manager.register_model::<models::AccountInvoiceLinePurchase<_>>();
+        model_manager.register_model::<models::AccountMovePurchase<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

@@ -25,29 +25,31 @@ mod product;
 mod product_category;
 
 pub use account::{Account, AccountType, BaseAccount};
-pub use account_bank_statement::{BankStatement, BaseAccountBankStatement, StatementState};
-pub use account_bank_statement_line::{BankStatementLine, BaseAccountBankStatementLine};
-pub use account_fiscal_position::{BaseAccountFiscalPosition, FiscalPosition};
+pub use account_bank_statement::{AccountBankStatement, BaseAccountBankStatement, StatementState};
+pub use account_bank_statement_line::{AccountBankStatementLine, BaseAccountBankStatementLine};
+pub use account_fiscal_position::{AccountFiscalPosition, BaseAccountFiscalPosition};
 pub use account_fiscal_position_account::{
-    BaseAccountFiscalPositionAccount, FiscalPositionAccount,
+    AccountFiscalPositionAccount, BaseAccountFiscalPositionAccount,
 };
-pub use account_fiscal_position_tax::{BaseAccountFiscalPositionTax, FiscalPositionTax};
-pub use account_full_reconcile::{BaseAccountFullReconcile, FullReconcile};
-pub use account_invoice_line::{BaseAccountInvoiceLine, InvoiceLine};
-pub use account_journal::{BaseAccountJournal, Journal, JournalType};
-pub use account_move::{BaseAccountMove, Move, MoveState, MoveType, PaymentState};
-pub use account_move_line::{BaseAccountMoveLine, LineKind, MoveLine};
-pub use account_partial_reconcile::{BaseAccountPartialReconcile, PartialReconcile};
-pub use account_payment::{BaseAccountPayment, PartnerType, Payment, PaymentStatus, PaymentType};
-pub use account_payment_term::{BaseAccountPaymentTerm, PaymentTerm};
+pub use account_fiscal_position_tax::{AccountFiscalPositionTax, BaseAccountFiscalPositionTax};
+pub use account_full_reconcile::{AccountFullReconcile, BaseAccountFullReconcile};
+pub use account_invoice_line::{AccountInvoiceLine, BaseAccountInvoiceLine};
+pub use account_journal::{AccountJournal, BaseAccountJournal, JournalType};
+pub use account_move::{AccountMove, BaseAccountMove, MoveState, MoveType, PaymentState};
+pub use account_move_line::{AccountMoveLine, BaseAccountMoveLine, LineKind};
+pub use account_partial_reconcile::{AccountPartialReconcile, BaseAccountPartialReconcile};
+pub use account_payment::{
+    AccountPayment, BaseAccountPayment, PartnerType, PaymentStatus, PaymentType,
+};
+pub use account_payment_term::{AccountPaymentTerm, BaseAccountPaymentTerm};
 pub use account_payment_term_line::{
-    BaseAccountPaymentTermLine, PaymentTermLine, PaymentTermValue,
+    AccountPaymentTermLine, BaseAccountPaymentTermLine, PaymentTermValue,
 };
-pub use account_tax::{BaseAccountTax, Tax, TaxAmountType, TaxUse};
-pub use account_tax_repartition::{BaseAccountTaxRepartition, TaxDocument, TaxRepartition};
-pub use account_tax_tag::{BaseAccountTaxTag, TaxTag};
-pub use account_trial_balance::{BaseAccountTrialBalance, TrialBalance, trial_balance};
-pub use account_trial_balance_line::{BaseAccountTrialBalanceLine, TrialBalanceLine};
+pub use account_tax::{AccountTax, BaseAccountTax, TaxAmountType, TaxUse};
+pub use account_tax_repartition::{AccountTaxRepartition, BaseAccountTaxRepartition, TaxDocument};
+pub use account_tax_tag::{AccountTaxTag, BaseAccountTaxTag};
+pub use account_trial_balance::{AccountTrialBalance, BaseAccountTrialBalance, trial_balance};
+pub use account_trial_balance_line::{AccountTrialBalanceLine, BaseAccountTrialBalanceLine};
 pub use company::CompanyAccount;
 pub use contact::ContactAccount;
 pub use contact_bank::{BaseContactBank, ContactBank, normalize_iban};

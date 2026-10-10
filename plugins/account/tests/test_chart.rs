@@ -2,7 +2,9 @@
 
 mod common;
 
-use account::models::{FiscalPosition, Journal, PaymentTerm, Tax, TaxDocument};
+use account::models::{
+    AccountFiscalPosition, AccountJournal, AccountPaymentTerm, AccountTax, TaxDocument,
+};
 use common::*;
 use erp::Result;
 use erp::types::field::SingleId;
@@ -72,7 +74,7 @@ fn test_tax_distributions() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let reverse = chart(&mut env, "tax_purchase_21_reverse");
-    let tax: Tax<SingleId> = env.get_record(reverse.into());
+    let tax: AccountTax<SingleId> = env.get_record(reverse.into());
     let spec = tax.spec(&mut env, TaxDocument::Invoice)?;
     let factors: Vec<String> = spec
         .repartitions
@@ -84,7 +86,7 @@ fn test_tax_distributions() -> Result<()> {
     assert_eq!(spec.repartitions[1].account, Some(vat_due));
 
     let zero = chart(&mut env, "tax_sale_0");
-    let tax: Tax<SingleId> = env.get_record(zero.into());
+    let tax: AccountTax<SingleId> = env.get_record(zero.into());
     let spec = tax.spec(&mut env, TaxDocument::Refund)?;
     assert_eq!(
         spec.repartitions.len(),
@@ -120,7 +122,7 @@ fn test_journals_number_their_entries() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let sale = chart(&mut env, "journal_sale");
-    let journal: Journal<SingleId> = env.get_record(sale.into());
+    let journal: AccountJournal<SingleId> = env.get_record(sale.into());
     let invoices = journal.numbering(&mut env, false)?;
     let refunds = journal.numbering(&mut env, true)?;
     assert_eq!(
@@ -156,7 +158,7 @@ fn test_payment_terms() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let advance = chart(&mut env, "term_advance");
-    let term: PaymentTerm<SingleId> = env.get_record(advance.into());
+    let term: AccountPaymentTerm<SingleId> = env.get_record(advance.into());
     let due = term.compute(&mut env, d("1210"), date("2026-03-10"), d("0.01"))?;
     assert_eq!(
         due,
@@ -166,7 +168,7 @@ fn test_payment_terms() -> Result<()> {
         ]
     );
     let eom = chart(&mut env, "term_30_days_end_of_month");
-    let term: PaymentTerm<SingleId> = env.get_record(eom.into());
+    let term: AccountPaymentTerm<SingleId> = env.get_record(eom.into());
     assert_eq!(
         term.compute(&mut env, d("100"), date("2026-01-15"), d("0.01"))?,
         vec![(date("2026-02-28"), d("100"))]
@@ -188,14 +190,14 @@ fn test_fiscal_positions_map_taxes() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     let position = chart(&mut env, "position_intra_eu");
-    let position: FiscalPosition<SingleId> = env.get_record(position.into());
+    let position: AccountFiscalPosition<SingleId> = env.get_record(position.into());
     let (s21, s0, s6) = (
         chart(&mut env, "tax_sale_21"),
         chart(&mut env, "tax_sale_0"),
         chart(&mut env, "tax_sale_6"),
     );
     assert_eq!(position.map_taxes(&mut env, vec![s21, s6])?, vec![s0, s6]);
-    let none: FiscalPosition<SingleId> = env.get_record(SingleId::empty());
+    let none: AccountFiscalPosition<SingleId> = env.get_record(SingleId::empty());
     assert_eq!(none.map_taxes(&mut env, vec![s21])?, vec![s21]);
     Ok(())
 }

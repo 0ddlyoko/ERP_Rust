@@ -1,4 +1,4 @@
-use crate::models::project_project::{BaseProjectProject, Project};
+use crate::models::project_project::{BaseProjectProject, ProjectProject};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -13,7 +13,7 @@ use erp_search_code_gen::make_domain;
 #[derive(Model)]
 #[erp(id = "project_stage", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct Stage<Mode: IdMode> {
+pub struct ProjectStage<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(default = 10)]
@@ -31,16 +31,16 @@ pub struct Stage<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Stage<SingleId> {
+impl ProjectStage<SingleId> {
     /// The columns of a project's board, left to right.
     pub fn columns_of(
         env: &mut Environment,
-        project: Project<SingleId>,
-    ) -> Result<Vec<Stage<SingleId>>> {
+        project: ProjectProject<SingleId>,
+    ) -> Result<Vec<ProjectStage<SingleId>>> {
         let Some(project) = project.get_optional_id() else {
             return Ok(Vec::new());
         };
-        let found: Stage<MultipleIds> = env.sudo().search_with(
+        let found: ProjectStage<MultipleIds> = env.sudo().search_with(
             &make_domain!([("project", "=", project)]),
             &SearchOptions::new()
                 .order_by(OrderBy::asc("sequence"))
@@ -54,13 +54,16 @@ impl Stage<SingleId> {
         let Some(stage) = stage.filter(|id| *id != 0) else {
             return Ok(false);
         };
-        let stage: Stage<SingleId> = env.get_record(stage.into());
-        let of: Project<SingleId> = stage.get_project(&mut env.sudo())?;
+        let stage: ProjectStage<SingleId> = env.get_record(stage.into());
+        let of: ProjectProject<SingleId> = stage.get_project(&mut env.sudo())?;
         Ok(of.get_optional_id() == Some(project))
     }
 
     /// The first column of a project's board, if it has any.
-    pub fn first_of(env: &mut Environment, project: Project<SingleId>) -> Result<Stage<SingleId>> {
+    pub fn first_of(
+        env: &mut Environment,
+        project: ProjectProject<SingleId>,
+    ) -> Result<ProjectStage<SingleId>> {
         let columns = Self::columns_of(env, project)?;
         Ok(columns
             .into_iter()

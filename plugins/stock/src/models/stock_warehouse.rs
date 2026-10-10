@@ -1,5 +1,5 @@
-use crate::models::stock_location::{BaseStockLocation, Location, LocationUsage};
-use crate::models::stock_picking_type::{BaseStockPickingType, PickingType};
+use crate::models::stock_location::{BaseStockLocation, LocationUsage, StockLocation};
+use crate::models::stock_picking_type::{BaseStockPickingType, StockPickingType};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -10,7 +10,7 @@ use erp::types::model::MapOfFields;
 #[derive(Model)]
 #[erp(id = "stock_warehouse", order = "name, id", methods)]
 #[allow(dead_code)]
-pub struct Warehouse<Mode: IdMode> {
+pub struct StockWarehouse<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(
@@ -34,11 +34,11 @@ pub struct Warehouse<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Warehouse<SingleId> {
+impl StockWarehouse<SingleId> {
     /// The first warehouse, where goods are received and delivered unless said otherwise.
-    pub fn main(env: &mut Environment) -> Result<Warehouse<SingleId>> {
+    pub fn main(env: &mut Environment) -> Result<StockWarehouse<SingleId>> {
         let env = &mut *env.sudo();
-        let found: Warehouse<MultipleIds> = env.search_with(
+        let found: StockWarehouse<MultipleIds> = env.search_with(
             &erp_search_code_gen::make_domain!([("active", "=", true)]),
             &erp_search::SearchOptions::new()
                 .order_by(erp_search::OrderBy::asc("id"))
@@ -53,7 +53,10 @@ impl Warehouse<SingleId> {
 
 /// The location where goods of a kind come from or go to: the vendors, the customers, the
 /// inventory adjustments.
-pub fn partner_location(env: &mut Environment, usage: LocationUsage) -> Result<Location<SingleId>> {
+pub fn partner_location(
+    env: &mut Environment,
+    usage: LocationUsage,
+) -> Result<StockLocation<SingleId>> {
     let xml_id = match usage {
         LocationUsage::Supplier => "stock.location_suppliers",
         LocationUsage::Customer => "stock.location_customers",
@@ -63,7 +66,7 @@ pub fn partner_location(env: &mut Environment, usage: LocationUsage) -> Result<L
 }
 
 #[erp_methods]
-impl Warehouse<MultipleIds> {
+impl StockWarehouse<MultipleIds> {
     /// A warehouse comes with its locations — `WH`, `WH/Stock` — and its kinds of transfers,
     /// each numbered on its own: `WH/IN/00001`, `WH/OUT/00001`, `WH/INT/00001`.
     pub fn create(
@@ -74,7 +77,7 @@ impl Warehouse<MultipleIds> {
     ) -> Result<MultipleIds> {
         env.savepoint(|env| {
             let ids: MultipleIds = sup.call_with(values, env)?;
-            for warehouse in Warehouse::<MultipleIds>::from_ids(ids.clone(), env) {
+            for warehouse in StockWarehouse::<MultipleIds>::from_ids(ids.clone(), env) {
                 let code = warehouse.get_code(env)?.trim().to_uppercase();
                 if code.is_empty() || code.len() > 5 {
                     return Err(format!(
@@ -86,11 +89,11 @@ impl Warehouse<MultipleIds> {
                 let mut view = MapOfFields::default();
                 view.insert("name", code.clone());
                 view.insert("usage", LocationUsage::View);
-                let view: Location<SingleId> = env.create_new_record_from_map(view)?;
+                let view: StockLocation<SingleId> = env.create_new_record_from_map(view)?;
                 let mut stock = MapOfFields::default();
                 stock.insert("name", "Stock");
                 stock.insert("parent", view.get_id());
-                let stock: Location<SingleId> = env.create_new_record_from_map(stock)?;
+                let stock: StockLocation<SingleId> = env.create_new_record_from_map(stock)?;
                 let suppliers = partner_location(env, LocationUsage::Supplier)?;
                 let customers = partner_location(env, LocationUsage::Customer)?;
                 let mut types = Vec::new();
@@ -133,7 +136,7 @@ impl Warehouse<MultipleIds> {
                     picking_type.insert("sequence", numbering);
                     picking_type.insert("default_location_src", source);
                     picking_type.insert("default_location_dest", destination);
-                    let picking_type: PickingType<SingleId> =
+                    let picking_type: StockPickingType<SingleId> =
                         env.create_new_record_from_map(picking_type)?;
                     types.push(picking_type);
                 }

@@ -17,7 +17,7 @@ pub enum TaxDocument {
 #[derive(Model)]
 #[erp(id = "account_tax_repartition", order = "sequence, id")]
 #[allow(dead_code)]
-pub struct TaxRepartition<Mode: IdMode> {
+pub struct AccountTaxRepartition<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     tax: Reference<BaseAccountTax, SingleId>,

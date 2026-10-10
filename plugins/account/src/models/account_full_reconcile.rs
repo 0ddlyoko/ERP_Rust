@@ -7,7 +7,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference};
 #[derive(Model)]
 #[erp(id = "account_full_reconcile")]
 #[allow(dead_code)]
-pub struct FullReconcile<Mode: IdMode> {
+pub struct AccountFullReconcile<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Matching number")]
     name: String,

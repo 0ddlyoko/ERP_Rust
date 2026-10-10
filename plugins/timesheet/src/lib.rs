@@ -31,10 +31,10 @@ impl Plugin for TimesheetPlugin {
 
     fn init_models(&self, model_manager: &mut ModelManager) {
         model_manager.register_model::<models::Timesheet<_>>();
-        model_manager.register_model::<models::TaskTimesheet<_>>();
-        model_manager.register_model::<models::ProjectTimesheet<_>>();
-        model_manager.register_model::<models::Timer<_>>();
-        model_manager.register_model::<models::TimerStop<_>>();
+        model_manager.register_model::<models::ProjectTaskTimesheet<_>>();
+        model_manager.register_model::<models::ProjectProjectTimesheet<_>>();
+        model_manager.register_model::<models::TimesheetTimer<_>>();
+        model_manager.register_model::<models::TimesheetTimerStop<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

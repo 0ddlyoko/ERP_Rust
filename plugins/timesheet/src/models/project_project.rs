@@ -4,14 +4,14 @@ use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, SingleId};
-use project::models::Project;
+use project::models::ProjectProject;
 
 /// The time logged on a project, all its tasks together.
 #[derive(Model)]
 #[erp(id = "project_project", methods)]
 #[erp(derived_model = "project::models")]
 #[allow(dead_code)]
-pub struct ProjectTimesheet<Mode: IdMode> {
+pub struct ProjectProjectTimesheet<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Timesheets", inverse = "project")]
     timesheets: Reference<BaseTimesheet, MultipleIds>,
@@ -24,14 +24,14 @@ pub struct ProjectTimesheet<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl ProjectTimesheet<MultipleIds> {
+impl ProjectProjectTimesheet<MultipleIds> {
     /// The hours logged on the project, what is left of those planned, and how much of them is
     /// spent.
     pub fn compute_hours(&self, env: &mut Environment) -> Result<()> {
         for project in self {
             let entries: Timesheet<MultipleIds> = project.get_timesheets(env)?;
             let spent: Decimal = entries.sum(env, |entry, env| Ok(*entry.get_hours(env)?))?;
-            let own: Project<SingleId> = project.as_model();
+            let own: ProjectProject<SingleId> = project.as_model();
             let planned = *own.get_planned_hours(env)?;
             project.set_spent_hours(spent, env)?;
             project.set_remaining_hours(planned - spent, env)?;

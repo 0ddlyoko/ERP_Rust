@@ -10,14 +10,14 @@ use purchase::models::{BasePurchaseOrderLine, PurchaseOrderLine};
 #[erp(id = "stock_move", methods)]
 #[erp(derived_model = "stock::models")]
 #[allow(dead_code)]
-pub struct StockMovePurchase<Mode: IdMode> {
+pub struct StockMovePurchaseStock<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Purchase order line", ondelete = "set_null")]
     purchase_line: Reference<BasePurchaseOrderLine, SingleId>,
 }
 
 #[erp_methods]
-impl StockMovePurchase<MultipleIds> {
+impl StockMovePurchaseStock<MultipleIds> {
     /// A back order or a return still receives the same order line.
     pub fn copy_values(&self, env: &mut Environment, sup: Super) -> Result<MapOfFields> {
         let mut values: MapOfFields = sup.call(env)?;

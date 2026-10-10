@@ -6,7 +6,7 @@ use erp::types::field::{Decimal, IdMode, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "l10n_be_vat_return_line")]
 #[allow(dead_code)]
-pub struct VatReturnLine<Mode: IdMode> {
+pub struct L10nBeVatReturnLine<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     vat_return: Reference<BaseL10nBeVatReturn, SingleId>,

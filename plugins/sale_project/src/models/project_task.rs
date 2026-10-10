@@ -7,7 +7,7 @@ use sale::models::BaseSaleOrderLine;
 #[erp(id = "project_task")]
 #[erp(derived_model = "project::models")]
 #[allow(dead_code)]
-pub struct TaskSale<Mode: IdMode> {
+pub struct ProjectTaskSaleProject<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Order line", ondelete = "set_null", index)]
     sale_line: Reference<BaseSaleOrderLine, SingleId>,

@@ -19,7 +19,7 @@ pub enum ServiceTracking {
 #[erp(id = "product")]
 #[erp(derived_model = "product::models")]
 #[allow(dead_code)]
-pub struct ProductProject<Mode: IdMode> {
+pub struct ProductSaleProject<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Creates on confirmation")]
     service_tracking: ServiceTracking,

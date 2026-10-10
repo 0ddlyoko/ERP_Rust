@@ -7,7 +7,7 @@ use erp::types::field::{IdMode, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "account_fiscal_position_account")]
 #[allow(dead_code)]
-pub struct FiscalPositionAccount<Mode: IdMode> {
+pub struct AccountFiscalPositionAccount<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     position: Reference<BaseAccountFiscalPosition, SingleId>,

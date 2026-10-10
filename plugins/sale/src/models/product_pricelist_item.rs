@@ -29,7 +29,7 @@ pub enum PricelistCompute {
 #[derive(Model)]
 #[erp(id = "product_pricelist_item", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct PricelistItem<Mode: IdMode> {
+pub struct ProductPricelistItem<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     pricelist: Reference<BaseProductPricelist, SingleId>,
@@ -56,7 +56,7 @@ pub struct PricelistItem<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl PricelistItem<MultipleIds> {
+impl ProductPricelistItem<MultipleIds> {
     /// A rule names what it applies to; a discount stays within 0 and 100 %; a fixed price and a
     /// quantity are not negative; a rule ends after it starts.
     #[erp(check = ["applied_on", "category", "product", "date_start", "date_end", "fixed_price", "percent_price", "min_quantity"])]

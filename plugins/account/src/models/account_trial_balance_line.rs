@@ -7,7 +7,7 @@ use erp::types::field::{Decimal, IdMode, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "account_trial_balance_line")]
 #[allow(dead_code)]
-pub struct TrialBalanceLine<Mode: IdMode> {
+pub struct AccountTrialBalanceLine<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     report: Reference<BaseAccountTrialBalance, SingleId>,

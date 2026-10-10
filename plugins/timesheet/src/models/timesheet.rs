@@ -4,7 +4,7 @@ use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, NaiveDate, Reference, SingleId, Utc};
 use erp::types::model::MapOfFields;
-use project::models::{BaseProjectProject, BaseProjectTask, Project, Task};
+use project::models::{BaseProjectProject, BaseProjectTask, ProjectProject, ProjectTask};
 
 /// Time someone spent on a task, or on a project with no task in particular, on a day.
 #[derive(Model)]
@@ -36,7 +36,7 @@ impl Timesheet<MultipleIds> {
     #[erp(check = ["hours", "project"])]
     pub fn check_entries(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
-            let project: Project<SingleId> = entry.get_project(env)?;
+            let project: ProjectProject<SingleId> = entry.get_project(env)?;
             if project.is_empty() {
                 return Err("Time is spent on a project: give the task or the project".into());
             }
@@ -95,8 +95,8 @@ fn project_of_task(env: &mut Environment, values: &mut MapOfFields) -> Result<()
     else {
         return Ok(());
     };
-    let task: Task<SingleId> = env.get_record(task.into());
-    let project: Project<SingleId> = task.get_project(&mut env.sudo())?;
+    let task: ProjectTask<SingleId> = env.get_record(task.into());
+    let project: ProjectProject<SingleId> = task.get_project(&mut env.sudo())?;
     values.insert_option("project", project.get_optional_id());
     Ok(())
 }

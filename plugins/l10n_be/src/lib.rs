@@ -1,7 +1,7 @@
 //! Belgium: the minimum standard chart (PCMN), Belgian VAT with the grids of the periodic
 //! return, structured communications, and VAT numbers checked.
 
-use account::models::{Account, CompanyAccount, Journal, Tax};
+use account::models::{Account, AccountJournal, AccountTax, CompanyAccount};
 use erp::Result;
 use erp::environment::Environment;
 use erp::model::{Model, ModelManager};
@@ -45,10 +45,10 @@ impl Plugin for L10nBePlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::ContactBe<_>>();
-        model_manager.register_model::<models::MoveBe<_>>();
-        model_manager.register_model::<models::VatReturn<_>>();
-        model_manager.register_model::<models::VatReturnLine<_>>();
+        model_manager.register_model::<models::ContactL10nBe<_>>();
+        model_manager.register_model::<models::AccountMoveL10nBe<_>>();
+        model_manager.register_model::<models::L10nBeVatReturn<_>>();
+        model_manager.register_model::<models::L10nBeVatReturnLine<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {
@@ -91,15 +91,15 @@ impl Plugin for L10nBePlugin {
             company.set_account_exchange_loss(&account, env)?;
         }
         let current = company.get_journal_exchange(env)?;
-        if let Some(journal) = unless_set::<Journal<_>>(env, current, "journal_exchange")? {
+        if let Some(journal) = unless_set::<AccountJournal<_>>(env, current, "journal_exchange")? {
             company.set_journal_exchange(&journal, env)?;
         }
         let current = company.get_sale_tax(env)?;
-        if let Some(tax) = unless_set::<Tax<_>>(env, current, "tax_sale_21")? {
+        if let Some(tax) = unless_set::<AccountTax<_>>(env, current, "tax_sale_21")? {
             company.set_sale_tax(&tax, env)?;
         }
         let current = company.get_purchase_tax(env)?;
-        if let Some(tax) = unless_set::<Tax<_>>(env, current, "tax_purchase_21_goods")? {
+        if let Some(tax) = unless_set::<AccountTax<_>>(env, current, "tax_purchase_21_goods")? {
             company.set_purchase_tax(&tax, env)?;
         }
         Ok(())

@@ -1,5 +1,5 @@
-use crate::models::l10n_be_vat_return_line::{BaseL10nBeVatReturnLine, VatReturnLine};
-use account::models::{MoveLine, MoveState, TaxTag};
+use crate::models::l10n_be_vat_return_line::{BaseL10nBeVatReturnLine, L10nBeVatReturnLine};
+use account::models::{AccountMoveLine, AccountTaxTag, MoveState};
 use base::models::{Company, Contact};
 use code_gen::{Model, erp_methods};
 use erp::Result;
@@ -49,7 +49,7 @@ pub const GRIDS: [(&str, &str); 29] = [
 #[derive(Model)]
 #[erp(id = "l10n_be_vat_return", methods)]
 #[allow(dead_code)]
-pub struct VatReturn<Mode: IdMode> {
+pub struct L10nBeVatReturn<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Period")]
     name: String,
@@ -75,7 +75,7 @@ pub fn grid_amounts(
     date_to: NaiveDate,
 ) -> Result<BTreeMap<String, Decimal>> {
     let env = &mut *env.sudo();
-    let items: MoveLine<MultipleIds> = env.search(&make_domain!([
+    let items: AccountMoveLine<MultipleIds> = env.search(&make_domain!([
         ("parent_state", "=", MoveState::Posted),
         ("date", ">=", date_from),
         ("date", "<=", date_to)
@@ -85,7 +85,7 @@ pub fn grid_amounts(
         .map(|(grid, _)| (grid.to_string(), Decimal::ZERO))
         .collect();
     for item in &items {
-        let tags: TaxTag<MultipleIds> = item.get_tax_tags(env)?;
+        let tags: AccountTaxTag<MultipleIds> = item.get_tax_tags(env)?;
         if tags.is_empty() {
             continue;
         }
@@ -203,7 +203,7 @@ pub fn intervat_xml(
 }
 
 #[erp_methods]
-impl VatReturn<MultipleIds> {
+impl L10nBeVatReturn<MultipleIds> {
     /// Work the grids out again from the entries of the period, and the Intervat file with them.
     #[erp(rpc)]
     pub fn action_compute(&self, env: &mut Environment) -> Result<bool> {
@@ -235,9 +235,9 @@ impl VatReturn<MultipleIds> {
                 )
             };
             let xml = intervat_xml(&vat, &name, from, to, &grids).ok();
-            let old: VatReturnLine<MultipleIds> = vat_return.get_lines(env)?;
+            let old: L10nBeVatReturnLine<MultipleIds> = vat_return.get_lines(env)?;
             old.delete(env)?;
-            let _: VatReturnLine<MultipleIds> = env.create_new_records_from_maps(lines)?;
+            let _: L10nBeVatReturnLine<MultipleIds> = env.create_new_records_from_maps(lines)?;
             vat_return.set_amount_due(grids.get("71").copied().unwrap_or_default(), env)?;
             vat_return.set_amount_refundable(grids.get("72").copied().unwrap_or_default(), env)?;
             vat_return.set_xml(xml, env)?;

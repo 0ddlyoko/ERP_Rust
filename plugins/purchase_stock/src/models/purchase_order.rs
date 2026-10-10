@@ -7,7 +7,9 @@ use erp::types::model::MapOfFields;
 use erp_search_code_gen::make_domain;
 use product::models::{Product, ProductType};
 use purchase::models::{PurchaseOrder, PurchaseOrderLine, PurchaseState};
-use stock::models::{BaseStockPicking, Picking, PickingState, PickingType, StockMove, Warehouse};
+use stock::models::{
+    BaseStockPicking, PickingState, StockMove, StockPicking, StockPickingType, StockWarehouse,
+};
 use uom::models::Uom;
 
 #[selection]
@@ -28,7 +30,7 @@ pub enum ReceiptStatus {
 #[erp(id = "purchase_order", methods)]
 #[erp(derived_model = "purchase::models")]
 #[allow(dead_code)]
-pub struct PurchaseOrderStock<Mode: IdMode> {
+pub struct PurchaseOrderPurchaseStock<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Receipts", compute = "compute_pickings", depends = ["lines.moves.picking"])]
     pickings: Reference<BaseStockPicking, MultipleIds>,
@@ -96,14 +98,14 @@ fn unit_cost(
 }
 
 #[erp_methods]
-impl PurchaseOrderStock<MultipleIds> {
+impl PurchaseOrderPurchaseStock<MultipleIds> {
     /// The transfers receiving the order, or sending it back.
     pub fn compute_pickings(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let order_record: PurchaseOrder<SingleId> = order.as_model();
             let lines: PurchaseOrderLine<MultipleIds> = order_record.get_lines(env)?;
             let line_ids = lines.get_ids_ref().clone();
-            let pickings: Picking<MultipleIds> = env.sudo_with(|env| {
+            let pickings: StockPicking<MultipleIds> = env.sudo_with(|env| {
                 let moves: StockMove<MultipleIds> =
                     env.search(&make_domain!([("purchase_line", "in", line_ids)]))?;
                 moves.get_picking(env)
@@ -153,11 +155,12 @@ impl PurchaseOrderStock<MultipleIds> {
             if rows.is_empty() {
                 continue;
             }
-            let warehouse = Warehouse::main(env)?;
+            let warehouse = StockWarehouse::main(env)?;
             if warehouse.is_empty() {
                 return Err("No warehouse receives the order".into());
             }
-            let receipt_type: PickingType<SingleId> = warehouse.get_in_type(&mut env.sudo())?;
+            let receipt_type: StockPickingType<SingleId> =
+                warehouse.get_in_type(&mut env.sudo())?;
             let partner: base::models::Contact<SingleId> = order.get_partner(env)?;
             let mut moves = Vec::new();
             for (line, quantity, product) in rows {
@@ -180,8 +183,9 @@ impl PurchaseOrderStock<MultipleIds> {
             picking.insert_option("scheduled_date", order.get_date_planned(env)?.copied());
             picking.insert_field_type("moves", FieldType::Commands(vec![Command::Create(moves)]));
             let env = &mut *env.sudo();
-            let picking: Picking<SingleId> = env.create_new_record_from_map(picking)?;
-            Picking::<MultipleIds>::from_ids(vec![picking.get_id()], env).action_confirm(env)?;
+            let picking: StockPicking<SingleId> = env.create_new_record_from_map(picking)?;
+            StockPicking::<MultipleIds>::from_ids(vec![picking.get_id()], env)
+                .action_confirm(env)?;
         }
         Ok(())
     }
@@ -189,7 +193,7 @@ impl PurchaseOrderStock<MultipleIds> {
     /// Cancelling an order cancels the receipts not done; one received must go back first.
     pub fn on_cancelled(&self, env: &mut Environment, sup: Super) -> Result<()> {
         for order in self {
-            let pickings: Picking<MultipleIds> = order.get_pickings(env)?;
+            let pickings: StockPicking<MultipleIds> = order.get_pickings(env)?;
             let env = &mut *env.sudo();
             let mut open = Vec::new();
             for picking in &pickings {
@@ -205,7 +209,7 @@ impl PurchaseOrderStock<MultipleIds> {
                 }
             }
             if !open.is_empty() {
-                Picking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
+                StockPicking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
             }
         }
         sup.call(env)

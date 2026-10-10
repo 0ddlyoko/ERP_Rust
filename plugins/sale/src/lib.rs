@@ -28,14 +28,14 @@ impl Plugin for SalePlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::Pricelist<_>>();
-        model_manager.register_model::<models::PricelistItem<_>>();
+        model_manager.register_model::<models::ProductPricelist<_>>();
+        model_manager.register_model::<models::ProductPricelistItem<_>>();
         model_manager.register_model::<models::ContactSale<_>>();
         model_manager.register_model::<models::ProductSale<_>>();
         model_manager.register_model::<models::SaleOrder<_>>();
         model_manager.register_model::<models::SaleOrderLine<_>>();
-        model_manager.register_model::<models::InvoiceLineSale<_>>();
-        model_manager.register_model::<models::MoveSale<_>>();
+        model_manager.register_model::<models::AccountInvoiceLineSale<_>>();
+        model_manager.register_model::<models::AccountMoveSale<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

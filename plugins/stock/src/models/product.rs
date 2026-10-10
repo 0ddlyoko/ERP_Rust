@@ -1,6 +1,6 @@
-use crate::models::stock_location::Location;
-use crate::models::stock_quant::{BaseStockQuant, Quant};
-use crate::models::stock_valuation_layer::{BaseStockValuationLayer, ValuationLayer};
+use crate::models::stock_location::StockLocation;
+use crate::models::stock_quant::{BaseStockQuant, StockQuant};
+use crate::models::stock_valuation_layer::{BaseStockValuationLayer, StockValuationLayer};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -51,13 +51,13 @@ impl ProductStock<MultipleIds> {
     pub fn compute_quantities(&self, env: &mut Environment) -> Result<()> {
         let internal: Vec<u32> = {
             let env = &mut *env.sudo();
-            let found: Location<MultipleIds> =
+            let found: StockLocation<MultipleIds> =
                 env.search(&make_domain!([("usage", "=", "internal")]))?;
             found.get_ids_ref().clone()
         };
         for product in self {
             let (on_hand, free) = {
-                let quants = Quant::at(env, product.get_id(), internal.clone())?;
+                let quants = StockQuant::at(env, product.get_id(), internal.clone())?;
                 let env = &mut *env.sudo();
                 let mut on_hand = Decimal::ZERO;
                 let mut free = Decimal::ZERO;
@@ -68,7 +68,7 @@ impl ProductStock<MultipleIds> {
                 }
                 (on_hand, free)
             };
-            let value = ValuationLayer::value_of(env, product.get_id())?;
+            let value = StockValuationLayer::value_of(env, product.get_id())?;
             product.set_qty_available(on_hand, env)?;
             product.set_free_qty(free, env)?;
             product.set_stock_value(value, env)?;

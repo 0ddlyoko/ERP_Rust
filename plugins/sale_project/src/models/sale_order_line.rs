@@ -7,7 +7,7 @@ use project::models::BaseProjectTask;
 #[erp(id = "sale_order_line")]
 #[erp(derived_model = "sale::models")]
 #[allow(dead_code)]
-pub struct SaleOrderLineProject<Mode: IdMode> {
+pub struct SaleOrderLineSaleProject<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Tasks", inverse = "sale_line")]
     tasks: Reference<BaseProjectTask, MultipleIds>,

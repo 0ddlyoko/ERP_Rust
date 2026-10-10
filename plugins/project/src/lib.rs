@@ -30,11 +30,11 @@ impl Plugin for ProjectPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::Project<_>>();
-        model_manager.register_model::<models::Stage<_>>();
-        model_manager.register_model::<models::Tag<_>>();
-        model_manager.register_model::<models::Task<_>>();
-        model_manager.register_model::<models::ChecklistItem<_>>();
+        model_manager.register_model::<models::ProjectProject<_>>();
+        model_manager.register_model::<models::ProjectStage<_>>();
+        model_manager.register_model::<models::ProjectTag<_>>();
+        model_manager.register_model::<models::ProjectTask<_>>();
+        model_manager.register_model::<models::ProjectChecklistItem<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {
@@ -58,12 +58,12 @@ impl Plugin for ProjectPlugin {
     /// waiting see whether they are held up.
     fn post_init(&mut self, env: &mut Environment) -> erp::Result<()> {
         let env = &mut *env.sudo();
-        let outdated: models::Task<MultipleIds> =
+        let outdated: models::ProjectTask<MultipleIds> =
             env.search(&make_domain!([("status", "in", vec!["to_do", "done"])]))?;
         for task in &outdated {
             task.set_status(models::TaskStatus::InProgress, env)?;
         }
-        let held: models::Task<MultipleIds> = env.search(&make_domain!([(
+        let held: models::ProjectTask<MultipleIds> = env.search(&make_domain!([(
             "status",
             "in",
             vec!["blocked", "waiting"]

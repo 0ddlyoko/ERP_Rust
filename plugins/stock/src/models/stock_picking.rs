@@ -1,7 +1,7 @@
-use crate::models::stock_location::{BaseStockLocation, Location};
+use crate::models::stock_location::{BaseStockLocation, StockLocation};
 use crate::models::stock_move::{BaseStockMove, MoveStatus, StockMove};
-use crate::models::stock_picking_type::{BaseStockPickingType, PickingKind, PickingType};
-use crate::models::stock_warehouse::Warehouse;
+use crate::models::stock_picking_type::{BaseStockPickingType, PickingKind, StockPickingType};
+use crate::models::stock_warehouse::StockWarehouse;
 use base::models::{BaseContact, Contact};
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
@@ -39,7 +39,7 @@ pub enum PickingState {
     methods
 )]
 #[allow(dead_code)]
-pub struct Picking<Mode: IdMode> {
+pub struct StockPicking<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Reference", default = "/", index = "trigram")]
     name: String,
@@ -69,14 +69,14 @@ pub struct Picking<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Picking<SingleId> {
+impl StockPicking<SingleId> {
     pub fn is_state(&self, env: &mut Environment, state: PickingState) -> Result<bool> {
         Ok(*self.get_state(env)? == state)
     }
 
     /// The kind of the transfer: receipt, delivery or internal.
     pub fn kind(&self, env: &mut Environment) -> Result<PickingKind> {
-        let picking_type: PickingType<SingleId> = self.get_picking_type(env)?;
+        let picking_type: StockPickingType<SingleId> = self.get_picking_type(env)?;
         Ok(*picking_type.get_code(&mut env.sudo())?)
     }
 
@@ -113,7 +113,7 @@ impl Picking<SingleId> {
 
     /// Validate the transfer: what was done moves, the moves done for less than asked leave a
     /// back order with the rest; nothing done at all is everything asked done.
-    pub fn validate_one(&self, env: &mut Environment) -> Result<Option<Picking<SingleId>>> {
+    pub fn validate_one(&self, env: &mut Environment) -> Result<Option<StockPicking<SingleId>>> {
         if self.is_state(env, PickingState::Done)? || self.is_state(env, PickingState::Cancel)? {
             let status = if self.is_state(env, PickingState::Done)? {
                 "done"
@@ -123,7 +123,7 @@ impl Picking<SingleId> {
             return Err(format!("{} is already {status}", self.get_name(env)?).into());
         }
         if self.is_state(env, PickingState::Draft)? {
-            Picking::<MultipleIds>::from_ids(vec![self.get_id()], env).action_confirm(env)?;
+            StockPicking::<MultipleIds>::from_ids(vec![self.get_id()], env).action_confirm(env)?;
         }
         let moves = self.live_moves(env)?;
         if moves.is_empty() {
@@ -163,7 +163,7 @@ impl Picking<SingleId> {
         }
         let backorder = self.copy_with(env, rest, None)?;
         backorder.set_backorder(self, env)?;
-        Picking::<MultipleIds>::from_ids(vec![backorder.get_id()], env).action_confirm(env)?;
+        StockPicking::<MultipleIds>::from_ids(vec![backorder.get_id()], env).action_confirm(env)?;
         Ok(Some(backorder))
     }
 
@@ -173,14 +173,14 @@ impl Picking<SingleId> {
         &self,
         env: &mut Environment,
         rest: Vec<(StockMove<SingleId>, Decimal)>,
-        reverse_with: Option<PickingType<SingleId>>,
-    ) -> Result<Picking<SingleId>> {
-        let picking_type: PickingType<SingleId> = match &reverse_with {
+        reverse_with: Option<StockPickingType<SingleId>>,
+    ) -> Result<StockPicking<SingleId>> {
+        let picking_type: StockPickingType<SingleId> = match &reverse_with {
             Some(picking_type) => picking_type.clone(),
             None => self.get_picking_type(env)?,
         };
-        let source: Location<SingleId> = self.get_location(env)?;
-        let destination: Location<SingleId> = self.get_location_dest(env)?;
+        let source: StockLocation<SingleId> = self.get_location(env)?;
+        let destination: StockLocation<SingleId> = self.get_location_dest(env)?;
         let (source, destination) = if reverse_with.is_some() {
             (destination, source)
         } else {
@@ -249,13 +249,13 @@ impl Picking<SingleId> {
 }
 
 #[erp_methods]
-impl Picking<MultipleIds> {
+impl StockPicking<MultipleIds> {
     /// Where the operation type's transfers come from. Each location has its own compute: one
     /// filling both would undo the other when it is chosen by hand.
     pub fn compute_location(&self, env: &mut Environment) -> Result<()> {
         for picking in self {
-            let picking_type: PickingType<SingleId> = picking.get_picking_type(env)?;
-            let source: Location<SingleId> = if picking_type.is_empty() {
+            let picking_type: StockPickingType<SingleId> = picking.get_picking_type(env)?;
+            let source: StockLocation<SingleId> = if picking_type.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 picking_type.get_default_location_src(&mut env.sudo())?
@@ -268,8 +268,8 @@ impl Picking<MultipleIds> {
     /// Where the operation type's transfers go.
     pub fn compute_location_dest(&self, env: &mut Environment) -> Result<()> {
         for picking in self {
-            let picking_type: PickingType<SingleId> = picking.get_picking_type(env)?;
-            let destination: Location<SingleId> = if picking_type.is_empty() {
+            let picking_type: StockPickingType<SingleId> = picking.get_picking_type(env)?;
+            let destination: StockLocation<SingleId> = if picking_type.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 picking_type.get_default_location_dest(&mut env.sudo())?
@@ -298,7 +298,7 @@ impl Picking<MultipleIds> {
                 .is_none_or(|name| name == "/")
                 && let Some(picking_type) = picking.get_option::<&u32>("picking_type").copied()
             {
-                let picking_type: PickingType<SingleId> = env.get_record(picking_type.into());
+                let picking_type: StockPickingType<SingleId> = env.get_record(picking_type.into());
                 let numbering: Sequence<SingleId> = picking_type.get_sequence(&mut env.sudo())?;
                 if !numbering.is_empty() {
                     picking.insert("name", numbering.next(env, today)?);
@@ -306,7 +306,7 @@ impl Picking<MultipleIds> {
             }
         }
         let ids: MultipleIds = sup.call_with(values, env)?;
-        for picking in Picking::<MultipleIds>::from_ids(ids.clone(), env) {
+        for picking in StockPicking::<MultipleIds>::from_ids(ids.clone(), env) {
             picking.align_moves(env)?;
         }
         Ok(ids)
@@ -465,9 +465,10 @@ impl Picking<MultipleIds> {
                     )
                     .into());
                 }
-                let picking_type: PickingType<SingleId> = picking.get_picking_type(env)?;
-                let warehouse: Warehouse<SingleId> = picking_type.get_warehouse(&mut env.sudo())?;
-                let return_type: PickingType<SingleId> = {
+                let picking_type: StockPickingType<SingleId> = picking.get_picking_type(env)?;
+                let warehouse: StockWarehouse<SingleId> =
+                    picking_type.get_warehouse(&mut env.sudo())?;
+                let return_type: StockPickingType<SingleId> = {
                     let env = &mut *env.sudo();
                     match *picking_type.get_code(env)? {
                         PickingKind::Outgoing => warehouse.get_in_type(env)?,

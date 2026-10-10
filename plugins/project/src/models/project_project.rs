@@ -1,7 +1,7 @@
-use crate::models::project_checklist_item::ChecklistItem;
-use crate::models::project_stage::{BaseProjectStage, Stage};
-use crate::models::project_tag::Tag;
-use crate::models::project_task::{BaseProjectTask, Task};
+use crate::models::project_checklist_item::ProjectChecklistItem;
+use crate::models::project_stage::{BaseProjectStage, ProjectStage};
+use crate::models::project_tag::ProjectTag;
+use crate::models::project_task::{BaseProjectTask, ProjectTask};
 use base::models::{BaseContact, BaseUsers};
 use code_gen::{Model, erp_methods};
 use erp::Result;
@@ -22,7 +22,7 @@ use std::collections::HashMap;
     methods
 )]
 #[allow(dead_code)]
-pub struct Project<Mode: IdMode> {
+pub struct ProjectProject<Mode: IdMode> {
     id: Mode,
     #[erp(tracking, index = "trigram")]
     name: String,
@@ -58,11 +58,11 @@ pub struct Project<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Project<MultipleIds> {
+impl ProjectProject<MultipleIds> {
     /// How many tasks a project holds, and how many of them are done.
     pub fn compute_task_counts(&self, env: &mut Environment) -> Result<()> {
         for project in self {
-            let tasks: Task<MultipleIds> = project.get_tasks(env)?;
+            let tasks: ProjectTask<MultipleIds> = project.get_tasks(env)?;
             let mut closed = 0;
             for task in &tasks {
                 if *task.get_is_closed(env)? {
@@ -99,12 +99,13 @@ impl Project<MultipleIds> {
         sup: Super,
     ) -> Result<MultipleIds> {
         let created = sup.call_with(values, env)?;
-        let projects: Project<MultipleIds> = Project::from_ids(created.get_ids_ref().clone(), env);
+        let projects: ProjectProject<MultipleIds> =
+            ProjectProject::from_ids(created.get_ids_ref().clone(), env);
         for project in &projects {
-            let template: Project<SingleId> = project.get_template(env)?;
-            let stages: Stage<MultipleIds> = project.get_stages(env)?;
+            let template: ProjectProject<SingleId> = project.get_template(env)?;
+            let stages: ProjectStage<MultipleIds> = project.get_stages(env)?;
             if !template.is_empty() && stages.is_empty() {
-                let project: Project<SingleId> = project.as_model();
+                let project: ProjectProject<SingleId> = project.as_model();
                 project.copy_board(env, &template)?;
             }
         }
@@ -112,11 +113,11 @@ impl Project<MultipleIds> {
     }
 }
 
-impl Project<SingleId> {
+impl ProjectProject<SingleId> {
     /// Copy a template's board into the project: its columns, then its tasks — in the matching
     /// columns, with their tags, steps, subtasks and dependencies — and the hours planned.
-    fn copy_board(&self, env: &mut Environment, template: &Project<SingleId>) -> Result<()> {
-        let columns: Stage<MultipleIds> = template.get_stages(env)?;
+    fn copy_board(&self, env: &mut Environment, template: &ProjectProject<SingleId>) -> Result<()> {
+        let columns: ProjectStage<MultipleIds> = template.get_stages(env)?;
         let mut values = Vec::new();
         for column in &columns {
             let mut copy = MapOfFields::default();
@@ -128,7 +129,7 @@ impl Project<SingleId> {
             copy.insert("project", self.get_id());
             values.push(copy);
         }
-        let copies: Stage<MultipleIds> = env.create_new_records_from_maps(values)?;
+        let copies: ProjectStage<MultipleIds> = env.create_new_records_from_maps(values)?;
         let column_of: HashMap<u32, u32> = columns
             .get_ids_ref()
             .iter()
@@ -136,7 +137,7 @@ impl Project<SingleId> {
             .zip(copies.get_ids_ref().iter().copied())
             .collect();
 
-        let tasks: Task<MultipleIds> = template.get_tasks(env)?;
+        let tasks: ProjectTask<MultipleIds> = template.get_tasks(env)?;
         let mut values = Vec::new();
         for task in &tasks {
             let mut copy = MapOfFields::default();
@@ -146,9 +147,9 @@ impl Project<SingleId> {
             copy.insert("priority", *task.get_priority(env)?);
             copy.insert("planned_hours", *task.get_planned_hours(env)?);
             copy.insert_option("description", task.get_description(env)?.cloned());
-            let tags: Tag<MultipleIds> = task.get_tags(env)?;
+            let tags: ProjectTag<MultipleIds> = task.get_tags(env)?;
             copy.insert("tags", FieldType::Refs(tags.get_ids_ref().clone()));
-            let stage: Stage<SingleId> = task.get_stage(env)?;
+            let stage: ProjectStage<SingleId> = task.get_stage(env)?;
             copy.insert_option(
                 "stage",
                 stage
@@ -157,7 +158,7 @@ impl Project<SingleId> {
             );
             values.push(copy);
         }
-        let copies: Task<MultipleIds> = env.create_new_records_from_maps(values)?;
+        let copies: ProjectTask<MultipleIds> = env.create_new_records_from_maps(values)?;
         let task_of: HashMap<u32, u32> = tasks
             .get_ids_ref()
             .iter()
@@ -167,25 +168,25 @@ impl Project<SingleId> {
 
         let mut steps = Vec::new();
         for task in &tasks {
-            let copy: Task<SingleId> = env.get_record(task_of[&task.get_id()].into());
-            let parent: Task<SingleId> = task.get_parent(env)?;
+            let copy: ProjectTask<SingleId> = env.get_record(task_of[&task.get_id()].into());
+            let parent: ProjectTask<SingleId> = task.get_parent(env)?;
             if let Some(parent) = parent
                 .get_optional_id()
                 .and_then(|parent| task_of.get(&parent))
             {
-                let parent: Task<SingleId> = env.get_record((*parent).into());
+                let parent: ProjectTask<SingleId> = env.get_record((*parent).into());
                 copy.set_parent(&parent, env)?;
             }
-            let awaited: Task<MultipleIds> = task.get_depends_on(env)?;
+            let awaited: ProjectTask<MultipleIds> = task.get_depends_on(env)?;
             let awaited: Vec<u32> = awaited
                 .get_ids_ref()
                 .iter()
                 .filter_map(|other| task_of.get(other).copied())
                 .collect();
             if !awaited.is_empty() {
-                copy.set_depends_on(&Task::<MultipleIds>::from_ids(awaited, env), env)?;
+                copy.set_depends_on(&ProjectTask::<MultipleIds>::from_ids(awaited, env), env)?;
             }
-            let checklist: ChecklistItem<MultipleIds> = task.get_checklist(env)?;
+            let checklist: ProjectChecklistItem<MultipleIds> = task.get_checklist(env)?;
             for step in &checklist {
                 let mut values = MapOfFields::default();
                 values.insert("task", copy.get_id());
@@ -194,7 +195,7 @@ impl Project<SingleId> {
                 steps.push(values);
             }
         }
-        let _: ChecklistItem<MultipleIds> = env.create_new_records_from_maps(steps)?;
+        let _: ProjectChecklistItem<MultipleIds> = env.create_new_records_from_maps(steps)?;
         let planned = *template.get_planned_hours(env)?;
         if planned > Decimal::ZERO && self.get_planned_hours(env)?.is_zero() {
             self.set_planned_hours(planned, env)?;

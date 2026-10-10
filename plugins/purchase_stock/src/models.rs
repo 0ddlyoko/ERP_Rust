@@ -5,7 +5,7 @@ mod stock_move;
 mod stock_picking;
 
 pub use product::ProductPurchaseStock;
-pub use purchase_order::{PurchaseOrderStock, ReceiptStatus};
-pub use purchase_order_line::PurchaseOrderLineStock;
-pub use stock_move::StockMovePurchase;
-pub use stock_picking::PickingPurchase;
+pub use purchase_order::{PurchaseOrderPurchaseStock, ReceiptStatus};
+pub use purchase_order_line::PurchaseOrderLinePurchaseStock;
+pub use stock_move::StockMovePurchaseStock;
+pub use stock_picking::StockPickingPurchaseStock;

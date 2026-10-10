@@ -7,7 +7,7 @@ use sale::models::BaseSaleOrder;
 #[erp(id = "project_project")]
 #[erp(derived_model = "project::models")]
 #[allow(dead_code)]
-pub struct ProjectSale<Mode: IdMode> {
+pub struct ProjectProjectSaleProject<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Sales order", ondelete = "set_null", index)]
     sale_order: Reference<BaseSaleOrder, SingleId>,

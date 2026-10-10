@@ -6,7 +6,7 @@ use erp::types::field::{IdMode, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "project_checklist_item", order = "sequence, id")]
 #[allow(dead_code)]
-pub struct ChecklistItem<Mode: IdMode> {
+pub struct ProjectChecklistItem<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade", index)]
     task: Reference<BaseProjectTask, SingleId>,

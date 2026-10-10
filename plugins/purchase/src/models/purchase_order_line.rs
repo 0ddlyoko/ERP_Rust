@@ -1,8 +1,8 @@
 use crate::models::product::{ProductPurchase, billed_on_receipt};
 use crate::models::purchase_order::{BasePurchaseOrder, PurchaseOrder, PurchaseState};
 use account::models::{
-    BaseAccountInvoiceLine, BaseAccountTax, FiscalPosition, InvoiceLine, Move, MoveState, MoveType,
-    ProductAccount, Tax, TaxDocument,
+    AccountFiscalPosition, AccountInvoiceLine, AccountMove, AccountTax, BaseAccountInvoiceLine,
+    BaseAccountTax, MoveState, MoveType, ProductAccount, TaxDocument,
 };
 use account::tax_engine::{self, LineInput};
 use base::models::Contact;
@@ -93,7 +93,7 @@ impl PurchaseOrderLine<SingleId> {
     fn seller(
         &self,
         env: &mut Environment,
-    ) -> Result<Option<crate::models::SupplierInfo<SingleId>>> {
+    ) -> Result<Option<crate::models::ProductSupplierinfo<SingleId>>> {
         let product: Product<SingleId> = self.get_product(env)?;
         let order: PurchaseOrder<SingleId> = self.get_order(env)?;
         if product.is_empty() || order.is_empty() {
@@ -214,15 +214,15 @@ impl PurchaseOrderLine<MultipleIds> {
         for line in self {
             let product: Product<SingleId> = line.get_product(env)?;
             if product.is_empty() {
-                line.set_taxes(&Tax::<MultipleIds>::empty(env), env)?;
+                line.set_taxes(&AccountTax::<MultipleIds>::empty(env), env)?;
                 continue;
             }
             let product: ProductAccount<SingleId> = product.as_model();
-            let taxes: Tax<MultipleIds> = product.get_supplier_taxes(&mut env.sudo())?;
+            let taxes: AccountTax<MultipleIds> = product.get_supplier_taxes(&mut env.sudo())?;
             let order: PurchaseOrder<SingleId> = line.get_order(env)?;
-            let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
+            let position: AccountFiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;
-            let mapped: Tax<MultipleIds> = Tax::from_ids(mapped, env);
+            let mapped: AccountTax<MultipleIds> = AccountTax::from_ids(mapped, env);
             line.set_taxes(&mapped, env)?;
         }
         Ok(())
@@ -239,7 +239,7 @@ impl PurchaseOrderLine<MultipleIds> {
             }
             let currency = order.currency_or_company(env)?;
             let rounding = *currency.get_rounding(&mut env.sudo())?;
-            let taxes: Tax<MultipleIds> = line.get_taxes(env)?;
+            let taxes: AccountTax<MultipleIds> = line.get_taxes(env)?;
             let mut specs = Vec::new();
             for tax in &taxes {
                 specs.push(tax.spec(env, TaxDocument::Invoice)?);
@@ -265,9 +265,9 @@ impl PurchaseOrderLine<MultipleIds> {
             let mut billed = Decimal::ZERO;
             {
                 let env = &mut *env.sudo();
-                let bill_lines: InvoiceLine<MultipleIds> = line.get_bill_lines(env)?;
+                let bill_lines: AccountInvoiceLine<MultipleIds> = line.get_bill_lines(env)?;
                 for bill_line in &bill_lines {
-                    let bill: Move<SingleId> = bill_line.get_move_id(env)?;
+                    let bill: AccountMove<SingleId> = bill_line.get_move_id(env)?;
                     if bill.is_empty() || matches!(*bill.get_state(env)?, MoveState::Cancel) {
                         continue;
                     }

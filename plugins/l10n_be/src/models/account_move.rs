@@ -1,5 +1,5 @@
 use crate::structured::structured_communication;
-use account::models::{Move, MoveType};
+use account::models::{AccountMove, MoveType};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -10,18 +10,18 @@ use erp::types::field::{IdMode, MultipleIds, SingleId};
 #[erp(id = "account_move", methods)]
 #[erp(derived_model = "account::models")]
 #[allow(dead_code)]
-pub struct MoveBe<Mode: IdMode> {
+pub struct AccountMoveL10nBe<Mode: IdMode> {
     id: Mode,
 }
 
 #[erp_methods]
-impl MoveBe<MultipleIds> {
+impl AccountMoveL10nBe<MultipleIds> {
     /// A customer invoice or credit note gets the structured communication of its id; other
     /// entries what accounting gives them.
     pub fn assign_payment_reference(&self, env: &mut Environment, sup: Super) -> Result<()> {
         let mut others = Vec::new();
         for entry in self {
-            let entry: Move<SingleId> = entry.as_model();
+            let entry: AccountMove<SingleId> = entry.as_model();
             let customer = matches!(
                 *entry.get_move_type(env)?,
                 MoveType::OutInvoice | MoveType::OutRefund

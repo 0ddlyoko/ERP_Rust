@@ -28,7 +28,7 @@ pub enum JournalType {
 #[derive(Model)]
 #[erp(id = "account_journal", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct Journal<Mode: IdMode> {
+pub struct AccountJournal<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(
@@ -69,14 +69,14 @@ pub struct Journal<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Journal<SingleId> {
+impl AccountJournal<SingleId> {
     /// The first active journal of a type, empty when there is none.
     pub fn first_of_type(
         env: &mut Environment,
         journal_type: JournalType,
-    ) -> Result<Journal<SingleId>> {
+    ) -> Result<AccountJournal<SingleId>> {
         let env = &mut *env.sudo();
-        let found: Journal<MultipleIds> = env.search_with(
+        let found: AccountJournal<MultipleIds> = env.search_with(
             &make_domain!([("journal_type", "=", journal_type), ("active", "=", true)]),
             &erp_search::SearchOptions::new()
                 .order_by(erp_search::OrderBy::asc("sequence_order"))
@@ -119,7 +119,7 @@ impl Journal<SingleId> {
 }
 
 #[erp_methods]
-impl Journal<MultipleIds> {
+impl AccountJournal<MultipleIds> {
     /// A journal gets its numbering when created without one: `CODE/{year}/00001`, and
     /// `RCODE/{year}/00001` for the credit notes of sales and purchases.
     pub fn create(
@@ -130,7 +130,7 @@ impl Journal<MultipleIds> {
     ) -> Result<MultipleIds> {
         env.savepoint(|env| {
             let ids: MultipleIds = sup.call_with(values, env)?;
-            for journal in Journal::<MultipleIds>::from_ids(ids.clone(), env) {
+            for journal in AccountJournal::<MultipleIds>::from_ids(ids.clone(), env) {
                 let code = journal.get_code(env)?.trim().to_uppercase();
                 let name = journal.get_name(env)?.clone();
                 let numbering: Sequence<SingleId> = journal.get_sequence(env)?;

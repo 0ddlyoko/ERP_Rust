@@ -1,4 +1,4 @@
-use crate::models::stock_location::{BaseStockLocation, Location, LocationUsage};
+use crate::models::stock_location::{BaseStockLocation, LocationUsage, StockLocation};
 use crate::models::stock_warehouse::partner_location;
 use code_gen::{Model, erp_methods};
 use erp::Result;
@@ -13,7 +13,7 @@ use product::models::{BaseProduct, Product};
 #[derive(Model)]
 #[erp(id = "stock_quant", methods)]
 #[allow(dead_code)]
-pub struct Quant<Mode: IdMode> {
+pub struct StockQuant<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     product: Reference<BaseProduct, SingleId>,
@@ -42,11 +42,11 @@ pub struct Quant<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Quant<SingleId> {
+impl StockQuant<SingleId> {
     /// The quant of `product` at `location`, made when there is none.
-    pub fn of(env: &mut Environment, product: u32, location: u32) -> Result<Quant<SingleId>> {
+    pub fn of(env: &mut Environment, product: u32, location: u32) -> Result<StockQuant<SingleId>> {
         let env = &mut *env.sudo();
-        let found: Quant<MultipleIds> = env.search(&make_domain!([
+        let found: StockQuant<MultipleIds> = env.search(&make_domain!([
             ("product", "=", product),
             ("location", "=", location)
         ]))?;
@@ -73,7 +73,7 @@ impl Quant<SingleId> {
         env: &mut Environment,
         product: u32,
         locations: Vec<u32>,
-    ) -> Result<Quant<MultipleIds>> {
+    ) -> Result<StockQuant<MultipleIds>> {
         let env = &mut *env.sudo();
         env.search_with(
             &make_domain!([
@@ -146,7 +146,7 @@ impl Quant<SingleId> {
 }
 
 #[erp_methods]
-impl Quant<MultipleIds> {
+impl StockQuant<MultipleIds> {
     /// One line per product and location: a count entered for a place already holding the
     /// product goes on its line, rather than splitting what is there in two.
     #[erp(check = ["product", "location"])]
@@ -154,7 +154,7 @@ impl Quant<MultipleIds> {
         let env = &mut *env.sudo();
         for quant in self {
             let product: Product<SingleId> = quant.get_product(env)?;
-            let location: Location<SingleId> = quant.get_location(env)?;
+            let location: StockLocation<SingleId> = quant.get_location(env)?;
             let same = env.count(
                 "stock_quant",
                 &make_domain!([
@@ -199,7 +199,7 @@ impl Quant<MultipleIds> {
                     return Err("A counted quantity is not negative".into());
                 }
                 let diff = counted - *quant.get_quantity(env)?;
-                let location: Location<SingleId> = quant.get_location(env)?;
+                let location: StockLocation<SingleId> = quant.get_location(env)?;
                 if !location.is_internal(env)? {
                     return Err("Only stock locations are counted".into());
                 }

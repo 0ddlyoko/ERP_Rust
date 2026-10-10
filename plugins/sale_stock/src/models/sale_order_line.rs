@@ -7,7 +7,7 @@ use stock::models::BaseStockMove;
 #[erp(id = "sale_order_line")]
 #[erp(derived_model = "sale::models")]
 #[allow(dead_code)]
-pub struct SaleOrderLineStock<Mode: IdMode> {
+pub struct SaleOrderLineSaleStock<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Stock moves", inverse = "sale_line")]
     moves: Reference<BaseStockMove, MultipleIds>,

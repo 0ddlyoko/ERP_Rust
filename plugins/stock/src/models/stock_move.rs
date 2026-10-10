@@ -1,8 +1,8 @@
 use crate::models::product_category::{ProductCategoryStock, StockCostMethod};
-use crate::models::stock_location::{BaseStockLocation, Location};
-use crate::models::stock_picking::{BaseStockPicking, Picking};
-use crate::models::stock_quant::Quant;
-use crate::models::stock_valuation_layer::ValuationLayer;
+use crate::models::stock_location::{BaseStockLocation, StockLocation};
+use crate::models::stock_picking::{BaseStockPicking, StockPicking};
+use crate::models::stock_quant::StockQuant;
+use crate::models::stock_valuation_layer::StockValuationLayer;
 use crate::valuation::{self, CostMethod, Layer};
 use code_gen::{Model, erp_methods, selection};
 use currency::models::Currency;
@@ -120,7 +120,7 @@ impl StockMove<SingleId> {
         if self.is_status(env, MoveStatus::Done)? || self.is_status(env, MoveStatus::Cancel)? {
             return Ok(());
         }
-        let source: Location<SingleId> = self.get_location(env)?;
+        let source: StockLocation<SingleId> = self.get_location(env)?;
         let demand = *self.get_product_uom_qty(env)?;
         if !source.is_internal(env)? {
             self.set_state(MoveStatus::Assigned, env)?;
@@ -130,7 +130,7 @@ impl StockMove<SingleId> {
         let product: Product<SingleId> = self.get_product(env)?;
         let locations = source.and_below(env)?;
         let reserved = if needed > Decimal::ZERO {
-            Quant::reserve(env, product.get_id(), locations, needed)?
+            StockQuant::reserve(env, product.get_id(), locations, needed)?
         } else {
             Decimal::ZERO
         };
@@ -153,10 +153,10 @@ impl StockMove<SingleId> {
         if reserved.is_zero() {
             return Ok(());
         }
-        let source: Location<SingleId> = self.get_location(env)?;
+        let source: StockLocation<SingleId> = self.get_location(env)?;
         let product: Product<SingleId> = self.get_product(env)?;
         let locations = source.and_below(env)?;
-        Quant::unreserve(env, product.get_id(), locations, reserved)?;
+        StockQuant::unreserve(env, product.get_id(), locations, reserved)?;
         self.set_reserved_quantity(Decimal::ZERO, env)
     }
 
@@ -177,14 +177,14 @@ impl StockMove<SingleId> {
         }
         let quantity = self.to_product_quantity(env, done)?;
         let product: Product<SingleId> = self.get_product(env)?;
-        let source: Location<SingleId> = self.get_location(env)?;
-        let destination: Location<SingleId> = self.get_location_dest(env)?;
+        let source: StockLocation<SingleId> = self.get_location(env)?;
+        let destination: StockLocation<SingleId> = self.get_location_dest(env)?;
         let from_stock = source.is_internal(env)?;
         let to_stock = destination.is_internal(env)?;
         self.unreserve(env)?;
         if from_stock && quantity > Decimal::ZERO {
             let locations = source.and_below(env)?;
-            let available = Quant::available(env, product.get_id(), locations.clone())?;
+            let available = StockQuant::available(env, product.get_id(), locations.clone())?;
             if available < quantity {
                 let name = product.get_display_name(&mut env.sudo())?.clone();
                 let location = source.get_complete_name(&mut env.sudo())?.clone();
@@ -196,7 +196,7 @@ impl StockMove<SingleId> {
             self.take_from(env, product.get_id(), locations, quantity)?;
         }
         if to_stock && quantity > Decimal::ZERO {
-            Quant::add(env, product.get_id(), destination.get_id(), quantity)?;
+            StockQuant::add(env, product.get_id(), destination.get_id(), quantity)?;
         }
         let value = match (from_stock, to_stock) {
             (false, true) => self.value_in(env, product, quantity)?,
@@ -219,7 +219,7 @@ impl StockMove<SingleId> {
         locations: Vec<u32>,
         quantity: Decimal,
     ) -> Result<()> {
-        let quants = Quant::at(env, product, locations)?;
+        let quants = StockQuant::at(env, product, locations)?;
         let env = &mut *env.sudo();
         let mut left = quantity;
         for quant in &quants {
@@ -277,13 +277,13 @@ impl StockMove<SingleId> {
         let unit_cost = if given.is_zero() { standard } else { given };
         let value = valuation::incoming_value(method, quantity, unit_cost, standard, rounding);
         if method == CostMethod::Average {
-            let on_hand = ValuationLayer::quantity_of(env, product.get_id())?;
+            let on_hand = StockValuationLayer::quantity_of(env, product.get_id())?;
             let average = valuation::new_average(on_hand, standard, quantity, unit_cost);
             product.set_standard_price(average, env)?;
         }
-        ValuationLayer::record(env, product.get_id(), self.get_id(), quantity, value, true)?;
+        StockValuationLayer::record(env, product.get_id(), self.get_id(), quantity, value, true)?;
         if method == CostMethod::Fifo {
-            ValuationLayer::refresh_fifo_cost(env, product.get_id())?;
+            StockValuationLayer::refresh_fifo_cost(env, product.get_id())?;
         }
         Ok(value)
     }
@@ -301,18 +301,18 @@ impl StockMove<SingleId> {
         let standard = *product.get_standard_price(env)?;
         let value = match method {
             CostMethod::Fifo => {
-                let layers = ValuationLayer::open_layers(env, product.get_id())?;
+                let layers = StockValuationLayer::open_layers(env, product.get_id())?;
                 let open: Vec<Layer> = layers.iter().map(|(layer, _)| *layer).collect();
                 let (value, taken) = valuation::fifo_out(&open, quantity, standard, rounding);
                 for (id, taken_quantity, taken_value) in taken {
-                    ValuationLayer::consume(env, id, taken_quantity, taken_value)?;
+                    StockValuationLayer::consume(env, id, taken_quantity, taken_value)?;
                 }
                 value
             }
             _ => {
                 // The whole of what is left leaves at what is left of its value: no cent strays.
-                let on_hand = ValuationLayer::quantity_of(env, product.get_id())?;
-                let stock_value = ValuationLayer::value_of(env, product.get_id())?;
+                let on_hand = StockValuationLayer::quantity_of(env, product.get_id())?;
+                let stock_value = StockValuationLayer::value_of(env, product.get_id())?;
                 if method == CostMethod::Average && on_hand == quantity && on_hand > Decimal::ZERO {
                     stock_value
                 } else {
@@ -320,7 +320,7 @@ impl StockMove<SingleId> {
                 }
             }
         };
-        ValuationLayer::record(
+        StockValuationLayer::record(
             env,
             product.get_id(),
             self.get_id(),
@@ -329,7 +329,7 @@ impl StockMove<SingleId> {
             false,
         )?;
         if method == CostMethod::Fifo {
-            ValuationLayer::refresh_fifo_cost(env, product.get_id())?;
+            StockValuationLayer::refresh_fifo_cost(env, product.get_id())?;
         }
         Ok(value)
     }
@@ -340,8 +340,8 @@ impl StockMove<MultipleIds> {
     /// Where the transfer comes from.
     pub fn compute_location(&self, env: &mut Environment) -> Result<()> {
         for stock_move in self {
-            let picking: Picking<SingleId> = stock_move.get_picking(env)?;
-            let source: Location<SingleId> = if picking.is_empty() {
+            let picking: StockPicking<SingleId> = stock_move.get_picking(env)?;
+            let source: StockLocation<SingleId> = if picking.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 picking.get_location(env)?
@@ -354,8 +354,8 @@ impl StockMove<MultipleIds> {
     /// Where the transfer goes.
     pub fn compute_location_dest(&self, env: &mut Environment) -> Result<()> {
         for stock_move in self {
-            let picking: Picking<SingleId> = stock_move.get_picking(env)?;
-            let destination: Location<SingleId> = if picking.is_empty() {
+            let picking: StockPicking<SingleId> = stock_move.get_picking(env)?;
+            let destination: StockLocation<SingleId> = if picking.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 picking.get_location_dest(env)?

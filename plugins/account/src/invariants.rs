@@ -3,7 +3,9 @@
 //!
 //! Tests run these after every scenario booking entries; a broken invariant names the entry.
 
-use crate::models::{InvoiceLine, LineKind, Move, MoveLine, MoveState, Tax, TaxDocument};
+use crate::models::{
+    AccountInvoiceLine, AccountMove, AccountMoveLine, AccountTax, LineKind, MoveState, TaxDocument,
+};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, MultipleIds, SingleId};
@@ -13,7 +15,7 @@ use std::collections::BTreeMap;
 /// Every posted entry balances, and so do all of them together.
 pub fn check_balanced(env: &mut Environment) -> Result<()> {
     let env = &mut *env.sudo();
-    let entries: Move<MultipleIds> =
+    let entries: AccountMove<MultipleIds> =
         env.search(&make_domain!([("state", "=", MoveState::Posted)]))?;
     let mut debit_all = Decimal::ZERO;
     let mut credit_all = Decimal::ZERO;
@@ -29,7 +31,7 @@ pub fn check_balanced(env: &mut Environment) -> Result<()> {
         debit_all += debit;
         credit_all += credit;
     }
-    let lines: MoveLine<MultipleIds> =
+    let lines: AccountMoveLine<MultipleIds> =
         env.search(&make_domain!([("parent_state", "=", MoveState::Posted)]))?;
     let balance: Decimal = lines.sum(env, |line, env| Ok(*line.get_balance(env)?))?;
     if debit_all != credit_all || !balance.is_zero() {
@@ -45,7 +47,7 @@ pub fn check_balanced(env: &mut Environment) -> Result<()> {
 /// items in the invoice's currency add up to the shares the engine computes.
 pub fn check_invoice_taxes(env: &mut Environment) -> Result<()> {
     let env = &mut *env.sudo();
-    let entries: Move<MultipleIds> =
+    let entries: AccountMove<MultipleIds> =
         env.search(&make_domain!([("state", "=", MoveState::Posted)]))?;
     for entry in &entries {
         let move_type = *entry.get_move_type(env)?;
@@ -58,7 +60,7 @@ pub fn check_invoice_taxes(env: &mut Environment) -> Result<()> {
             TaxDocument::Invoice
         };
         let mut expected: BTreeMap<u32, Decimal> = BTreeMap::new();
-        let lines: InvoiceLine<MultipleIds> = entry.get_invoice_lines(env)?;
+        let lines: AccountInvoiceLine<MultipleIds> = entry.get_invoice_lines(env)?;
         for line in &lines {
             for tax in line.taxed(env, document)?.taxes {
                 let shares: Decimal = tax.shares.iter().map(|(_, share)| share.abs()).sum();
@@ -66,10 +68,10 @@ pub fn check_invoice_taxes(env: &mut Environment) -> Result<()> {
             }
         }
         let mut booked: BTreeMap<u32, Decimal> = BTreeMap::new();
-        let items: MoveLine<MultipleIds> = entry.get_lines(env)?;
+        let items: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
         for item in &items {
             if matches!(*item.get_display_type(env)?, LineKind::Tax) {
-                let tax: Tax<SingleId> = item.get_tax_line(env)?;
+                let tax: AccountTax<SingleId> = item.get_tax_line(env)?;
                 *booked.entry(tax.get_id()).or_default() += item.get_amount_currency(env)?.abs();
             }
         }

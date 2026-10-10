@@ -1,5 +1,5 @@
 use crate::models::account::{Account, BaseAccount};
-use crate::models::account_journal::{BaseAccountJournal, Journal};
+use crate::models::account_journal::{AccountJournal, BaseAccountJournal};
 use crate::models::account_tax::BaseAccountTax;
 use base::models::Company;
 use code_gen::{Model, erp_methods};
@@ -71,7 +71,7 @@ impl CompanyAccount<SingleId> {
     }
 
     /// The journal exchange differences are recorded in.
-    pub fn exchange_journal(&self, env: &mut Environment) -> Result<Journal<SingleId>> {
+    pub fn exchange_journal(&self, env: &mut Environment) -> Result<AccountJournal<SingleId>> {
         self.get_journal_exchange(&mut env.sudo())
     }
 

@@ -4,7 +4,7 @@ use erp_types::model::MapOfFields;
 use std::collections::HashMap;
 use std::error::Error;
 use test_plugin::TestPlugin;
-use test_plugin::models::sale_order_test::{SaleOrderTest, SaleOrderTest2};
+use test_plugin::models::sale_order_test::{SaleOrderTest, SaleOrderTestTestPlugin};
 use test_utilities::TestLibPlugin;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -222,7 +222,7 @@ fn test_a_compute_chain_does_not_depend_on_the_struct_called_from() -> Result<()
     map.insert("name", "direct");
     let ids = env.create_records("sale_order_test", vec![map])?;
 
-    let record: SaleOrderTest2<MultipleIds> = env.get_record(ids.clone());
+    let record: SaleOrderTestTestPlugin<MultipleIds> = env.get_record(ids.clone());
     record.compute_label(&mut env)?;
 
     let rows = env.read("sale_order_test", &ids, &["label"])?;

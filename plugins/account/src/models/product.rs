@@ -1,5 +1,5 @@
 use crate::models::account::BaseAccount;
-use crate::models::account_tax::{BaseAccountTax, Tax};
+use crate::models::account_tax::{AccountTax, BaseAccountTax};
 use crate::models::company::CompanyAccount;
 use code_gen::{Model, erp_methods};
 use erp::Result;
@@ -40,8 +40,8 @@ impl ProductAccount<MultipleIds> {
             if company.is_empty() {
                 (None, None)
             } else {
-                let sale: Tax<SingleId> = company.get_sale_tax(env)?;
-                let purchase: Tax<SingleId> = company.get_purchase_tax(env)?;
+                let sale: AccountTax<SingleId> = company.get_sale_tax(env)?;
+                let purchase: AccountTax<SingleId> = company.get_purchase_tax(env)?;
                 (sale.get_optional_id(), purchase.get_optional_id())
             }
         };

@@ -1,4 +1,6 @@
-use crate::models::account_bank_statement_line::{BankStatementLine, BaseAccountBankStatementLine};
+use crate::models::account_bank_statement_line::{
+    AccountBankStatementLine, BaseAccountBankStatementLine,
+};
 use crate::models::account_journal::BaseAccountJournal;
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
@@ -18,7 +20,7 @@ pub enum StatementState {
 #[derive(Model)]
 #[erp(id = "account_bank_statement", order = "date desc, id desc", methods)]
 #[allow(dead_code)]
-pub struct BankStatement<Mode: IdMode> {
+pub struct AccountBankStatement<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Reference", index = "trigram")]
     name: String,
@@ -48,10 +50,10 @@ pub struct BankStatement<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl BankStatement<MultipleIds> {
+impl AccountBankStatement<MultipleIds> {
     pub fn compute_balance_end(&self, env: &mut Environment) -> Result<()> {
         for statement in self {
-            let lines: BankStatementLine<MultipleIds> = statement.get_lines(env)?;
+            let lines: AccountBankStatementLine<MultipleIds> = statement.get_lines(env)?;
             let moved: Decimal = lines.get_amount(env)?.into_iter().copied().sum();
             let end = *statement.get_balance_start(env)? + moved;
             statement.set_balance_end(end, env)?;
@@ -65,7 +67,7 @@ impl BankStatement<MultipleIds> {
     pub fn action_validate(&self, env: &mut Environment) -> Result<bool> {
         env.savepoint(|env| {
             for statement in self {
-                let lines: BankStatementLine<MultipleIds> = statement.get_lines(env)?;
+                let lines: AccountBankStatementLine<MultipleIds> = statement.get_lines(env)?;
                 for line in &lines {
                     if !*line.get_is_reconciled(env)? {
                         line.reconcile_one(env)?;

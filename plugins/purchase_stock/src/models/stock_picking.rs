@@ -1,31 +1,31 @@
-use crate::models::stock_move::StockMovePurchase;
+use crate::models::stock_move::StockMovePurchaseStock;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
 use erp::types::field::{Decimal, IdMode, MultipleIds, SingleId};
 use erp_search_code_gen::make_domain;
 use purchase::models::PurchaseOrderLine;
-use stock::models::{Location, MoveStatus, Picking, StockMove};
+use stock::models::{MoveStatus, StockLocation, StockMove, StockPicking};
 
 /// Receipts done count on their orders' lines.
 #[derive(Model)]
 #[erp(id = "stock_picking", methods)]
 #[erp(derived_model = "stock::models")]
 #[allow(dead_code)]
-pub struct PickingPurchase<Mode: IdMode> {
+pub struct StockPickingPurchaseStock<Mode: IdMode> {
     id: Mode,
 }
 
 #[erp_methods]
-impl PickingPurchase<MultipleIds> {
+impl StockPickingPurchaseStock<MultipleIds> {
     /// Each order line received by these transfers counts what its moves brought into stock,
     /// less what went back.
     pub fn on_done(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         let env = &mut *env.sudo();
-        let pickings: Picking<MultipleIds> = self.as_model();
+        let pickings: StockPicking<MultipleIds> = self.as_model();
         let moves: StockMove<MultipleIds> = pickings.get_moves(env)?;
-        let moves: StockMovePurchase<MultipleIds> = moves.as_model();
+        let moves: StockMovePurchaseStock<MultipleIds> = moves.as_model();
         let lines: PurchaseOrderLine<MultipleIds> = moves.get_purchase_line(env)?;
         for line in &lines {
             let received = received_quantity(env, line.get_id())?;
@@ -44,8 +44,8 @@ fn received_quantity(env: &mut Environment, line: u32) -> Result<Decimal> {
     ]))?;
     let mut received = Decimal::ZERO;
     for stock_move in &moves {
-        let source: Location<SingleId> = stock_move.get_location(env)?;
-        let destination: Location<SingleId> = stock_move.get_location_dest(env)?;
+        let source: StockLocation<SingleId> = stock_move.get_location(env)?;
+        let destination: StockLocation<SingleId> = stock_move.get_location_dest(env)?;
         let quantity = *stock_move.get_quantity(env)?;
         if !source.is_internal(env)? && destination.is_internal(env)? {
             received += quantity;

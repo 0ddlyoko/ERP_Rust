@@ -1,7 +1,7 @@
 use crate::models::purchase_order_line::{BasePurchaseOrderLine, BillStatus, PurchaseOrderLine};
 use account::models::{
-    BaseAccountFiscalPosition, BaseAccountMove, BaseAccountPaymentTerm, ContactAccount,
-    FiscalPosition, Move, MoveState, PaymentTerm,
+    AccountFiscalPosition, AccountMove, AccountPaymentTerm, BaseAccountFiscalPosition,
+    BaseAccountMove, BaseAccountPaymentTerm, ContactAccount, MoveState,
 };
 use base::models::{BaseContact, BaseUsers, Contact};
 use code_gen::{Model, erp_methods, selection};
@@ -128,7 +128,7 @@ impl PurchaseOrder<SingleId> {
 
     /// The vendor bill of what is left to bill on the order: a draft, or a vendor credit note
     /// when more was billed than is due now. Empty when there is nothing to bill.
-    pub fn create_bill(&self, env: &mut Environment) -> Result<Move<SingleId>> {
+    pub fn create_bill(&self, env: &mut Environment) -> Result<AccountMove<SingleId>> {
         if !self.is_state(env, PurchaseState::Purchase)? {
             return Err(format!(
                 "{} is not confirmed: confirm it before billing",
@@ -166,7 +166,7 @@ impl PurchaseOrder<SingleId> {
             }
             values.insert("price_unit", *line.get_price_unit(env)?);
             values.insert("discount", *line.get_discount(env)?);
-            let taxes: account::models::Tax<MultipleIds> = line.get_taxes(env)?;
+            let taxes: account::models::AccountTax<MultipleIds> = line.get_taxes(env)?;
             values.insert("taxes", FieldType::Refs(taxes.get_ids_ref().clone()));
             values.insert("purchase_lines", FieldType::Refs(vec![line.get_id()]));
             values.insert("sequence", *line.get_sequence(env)?);
@@ -182,11 +182,11 @@ impl PurchaseOrder<SingleId> {
             .cloned()
             .unwrap_or(self.get_name(env)?.clone());
         bill.insert("reference", reference);
-        let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
+        let term: AccountPaymentTerm<SingleId> = self.get_payment_term(env)?;
         if let Some(term) = term.get_optional_id() {
             bill.insert("payment_term", term);
         }
-        let position: FiscalPosition<SingleId> = self.get_fiscal_position(env)?;
+        let position: AccountFiscalPosition<SingleId> = self.get_fiscal_position(env)?;
         if let Some(position) = position.get_optional_id() {
             bill.insert("fiscal_position", position);
         }
@@ -204,7 +204,7 @@ impl PurchaseOrder<MultipleIds> {
     pub fn compute_payment_term(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let partner: Contact<SingleId> = order.get_partner(env)?;
-            let term: PaymentTerm<SingleId> = if partner.is_empty() {
+            let term: AccountPaymentTerm<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
@@ -219,7 +219,7 @@ impl PurchaseOrder<MultipleIds> {
     pub fn compute_fiscal_position(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let partner: Contact<SingleId> = order.get_partner(env)?;
-            let position: FiscalPosition<SingleId> = if partner.is_empty() {
+            let position: AccountFiscalPosition<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
@@ -276,9 +276,9 @@ impl PurchaseOrder<MultipleIds> {
         for order in self {
             let lines: PurchaseOrderLine<MultipleIds> = order.get_lines(env)?;
             let env = &mut *env.sudo();
-            let bill_lines: account::models::InvoiceLine<MultipleIds> =
+            let bill_lines: account::models::AccountInvoiceLine<MultipleIds> =
                 lines.get_bill_lines(env)?;
-            let bills: Move<MultipleIds> = bill_lines.get_move_id(env)?;
+            let bills: AccountMove<MultipleIds> = bill_lines.get_move_id(env)?;
             order.set_bills(&bills, env)?;
         }
         Ok(())
@@ -411,7 +411,7 @@ impl PurchaseOrder<MultipleIds> {
     pub fn button_cancel(&self, env: &mut Environment) -> Result<bool> {
         env.savepoint(|env| {
             for order in self {
-                let bills: Move<MultipleIds> = order.get_bills(env)?;
+                let bills: AccountMove<MultipleIds> = order.get_bills(env)?;
                 let mut drafts = Vec::new();
                 for bill in &bills {
                     let state = *bill.get_state(&mut env.sudo())?;
@@ -429,7 +429,7 @@ impl PurchaseOrder<MultipleIds> {
                     }
                 }
                 if !drafts.is_empty() {
-                    Move::<MultipleIds>::from_ids(drafts, env).button_cancel(env)?;
+                    AccountMove::<MultipleIds>::from_ids(drafts, env).button_cancel(env)?;
                 }
                 order.set_state(PurchaseState::Cancel, env)?;
                 Self::from_ids(vec![order.get_id()], env).on_cancelled(env)?;

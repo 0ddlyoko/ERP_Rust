@@ -15,7 +15,7 @@ pub enum PaymentTermValue {
 #[derive(Model)]
 #[erp(id = "account_payment_term_line", order = "sequence, id")]
 #[allow(dead_code)]
-pub struct PaymentTermLine<Mode: IdMode> {
+pub struct AccountPaymentTermLine<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     term: Reference<BaseAccountPaymentTerm, SingleId>,

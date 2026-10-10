@@ -7,7 +7,7 @@ use erp::types::field::{IdMode, Reference, SingleId};
 #[erp(id = "product_category")]
 #[erp(derived_model = "product::models")]
 #[allow(dead_code)]
-pub struct ProductCategoryValuation<Mode: IdMode> {
+pub struct ProductCategoryStockAccount<Mode: IdMode> {
     id: Mode,
     #[erp(
         label = "Stock valuation account",

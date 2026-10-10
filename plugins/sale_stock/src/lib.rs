@@ -26,10 +26,10 @@ impl Plugin for SaleStockPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::StockMoveSale<_>>();
-        model_manager.register_model::<models::SaleOrderLineStock<_>>();
-        model_manager.register_model::<models::SaleOrderStock<_>>();
-        model_manager.register_model::<models::PickingSale<_>>();
+        model_manager.register_model::<models::StockMoveSaleStock<_>>();
+        model_manager.register_model::<models::SaleOrderLineSaleStock<_>>();
+        model_manager.register_model::<models::SaleOrderSaleStock<_>>();
+        model_manager.register_model::<models::StockPickingSaleStock<_>>();
         model_manager.register_model::<models::ProductSaleStock<_>>();
     }
 

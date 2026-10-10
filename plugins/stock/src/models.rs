@@ -10,10 +10,10 @@ mod stock_warehouse;
 
 pub use product::ProductStock;
 pub use product_category::{ProductCategoryStock, StockCostMethod};
-pub use stock_location::{BaseStockLocation, Location, LocationUsage};
+pub use stock_location::{BaseStockLocation, LocationUsage, StockLocation};
 pub use stock_move::{BaseStockMove, MoveStatus, StockMove};
-pub use stock_picking::{BaseStockPicking, Picking, PickingState};
-pub use stock_picking_type::{BaseStockPickingType, PickingKind, PickingType};
-pub use stock_quant::{BaseStockQuant, Quant};
-pub use stock_valuation_layer::{BaseStockValuationLayer, ValuationLayer};
-pub use stock_warehouse::{BaseStockWarehouse, Warehouse, partner_location};
+pub use stock_picking::{BaseStockPicking, PickingState, StockPicking};
+pub use stock_picking_type::{BaseStockPickingType, PickingKind, StockPickingType};
+pub use stock_quant::{BaseStockQuant, StockQuant};
+pub use stock_valuation_layer::{BaseStockValuationLayer, StockValuationLayer};
+pub use stock_warehouse::{BaseStockWarehouse, StockWarehouse, partner_location};

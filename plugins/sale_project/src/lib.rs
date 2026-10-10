@@ -27,12 +27,12 @@ impl Plugin for SaleProjectPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::ProductProject<_>>();
-        model_manager.register_model::<models::ProjectSale<_>>();
-        model_manager.register_model::<models::TaskSale<_>>();
-        model_manager.register_model::<models::SaleOrderLineProject<_>>();
-        model_manager.register_model::<models::SaleOrderProject<_>>();
-        model_manager.register_model::<models::TimesheetSale<_>>();
+        model_manager.register_model::<models::ProductSaleProject<_>>();
+        model_manager.register_model::<models::ProjectProjectSaleProject<_>>();
+        model_manager.register_model::<models::ProjectTaskSaleProject<_>>();
+        model_manager.register_model::<models::SaleOrderLineSaleProject<_>>();
+        model_manager.register_model::<models::SaleOrderSaleProject<_>>();
+        model_manager.register_model::<models::TimesheetSaleProject<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {

@@ -31,7 +31,7 @@ pub enum LocationUsage {
     methods
 )]
 #[allow(dead_code)]
-pub struct Location<Mode: IdMode> {
+pub struct StockLocation<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(label = "Parent location", ondelete = "restrict")]
@@ -53,7 +53,7 @@ pub struct Location<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Location<SingleId> {
+impl StockLocation<SingleId> {
     /// Whether goods here are the company's stock.
     pub fn is_internal(&self, env: &mut Environment) -> Result<bool> {
         if self.is_empty() {
@@ -69,8 +69,8 @@ impl Location<SingleId> {
         let mut found = vec![self.get_id()];
         let mut index = 0;
         while index < found.len() {
-            let location: Location<SingleId> = env.get_record(found[index].into());
-            let children: Location<MultipleIds> = location.get_children(env)?;
+            let location: StockLocation<SingleId> = env.get_record(found[index].into());
+            let children: StockLocation<MultipleIds> = location.get_children(env)?;
             for child in children.get_ids_ref() {
                 if !found.contains(child) {
                     found.push(*child);
@@ -83,12 +83,12 @@ impl Location<SingleId> {
 }
 
 #[erp_methods]
-impl Location<MultipleIds> {
+impl StockLocation<MultipleIds> {
     /// `WH/Stock/Shelf 1`: the names from the top down.
     pub fn compute_complete_name(&self, env: &mut Environment) -> Result<()> {
         for location in self {
             let name = location.get_name(env)?.clone();
-            let parent: Location<SingleId> = location.get_parent(env)?;
+            let parent: StockLocation<SingleId> = location.get_parent(env)?;
             let complete = if parent.is_empty() {
                 name
             } else {
@@ -104,7 +104,7 @@ impl Location<MultipleIds> {
             sup.call_with(values, env)?;
             for location in self {
                 let mut seen = vec![location.get_id()];
-                let mut parent: Location<SingleId> = location.get_parent(env)?;
+                let mut parent: StockLocation<SingleId> = location.get_parent(env)?;
                 while !parent.is_empty() {
                     if seen.contains(&parent.get_id()) {
                         let name = location.get_name(env)?.clone();

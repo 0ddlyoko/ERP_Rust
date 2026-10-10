@@ -1,9 +1,11 @@
 use crate::models::account::Account;
 use crate::models::account_fiscal_position_account::{
-    BaseAccountFiscalPositionAccount, FiscalPositionAccount,
+    AccountFiscalPositionAccount, BaseAccountFiscalPositionAccount,
 };
-use crate::models::account_fiscal_position_tax::{BaseAccountFiscalPositionTax, FiscalPositionTax};
-use crate::models::account_tax::Tax;
+use crate::models::account_fiscal_position_tax::{
+    AccountFiscalPositionTax, BaseAccountFiscalPositionTax,
+};
+use crate::models::account_tax::AccountTax;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -14,7 +16,7 @@ use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
 #[derive(Model)]
 #[erp(id = "account_fiscal_position", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct FiscalPosition<Mode: IdMode> {
+pub struct AccountFiscalPosition<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(label = "Legal mention on invoices")]
@@ -30,7 +32,7 @@ pub struct FiscalPosition<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl FiscalPosition<SingleId> {
+impl AccountFiscalPosition<SingleId> {
     /// `taxes` as they apply under this position: each mapped tax replaced, a tax mapped to
     /// none dropped, the others kept. No position keeps them all.
     pub fn map_taxes(&self, env: &mut Environment, taxes: Vec<u32>) -> Result<Vec<u32>> {
@@ -38,11 +40,11 @@ impl FiscalPosition<SingleId> {
             return Ok(taxes.to_vec());
         }
         let env = &mut *env.sudo();
-        let mappings: FiscalPositionTax<MultipleIds> = self.get_tax_mappings(env)?;
+        let mappings: AccountFiscalPositionTax<MultipleIds> = self.get_tax_mappings(env)?;
         let mut rows = Vec::new();
         for mapping in &mappings {
-            let source: Tax<SingleId> = mapping.get_tax_src(env)?;
-            let destination: Tax<SingleId> = mapping.get_tax_dest(env)?;
+            let source: AccountTax<SingleId> = mapping.get_tax_src(env)?;
+            let destination: AccountTax<SingleId> = mapping.get_tax_dest(env)?;
             rows.push((source.get_id(), destination.get_optional_id()));
         }
         let mut mapped = Vec::new();
@@ -72,7 +74,7 @@ impl FiscalPosition<SingleId> {
             return Ok(account);
         }
         let env = &mut *env.sudo();
-        let mappings: FiscalPositionAccount<MultipleIds> = self.get_account_mappings(env)?;
+        let mappings: AccountFiscalPositionAccount<MultipleIds> = self.get_account_mappings(env)?;
         for mapping in &mappings {
             let source: Account<SingleId> = mapping.get_account_src(env)?;
             if source.get_id() == account.get_id() {

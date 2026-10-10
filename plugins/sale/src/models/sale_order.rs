@@ -1,9 +1,9 @@
 use crate::models::contact::ContactSale;
-use crate::models::product_pricelist::{BaseProductPricelist, Pricelist};
+use crate::models::product_pricelist::{BaseProductPricelist, ProductPricelist};
 use crate::models::sale_order_line::{BaseSaleOrderLine, InvoiceStatus, SaleOrderLine};
 use account::models::{
-    BaseAccountFiscalPosition, BaseAccountMove, BaseAccountPaymentTerm, ContactAccount,
-    FiscalPosition, Move, MoveState, PaymentTerm,
+    AccountFiscalPosition, AccountMove, AccountPaymentTerm, BaseAccountFiscalPosition,
+    BaseAccountMove, BaseAccountPaymentTerm, ContactAccount, MoveState,
 };
 use base::models::{BaseContact, BaseUsers, Contact};
 use code_gen::{Model, erp_methods, selection};
@@ -149,7 +149,7 @@ impl SaleOrder<SingleId> {
 
     /// The invoice of what is left to invoice on the order: a draft, or a credit note when more
     /// was invoiced than is due now. Empty when there is nothing to invoice.
-    pub fn create_invoice(&self, env: &mut Environment) -> Result<Move<SingleId>> {
+    pub fn create_invoice(&self, env: &mut Environment) -> Result<AccountMove<SingleId>> {
         if !self.is_state(env, SaleState::Sale)? {
             return Err(format!(
                 "{} is not confirmed: confirm it before invoicing",
@@ -187,7 +187,7 @@ impl SaleOrder<SingleId> {
             }
             values.insert("price_unit", *line.get_price_unit(env)?);
             values.insert("discount", *line.get_discount(env)?);
-            let taxes: account::models::Tax<MultipleIds> = line.get_taxes(env)?;
+            let taxes: account::models::AccountTax<MultipleIds> = line.get_taxes(env)?;
             values.insert("taxes", FieldType::Refs(taxes.get_ids_ref().clone()));
             values.insert("sale_lines", FieldType::Refs(vec![line.get_id()]));
             values.insert("sequence", *line.get_sequence(env)?);
@@ -206,11 +206,11 @@ impl SaleOrder<SingleId> {
             .cloned()
             .unwrap_or(self.get_name(env)?.clone());
         invoice.insert("reference", reference);
-        let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
+        let term: AccountPaymentTerm<SingleId> = self.get_payment_term(env)?;
         if let Some(term) = term.get_optional_id() {
             invoice.insert("payment_term", term);
         }
-        let position: FiscalPosition<SingleId> = self.get_fiscal_position(env)?;
+        let position: AccountFiscalPosition<SingleId> = self.get_fiscal_position(env)?;
         if let Some(position) = position.get_optional_id() {
             invoice.insert("fiscal_position", position);
         }
@@ -238,7 +238,7 @@ impl SaleOrder<MultipleIds> {
     pub fn compute_pricelist(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let partner: Contact<SingleId> = order.get_partner(env)?;
-            let pricelist: Pricelist<SingleId> = if partner.is_empty() {
+            let pricelist: ProductPricelist<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactSale<SingleId> = partner.as_model();
@@ -253,7 +253,7 @@ impl SaleOrder<MultipleIds> {
     pub fn compute_payment_term(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let partner: Contact<SingleId> = order.get_partner(env)?;
-            let term: PaymentTerm<SingleId> = if partner.is_empty() {
+            let term: AccountPaymentTerm<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
@@ -268,7 +268,7 @@ impl SaleOrder<MultipleIds> {
     pub fn compute_fiscal_position(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let partner: Contact<SingleId> = order.get_partner(env)?;
-            let position: FiscalPosition<SingleId> = if partner.is_empty() {
+            let position: AccountFiscalPosition<SingleId> = if partner.is_empty() {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
@@ -282,7 +282,7 @@ impl SaleOrder<MultipleIds> {
     /// The pricelist's currency, else the company's.
     pub fn compute_currency(&self, env: &mut Environment) -> Result<()> {
         for order in self {
-            let pricelist: Pricelist<SingleId> = order.get_pricelist(env)?;
+            let pricelist: ProductPricelist<SingleId> = order.get_pricelist(env)?;
             let mut currency: Currency<SingleId> = env.get_record(SingleId::empty());
             if !pricelist.is_empty() {
                 currency = pricelist.get_currency(&mut env.sudo())?;
@@ -344,9 +344,9 @@ impl SaleOrder<MultipleIds> {
         for order in self {
             let lines: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
             let env = &mut *env.sudo();
-            let invoice_lines: account::models::InvoiceLine<MultipleIds> =
+            let invoice_lines: account::models::AccountInvoiceLine<MultipleIds> =
                 lines.get_invoice_lines(env)?;
-            let invoices: Move<MultipleIds> = invoice_lines.get_move_id(env)?;
+            let invoices: AccountMove<MultipleIds> = invoice_lines.get_move_id(env)?;
             order.set_invoices(&invoices, env)?;
         }
         Ok(())
@@ -482,7 +482,7 @@ impl SaleOrder<MultipleIds> {
     pub fn action_cancel(&self, env: &mut Environment) -> Result<bool> {
         env.savepoint(|env| {
             for order in self {
-                let invoices: Move<MultipleIds> = order.get_invoices(env)?;
+                let invoices: AccountMove<MultipleIds> = order.get_invoices(env)?;
                 let mut drafts = Vec::new();
                 for invoice in &invoices {
                     let invoice_state = *invoice.get_state(&mut env.sudo())?;
@@ -500,7 +500,7 @@ impl SaleOrder<MultipleIds> {
                     }
                 }
                 if !drafts.is_empty() {
-                    Move::<MultipleIds>::from_ids(drafts, env).button_cancel(env)?;
+                    AccountMove::<MultipleIds>::from_ids(drafts, env).button_cancel(env)?;
                 }
                 order.set_state(SaleState::Cancel, env)?;
                 Self::from_ids(vec![order.get_id()], env).on_cancelled(env)?;

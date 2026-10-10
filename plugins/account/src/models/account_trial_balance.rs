@@ -1,7 +1,9 @@
 use crate::models::account::Account;
 use crate::models::account_move::MoveState;
-use crate::models::account_move_line::MoveLine;
-use crate::models::account_trial_balance_line::{BaseAccountTrialBalanceLine, TrialBalanceLine};
+use crate::models::account_move_line::AccountMoveLine;
+use crate::models::account_trial_balance_line::{
+    AccountTrialBalanceLine, BaseAccountTrialBalanceLine,
+};
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -16,7 +18,7 @@ use std::collections::BTreeMap;
 #[derive(Model)]
 #[erp(id = "account_trial_balance", methods)]
 #[allow(dead_code)]
-pub struct TrialBalance<Mode: IdMode> {
+pub struct AccountTrialBalance<Mode: IdMode> {
     id: Mode,
     #[erp(label = "From")]
     date_from: NaiveDate,
@@ -37,7 +39,7 @@ pub fn trial_balance(
     date_to: NaiveDate,
 ) -> Result<Vec<(u32, Decimal, Decimal, Decimal)>> {
     let env = &mut *env.sudo();
-    let lines: MoveLine<MultipleIds> = env.search(&make_domain!([
+    let lines: AccountMoveLine<MultipleIds> = env.search(&make_domain!([
         ("parent_state", "=", MoveState::Posted),
         ("date", "<=", date_to)
     ]))?;
@@ -63,7 +65,7 @@ pub fn trial_balance(
 }
 
 #[erp_methods]
-impl TrialBalance<MultipleIds> {
+impl AccountTrialBalance<MultipleIds> {
     /// Work the trial balance out again, for its period.
     #[erp(rpc)]
     pub fn action_compute(&self, env: &mut Environment) -> Result<bool> {
@@ -88,9 +90,10 @@ impl TrialBalance<MultipleIds> {
                 line.insert("ending_balance", initial + debit - credit);
                 created.push(line);
             }
-            let old: TrialBalanceLine<MultipleIds> = report.get_lines(env)?;
+            let old: AccountTrialBalanceLine<MultipleIds> = report.get_lines(env)?;
             old.delete(env)?;
-            let _: TrialBalanceLine<MultipleIds> = env.create_new_records_from_maps(created)?;
+            let _: AccountTrialBalanceLine<MultipleIds> =
+                env.create_new_records_from_maps(created)?;
             report.set_total_debit(debit_total, env)?;
             report.set_total_credit(credit_total, env)?;
         }

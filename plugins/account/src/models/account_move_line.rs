@@ -1,10 +1,10 @@
 use crate::matching::{self, Open};
 use crate::models::account::{Account, BaseAccount};
-use crate::models::account_full_reconcile::{BaseAccountFullReconcile, FullReconcile};
-use crate::models::account_journal::Journal;
-use crate::models::account_move::{BaseAccountMove, Move, MoveState};
+use crate::models::account_full_reconcile::{AccountFullReconcile, BaseAccountFullReconcile};
+use crate::models::account_journal::AccountJournal;
+use crate::models::account_move::{AccountMove, BaseAccountMove, MoveState};
 use crate::models::account_partial_reconcile::{
-    BaseAccountPartialReconcile, PartialReconcile, currency_rounding, prorata,
+    AccountPartialReconcile, BaseAccountPartialReconcile, currency_rounding, prorata,
 };
 use crate::models::account_tax::BaseAccountTax;
 use crate::models::account_tax_tag::BaseAccountTaxTag;
@@ -38,7 +38,7 @@ pub enum LineKind {
 #[derive(Model)]
 #[erp(id = "account_move_line", order = "date desc, id", methods)]
 #[allow(dead_code)]
-pub struct MoveLine<Mode: IdMode> {
+pub struct AccountMoveLine<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Entry", required, ondelete = "cascade")]
     move_id: Reference<BaseAccountMove, SingleId>,
@@ -97,7 +97,7 @@ pub struct MoveLine<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl MoveLine<SingleId> {
+impl AccountMoveLine<SingleId> {
     /// Whether the line is left open until matched: on a reconciled account.
     pub fn is_reconcilable(&self, env: &mut Environment) -> Result<bool> {
         let env = &mut *env.sudo();
@@ -114,7 +114,7 @@ impl MoveLine<SingleId> {
 }
 
 #[erp_methods]
-impl MoveLine<MultipleIds> {
+impl AccountMoveLine<MultipleIds> {
     pub fn compute_balance(&self, env: &mut Environment) -> Result<()> {
         for line in self {
             let balance = *line.get_debit(env)? - *line.get_credit(env)?;
@@ -125,7 +125,7 @@ impl MoveLine<MultipleIds> {
 
     pub fn compute_date(&self, env: &mut Environment) -> Result<()> {
         for line in self {
-            let entry: Move<SingleId> = line.get_move_id(env)?;
+            let entry: AccountMove<SingleId> = line.get_move_id(env)?;
             let date = if entry.is_empty() {
                 None
             } else {
@@ -138,7 +138,7 @@ impl MoveLine<MultipleIds> {
 
     pub fn compute_parent_state(&self, env: &mut Environment) -> Result<()> {
         for line in self {
-            let entry: Move<SingleId> = line.get_move_id(env)?;
+            let entry: AccountMove<SingleId> = line.get_move_id(env)?;
             let state = if entry.is_empty() {
                 MoveState::Draft
             } else {
@@ -199,7 +199,7 @@ impl MoveLine<MultipleIds> {
         });
         if touches_amounts {
             for line in self {
-                let entry: Move<SingleId> = line.get_move_id(env)?;
+                let entry: AccountMove<SingleId> = line.get_move_id(env)?;
                 if !entry.is_empty() && !entry.is_draft(env)? {
                     return Err(format!(
                         "{} is posted: its journal items cannot change",
@@ -233,12 +233,12 @@ impl MoveLine<MultipleIds> {
         for line in self {
             let mut residual = *line.get_balance(env)?;
             let mut residual_currency = *line.get_amount_currency(env)?;
-            let as_debit: PartialReconcile<MultipleIds> = line.get_matched_credits(env)?;
+            let as_debit: AccountPartialReconcile<MultipleIds> = line.get_matched_credits(env)?;
             for partial in &as_debit {
                 residual -= *partial.get_amount(env)?;
                 residual_currency -= *partial.get_debit_amount_currency(env)?;
             }
-            let as_credit: PartialReconcile<MultipleIds> = line.get_matched_debits(env)?;
+            let as_credit: AccountPartialReconcile<MultipleIds> = line.get_matched_debits(env)?;
             for partial in &as_credit {
                 residual += *partial.get_amount(env)?;
                 residual_currency += *partial.get_credit_amount_currency(env)?;
@@ -266,7 +266,7 @@ impl MoveLine<MultipleIds> {
         let mut debits: Vec<(NaiveDate, u32, Decimal, Decimal)> = Vec::new();
         let mut credits: Vec<(NaiveDate, u32, Decimal, Decimal)> = Vec::new();
         for line in self {
-            let entry: Move<SingleId> = line.get_move_id(env)?;
+            let entry: AccountMove<SingleId> = line.get_move_id(env)?;
             if !matches!(*entry.get_state(env)?, MoveState::Posted) {
                 return Err(format!(
                     "{} is not posted: it cannot be matched",
@@ -368,12 +368,13 @@ impl MoveLine<MultipleIds> {
             env.create_records("account_partial_reconcile", vec![values])?;
             touched.push(debit);
             touched.push(credit);
-            let lines: MoveLine<MultipleIds> = MoveLine::from_ids(vec![debit, credit], env);
+            let lines: AccountMoveLine<MultipleIds> =
+                AccountMoveLine::from_ids(vec![debit, credit], env);
             lines.refresh_residuals(env)?;
         }
         touched.sort_unstable();
         touched.dedup();
-        let touched: MoveLine<MultipleIds> = MoveLine::from_ids(touched, env);
+        let touched: AccountMoveLine<MultipleIds> = AccountMoveLine::from_ids(touched, env);
         if by_currency {
             touched.book_exchange_difference(env)?;
         }
@@ -395,7 +396,7 @@ impl MoveLine<MultipleIds> {
             return Ok(());
         }
         let company = CompanyAccount::current(env)?;
-        let journal: Journal<SingleId> = company.exchange_journal(env)?;
+        let journal: AccountJournal<SingleId> = company.exchange_journal(env)?;
         if journal.is_empty() {
             return Err("Set the exchange difference journal of the company to match items in a foreign currency".into());
         }
@@ -403,7 +404,7 @@ impl MoveLine<MultipleIds> {
         let mut gain = Decimal::ZERO;
         let mut date = NaiveDate::default();
         for (id, residual) in &leftovers {
-            let line: MoveLine<SingleId> = env.get_record((*id).into());
+            let line: AccountMoveLine<SingleId> = env.get_record((*id).into());
             let account: Account<SingleId> = line.get_account(env)?;
             let partner: Contact<SingleId> = line.get_partner(env)?;
             let currency: Currency<SingleId> = line.get_currency(env)?;
@@ -453,12 +454,12 @@ impl MoveLine<MultipleIds> {
         entry.insert("date", date);
         entry.insert("reference", "Exchange difference");
         entry.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
-        let entry: Move<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
+        let entry: AccountMove<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
         entry.action_post(env)?;
         for (id, _) in leftovers {
-            let line: MoveLine<SingleId> = env.get_record(id.into());
+            let line: AccountMoveLine<SingleId> = env.get_record(id.into());
             let account: Account<SingleId> = line.get_account(env)?;
-            let exchange_lines: MoveLine<MultipleIds> =
+            let exchange_lines: AccountMoveLine<MultipleIds> =
                 env.search(&erp_search_code_gen::make_domain!([
                     ("move_id", "in", entry.get_ids_ref().clone()),
                     ("account", "=", account.get_id())
@@ -494,7 +495,8 @@ impl MoveLine<MultipleIds> {
             values.insert("credit_line", credit);
             values.insert("amount", amount);
             env.create_records("account_partial_reconcile", vec![values])?;
-            MoveLine::<MultipleIds>::from_ids(vec![debit, credit], env).refresh_residuals(env)?;
+            AccountMoveLine::<MultipleIds>::from_ids(vec![debit, credit], env)
+                .refresh_residuals(env)?;
         }
         self.number_if_settled(env)
     }
@@ -506,19 +508,19 @@ impl MoveLine<MultipleIds> {
         if group.is_empty() {
             return Ok(());
         }
-        let lines: MoveLine<MultipleIds> = MoveLine::from_ids(group.clone(), env);
+        let lines: AccountMoveLine<MultipleIds> = AccountMoveLine::from_ids(group.clone(), env);
         for line in &lines {
             if !*line.get_reconciled(env)? {
                 return Ok(());
             }
         }
-        let partials: PartialReconcile<MultipleIds> =
+        let partials: AccountPartialReconcile<MultipleIds> =
             env.search(&erp_search_code_gen::make_domain!([
                 "|",
                 ("debit_line", "in", group.clone()),
                 ("credit_line", "in", group.clone())
             ]))?;
-        let existing: FullReconcile<SingleId> = lines
+        let existing: AccountFullReconcile<SingleId> = lines
             .into_iter()
             .next()
             .map(|line| line.get_full_reconcile(env))
@@ -527,13 +529,13 @@ impl MoveLine<MultipleIds> {
         let full = if existing.is_empty() {
             let mut values = MapOfFields::default();
             values.insert("name", "/");
-            let full: FullReconcile<SingleId> = env.create_new_record_from_map(values)?;
+            let full: AccountFullReconcile<SingleId> = env.create_new_record_from_map(values)?;
             full.set_name(format!("M{:05}", full.get_id()), env)?;
             full
         } else {
             existing
         };
-        let lines: MoveLine<MultipleIds> = MoveLine::from_ids(group, env);
+        let lines: AccountMoveLine<MultipleIds> = AccountMoveLine::from_ids(group, env);
         lines.set_full_reconcile(&full, env)?;
         partials.set_full_reconcile(&full, env)?;
         Ok(())
@@ -549,15 +551,15 @@ impl MoveLine<MultipleIds> {
                 continue;
             }
             group.push(id);
-            let line: MoveLine<SingleId> = env.get_record(id.into());
-            let as_debit: PartialReconcile<MultipleIds> = line.get_matched_credits(env)?;
+            let line: AccountMoveLine<SingleId> = env.get_record(id.into());
+            let as_debit: AccountPartialReconcile<MultipleIds> = line.get_matched_credits(env)?;
             for partial in &as_debit {
-                let other: MoveLine<SingleId> = partial.get_credit_line(env)?;
+                let other: AccountMoveLine<SingleId> = partial.get_credit_line(env)?;
                 todo.push(other.get_id());
             }
-            let as_credit: PartialReconcile<MultipleIds> = line.get_matched_debits(env)?;
+            let as_credit: AccountPartialReconcile<MultipleIds> = line.get_matched_debits(env)?;
             for partial in &as_credit {
-                let other: MoveLine<SingleId> = partial.get_debit_line(env)?;
+                let other: AccountMoveLine<SingleId> = partial.get_debit_line(env)?;
                 todo.push(other.get_id());
             }
         }
@@ -570,14 +572,14 @@ impl MoveLine<MultipleIds> {
     pub fn unreconcile_lines(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
         let group = self.matched_group(env)?;
-        let partials: PartialReconcile<MultipleIds> =
+        let partials: AccountPartialReconcile<MultipleIds> =
             env.search(&erp_search_code_gen::make_domain!([
                 "|",
                 ("debit_line", "in", group.clone()),
                 ("credit_line", "in", group.clone())
             ]))?;
-        let lines: MoveLine<MultipleIds> = MoveLine::from_ids(group, env);
-        let fulls: FullReconcile<MultipleIds> = lines.get_full_reconcile(env)?;
+        let lines: AccountMoveLine<MultipleIds> = AccountMoveLine::from_ids(group, env);
+        let fulls: AccountFullReconcile<MultipleIds> = lines.get_full_reconcile(env)?;
         partials.delete(env)?;
         if !fulls.is_empty() {
             fulls.delete(env)?;

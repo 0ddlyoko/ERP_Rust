@@ -6,7 +6,7 @@ use erp::types::field::IdMode;
 #[derive(Model)]
 #[erp(id = "account_tax_tag", order = "name, id")]
 #[allow(dead_code)]
-pub struct TaxTag<Mode: IdMode> {
+pub struct AccountTaxTag<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(description = "The grid of the tax return, e.g. 03")]

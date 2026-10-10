@@ -81,7 +81,8 @@ fn test_the_chart_is_the_companys() -> Result<()> {
     let receivable: account::models::Account<erp::types::field::SingleId> =
         company.get_account_receivable(&mut env)?;
     assert_eq!(receivable.get_code(&mut env)?, "400000");
-    let tax: account::models::Tax<erp::types::field::SingleId> = company.get_sale_tax(&mut env)?;
+    let tax: account::models::AccountTax<erp::types::field::SingleId> =
+        company.get_sale_tax(&mut env)?;
     assert_eq!(*tax.get_amount(&mut env)?, d("21"));
     let count = env.count("account", &erp_search::SearchType::Nothing)?;
     assert!(count >= 70, "the PCMN has its accounts: {count}");

@@ -1,8 +1,8 @@
 use crate::models::account::Account;
 use crate::models::account_tax_repartition::{
-    BaseAccountTaxRepartition, TaxDocument, TaxRepartition,
+    AccountTaxRepartition, BaseAccountTaxRepartition, TaxDocument,
 };
-use crate::models::account_tax_tag::{BaseAccountTaxTag, TaxTag};
+use crate::models::account_tax_tag::{AccountTaxTag, BaseAccountTaxTag};
 use crate::tax_engine::{Repartition, TaxKind, TaxSpec};
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
@@ -34,7 +34,7 @@ pub enum TaxAmountType {
 #[derive(Model)]
 #[erp(id = "account_tax", order = "sequence, id", methods)]
 #[allow(dead_code)]
-pub struct Tax<Mode: IdMode> {
+pub struct AccountTax<Mode: IdMode> {
     id: Mode,
     name: String,
     #[erp(label = "Label on documents")]
@@ -66,7 +66,7 @@ pub struct Tax<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Tax<SingleId> {
+impl AccountTax<SingleId> {
     /// The tax as the engine computes it, for invoices or for credit notes. Without any
     /// distribution for that document, all of it goes to the account of the line it is on.
     ///
@@ -77,18 +77,18 @@ impl Tax<SingleId> {
             TaxAmountType::Fixed => TaxKind::Fixed,
             _ => TaxKind::Percent,
         };
-        let base_tags: TaxTag<MultipleIds> = match document {
+        let base_tags: AccountTaxTag<MultipleIds> = match document {
             TaxDocument::Refund => self.get_refund_base_tags(env)?,
             _ => self.get_invoice_base_tags(env)?,
         };
         let mut lines: Vec<(i32, u32, Repartition)> = Vec::new();
-        let repartitions: TaxRepartition<MultipleIds> = self.get_repartitions(env)?;
+        let repartitions: AccountTaxRepartition<MultipleIds> = self.get_repartitions(env)?;
         for repartition in &repartitions {
             if repartition.get_document(env)?.key() != document.key() {
                 continue;
             }
             let account: Account<SingleId> = repartition.get_account(env)?;
-            let tags: TaxTag<MultipleIds> = repartition.get_tags(env)?;
+            let tags: AccountTaxTag<MultipleIds> = repartition.get_tags(env)?;
             lines.push((
                 *repartition.get_sequence(env)?,
                 repartition.get_id(),
@@ -124,7 +124,7 @@ impl Tax<SingleId> {
 }
 
 #[erp_methods]
-impl Tax<MultipleIds> {
+impl AccountTax<MultipleIds> {
     /// A percentage is between -100 and 100; the shares of a document that add to the tax are
     /// 100 % in all, so the tax is collected once.
     #[erp(check = ["amount", "amount_type", "repartitions.factor", "repartitions.document"])]

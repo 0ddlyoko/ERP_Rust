@@ -28,10 +28,10 @@ impl Plugin for PurchaseStockPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::StockMovePurchase<_>>();
-        model_manager.register_model::<models::PurchaseOrderLineStock<_>>();
-        model_manager.register_model::<models::PurchaseOrderStock<_>>();
-        model_manager.register_model::<models::PickingPurchase<_>>();
+        model_manager.register_model::<models::StockMovePurchaseStock<_>>();
+        model_manager.register_model::<models::PurchaseOrderLinePurchaseStock<_>>();
+        model_manager.register_model::<models::PurchaseOrderPurchaseStock<_>>();
+        model_manager.register_model::<models::StockPickingPurchaseStock<_>>();
         model_manager.register_model::<models::ProductPurchaseStock<_>>();
     }
 

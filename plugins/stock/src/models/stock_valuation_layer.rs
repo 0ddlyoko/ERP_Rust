@@ -13,7 +13,7 @@ use product::models::{BaseProduct, Product};
 #[derive(Model)]
 #[erp(id = "stock_valuation_layer", methods)]
 #[allow(dead_code)]
-pub struct ValuationLayer<Mode: IdMode> {
+pub struct StockValuationLayer<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "restrict")]
     product: Reference<BaseProduct, SingleId>,
@@ -32,7 +32,7 @@ pub struct ValuationLayer<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl ValuationLayer<SingleId> {
+impl StockValuationLayer<SingleId> {
     /// Record what a move did to the stock's value; units coming in stay open for FIFO.
     pub fn record(
         env: &mut Environment,
@@ -41,7 +41,7 @@ impl ValuationLayer<SingleId> {
         quantity: Decimal,
         value: Decimal,
         incoming: bool,
-    ) -> Result<ValuationLayer<SingleId>> {
+    ) -> Result<StockValuationLayer<SingleId>> {
         let env = &mut *env.sudo();
         let mut values = MapOfFields::default();
         values.insert("product", product);
@@ -67,9 +67,9 @@ impl ValuationLayer<SingleId> {
     pub fn open_layers(
         env: &mut Environment,
         product: u32,
-    ) -> Result<Vec<(Layer, ValuationLayer<SingleId>)>> {
+    ) -> Result<Vec<(Layer, StockValuationLayer<SingleId>)>> {
         let env = &mut *env.sudo();
-        let layers: ValuationLayer<MultipleIds> = env.search_with(
+        let layers: StockValuationLayer<MultipleIds> = env.search_with(
             &make_domain!([
                 ("product", "=", product),
                 ("remaining_quantity", ">", Decimal::ZERO)
@@ -98,7 +98,7 @@ impl ValuationLayer<SingleId> {
         value: Decimal,
     ) -> Result<()> {
         let env = &mut *env.sudo();
-        let layer: ValuationLayer<SingleId> = env.get_record(layer.into());
+        let layer: StockValuationLayer<SingleId> = env.get_record(layer.into());
         let remaining = *layer.get_remaining_quantity(env)? - quantity;
         let remaining_value = *layer.get_remaining_value(env)? - value;
         layer.set_remaining_quantity(remaining, env)?;
@@ -108,7 +108,7 @@ impl ValuationLayer<SingleId> {
     /// How many units of `product` the layers hold.
     pub fn quantity_of(env: &mut Environment, product: u32) -> Result<Decimal> {
         let env = &mut *env.sudo();
-        let layers: ValuationLayer<MultipleIds> =
+        let layers: StockValuationLayer<MultipleIds> =
             env.search(&make_domain!([("product", "=", product)]))?;
         Ok(layers.get_quantity(env)?.into_iter().copied().sum())
     }
@@ -116,7 +116,7 @@ impl ValuationLayer<SingleId> {
     /// What the stock of `product` is worth.
     pub fn value_of(env: &mut Environment, product: u32) -> Result<Decimal> {
         let env = &mut *env.sudo();
-        let layers: ValuationLayer<MultipleIds> =
+        let layers: StockValuationLayer<MultipleIds> =
             env.search(&make_domain!([("product", "=", product)]))?;
         Ok(layers.get_value(env)?.into_iter().copied().sum())
     }

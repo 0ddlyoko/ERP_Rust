@@ -7,7 +7,7 @@ use product::models::BaseProduct;
 #[derive(Model)]
 #[erp(id = "product_supplierinfo", order = "sequence, id")]
 #[allow(dead_code)]
-pub struct SupplierInfo<Mode: IdMode> {
+pub struct ProductSupplierinfo<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Vendor", required, ondelete = "cascade")]
     partner: Reference<BaseContact, SingleId>,

@@ -1,4 +1,4 @@
-use crate::models::timesheet_timer::Timer;
+use crate::models::timesheet_timer::TimesheetTimer;
 use code_gen::{Model, erp_methods};
 use erp::Result;
 use erp::environment::Environment;
@@ -6,7 +6,7 @@ use erp::model::ModelVerbs;
 use erp::serde_json::{Value, json};
 use erp::types::field::{IdMode, MultipleIds, Reference, SingleId, Utc};
 use erp::types::model::MapOfFields;
-use project::models::{BaseProjectProject, BaseProjectTask, Project, Task};
+use project::models::{BaseProjectProject, BaseProjectTask, ProjectProject, ProjectTask};
 
 /// Where the time of a timer went, confirmed whenever it is stopped: the project, a task of it if
 /// any, and how long — the time it ran, unless corrected. A record of it lives only while its
@@ -14,7 +14,7 @@ use project::models::{BaseProjectProject, BaseProjectTask, Project, Task};
 #[derive(Model)]
 #[erp(id = "timesheet_timer_stop", methods)]
 #[allow(dead_code)]
-pub struct TimerStop<Mode: IdMode> {
+pub struct TimesheetTimerStop<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Time spent")]
     elapsed: Option<String>,
@@ -30,7 +30,7 @@ pub struct TimerStop<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl TimerStop<MultipleIds> {
+impl TimesheetTimerStop<MultipleIds> {
     /// The time the caller's timer has run, as `0:07:42`, and where it was said to go, if it was:
     /// its task, and the project of the task when it was given none.
     pub fn default_get(
@@ -39,7 +39,7 @@ impl TimerStop<MultipleIds> {
         sup: Super,
     ) -> Result<MapOfFields> {
         let mut defaults = sup.call_with(fields.clone(), env)?;
-        let Some(timer) = Timer::<MultipleIds>::current(env)? else {
+        let Some(timer) = TimesheetTimer::<MultipleIds>::current(env)? else {
             return Ok(defaults);
         };
         let asked = |name: &str| fields.iter().any(|field| field == name);
@@ -57,15 +57,15 @@ impl TimerStop<MultipleIds> {
             defaults.insert("elapsed", text);
         }
         if asked("project") {
-            let mut project: Project<SingleId> = timer.get_project(sudo)?;
-            let task: Task<SingleId> = timer.get_task(sudo)?;
+            let mut project: ProjectProject<SingleId> = timer.get_project(sudo)?;
+            let task: ProjectTask<SingleId> = timer.get_task(sudo)?;
             if project.is_empty() && !task.is_empty() {
                 project = task.get_project(sudo)?;
             }
             defaults.insert_option("project", project.get_optional_id());
         }
         if asked("task") {
-            let task: Task<SingleId> = timer.get_task(sudo)?;
+            let task: ProjectTask<SingleId> = timer.get_task(sudo)?;
             defaults.insert_option("task", task.get_optional_id());
         }
         if asked("name") {
@@ -81,22 +81,22 @@ impl TimerStop<MultipleIds> {
         let mut answer = json!({ "running": false });
         for asked in self {
             asked.correct_time(env)?;
-            let project: Project<SingleId> = asked.get_project(env)?;
-            let task: Task<SingleId> = asked.get_task(env)?;
+            let project: ProjectProject<SingleId> = asked.get_project(env)?;
+            let task: ProjectTask<SingleId> = asked.get_task(env)?;
             if project.is_empty() && task.is_empty() {
                 return Err("Choose the project the time went to".into());
             }
             if !project.is_empty()
                 && !task.is_empty()
                 && task
-                    .get_project::<Project<SingleId>>(env)?
+                    .get_project::<ProjectProject<SingleId>>(env)?
                     .get_optional_id()
                     != project.get_optional_id()
             {
                 return Err("The task is not one of the project".into());
             }
             let description = asked.get_name(env)?.cloned();
-            answer = Timer::<MultipleIds>::stop(
+            answer = TimesheetTimer::<MultipleIds>::stop(
                 env,
                 project.get_optional_id(),
                 task.get_optional_id(),
@@ -112,11 +112,11 @@ impl TimerStop<MultipleIds> {
     #[erp(rpc)]
     pub fn action_keep(&self, env: &mut Environment) -> Result<Value> {
         let mut answer = json!({ "running": false });
-        if let Some(timer) = Timer::<MultipleIds>::current(env)? {
+        if let Some(timer) = TimesheetTimer::<MultipleIds>::current(env)? {
             for asked in self {
                 asked.correct_time(env)?;
-                let project: Project<SingleId> = asked.get_project(env)?;
-                let task: Task<SingleId> = asked.get_task(env)?;
+                let project: ProjectProject<SingleId> = asked.get_project(env)?;
+                let task: ProjectTask<SingleId> = asked.get_task(env)?;
                 let description = asked.get_name(env)?.cloned();
                 answer = timer.remember(env, &project, &task, description)?;
             }
@@ -128,19 +128,19 @@ impl TimerStop<MultipleIds> {
     /// Forget the timer's time.
     #[erp(rpc)]
     pub fn action_discard(&self, env: &mut Environment) -> Result<Value> {
-        let answer = Timer::<MultipleIds>::discard(env)?;
+        let answer = TimesheetTimer::<MultipleIds>::discard(env)?;
         self.delete(env)?;
         Ok(answer)
     }
 }
 
-impl TimerStop<SingleId> {
+impl TimesheetTimerStop<SingleId> {
     /// The time spent, as corrected by the user, becomes what the timer has run.
     fn correct_time(&self, env: &mut Environment) -> Result<()> {
         let Some(text) = self.get_elapsed(env)?.cloned() else {
             return Ok(());
         };
-        if let Some(timer) = Timer::<MultipleIds>::current(env)? {
+        if let Some(timer) = TimesheetTimer::<MultipleIds>::current(env)? {
             timer.set_elapsed(env, seconds_of(&text)?)?;
         }
         Ok(())

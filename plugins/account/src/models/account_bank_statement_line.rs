@@ -1,8 +1,8 @@
 use crate::models::account::{Account, AccountType};
-use crate::models::account_bank_statement::{BankStatement, BaseAccountBankStatement};
-use crate::models::account_journal::Journal;
-use crate::models::account_move::{BaseAccountMove, Move, MoveState};
-use crate::models::account_move_line::{BaseAccountMoveLine, MoveLine};
+use crate::models::account_bank_statement::{AccountBankStatement, BaseAccountBankStatement};
+use crate::models::account_journal::AccountJournal;
+use crate::models::account_move::{AccountMove, BaseAccountMove, MoveState};
+use crate::models::account_move_line::{AccountMoveLine, BaseAccountMoveLine};
 use base::models::{BaseContact, Contact};
 use code_gen::{Model, erp_methods};
 use currency::models::Currency;
@@ -22,7 +22,7 @@ use erp_search_code_gen::make_domain;
     methods
 )]
 #[allow(dead_code)]
-pub struct BankStatementLine<Mode: IdMode> {
+pub struct AccountBankStatementLine<Mode: IdMode> {
     id: Mode,
     #[erp(required, ondelete = "cascade")]
     statement: Reference<BaseAccountBankStatement, SingleId>,
@@ -47,7 +47,7 @@ pub struct BankStatementLine<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl BankStatementLine<MultipleIds> {
+impl AccountBankStatementLine<MultipleIds> {
     /// Match the transactions with what they pay: the items chosen, else those found.
     #[erp(rpc)]
     pub fn action_reconcile(&self, env: &mut Environment) -> Result<bool> {
@@ -65,16 +65,17 @@ impl BankStatementLine<MultipleIds> {
     pub fn action_undo_reconciliation(&self, env: &mut Environment) -> Result<bool> {
         env.savepoint(|env| {
             for line in self {
-                let entry: Move<SingleId> = line.get_move_id(env)?;
+                let entry: AccountMove<SingleId> = line.get_move_id(env)?;
                 if entry.is_empty() {
                     continue;
                 }
-                let items: MoveLine<MultipleIds> = entry.get_lines(&mut env.sudo())?;
+                let items: AccountMoveLine<MultipleIds> = entry.get_lines(&mut env.sudo())?;
                 items.unreconcile_lines(env)?;
-                let entry: Move<MultipleIds> = Move::from_ids(vec![entry.get_id()], env);
+                let entry: AccountMove<MultipleIds> =
+                    AccountMove::from_ids(vec![entry.get_id()], env);
                 entry.button_draft(&mut env.sudo())?;
                 entry.button_cancel(&mut env.sudo())?;
-                line.set_move_id(None::<&Move<SingleId>>, env)?;
+                line.set_move_id(None::<&AccountMove<SingleId>>, env)?;
                 line.set_is_reconciled(false, env)?;
             }
             Ok(true)
@@ -83,7 +84,7 @@ impl BankStatementLine<MultipleIds> {
 }
 
 #[erp_methods]
-impl BankStatementLine<SingleId> {
+impl AccountBankStatementLine<SingleId> {
     /// The open items this transaction settles, found by their payment reference, else by
     /// partner and amount: receivables, payables, and payments waiting for the bank.
     pub fn find_matches(&self, env: &mut Environment) -> Result<Vec<u32>> {
@@ -91,8 +92,8 @@ impl BankStatementLine<SingleId> {
         let amount = *self.get_amount(env)?;
         let label = self.get_payment_ref(env)?.trim().to_string();
         let partner: Contact<SingleId> = self.get_partner(env)?;
-        let statement: BankStatement<SingleId> = self.get_statement(env)?;
-        let journal: Journal<SingleId> = statement.get_journal(env)?;
+        let statement: AccountBankStatement<SingleId> = self.get_statement(env)?;
+        let journal: AccountJournal<SingleId> = statement.get_journal(env)?;
         let mut accounts: Vec<u32> = Vec::new();
         for account in [
             journal.get_outstanding_receipt_account::<Account<SingleId>>(env)?,
@@ -108,7 +109,7 @@ impl BankStatementLine<SingleId> {
             ("account_type", "=", AccountType::LiabilityPayable)
         ]))?;
         accounts.extend(receivables.get_ids_ref().iter().copied());
-        let open: MoveLine<MultipleIds> = env.search(&make_domain!([
+        let open: AccountMoveLine<MultipleIds> = env.search(&make_domain!([
             ("account", "in", accounts),
             ("reconciled", "=", false),
             ("parent_state", "=", MoveState::Posted)
@@ -121,7 +122,7 @@ impl BankStatementLine<SingleId> {
             if residual.is_zero() || (residual > Decimal::ZERO) != (amount > Decimal::ZERO) {
                 continue;
             }
-            let entry: Move<SingleId> = item.get_move_id(env)?;
+            let entry: AccountMove<SingleId> = item.get_move_id(env)?;
             let reference = entry
                 .get_payment_reference(env)?
                 .cloned()
@@ -158,7 +159,7 @@ impl BankStatementLine<SingleId> {
         if *self.get_is_reconciled(env)? {
             return Ok(());
         }
-        let chosen: MoveLine<MultipleIds> = self.get_to_match(env)?;
+        let chosen: AccountMoveLine<MultipleIds> = self.get_to_match(env)?;
         let candidates = if chosen.is_empty() {
             self.find_matches(env)?
         } else {
@@ -173,8 +174,8 @@ impl BankStatementLine<SingleId> {
         let env = &mut *env.sudo();
         let amount = *self.get_amount(env)?;
         let date = *self.get_date(env)?;
-        let statement: BankStatement<SingleId> = self.get_statement(env)?;
-        let journal: Journal<SingleId> = statement.get_journal(env)?;
+        let statement: AccountBankStatement<SingleId> = self.get_statement(env)?;
+        let journal: AccountJournal<SingleId> = statement.get_journal(env)?;
         let bank: Account<SingleId> = journal.get_default_account(env)?;
         if bank.is_empty() {
             return Err(
@@ -187,7 +188,7 @@ impl BankStatementLine<SingleId> {
         let mut items = Vec::new();
         let mut settled = Vec::new();
         for id in &candidates {
-            let item: MoveLine<SingleId> = env.get_record((*id).into());
+            let item: AccountMoveLine<SingleId> = env.get_record((*id).into());
             let residual = *item.get_amount_residual(env)?;
             let take = if amount > Decimal::ZERO {
                 residual.min(left)
@@ -248,10 +249,10 @@ impl BankStatementLine<SingleId> {
             entry.insert("partner", id);
         }
         entry.insert_field_type("lines", FieldType::Commands(vec![Command::Create(items)]));
-        let entry: Move<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
+        let entry: AccountMove<MultipleIds> = env.create_new_records_from_maps(vec![entry])?;
         entry.action_post(env)?;
-        let entry: Move<SingleId> = entry.ensure_one()?;
-        let new_items: MoveLine<MultipleIds> = entry.get_lines(env)?;
+        let entry: AccountMove<SingleId> = entry.ensure_one()?;
+        let new_items: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
         for (settled_item, account) in settled {
             let mut pair = vec![settled_item];
             for new_item in &new_items {
@@ -261,7 +262,7 @@ impl BankStatementLine<SingleId> {
                     break;
                 }
             }
-            MoveLine::<MultipleIds>::from_ids(pair, env).reconcile_lines(env)?;
+            AccountMoveLine::<MultipleIds>::from_ids(pair, env).reconcile_lines(env)?;
         }
         self.set_move_id(&entry, env)?;
         self.set_is_reconciled(true, env)?;

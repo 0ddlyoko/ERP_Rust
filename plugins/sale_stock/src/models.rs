@@ -5,7 +5,7 @@ mod stock_move;
 mod stock_picking;
 
 pub use product::ProductSaleStock;
-pub use sale_order::{DeliveryStatus, SaleOrderStock};
-pub use sale_order_line::SaleOrderLineStock;
-pub use stock_move::StockMoveSale;
-pub use stock_picking::PickingSale;
+pub use sale_order::{DeliveryStatus, SaleOrderSaleStock};
+pub use sale_order_line::SaleOrderLineSaleStock;
+pub use stock_move::StockMoveSaleStock;
+pub use stock_picking::StockPickingSaleStock;

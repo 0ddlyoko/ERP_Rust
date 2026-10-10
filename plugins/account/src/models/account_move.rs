@@ -1,10 +1,10 @@
 use crate::models::account::Account;
-use crate::models::account_fiscal_position::{BaseAccountFiscalPosition, FiscalPosition};
-use crate::models::account_invoice_line::{BaseAccountInvoiceLine, InvoiceLine};
-use crate::models::account_journal::{BaseAccountJournal, Journal, JournalType};
-use crate::models::account_move_line::{BaseAccountMoveLine, LineKind, MoveLine};
-use crate::models::account_payment::{PartnerType, Payment};
-use crate::models::account_payment_term::{BaseAccountPaymentTerm, PaymentTerm};
+use crate::models::account_fiscal_position::{AccountFiscalPosition, BaseAccountFiscalPosition};
+use crate::models::account_invoice_line::{AccountInvoiceLine, BaseAccountInvoiceLine};
+use crate::models::account_journal::{AccountJournal, BaseAccountJournal, JournalType};
+use crate::models::account_move_line::{AccountMoveLine, BaseAccountMoveLine, LineKind};
+use crate::models::account_payment::{AccountPayment, PartnerType};
+use crate::models::account_payment_term::{AccountPaymentTerm, BaseAccountPaymentTerm};
 use crate::models::account_tax_repartition::TaxDocument;
 use crate::models::company::CompanyAccount;
 use crate::models::contact::ContactAccount;
@@ -106,7 +106,7 @@ pub enum PaymentState {
     methods
 )]
 #[allow(dead_code)]
-pub struct Move<Mode: IdMode> {
+pub struct AccountMove<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Number", default = "/", tracking, index = "trigram")]
     name: String,
@@ -220,7 +220,7 @@ pub struct Move<Mode: IdMode> {
 }
 
 #[erp_methods]
-impl Move<SingleId> {
+impl AccountMove<SingleId> {
     pub fn is_draft(&self, env: &mut Environment) -> Result<bool> {
         Ok(matches!(*self.get_state(env)?, MoveState::Draft))
     }
@@ -294,7 +294,7 @@ impl Move<SingleId> {
         let mut items = Vec::new();
         let mut taxes: BTreeMap<TaxItemKey, (Decimal, Decimal)> = BTreeMap::new();
         let mut total_currency = Decimal::ZERO;
-        let lines: InvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
+        let lines: AccountInvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
         for line in &lines {
             let result = line.taxed(env, document)?;
             let account: Account<SingleId> = line.get_account(env)?;
@@ -307,7 +307,8 @@ impl Move<SingleId> {
             }
             let mut base_tags = Vec::new();
             for tax in &result.taxes {
-                let tax: crate::models::account_tax::Tax<SingleId> = env.get_record(tax.tax.into());
+                let tax: crate::models::account_tax::AccountTax<SingleId> =
+                    env.get_record(tax.tax.into());
                 base_tags.extend(tax.spec(env, document)?.base_tags);
             }
             base_tags.sort_unstable();
@@ -349,7 +350,8 @@ impl Move<SingleId> {
             if amount.is_zero() {
                 continue;
             }
-            let tax_record: crate::models::account_tax::Tax<SingleId> = env.get_record(tax.into());
+            let tax_record: crate::models::account_tax::AccountTax<SingleId> =
+                env.get_record(tax.into());
             let label = {
                 let env = &mut *env.sudo();
                 tax_record
@@ -371,7 +373,7 @@ impl Move<SingleId> {
         }
 
         let counterpart = self.counterpart_account(env)?;
-        let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
+        let term: AccountPaymentTerm<SingleId> = self.get_payment_term(env)?;
         let rounding = *currency.get_rounding(&mut env.sudo())?;
         let installments = term.compute(env, total_currency, invoice_date, rounding)?;
         let balance_so_far: Decimal = items
@@ -421,7 +423,7 @@ impl Move<SingleId> {
 
     /// Debits and credits of the entry, in the company's currency.
     pub fn totals(&self, env: &mut Environment) -> Result<(Decimal, Decimal)> {
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        let lines: AccountMoveLine<MultipleIds> = self.get_lines(env)?;
         let debit = lines.get_debit(env)?.into_iter().copied().sum();
         let credit = lines.get_credit(env)?.into_iter().copied().sum();
         Ok((debit, credit))
@@ -441,15 +443,15 @@ impl Move<SingleId> {
     /// Whether every payment of the invoice is one of its own credit notes.
     fn settled_by_reversal(&self, env: &mut Environment) -> Result<bool> {
         let env = &mut *env.sudo();
-        let reversals: Move<MultipleIds> = self.get_reversals(env)?;
+        let reversals: AccountMove<MultipleIds> = self.get_reversals(env)?;
         if reversals.is_empty() {
             return Ok(false);
         }
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        let lines: AccountMoveLine<MultipleIds> = self.get_lines(env)?;
         let group = lines.matched_group(env)?;
         for id in group {
-            let line: MoveLine<SingleId> = env.get_record(id.into());
-            let owner: Move<SingleId> = line.get_move_id(env)?;
+            let line: AccountMoveLine<SingleId> = env.get_record(id.into());
+            let owner: AccountMove<SingleId> = line.get_move_id(env)?;
             if owner.get_id() != self.get_id() && !reversals.get_ids_ref().contains(&owner.get_id())
             {
                 return Ok(false);
@@ -461,7 +463,7 @@ impl Move<SingleId> {
     /// Remove the journal items of an invoice back to draft: they are made again at posting.
     fn clear_items(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        let lines: AccountMoveLine<MultipleIds> = self.get_lines(env)?;
         if !lines.is_empty() {
             lines.delete(env)?;
         }
@@ -492,7 +494,7 @@ impl Move<SingleId> {
                 )
                 .into());
             }
-            let lines: InvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
+            let lines: AccountInvoiceLine<MultipleIds> = self.get_invoice_lines(env)?;
             if lines.is_empty() {
                 return Err(
                     format!("The {} has no line to post", move_type_label(move_type)).into(),
@@ -514,7 +516,7 @@ impl Move<SingleId> {
         let date = *self.get_date(env)?;
         let company = CompanyAccount::current(env)?;
         company.check_lock(env, date)?;
-        let journal: Journal<SingleId> = self.get_journal(env)?;
+        let journal: AccountJournal<SingleId> = self.get_journal(env)?;
         if journal.is_empty() {
             return Err("An entry needs a journal".into());
         }
@@ -536,15 +538,15 @@ impl Move<SingleId> {
         }
         if move_type.is_invoice() {
             self.clear_items(env)?;
-            Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
+            AccountMove::<MultipleIds>::from_ids(vec![self.get_id()], env)
                 .assign_payment_reference(env)?;
             let mut items = self.invoice_items(env)?;
             for item in &mut items {
                 item.insert("move_id", self.get_id());
             }
-            let _: MoveLine<MultipleIds> = env.sudo().create_new_records_from_maps(items)?;
+            let _: AccountMoveLine<MultipleIds> = env.sudo().create_new_records_from_maps(items)?;
         }
-        let lines: MoveLine<MultipleIds> = self.get_lines(env)?;
+        let lines: AccountMoveLine<MultipleIds> = self.get_lines(env)?;
         if lines.get_ids_ref().len() < 2 {
             return Err(format!("{} needs at least two journal items", self.get_name(env)?).into());
         }
@@ -570,7 +572,7 @@ impl Move<SingleId> {
         env: &mut Environment,
         date: Option<NaiveDate>,
         reason: Option<String>,
-    ) -> Result<Move<SingleId>> {
+    ) -> Result<AccountMove<SingleId>> {
         if !self.is_posted(env)? {
             return Err(format!(
                 "{} is not posted: there is nothing to reverse",
@@ -580,7 +582,7 @@ impl Move<SingleId> {
         }
         let move_type = *self.get_move_type(env)?;
         let date = date.unwrap_or_else(|| Utc::now().date_naive());
-        let journal: Journal<SingleId> = self.get_journal(env)?;
+        let journal: AccountJournal<SingleId> = self.get_journal(env)?;
         let partner: Contact<SingleId> = self.get_partner(env)?;
         let currency = self.currency_or_company(env)?;
         let mut values = MapOfFields::default();
@@ -598,16 +600,16 @@ impl Move<SingleId> {
         }
         if move_type.is_invoice() {
             values.insert("invoice_date", date);
-            let term: PaymentTerm<SingleId> = self.get_payment_term(env)?;
+            let term: AccountPaymentTerm<SingleId> = self.get_payment_term(env)?;
             if let Some(term) = term.get_optional_id() {
                 values.insert("payment_term", term);
             }
-            let position: FiscalPosition<SingleId> = self.get_fiscal_position(env)?;
+            let position: AccountFiscalPosition<SingleId> = self.get_fiscal_position(env)?;
             if let Some(position) = position.get_optional_id() {
                 values.insert("fiscal_position", position);
             }
             let mut copies = Vec::new();
-            for line in &self.get_invoice_lines::<InvoiceLine<MultipleIds>>(env)? {
+            for line in &self.get_invoice_lines::<AccountInvoiceLine<MultipleIds>>(env)? {
                 let mut copy = MapOfFields::default();
                 let product: product::models::Product<SingleId> = line.get_product(env)?;
                 if let Some(product) = product.get_optional_id() {
@@ -623,7 +625,8 @@ impl Move<SingleId> {
                 }
                 copy.insert("price_unit", *line.get_price_unit(env)?);
                 copy.insert("discount", *line.get_discount(env)?);
-                let taxes: crate::models::account_tax::Tax<MultipleIds> = line.get_taxes(env)?;
+                let taxes: crate::models::account_tax::AccountTax<MultipleIds> =
+                    line.get_taxes(env)?;
                 copy.insert("taxes", FieldType::Refs(taxes.get_ids_ref().clone()));
                 copy.insert("sequence", *line.get_sequence(env)?);
                 copies.push(copy);
@@ -634,7 +637,7 @@ impl Move<SingleId> {
             );
         } else {
             let mut mirrored = Vec::new();
-            for line in &self.get_lines::<MoveLine<MultipleIds>>(env)? {
+            for line in &self.get_lines::<AccountMoveLine<MultipleIds>>(env)? {
                 let mut copy = MapOfFields::default();
                 let account: Account<SingleId> = line.get_account(env)?;
                 copy.insert("account", account.get_id());
@@ -654,11 +657,11 @@ impl Move<SingleId> {
                 FieldType::Commands(vec![Command::Create(mirrored)]),
             );
         }
-        let reversal: Move<SingleId> = env.create_new_record_from_map(values)?;
-        Move::<MultipleIds>::from_ids(vec![self.get_id()], env)
+        let reversal: AccountMove<SingleId> = env.create_new_record_from_map(values)?;
+        AccountMove::<MultipleIds>::from_ids(vec![self.get_id()], env)
             .link_reversal(env, reversal.get_id())?;
         if !move_type.is_invoice() {
-            Move::<MultipleIds>::from_ids(vec![reversal.get_id()], env).action_post(env)?;
+            AccountMove::<MultipleIds>::from_ids(vec![reversal.get_id()], env).action_post(env)?;
         }
         Ok(reversal)
     }
@@ -697,18 +700,18 @@ const RECORDED: [&str; 11] = [
 ];
 
 #[erp_methods]
-impl Move<MultipleIds> {
+impl AccountMove<MultipleIds> {
     /// The partner's terms on its side of the business: customer or supplier.
     pub fn compute_payment_term(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
             let partner: Contact<SingleId> = entry.get_partner(env)?;
             let move_type = *entry.get_move_type(env)?;
             if partner.is_empty() || !move_type.is_invoice() {
-                entry.set_payment_term(None::<&PaymentTerm<SingleId>>, env)?;
+                entry.set_payment_term(None::<&AccountPaymentTerm<SingleId>>, env)?;
                 continue;
             }
             let partner: ContactAccount<SingleId> = partner.as_model();
-            let term: PaymentTerm<SingleId> = partner.as_sudo(env, |partner, env| {
+            let term: AccountPaymentTerm<SingleId> = partner.as_sudo(env, |partner, env| {
                 if move_type.is_sale() {
                     partner.get_customer_payment_term(env)
                 } else {
@@ -725,11 +728,11 @@ impl Move<MultipleIds> {
         for entry in self {
             let partner: Contact<SingleId> = entry.get_partner(env)?;
             if partner.is_empty() || !entry.get_move_type(env)?.is_invoice() {
-                entry.set_fiscal_position(None::<&FiscalPosition<SingleId>>, env)?;
+                entry.set_fiscal_position(None::<&AccountFiscalPosition<SingleId>>, env)?;
                 continue;
             }
             let partner: ContactAccount<SingleId> = partner.as_model();
-            let position: FiscalPosition<SingleId> =
+            let position: AccountFiscalPosition<SingleId> =
                 partner.get_fiscal_position(&mut env.sudo())?;
             entry.set_fiscal_position(&position, env)?;
         }
@@ -739,7 +742,7 @@ impl Move<MultipleIds> {
     /// The last installment's date: from the items once posted, from the terms before.
     pub fn compute_invoice_date_due(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
-            let lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+            let lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
             let mut due: Option<NaiveDate> = None;
             for line in &lines {
                 if matches!(*line.get_display_type(env)?, LineKind::PaymentTerm) {
@@ -751,7 +754,7 @@ impl Move<MultipleIds> {
                     .get_invoice_date(env)?
                     .copied()
                     .unwrap_or(*entry.get_date(env)?);
-                let term: PaymentTerm<SingleId> = entry.get_payment_term(env)?;
+                let term: AccountPaymentTerm<SingleId> = entry.get_payment_term(env)?;
                 let installments = term.compute(env, Decimal::ONE, date, Decimal::ZERO)?;
                 due = installments.into_iter().map(|(date, _)| date).max();
             }
@@ -764,7 +767,7 @@ impl Move<MultipleIds> {
     pub fn compute_amounts(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
             if entry.get_move_type(env)?.is_invoice() {
-                let lines: InvoiceLine<MultipleIds> = entry.get_invoice_lines(env)?;
+                let lines: AccountInvoiceLine<MultipleIds> = entry.get_invoice_lines(env)?;
                 let untaxed: Decimal = lines.get_price_subtotal(env)?.into_iter().copied().sum();
                 let total: Decimal = lines.get_price_total(env)?.into_iter().copied().sum();
                 entry.set_amount_untaxed(untaxed, env)?;
@@ -786,7 +789,7 @@ impl Move<MultipleIds> {
         for entry in self {
             let move_type = *entry.get_move_type(env)?;
             let posted = entry.is_posted(env)?;
-            let lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+            let lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
             let mut residual = Decimal::ZERO;
             let mut reconcilable = false;
             for line in &lines {
@@ -820,7 +823,7 @@ impl Move<MultipleIds> {
     /// lists of invoices add them up.
     pub fn compute_signed(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
-            let lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+            let lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
             let mut total = Decimal::ZERO;
             for line in &lines {
                 if matches!(*line.get_display_type(env)?, LineKind::PaymentTerm) {
@@ -867,7 +870,7 @@ impl Move<MultipleIds> {
                     MoveType::InInvoice | MoveType::InRefund => JournalType::Purchase,
                     _ => JournalType::General,
                 };
-                let journal = Journal::first_of_type(env, journal_type)?;
+                let journal = AccountJournal::first_of_type(env, journal_type)?;
                 if let Some(journal) = journal.get_optional_id() {
                     entry.insert("journal", journal);
                 }
@@ -946,11 +949,11 @@ impl Move<MultipleIds> {
             for entry in self {
                 let date = *entry.get_date(env)?;
                 CompanyAccount::current(env)?.check_lock(env, date)?;
-                let lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+                let lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
                 for line in &lines {
-                    let matched_debits: crate::models::PartialReconcile<MultipleIds> =
+                    let matched_debits: crate::models::AccountPartialReconcile<MultipleIds> =
                         line.get_matched_debits(env)?;
-                    let matched_credits: crate::models::PartialReconcile<MultipleIds> =
+                    let matched_credits: crate::models::AccountPartialReconcile<MultipleIds> =
                         line.get_matched_credits(env)?;
                     if !matched_debits.is_empty() || !matched_credits.is_empty() {
                         return Err(format!(
@@ -1032,10 +1035,11 @@ impl Move<MultipleIds> {
         env.savepoint(|env| {
             for entry in self {
                 let reversal = entry.reverse_one(env, None, None)?;
-                let reversal: Move<MultipleIds> = Move::from_ids(vec![reversal.get_id()], env);
+                let reversal: AccountMove<MultipleIds> =
+                    AccountMove::from_ids(vec![reversal.get_id()], env);
                 reversal.action_post(env)?;
-                let entry_lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
-                let reversal_lines: MoveLine<MultipleIds> = reversal.get_lines(env)?;
+                let entry_lines: AccountMoveLine<MultipleIds> = entry.get_lines(env)?;
+                let reversal_lines: AccountMoveLine<MultipleIds> = reversal.get_lines(env)?;
                 let terms = (entry_lines + reversal_lines).filtered(env, |line, env| {
                     Ok(matches!(
                         *line.get_display_type(env)?,
@@ -1067,7 +1071,7 @@ impl Move<MultipleIds> {
     }
 
     /// The draft payment of what is left on these posted invoices of one partner.
-    pub fn prepare_payment(&self, env: &mut Environment) -> Result<Payment<SingleId>> {
+    pub fn prepare_payment(&self, env: &mut Environment) -> Result<AccountPayment<SingleId>> {
         let mut partner = None;
         let mut total = Decimal::ZERO;
         let mut kind = None;

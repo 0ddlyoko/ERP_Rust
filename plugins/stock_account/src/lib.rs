@@ -27,8 +27,8 @@ impl Plugin for StockAccountPlugin {
     }
 
     fn init_models(&self, model_manager: &mut ModelManager) {
-        model_manager.register_model::<models::ProductCategoryValuation<_>>();
-        model_manager.register_model::<models::StockMoveAccount<_>>();
+        model_manager.register_model::<models::ProductCategoryStockAccount<_>>();
+        model_manager.register_model::<models::StockMoveStockAccount<_>>();
     }
 
     fn data(&self) -> Vec<&'static str> {
