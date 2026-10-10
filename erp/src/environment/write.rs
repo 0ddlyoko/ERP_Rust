@@ -68,7 +68,8 @@ impl<'mm> Environment<'mm> {
     }
 
     /// Write `values` on the records through the model's `write`; the checks the written fields
-    /// concern run after, and a refusal undoes the write.
+    /// concern run after. A refusal undoes nothing on its own: the unit of work fails with it, or
+    /// the caller wanting to carry on opens a savepoint around it.
     pub fn write<Mode: IdMode>(
         &mut self,
         model_name: &str,
@@ -81,10 +82,8 @@ impl<'mm> Environment<'mm> {
             return self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,));
         }
         let written: Vec<String> = values.fields.keys().cloned().collect();
-        self.savepoint(|env| {
-            env.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))?;
-            env.run_checks(model_name, &ids, &written, false)
-        })
+        self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))?;
+        self.run_checks(model_name, &ids, &written, false)
     }
 
     /// Whether creating or writing records of the model may concern a check: its own, or one

@@ -152,25 +152,25 @@ fn count(env: &mut Environment) -> Result<u32> {
     env.count("parcel", &erp::search::SearchType::Nothing)
 }
 
-/// A record breaking a check is refused, and nothing of the creation is kept.
+/// A record breaking a check is refused; in a savepoint, nothing of the creation is kept.
 #[test]
 fn test_a_check_refuses_a_creation() -> Result<()> {
     let app = new_app();
     let mut env = app.new_env()?;
     let error = env
-        .create_records("parcel", vec![parcel("Books", 2), parcel("Air", 0)])
+        .savepoint(|env| env.create_records("parcel", vec![parcel("Books", 2), parcel("Air", 0)]))
         .expect_err("refused");
     assert_eq!(error.to_string(), "A parcel weighs something");
     assert_eq!(count(&mut env)?, 0);
 
     let error = env
-        .create_records("parcel", vec![parcel(" ", 1)])
+        .savepoint(|env| env.create_records("parcel", vec![parcel(" ", 1)]))
         .expect_err("a check on one record runs for each");
     assert_eq!(error.to_string(), "A parcel has a name");
     Ok(())
 }
 
-/// A write breaking a check is refused and undone, a setter's as any other.
+/// A write breaking a check is refused, a setter's as any other; in a savepoint, it is undone.
 #[test]
 fn test_a_check_refuses_a_write() -> Result<()> {
     let app = new_app();
@@ -178,7 +178,7 @@ fn test_a_check_refuses_a_write() -> Result<()> {
     let ids = env.create_records("parcel", vec![parcel("Books", 2)])?;
     let books: Parcel<MultipleIds> = Parcel::from_ids(ids.get_ids_ref().clone(), &env);
     let books = books.ensure_one()?;
-    assert!(books.set_weight(0, &mut env).is_err());
+    assert!(env.savepoint(|env| books.set_weight(0, env)).is_err());
     assert_eq!(*books.get_weight(&mut env)?, 2, "undone");
     Ok(())
 }
@@ -191,7 +191,8 @@ fn test_a_check_on_fields_runs_when_they_change() -> Result<()> {
     let mut values = parcel("Letters", 1);
     values.insert("stamps", 12);
     assert!(
-        env.create_records("parcel", vec![values]).is_err(),
+        env.savepoint(|env| env.create_records("parcel", vec![values]))
+            .is_err(),
         "always on creation"
     );
 
@@ -204,7 +205,7 @@ fn test_a_check_on_fields_runs_when_they_change() -> Result<()> {
         counted,
         "not run when stamps are not written"
     );
-    assert!(letters.set_stamps(11, &mut env).is_err());
+    assert!(env.savepoint(|env| letters.set_stamps(11, env)).is_err());
     Ok(())
 }
 
@@ -253,14 +254,14 @@ fn test_a_check_follows_a_path() -> Result<()> {
     let pans =
         Parcel::<MultipleIds>::from_ids(ids.get_ids_ref()[..1].to_vec(), &env).ensure_one()?;
 
-    let error = pans
-        .set_weight(60, &mut env)
+    let error = env
+        .savepoint(|env| pans.set_weight(60, env))
         .expect_err("110 kg in the carton");
     assert_eq!(error.to_string(), "A carton holds at most 100 kg");
     assert_eq!(*pans.get_weight(&mut env)?, 40, "undone");
 
     let error = env
-        .create_records("parcel", vec![parcel_in("Glasses", 20, carton_id)])
+        .savepoint(|env| env.create_records("parcel", vec![parcel_in("Glasses", 20, carton_id)]))
         .expect_err("110 kg once added");
     assert_eq!(error.to_string(), "A carton holds at most 100 kg");
 
@@ -268,11 +269,9 @@ fn test_a_check_follows_a_path() -> Result<()> {
         .create_records("parcel", vec![parcel("Books", 30)])?
         .get_ids_ref()[0];
     let loose = Parcel::<MultipleIds>::from_ids(vec![loose], &env).ensure_one()?;
-    let error = loose
-        .set_carton(
-            &models::Carton::<SingleId>::from_id(carton_id, &env),
-            &mut env,
-        )
+    let carton = models::Carton::<SingleId>::from_id(carton_id, &env);
+    let error = env
+        .savepoint(|env| loose.set_carton(&carton, env))
         .expect_err("120 kg once moved in");
     assert_eq!(error.to_string(), "A carton holds at most 100 kg");
     Ok(())

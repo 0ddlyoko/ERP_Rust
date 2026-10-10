@@ -126,7 +126,8 @@ fn test_products_follow_their_rules() -> Result<()> {
     assert_eq!(*discount.get_list_price(&mut env)?, d("-5"));
     let kg = xml_id(&mut env, "uom.uom_kg");
     let dozen = xml_id(&mut env, "uom.uom_dozen");
-    let error = new_product(&mut env, json!({"name": "Flour", "purchase_uom": kg}))
+    let error = env
+        .savepoint(|env| new_product(env, json!({"name": "Flour", "purchase_uom": kg})))
         .map(|product| product.get_id())
         .expect_err("kg are no units")
         .to_string();
@@ -142,13 +143,11 @@ fn test_products_follow_their_rules() -> Result<()> {
         &mut env,
         json!({"name": "Scanned", "barcode": "5410000000001"}),
     )?;
-    let error = new_product(
-        &mut env,
-        json!({"name": "Copy", "barcode": "5410000000001"}),
-    )
-    .map(|product| product.get_id())
-    .expect_err("taken")
-    .to_string();
+    let error = env
+        .savepoint(|env| new_product(env, json!({"name": "Copy", "barcode": "5410000000001"})))
+        .map(|product| product.get_id())
+        .expect_err("taken")
+        .to_string();
     assert!(error.contains("5410000000001"), "{error}");
     let count = env.count(
         "product",

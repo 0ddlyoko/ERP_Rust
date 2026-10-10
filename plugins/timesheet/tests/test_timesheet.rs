@@ -111,20 +111,12 @@ fn test_what_is_refused() -> Result<()> {
     let mut env = admin_env(&app)?;
     let project = create(&mut env, "project_project", json!({"name": "Site"}))?;
     assert!(
-        create(
-            &mut env,
-            "timesheet",
-            json!({"name": "Nowhere", "hours": "1"})
-        )
-        .is_err()
+        env.savepoint(|env| create(env, "timesheet", json!({"name": "Nowhere", "hours": "1"})))
+            .is_err()
     );
     assert!(
-        create(
-            &mut env,
-            "timesheet",
-            json!({"project": project, "hours": "-1"})
-        )
-        .is_err()
+        env.savepoint(|env| create(env, "timesheet", json!({"project": project, "hours": "-1"})))
+            .is_err()
     );
     assert_eq!(
         env.count(

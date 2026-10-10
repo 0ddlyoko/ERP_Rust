@@ -148,10 +148,17 @@ fn test_amounts_are_formatted() -> Result<()> {
 fn test_rates_follow_their_rules() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
-    assert!(add_rate(&mut env, "usd", "2026-01-01", "0").is_err());
-    assert!(add_rate(&mut env, "usd", "2026-01-01", "-1").is_err());
+    assert!(
+        env.savepoint(|env| add_rate(env, "usd", "2026-01-01", "0"))
+            .is_err()
+    );
+    assert!(
+        env.savepoint(|env| add_rate(env, "usd", "2026-01-01", "-1"))
+            .is_err()
+    );
     add_rate(&mut env, "usd", "2026-01-01", "1.05")?;
-    let error = add_rate(&mut env, "usd", "2026-01-01", "1.06")
+    let error = env
+        .savepoint(|env| add_rate(env, "usd", "2026-01-01", "1.06"))
         .expect_err("one a day")
         .to_string();
     assert!(error.contains("2026-01-01"), "{error}");

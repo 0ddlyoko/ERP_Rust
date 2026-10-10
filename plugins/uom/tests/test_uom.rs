@@ -172,7 +172,8 @@ fn test_units_follow_their_rules() -> Result<()> {
         ("Wrong smaller", "smaller", "3"),
         ("Zero smaller", "smaller", "0"),
     ] {
-        let error = new_uom(&mut env, name, "category_unit", kind, ratio)
+        let error = env
+            .savepoint(|env| new_uom(env, name, "category_unit", kind, ratio))
             .expect_err(name)
             .to_string();
         assert!(error.contains(name), "{error}");
@@ -187,7 +188,7 @@ fn test_units_follow_their_rules() -> Result<()> {
     values.insert("rounding", d("0"));
     let dozen = uom(&mut env, "uom_dozen")?;
     assert!(
-        env.write("uom", &SingleId::from(dozen.get_id()), values)
+        env.savepoint(|env| env.write("uom", &SingleId::from(dozen.get_id()), values))
             .is_err()
     );
     assert_eq!(
@@ -203,7 +204,8 @@ fn test_units_follow_their_rules() -> Result<()> {
 fn test_a_category_has_one_reference_unit() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
-    let error = new_uom(&mut env, "Piece", "category_unit", "reference", "1")
+    let error = env
+        .savepoint(|env| new_uom(env, "Piece", "category_unit", "reference", "1"))
         .expect_err("Units is the reference")
         .to_string();
     assert!(error.contains("reference units"), "{error}");

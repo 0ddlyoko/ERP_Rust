@@ -141,16 +141,20 @@ fn test_series_follow_their_rules() -> Result<()> {
     let app = new_app()?;
     let mut env = admin_env(&app)?;
     new_series(&mut env, "unique", "U", "never")?;
-    let error = new_series(&mut env, "unique", "V", "never")
+    let error = env
+        .savepoint(|env| new_series(env, "unique", "V", "never"))
         .expect_err("taken")
         .to_string();
     assert!(error.contains("unique"), "{error}");
 
     let id = new_series(&mut env, "rules", "R", "never")?;
     let series: Sequence<SingleId> = env.get_record(id.into());
-    assert!(series.set_number_next(0, &mut env).is_err());
-    assert!(series.set_number_increment(0, &mut env).is_err());
-    assert!(series.set_padding(21, &mut env).is_err());
+    assert!(env.savepoint(|env| series.set_number_next(0, env)).is_err());
+    assert!(
+        env.savepoint(|env| series.set_number_increment(0, env))
+            .is_err()
+    );
+    assert!(env.savepoint(|env| series.set_padding(21, env)).is_err());
     assert_eq!(
         *series.get_number_next(&mut env)?,
         1,
