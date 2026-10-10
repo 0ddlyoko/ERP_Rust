@@ -1,5 +1,6 @@
 import { namesRead } from "@web/core/expression";
 import type { Column } from "@web/views/view";
+import { defaultWidget } from "@web/views/widgets/widget";
 
 /** What a form's XML becomes: a Trame template, and the columns and texts it refers to by index. */
 export interface CompiledForm {
@@ -13,6 +14,8 @@ export interface CompiledForm {
     hasLeader: boolean;
     /** The one2many and many2many its related links show, whose records it names, with their action. */
     relatedFields: { name: string; action: string }[];
+    /** The fields related links show as figures, read with the record. */
+    figureFields: string[];
 }
 
 /** A button of the form: a method of the record, an action, or — `special="cancel"` — closing its dialog. */
@@ -202,13 +205,18 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
     };
 
     /**
-     * How many lines a page's first one2many or many2many holds, beside its tab: what the user
-     * would open it for. Nothing for an empty one, or a page holding none.
+     * How many lines the first list of a page holds, beside its tab: what the user would open it
+     * for. Not records shown as tags — a product's taxes — which are a setting among others.
+     * Nothing for an empty one, or a page holding none.
      */
     const tabCount = (page: Element): string => {
-        const list = Array.from(page.children).find(
-            (child) => child.tagName === "field" && columnOf(child).field.type === "refs",
-        );
+        const list = Array.from(page.children).find((child) => {
+            if (child.tagName !== "field") {
+                return false;
+            }
+            const column = columnOf(child);
+            return column.field.type === "refs" && (column.widget ?? defaultWidget(column.field)) === "list";
+        });
         if (list === undefined) {
             return "";
         }
@@ -434,8 +442,21 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         );
     };
 
-    /** The records the form's one2many and many2many hold, each a link opening them. */
+    /** A `<field>` named by an attribute of `element`, as the form reads and shows it. */
+    const fieldNamed = (element: Element, name: string): Element => {
+        const field = element.ownerDocument.createElement("field");
+        field.setAttribute("name", name);
+        return field;
+    };
+
+    /**
+     * The records the form's one2many and many2many hold, each a link opening them. A link counts
+     * them, or shows the field its `count` names — a quantity the model computes, such as what is
+     * on hand. Under it, the field its `note` names, with its label; else the records' names, for
+     * a link counting them.
+     */
     const relatedFields: { name: string; action: string }[] = [];
+    const figureFields: string[] = [];
     const relatedXml = (): string => {
         const links = Array.from(root.children)
             .filter((element) => element.tagName === "related")
@@ -457,15 +478,29 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
                 const caption = label === null ? `{{ __form.label(${column}.label) }}` : text(label);
                 const icon = escape(JSON.stringify(link.getAttribute("icon") ?? ""));
                 const by = escape(JSON.stringify(link.getAttribute("by")));
+                const counted = link.getAttribute("count");
+                const noted = link.getAttribute("note");
+                figureFields.push(...[counted, noted].filter((figure): figure is string => figure !== null));
+                const count =
+                    counted === null
+                        ? `{{ __form.relatedRecords(${name}).length }}`
+                        : `{{ __form.figure(${shownColumn(fieldNamed(link, counted))}.name) }}`;
+                const sub =
+                    noted !== null
+                        ? `{{ ${shownColumn(fieldNamed(link, noted))}.label }}: {{ __form.figure(${escape(JSON.stringify(noted))}) }}`
+                        : counted === null
+                          ? `{{ __form.relatedSummary(${name}) }}`
+                          : "";
+                const none = counted === null ? `!__form.relatedRecords(${name}).length` : `!Number(__form.current[${escape(JSON.stringify(counted))}])`;
                 return (
                     `<div class="o_related_item"${ifShown(shownUnless(link))}>` +
-                    `<button type="button" t-att-class="{ o_related_link: true, o_related_none: !__form.relatedRecords(${name}).length }" ` +
+                    `<button type="button" t-att-class="{ o_related_link: true, o_related_none: ${none} }" ` +
                     `t-on-click="() => __form.followLink(${action}, ${name}, ${by})">` +
                     `<span class="o_related_icon"><Icon name="${icon}"/></span>` +
                     `<span class="o_related_text"><span class="o_related_head">` +
-                    `<span class="o_related_count">{{ __form.relatedRecords(${name}).length }}</span>` +
+                    `<span class="o_related_count">${count}</span>` +
                     `<span class="o_related_label">${caption}</span></span>` +
-                    `<span class="o_related_sub">{{ __form.relatedSummary(${name}) }}</span></span></button></div>`
+                    `<span class="o_related_sub">${sub}</span></span></button></div>`
                 );
             })
             .join("");
@@ -528,5 +563,5 @@ export function compileForm(root: Element, columnOf: (element: Element) => Colum
         `<div class="o_form_body" t-ref="__form.element">${values}<t t-if="!__form.props.dialog">${top}</t>` +
         `<p t-if="__form.failure" class="o_form_failure" role="alert">{{ __form.failure }}</p>` +
         `<t t-if="!__form.props.dialog">${related}</t>${body}${footer}</div>`;
-    return { source, columns, texts, buttons, conditionNames, hasLeader: leader !== null, relatedFields };
+    return { source, columns, texts, buttons, conditionNames, hasLeader: leader !== null, relatedFields, figureFields };
 }

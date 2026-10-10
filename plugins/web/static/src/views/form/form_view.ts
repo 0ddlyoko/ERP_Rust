@@ -157,13 +157,15 @@ export class FormView extends View {
     }
 
     /**
-     * The fields read with the record: those shown, those its related links count, and those a
-     * condition reads.
+     * The fields read with the record: those shown, those its related links count or show, and
+     * those a condition reads.
      */
     @computed get readNames(): string[] {
         const fields = this.fields ?? {};
         const conditions = (this.layout?.conditionNames ?? []).filter((name) => name in fields);
-        const related = (this.layout?.relatedFields ?? []).map(({ name }) => name).filter((name) => name in fields);
+        const related = [...(this.layout?.relatedFields ?? []).map(({ name }) => name), ...(this.layout?.figureFields ?? [])].filter(
+            (name) => name in fields,
+        );
         const companions = companionFields(this.columns, fields);
         return [...new Set([...this.columns.map((column) => column.name), ...related, ...conditions, ...companions])];
     }
@@ -216,6 +218,16 @@ export class FormView extends View {
             return String(value.length);
         }
         return String(value);
+    }
+
+    /** A number as a figure reads it: grouped, with at most two decimals; any other value as displayed. */
+    figure(name: string): string {
+        const value = this.current[name];
+        const type = this.fields?.[name]?.type;
+        if ((type === "decimal" || type === "integer") && value !== null && value !== undefined && value !== "") {
+            return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        return this.display(name);
     }
 
     /** The record's name, as the breadcrumb shows it. */
