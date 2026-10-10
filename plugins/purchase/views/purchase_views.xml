@@ -207,5 +207,11 @@
             <field name="purchase_method"/>
             <field name="sellers" widget="list"/>
         </xpath>
+        <xpath expr="//form" position="inside">
+            <related>
+                <link name="purchase_orders" count="purchased_qty" note="purchase_orders" string="Purchased" action="purchase.action_orders"
+                      icon="shopping-bag"/>
+            </related>
+        </xpath>
     </view>
 </erp>

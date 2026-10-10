@@ -411,3 +411,36 @@ fn test_views_and_menus() -> Result<()> {
     );
     Ok(())
 }
+
+/// A product says how much of it confirmed orders bought, and which: requests count for nothing.
+#[test]
+fn test_a_product_tells_what_was_purchased() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let partner = vendor(&mut env)?;
+    let paper = create(
+        &mut env,
+        "product",
+        json!({"name": "Paper", "standard_price": "5"}),
+    )?;
+    let confirmed = request(
+        &mut env,
+        partner,
+        vec![json!({"product": paper, "product_qty": "20"})],
+    )?;
+    let _requested = request(
+        &mut env,
+        partner,
+        vec![json!({"product": paper, "product_qty": "4"})],
+    )?;
+    call(&mut env, "purchase_order", "button_confirm", &[confirmed])?;
+    let row = read(
+        &mut env,
+        "product",
+        paper,
+        &["purchased_qty", "purchase_orders"],
+    )?;
+    assert_eq!(amount(&row["purchased_qty"]), d("20"));
+    assert_eq!(row["purchase_orders"], json!([confirmed]));
+    Ok(())
+}

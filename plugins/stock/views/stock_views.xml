@@ -211,6 +211,10 @@
     </view>
     <view id="view_quant_form" name="stock_quant.form" model="stock_quant">
         <form>
+            <buttons>
+                <button name="action_apply_inventory" type="method" string="Apply count"
+                        invisible="inventory_quantity === null || inventory_quantity === false"/>
+            </buttons>
             <block>
                 <field name="product"/>
                 <field name="location" no_create="1"/>
@@ -299,10 +303,16 @@
     <action id="action_picking_types" name="Operation types" model="stock_picking_type" views="list,form"/>
 
     <view id="view_product_form_stock" name="product.form.stock" inherit="product.view_product_form">
-        <xpath expr="//field[@name='volume']" position="after">
-            <field name="qty_available" readonly="1"/>
-            <field name="free_qty" readonly="1"/>
-            <field name="stock_value" widget="monetary" readonly="1"/>
+        <xpath expr="//field[@name='product_type']" position="after">
+            <field name="is_storable" invisible="product_type !== 'goods'"/>
+        </xpath>
+        <xpath expr="//form" position="inside">
+            <related invisible="product_type !== 'goods' || !is_storable">
+                <link name="quants" count="qty_available" note="free_qty" string="On hand" action="stock.action_quants"
+                      by="product" icon="warehouse"/>
+                <link name="valuation_layers" count="stock_value" string="Stock value" action="stock.action_valuation"
+                      by="product" icon="coins"/>
+            </related>
         </xpath>
     </view>
     <view id="view_product_category_form_stock" name="product_category.form.stock"

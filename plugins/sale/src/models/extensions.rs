@@ -1,10 +1,15 @@
 use crate::models::pricelist::BaseProductPricelist;
+use crate::models::sale_order::{BaseSaleOrder, SaleOrder, SaleState};
 use crate::models::sale_order_line::{BaseSaleOrderLine, SaleOrderLine};
 use account::models::{InvoiceLine, Move};
 use code_gen::{Model, erp_methods, selection};
 use erp::Result;
 use erp::environment::Environment;
-use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
+use erp::types::field::{Decimal, IdMode, MultipleIds, Reference, Selection, SingleId};
+use erp_search_code_gen::make_domain;
+use product::models::Product;
+use uom::conversion::Rounding;
+use uom::models::Uom;
 
 #[selection]
 pub enum InvoicePolicy {
@@ -26,15 +31,53 @@ pub struct ContactSale<Mode: IdMode> {
     pricelist: Reference<BaseProductPricelist, SingleId>,
 }
 
-/// Whether a product is invoiced as ordered or as delivered.
+/// Whether a product is invoiced as ordered or as delivered, and how much of it was sold.
 #[derive(Model)]
-#[erp(id = "product")]
+#[erp(id = "product", methods)]
 #[erp(derived_model = "product::models")]
 #[allow(dead_code)]
 pub struct ProductSale<Mode: IdMode> {
     id: Mode,
     #[erp(label = "Invoicing policy")]
     invoice_policy: InvoicePolicy,
+    #[erp(label = "Sales orders", compute = "compute_sales")]
+    sale_orders: Reference<BaseSaleOrder, MultipleIds>,
+    #[erp(label = "Sold", compute = "compute_sales")]
+    sold_qty: Decimal,
+}
+
+#[erp_methods]
+impl ProductSale<MultipleIds> {
+    /// The confirmed sales orders holding the product, and how much of it they sold, in its unit.
+    pub fn compute_sales(&self, env: &mut Environment) -> Result<()> {
+        for product in self {
+            let (orders, sold) = {
+                let env = &mut *env.sudo();
+                let lines: SaleOrderLine<MultipleIds> = env.search(&make_domain!([
+                    ("product", "=", product.get_id()),
+                    ("order.state", "=", SaleState::Sale.key().as_str())
+                ]))?;
+                let owner: Product<SingleId> = env.get_record(product.get_id().into());
+                let unit: Uom<SingleId> = owner.get_uom(env)?;
+                let mut orders: Vec<u32> = Vec::new();
+                let mut sold = Decimal::ZERO;
+                for line in &lines {
+                    let order: SaleOrder<SingleId> = line.get_order(env)?;
+                    if !orders.contains(&order.get_id()) {
+                        orders.push(order.get_id());
+                    }
+                    let line_unit: Uom<SingleId> = line.get_uom(env)?;
+                    let quantity = *line.get_product_uom_qty(env)?;
+                    sold += line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
+                }
+                (orders, sold)
+            };
+            let orders: SaleOrder<MultipleIds> = SaleOrder::from_ids(orders, env);
+            product.set_sale_orders(&orders, env)?;
+            product.set_sold_qty(sold, env)?;
+        }
+        Ok(())
+    }
 }
 
 /// The order lines an invoice line invoices.

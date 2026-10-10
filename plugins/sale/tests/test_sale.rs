@@ -731,3 +731,30 @@ fn test_a_new_quotation_starts_today() -> Result<()> {
     assert_eq!(defaults["state"], json!("draft"));
     Ok(())
 }
+
+/// A product says how much of it confirmed orders sold, and which: quotations count for nothing.
+#[test]
+fn test_a_product_tells_what_was_sold() -> Result<()> {
+    let app = new_app()?;
+    let mut env = admin_env(&app)?;
+    let partner = customer(&mut env)?;
+    let desk = desk(&mut env)?;
+    let confirmed = quotation(
+        &mut env,
+        partner,
+        vec![
+            json!({"product": desk, "product_uom_qty": "3"}),
+            json!({"product": desk, "product_uom_qty": "2"}),
+        ],
+    )?;
+    let _quoted = quotation(
+        &mut env,
+        partner,
+        vec![json!({"product": desk, "product_uom_qty": "7"})],
+    )?;
+    call(&mut env, "sale_order", "action_confirm", &[confirmed])?;
+    let row = read(&mut env, "product", desk, &["sold_qty", "sale_orders"])?;
+    assert_eq!(amount(&row["sold_qty"]), d("5"));
+    assert_eq!(row["sale_orders"], json!([confirmed]));
+    Ok(())
+}

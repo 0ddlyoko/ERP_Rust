@@ -64,5 +64,10 @@
         <xpath expr="//field[@name='sale_ok']" position="after">
             <field name="invoice_policy"/>
         </xpath>
+        <xpath expr="//form" position="inside">
+            <related>
+                <link name="sale_orders" count="sold_qty" note="sale_orders" string="Sold" action="sale.action_orders" icon="shopping-cart"/>
+            </related>
+        </xpath>
     </view>
 </erp>

@@ -36,6 +36,13 @@ pub struct ProductCategoryStock<Mode: IdMode> {
 #[allow(dead_code)]
 pub struct ProductStock<Mode: IdMode> {
     id: Mode,
+    #[erp(
+        label = "Track inventory",
+        default = true,
+        tracking,
+        description = "Its quantities on hand are kept, counted and valued"
+    )]
+    is_storable: bool,
     #[erp(label = "Stock", inverse = "product")]
     quants: Reference<BaseStockQuant, MultipleIds>,
     #[erp(label = "Valuation", inverse = "product")]
