@@ -20,7 +20,7 @@ pub struct ParsedMethod {
     pub ret: Type,
     /// Whether the method answers to a remote caller.
     pub is_rpc: bool,
-    /// For a check, the fields whose writing runs it: every write when empty.
+    /// For a check, the fields whose writing runs it.
     pub check: Option<Vec<String>>,
     /// Whether the method declared a `super` cursor.
     ///
@@ -35,13 +35,12 @@ pub struct ParsedMethod {
 #[derive(Default)]
 pub struct MethodAttributes {
     pub is_rpc: bool,
-    /// For a check: the fields whose writing runs it, every write when empty.
+    /// For a check: the fields whose writing runs it.
     pub check: Option<Vec<String>>,
 }
 
 /// Whether the method is reachable from outside the process, and whether it is a check — run
-/// once records are created, and once they are written: when one of its fields is, if it names
-/// some.
+/// once records are created, and once one of the fields it names is written.
 ///
 /// Overridability is not asked for — every method of an `#[erp_methods]` block has it, the block
 /// being the boundary. Being callable remotely is asked for every time, because the two are
@@ -66,8 +65,11 @@ pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
                         return Err(Error::new(attr.span(), "Duplicate #[erp(check)]"));
                     }
                     if !input.peek(syn::Token![=]) {
-                        attributes.check = Some(Vec::new());
-                        return Ok(());
+                        return Err(Error::new(
+                            key.span(),
+                            "A check names the fields whose writing runs it: \
+                             #[erp(check = [\"field\", \"lines.price\"])]",
+                        ));
                     }
                     input.parse::<syn::Token![=]>()?;
                     let content;
@@ -77,7 +79,7 @@ pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
                     if fields.is_empty() {
                         return Err(Error::new(
                             key.span(),
-                            "A check naming no field is written #[erp(check)]: it runs on every write",
+                            "A check names at least one field whose writing runs it",
                         ));
                     }
                     attributes.check = Some(fields.iter().map(syn::LitStr::value).collect());

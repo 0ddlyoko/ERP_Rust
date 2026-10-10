@@ -175,7 +175,7 @@ impl Tax<SingleId> {
 impl Tax<MultipleIds> {
     /// A percentage is between -100 and 100; the shares of a document that add to the tax are
     /// 100 % in all, so the tax is collected once.
-    #[erp(check)]
+    #[erp(check = ["amount", "amount_type", "repartitions.factor", "repartitions.document"])]
     pub fn check_taxes(&self, env: &mut Environment) -> Result<()> {
         for tax in self {
             let name = tax.get_name(env)?.clone();

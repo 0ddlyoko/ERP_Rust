@@ -32,7 +32,7 @@ pub struct ProductCategory<Mode: IdMode> {
 #[erp_methods]
 impl ProductCategory<MultipleIds> {
     /// A category is never its own ancestor.
-    #[erp(check)]
+    #[erp(check = ["parent"])]
     pub fn check_no_cycle(&self, env: &mut Environment) -> Result<()> {
         for category in self {
             let mut seen = vec![category.get_id()];

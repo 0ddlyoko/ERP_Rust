@@ -21,7 +21,7 @@ pub struct Parameter<Mode: IdMode> {
 #[erp_methods]
 impl Parameter<MultipleIds> {
     /// A key is held by one parameter only, so that reading it finds one value.
-    #[erp(check)]
+    #[erp(check = ["key"])]
     pub fn check_keys(&self, env: &mut Environment) -> Result<()> {
         for parameter in self {
             let key = parameter.get_key(env)?.clone();

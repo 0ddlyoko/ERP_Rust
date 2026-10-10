@@ -83,14 +83,17 @@ impl<'mm> Environment<'mm> {
                 }
             }
         }
-        let ids = self.call_method::<CreateArgs, MultipleIds>(
-            model_name,
-            CREATE,
-            &MultipleIds::default(),
-            &(data,),
-        )?;
-        self.run_checks(model_name, &ids, &given, true)?;
-        Ok(ids)
+        self.checked(
+            |env| {
+                env.call_method::<CreateArgs, MultipleIds>(
+                    model_name,
+                    CREATE,
+                    &MultipleIds::default(),
+                    &(data,),
+                )
+            },
+            |env, ids| env.note_checks(model_name, ids, &given, true),
+        )
     }
 
     /// What a new record of the model starts with, for these fields: through the model's

@@ -89,7 +89,7 @@ mod models {
     #[erp_methods]
     impl Parcel<MultipleIds> {
         /// A parcel weighs something.
-        #[erp(check)]
+        #[erp(check = ["weight"])]
         pub fn check_weight(&self, env: &mut Environment) -> Result<()> {
             for parcel in self {
                 if *parcel.get_weight(env)? <= 0 {
@@ -120,7 +120,7 @@ mod models {
         }
 
         /// A parcel has a name, checked one parcel at a time.
-        #[erp(check)]
+        #[erp(check = ["name"])]
         pub fn check_name(&self, env: &mut Environment) -> Result<()> {
             if self.get_name(env)?.trim().is_empty() {
                 return Err("A parcel has a name".into());

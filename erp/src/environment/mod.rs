@@ -101,6 +101,11 @@ pub struct Environment<'mm> {
     /// How many virtual records this unit of work made, for the next one's id.
     /// Plugins this unit of work asks to install once it is committed.
     requested_installs: Vec<String>,
+    /// How deep creating or writing records concerned by checks is nested.
+    check_depth: usize,
+    /// The checks due once the outermost of those is done — model, method, whether for each
+    /// record in turn, and the records — each once.
+    pending_checks: Vec<(String, String, bool, Vec<u32>)>,
     virtual_count: u32,
     closed: bool,
     /// The external identifiers of the modules a data file names, read once per module while
@@ -156,6 +161,8 @@ impl<'mm> Environment<'mm> {
             cascading: HashMap::new(),
             maybe_emptied: Default::default(),
             requested_installs: Vec::new(),
+            check_depth: 0,
+            pending_checks: Vec::new(),
             virtual_count: 0,
             closed: false,
             external_ids: None,

@@ -29,7 +29,7 @@ pub struct CurrencyRate<Mode: IdMode> {
 #[erp_methods]
 impl CurrencyRate<MultipleIds> {
     /// A rate is positive, and a currency has one rate a day.
-    #[erp(check)]
+    #[erp(check = ["currency", "date", "rate"])]
     pub fn check_rates(&self, env: &mut Environment) -> Result<()> {
         for rate in self {
             let value = *rate.get_rate(env)?;

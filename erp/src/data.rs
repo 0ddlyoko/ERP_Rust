@@ -41,7 +41,8 @@ pub enum DataError {
     },
 }
 
-/// Load one XML document on behalf of `module`.
+/// Load one XML document on behalf of `module`, as one piece of work: the checks its records
+/// concern run once all of them are loaded, a payment term with the lines that follow it.
 pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     let document = roxmltree::Document::parse(xml).map_err(|source| DataError::Xml {
         module: module.to_string(),
@@ -54,17 +55,20 @@ pub fn load(env: &mut Environment, module: &str, xml: &str) -> Result<()> {
     if owned {
         env.external_ids = Some(ExternalIds::default());
     }
-    let loaded = (|| {
-        prefetch(env, module, root)?;
-        for node in root.children().filter(roxmltree::Node::is_element) {
-            if node.has_tag_name("function") {
-                call_function(env, module, node)?;
-            } else {
-                load_record(env, module, node, root_noupdate, None)?;
+    let loaded = env.checked(
+        |env| {
+            prefetch(env, module, root)?;
+            for node in root.children().filter(roxmltree::Node::is_element) {
+                if node.has_tag_name("function") {
+                    call_function(env, module, node)?;
+                } else {
+                    load_record(env, module, node, root_noupdate, None)?;
+                }
             }
-        }
-        Ok(())
-    })();
+            Ok(())
+        },
+        |_, ()| Ok(()),
+    );
     if owned {
         env.external_ids = None;
     }

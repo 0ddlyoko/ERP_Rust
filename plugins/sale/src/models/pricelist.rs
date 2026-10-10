@@ -77,7 +77,7 @@ pub struct PricelistItem<Mode: IdMode> {
 impl PricelistItem<MultipleIds> {
     /// A rule names what it applies to; a discount stays within 0 and 100 %; a fixed price and a
     /// quantity are not negative; a rule ends after it starts.
-    #[erp(check)]
+    #[erp(check = ["applied_on", "category", "product", "date_start", "date_end", "fixed_price", "percent_price", "min_quantity"])]
     pub fn check_items(&self, env: &mut Environment) -> Result<()> {
         for item in self {
             let product: Product<SingleId> = item.get_product(env)?;

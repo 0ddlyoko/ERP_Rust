@@ -100,7 +100,7 @@ impl Account<SingleId> {
 #[erp_methods]
 impl Account<MultipleIds> {
     /// A code is unique; a receivable or payable account is reconciled.
-    #[erp(check)]
+    #[erp(check = ["code", "account_type", "reconcile"])]
     pub fn check_accounts(&self, env: &mut Environment) -> Result<()> {
         for account in self {
             let code = account.get_code(env)?.trim().to_string();

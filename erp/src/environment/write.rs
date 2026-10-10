@@ -82,8 +82,10 @@ impl<'mm> Environment<'mm> {
             return self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,));
         }
         let written: Vec<String> = values.fields.keys().cloned().collect();
-        self.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))?;
-        self.run_checks(model_name, &ids, &written, false)
+        self.checked(
+            |env| env.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,)),
+            |env, ()| env.note_checks(model_name, &ids, &written, false),
+        )
     }
 
     /// Whether creating or writing records of the model may concern a check: its own, or one
@@ -99,10 +101,10 @@ impl<'mm> Environment<'mm> {
                 .any(|(model, _)| model == model_name)
     }
 
-    /// Run the checks concerned by `ids` of `model_name`: all of the model's own once `created`,
-    /// those naming no field on every write, and every check naming one of the fields `written`
-    /// — on the records it leads back to, a line's order for its price.
-    pub(crate) fn run_checks(
+    /// Note the checks concerned by `ids` of `model_name` — all of the model's own once
+    /// `created`, and every check naming one of the fields `written`, on the records it leads back
+    /// to: a line's order for its price — to run once the outermost creation or write is done.
+    pub(crate) fn note_checks(
         &mut self,
         model_name: &str,
         ids: &MultipleIds,
@@ -113,32 +115,14 @@ impl<'mm> Environment<'mm> {
             return Ok(());
         }
         let mut due: Vec<(String, String, bool, Vec<u32>)> = Vec::new();
-        let mut add = |model: &str, method: &str, per_record: bool, found: &[u32]| match due
-            .iter_mut()
-            .find(|(known, name, _, _)| known == model && name == method)
-        {
-            Some((_, _, _, ids)) => {
-                for id in found {
-                    if !ids.contains(id) {
-                        ids.push(*id);
-                    }
-                }
-            }
-            None => due.push((
-                model.to_string(),
-                method.to_string(),
-                per_record,
-                found.to_vec(),
-            )),
-        };
-        for check in &self.model_manager.try_get_model(model_name)?.checks {
-            if created || check.on.is_empty() {
-                add(
-                    model_name,
-                    &check.method,
+        if created {
+            for check in &self.model_manager.try_get_model(model_name)?.checks {
+                due.push((
+                    model_name.to_string(),
+                    check.method.clone(),
                     check.per_record,
-                    ids.get_ids_ref(),
-                );
+                    ids.get_ids_ref().clone(),
+                ));
             }
         }
         for field in written {
@@ -148,22 +132,73 @@ impl<'mm> Environment<'mm> {
             };
             for link in links.clone() {
                 let found = self.ids_back(model_name, ids.get_ids_ref(), &link.steps)?;
-                add(&link.model, &link.method, link.per_record, &found);
+                due.push((link.model, link.method, link.per_record, found));
             }
         }
-        for (model, method, per_record, ids) in due {
-            if ids.is_empty() {
-                continue;
-            }
-            if per_record {
-                for id in ids {
-                    self.call_method::<(), ()>(&model, &method, &MultipleIds::from(id), &())?;
+        for (model, method, per_record, found) in due {
+            match self
+                .pending_checks
+                .iter_mut()
+                .find(|(known, name, _, _)| *known == model && *name == method)
+            {
+                Some((_, _, _, ids)) => {
+                    for id in found {
+                        if !ids.contains(&id) {
+                            ids.push(id);
+                        }
+                    }
                 }
-            } else {
-                self.call_method::<(), ()>(&model, &method, &MultipleIds::from(ids), &())?;
+                None => self.pending_checks.push((model, method, per_record, found)),
             }
         }
         Ok(())
+    }
+
+    /// Create or write through `work`, then note the checks it concerns; once the outermost is
+    /// done, run every check noted, in sudo — so a record created with its lines is checked with
+    /// all of them, not as each comes. A failure forgets the checks noted.
+    pub(crate) fn checked<R>(
+        &mut self,
+        work: impl FnOnce(&mut Self) -> Result<R>,
+        noted: impl FnOnce(&mut Self, &R) -> Result<()>,
+    ) -> Result<R> {
+        self.check_depth += 1;
+        let done = work(self).and_then(|result| noted(self, &result).map(|()| result));
+        self.check_depth -= 1;
+        let result = match done {
+            Ok(result) => result,
+            Err(error) => {
+                if self.check_depth == 0 {
+                    self.pending_checks.clear();
+                }
+                return Err(error);
+            }
+        };
+        if self.check_depth == 0 {
+            let pending = std::mem::take(&mut self.pending_checks);
+            // A rule holds whoever wrote: checks read what they need, whatever the caller's rights.
+            self.sudo_with(|env| {
+                for (model, method, per_record, ids) in pending {
+                    if ids.is_empty() {
+                        continue;
+                    }
+                    if per_record {
+                        for id in ids {
+                            env.call_method::<(), ()>(
+                                &model,
+                                &method,
+                                &MultipleIds::from(id),
+                                &(),
+                            )?;
+                        }
+                    } else {
+                        env.call_method::<(), ()>(&model, &method, &MultipleIds::from(ids), &())?;
+                    }
+                }
+                Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+            })?;
+        }
+        Ok(result)
     }
 
     /// The records `steps` lead back to from `ids` of `model_name`: each many2one read, each
