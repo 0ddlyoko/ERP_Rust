@@ -3,7 +3,7 @@
 
 use erp::app::Application;
 use erp::environment::Environment;
-use erp_types::field::{IdMode, MultipleIds};
+use erp_types::field::{IdMode, MultipleIds, SingleId};
 use erp_types::model::MapOfFields;
 use std::error::Error;
 
@@ -12,7 +12,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 mod models {
     use code_gen::{Model, erp_methods};
     use erp::environment::Environment;
-    use erp::types::field::{IdMode, MultipleIds, SingleId};
+    use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
     use std::error::Error;
 
     type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -31,6 +31,59 @@ mod models {
         weight: i32,
         #[erp(default = 0)]
         stamps: i32,
+        carton: Reference<BaseCarton, SingleId>,
+    }
+
+    #[derive(Model)]
+    #[erp(id = "carton", methods)]
+    #[allow(dead_code)]
+    pub struct Carton<Mode: IdMode> {
+        pub id: Mode,
+        name: String,
+        #[erp(inverse = "carton")]
+        parcels: Reference<BaseParcel, MultipleIds>,
+        truck: Reference<BaseTruck, SingleId>,
+    }
+
+    #[erp_methods]
+    impl Carton<MultipleIds> {
+        /// A carton holds at most 100 kg.
+        #[erp(check = ["parcels.weight"])]
+        pub fn check_load(&self, env: &mut Environment) -> Result<()> {
+            for carton in self {
+                let parcels: Parcel<MultipleIds> = carton.get_parcels(env)?;
+                if parcels.sum(env, |parcel, env| Ok(*parcel.get_weight(env)?))? > 100 {
+                    return Err("A carton holds at most 100 kg".into());
+                }
+            }
+            Ok(())
+        }
+    }
+
+    #[derive(Model)]
+    #[erp(id = "truck", methods)]
+    #[allow(dead_code)]
+    pub struct Truck<Mode: IdMode> {
+        pub id: Mode,
+        name: String,
+        #[erp(inverse = "truck")]
+        cartons: Reference<BaseCarton, MultipleIds>,
+    }
+
+    #[erp_methods]
+    impl Truck<MultipleIds> {
+        /// A truck carries at most 150 kg, the parcels of all its cartons.
+        #[erp(check = ["cartons.parcels.weight"])]
+        pub fn check_load(&self, env: &mut Environment) -> Result<()> {
+            for truck in self {
+                let cartons: Carton<MultipleIds> = truck.get_cartons(env)?;
+                let parcels: Parcel<MultipleIds> = cartons.get_parcels(env)?;
+                if parcels.sum(env, |parcel, env| Ok(*parcel.get_weight(env)?))? > 150 {
+                    return Err("A truck carries at most 150 kg".into());
+                }
+            }
+            Ok(())
+        }
     }
 
     #[erp_methods]
@@ -82,6 +135,8 @@ use models::Parcel;
 fn new_app() -> Application {
     let mut app = Application::new_test();
     app.model_manager.register_model::<Parcel<_>>();
+    app.model_manager.register_model::<models::Carton<_>>();
+    app.model_manager.register_model::<models::Truck<_>>();
     app.model_manager.post_register();
     app
 }
@@ -165,4 +220,84 @@ fn test_only_marked_methods_are_checks() {
         .map(|check| check.method.clone())
         .collect();
     assert_eq!(checks, ["check_weight", "check_stamps", "check_name"]);
+}
+
+fn named(name: &str) -> MapOfFields {
+    let mut values = MapOfFields::default();
+    values.insert("name", name);
+    values
+}
+
+fn parcel_in(name: &str, weight: i32, carton_id: u32) -> MapOfFields {
+    let mut values = parcel(name, weight);
+    values.insert("carton", carton_id);
+    values
+}
+
+/// A check naming a field of the records a relation holds runs when they change: a parcel made
+/// heavier, one added, or one moved in.
+#[test]
+fn test_a_check_follows_a_path() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    let carton_id = env
+        .create_records("carton", vec![named("Kitchen")])?
+        .get_ids_ref()[0];
+    let ids = env.create_records(
+        "parcel",
+        vec![
+            parcel_in("Pans", 40, carton_id),
+            parcel_in("Plates", 50, carton_id),
+        ],
+    )?;
+    let pans =
+        Parcel::<MultipleIds>::from_ids(ids.get_ids_ref()[..1].to_vec(), &env).ensure_one()?;
+
+    let error = pans
+        .set_weight(60, &mut env)
+        .expect_err("110 kg in the carton");
+    assert_eq!(error.to_string(), "A carton holds at most 100 kg");
+    assert_eq!(*pans.get_weight(&mut env)?, 40, "undone");
+
+    let error = env
+        .create_records("parcel", vec![parcel_in("Glasses", 20, carton_id)])
+        .expect_err("110 kg once added");
+    assert_eq!(error.to_string(), "A carton holds at most 100 kg");
+
+    let loose = env
+        .create_records("parcel", vec![parcel("Books", 30)])?
+        .get_ids_ref()[0];
+    let loose = Parcel::<MultipleIds>::from_ids(vec![loose], &env).ensure_one()?;
+    let error = loose
+        .set_carton(
+            &models::Carton::<SingleId>::from_id(carton_id, &env),
+            &mut env,
+        )
+        .expect_err("120 kg once moved in");
+    assert_eq!(error.to_string(), "A carton holds at most 100 kg");
+    Ok(())
+}
+
+/// A path may cross several relations: the parcels of a truck's cartons.
+#[test]
+fn test_a_check_follows_a_longer_path() -> Result<()> {
+    let app = new_app();
+    let mut env = app.new_env()?;
+    let truck = env
+        .create_records("truck", vec![named("Van")])?
+        .get_ids_ref()[0];
+    let mut cartons = Vec::new();
+    for name in ["Kitchen", "Garage"] {
+        let mut values = named(name);
+        values.insert("truck", truck);
+        cartons.push(env.create_records("carton", vec![values])?.get_ids_ref()[0]);
+    }
+    env.create_records("parcel", vec![parcel_in("Pans", 80, cartons[0])])?;
+    let ids = env.create_records("parcel", vec![parcel_in("Tools", 60, cartons[1])])?;
+    let tools = Parcel::<MultipleIds>::from_ids(ids.get_ids_ref().clone(), &env).ensure_one()?;
+    let error = tools
+        .set_weight(80, &mut env)
+        .expect_err("160 kg in the truck");
+    assert_eq!(error.to_string(), "A truck carries at most 150 kg");
+    Ok(())
 }

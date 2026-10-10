@@ -83,48 +83,142 @@ impl<'mm> Environment<'mm> {
         let written: Vec<String> = values.fields.keys().cloned().collect();
         self.savepoint(|env| {
             env.call_method::<WriteArgs, ()>(model_name, WRITE, &ids, &(values,))?;
-            let written: Vec<&str> = written.iter().map(String::as_str).collect();
-            env.run_checks(model_name, &ids, Some(&written))
+            env.run_checks(model_name, &ids, &written, false)
         })
     }
 
-    /// Whether the model declares checks: methods marked `#[erp(check)]`.
+    /// Whether creating or writing records of the model may concern a check: its own, or one
+    /// naming a field of it along a path.
     pub(crate) fn has_checks(&self, model_name: &str) -> bool {
         self.model_manager
             .try_get_model(model_name)
             .is_ok_and(|model| !model.checks.is_empty())
+            || self
+                .model_manager
+                .check_links
+                .keys()
+                .any(|(model, _)| model == model_name)
     }
 
-    /// Run the model's checks on `ids`: all of them once created, those concerned by the fields
-    /// `written` once written.
+    /// Run the checks concerned by `ids` of `model_name`: all of the model's own once `created`,
+    /// those naming no field on every write, and every check naming one of the fields `written`
+    /// — on the records it leads back to, a line's order for its price.
     pub(crate) fn run_checks(
         &mut self,
         model_name: &str,
         ids: &MultipleIds,
-        written: Option<&[&str]>,
+        written: &[String],
+        created: bool,
     ) -> Result<()> {
         if ids.get_ids_ref().is_empty() {
             return Ok(());
         }
-        let checks = self.model_manager.try_get_model(model_name)?.checks.clone();
-        for check in checks {
-            if written.is_some_and(|written| !check.concerns(written)) {
+        let mut due: Vec<(String, String, bool, Vec<u32>)> = Vec::new();
+        let mut add = |model: &str, method: &str, per_record: bool, found: &[u32]| match due
+            .iter_mut()
+            .find(|(known, name, _, _)| known == model && name == method)
+        {
+            Some((_, _, _, ids)) => {
+                for id in found {
+                    if !ids.contains(id) {
+                        ids.push(*id);
+                    }
+                }
+            }
+            None => due.push((
+                model.to_string(),
+                method.to_string(),
+                per_record,
+                found.to_vec(),
+            )),
+        };
+        for check in &self.model_manager.try_get_model(model_name)?.checks {
+            if created || check.on.is_empty() {
+                add(
+                    model_name,
+                    &check.method,
+                    check.per_record,
+                    ids.get_ids_ref(),
+                );
+            }
+        }
+        for field in written {
+            let key = (model_name.to_string(), field.clone());
+            let Some(links) = self.model_manager.check_links.get(&key) else {
+                continue;
+            };
+            for link in links.clone() {
+                let found = self.ids_back(model_name, ids.get_ids_ref(), &link.steps)?;
+                add(&link.model, &link.method, link.per_record, &found);
+            }
+        }
+        for (model, method, per_record, ids) in due {
+            if ids.is_empty() {
                 continue;
             }
-            if check.per_record {
-                for id in ids.get_ids_ref().clone() {
-                    self.call_method::<(), ()>(
-                        model_name,
-                        &check.method,
-                        &MultipleIds::from(id),
-                        &(),
-                    )?;
+            if per_record {
+                for id in ids {
+                    self.call_method::<(), ()>(&model, &method, &MultipleIds::from(id), &())?;
                 }
             } else {
-                self.call_method::<(), ()>(model_name, &check.method, ids, &())?;
+                self.call_method::<(), ()>(&model, &method, &MultipleIds::from(ids), &())?;
             }
         }
         Ok(())
+    }
+
+    /// The records `steps` lead back to from `ids` of `model_name`: each many2one read, each
+    /// field pointing to them searched, as a computed field's dependencies are followed.
+    fn ids_back(
+        &mut self,
+        model_name: &str,
+        ids: &[u32],
+        steps: &[FieldDepend],
+    ) -> Result<Vec<u32>> {
+        let mut at = model_name.to_string();
+        let mut current = ids.to_vec();
+        for step in steps {
+            if current.is_empty() {
+                break;
+            }
+            match step {
+                FieldDepend::CurrentFieldAnotherModel {
+                    target_model,
+                    field_name,
+                } => {
+                    let values = self.get_fields_value_unchecked::<MultipleIds>(
+                        &at,
+                        field_name,
+                        &current.clone().into(),
+                    )?;
+                    let mut next: Vec<u32> = Vec::new();
+                    for value in values.into_iter().flatten() {
+                        match value {
+                            FieldType::Ref(id) => next.push(*id),
+                            FieldType::Refs(ids) => next.extend(ids),
+                            _ => {}
+                        }
+                    }
+                    let mut seen = HashSet::new();
+                    next.retain(|id| *id != 0 && seen.insert(*id));
+                    current = next;
+                    at = target_model.clone();
+                }
+                FieldDepend::AnotherModel {
+                    target_model,
+                    target_field,
+                } => {
+                    current = self.search_ids_unchecked(
+                        target_model,
+                        &make_domain!([(target_field.as_str(), "in", current.clone())]),
+                        &SearchOptions::default(),
+                    )?;
+                    at = target_model.clone();
+                }
+                FieldDepend::SameModel { .. } => {}
+            }
+        }
+        Ok(current)
     }
 
     /// What writing does, below every override of `write`.

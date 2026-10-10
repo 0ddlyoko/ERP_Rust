@@ -127,6 +127,19 @@ pub struct ModelManager {
     /// For a field — model then name — the one2many fields whose domain reads it, which writing
     /// it leaves stale: the order states a product's confirmed lines are filtered by.
     pub(crate) domain_dependents: HashMap<(String, String), Vec<(String, String)>>,
+    /// For a field — model then name — the checks a write of it concerns, with the way back from
+    /// the records written to those checked: a line's price leads to its order's check.
+    pub(crate) check_links: HashMap<(String, String), Vec<CheckLink>>,
+}
+
+/// A check a field's write concerns, and how to reach the records it checks from those written:
+/// each step read or searched in turn, as a computed field's dependencies are.
+#[derive(Debug, Clone)]
+pub(crate) struct CheckLink {
+    pub(crate) model: String,
+    pub(crate) method: String,
+    pub(crate) per_record: bool,
+    pub(crate) steps: Vec<FieldDepend>,
 }
 
 impl ModelManager {
@@ -228,6 +241,114 @@ impl ModelManager {
         self._post_register_m2o_links();
         self._post_register_compute_links();
         self._post_register_domain_dependents();
+        self._post_register_check_links();
+    }
+
+    /// Note, for every field a check names — along its path, `lines.price` naming the order's
+    /// lines, a line's order and its price — which check its write concerns, and the way back.
+    fn _post_register_check_links(&mut self) {
+        let mut links: HashMap<(String, String), Vec<CheckLink>> = HashMap::new();
+        for (model_name, model) in &self.models {
+            for check in &model.checks {
+                for path in &check.on {
+                    for (at, field, steps) in self.trigger_paths(model_name, path) {
+                        links.entry((at, field)).or_default().push(CheckLink {
+                            model: model_name.clone(),
+                            method: check.method.clone(),
+                            per_record: check.per_record,
+                            steps,
+                        });
+                    }
+                }
+            }
+        }
+        self.check_links = links;
+    }
+
+    /// The fields whose write changes what `path` reads from a record of `model_name`, each with
+    /// the steps leading back from records holding it to those records: the field at the end,
+    /// and every relation crossed on the way.
+    ///
+    /// Panics on a path naming no field, or crossing a field that is no relation.
+    fn trigger_paths(
+        &self,
+        model_name: &str,
+        path: &str,
+    ) -> Vec<(String, String, Vec<FieldDepend>)> {
+        let mut found = Vec::new();
+        let mut steps: Vec<FieldDepend> = Vec::new();
+        let mut at = model_name.to_string();
+        let segments: Vec<&str> = path.split('.').collect();
+        for (index, segment) in segments.iter().enumerate() {
+            let back = |steps: &Vec<FieldDepend>| steps.iter().rev().cloned().collect::<Vec<_>>();
+            let Some(field) = self
+                .models
+                .get(&at)
+                .and_then(|model| model.fields.get(*segment))
+            else {
+                panic!(
+                    "The check of {model_name} on {path} names {segment}, which {at} has no field for"
+                );
+            };
+            if index == segments.len() - 1 {
+                found.push((at.clone(), segment.to_string(), back(&steps)));
+                break;
+            }
+            let Some(FieldReference {
+                target_model,
+                inverse_field,
+            }) = &field.inverse
+            else {
+                panic!(
+                    "The check of {model_name} on {path} crosses {at}.{segment}, which is no relation"
+                );
+            };
+            match inverse_field {
+                FieldReferenceType::M2O { .. } => {
+                    found.push((at.clone(), segment.to_string(), back(&steps)));
+                    steps.push(FieldDepend::AnotherModel {
+                        target_model: at.clone(),
+                        target_field: segment.to_string(),
+                    });
+                }
+                FieldReferenceType::O2M { inverse_field } => {
+                    found.push((at.clone(), segment.to_string(), back(&steps)));
+                    steps.push(FieldDepend::CurrentFieldAnotherModel {
+                        target_model: at.clone(),
+                        field_name: inverse_field.clone(),
+                    });
+                    found.push((
+                        target_model.to_string(),
+                        inverse_field.clone(),
+                        back(&steps),
+                    ));
+                }
+                FieldReferenceType::M2M {
+                    relation,
+                    target_column,
+                    ..
+                } => {
+                    let Some(mirror) = self
+                        .models
+                        .get(*target_model)
+                        .and_then(|target| target.field_of_relation(relation, target_column))
+                        .map(str::to_string)
+                    else {
+                        panic!(
+                            "{at}.{segment} names relation {relation}, which {target_model} does not declare"
+                        );
+                    };
+                    found.push((at.clone(), segment.to_string(), back(&steps)));
+                    steps.push(FieldDepend::CurrentFieldAnotherModel {
+                        target_model: at.clone(),
+                        field_name: mirror.clone(),
+                    });
+                    found.push((target_model.to_string(), mirror, back(&steps)));
+                }
+            }
+            at = target_model.to_string();
+        }
+        found
     }
 
     /// Whether the one2many `model_name.field_name` filters its records by a domain.

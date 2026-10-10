@@ -74,6 +74,14 @@ impl<'mm> Environment<'mm> {
                 &(data,),
             );
         }
+        let mut given: Vec<String> = Vec::new();
+        for values in &data {
+            for name in values.fields.keys() {
+                if !given.contains(name) {
+                    given.push(name.clone());
+                }
+            }
+        }
         self.savepoint(|env| {
             let ids = env.call_method::<CreateArgs, MultipleIds>(
                 model_name,
@@ -81,7 +89,7 @@ impl<'mm> Environment<'mm> {
                 &MultipleIds::default(),
                 &(data,),
             )?;
-            env.run_checks(model_name, &ids, None)?;
+            env.run_checks(model_name, &ids, &given, true)?;
             Ok(ids)
         })
     }
