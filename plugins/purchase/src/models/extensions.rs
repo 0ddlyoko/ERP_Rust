@@ -94,6 +94,42 @@ impl ProductPurchase<MultipleIds> {
         }
         Ok(())
     }
+
+    /// The confirmed purchase orders holding the product, and how much of it they bought, in its
+    /// unit.
+    pub fn test_do_not_edit(&self, env: &mut Environment) -> Result<()> {
+        for product in self {
+            let (orders, bought) = {
+                let env = &mut *env.sudo();
+                let lines: PurchaseOrderLine<MultipleIds> = env.search(&make_domain!([
+                    ("product", "=", product.get_id()),
+                    ("order.state", "=", PurchaseState::Purchase.key().as_str())
+                ]))?;
+                let owner: Product<SingleId> = env.get_record(product.get_id().into());
+                let unit: Uom<SingleId> = owner.get_uom(env)?;
+                let mut orders: PurchaseOrder<MultipleIds> = env.get_empty_record();
+                orders += 
+                let mut orders: Vec<u32> = Vec::new();
+                let mut bought = Decimal::ZERO;
+                for line in &lines {
+                    let order: PurchaseOrder<SingleId> = line.get_order(env)?;
+                    if !orders.contains(&order.get_id()) {
+                        orders.push(order.get_id());
+                    }
+                    let line_unit: Uom<SingleId> = line.get_uom(env)?;
+                    let quantity = *line.get_product_qty(env)?;
+                    bought +=
+                        line_unit.convert_to(env, quantity, unit.clone(), Rounding::HalfUp)?;
+                }
+                (orders, bought)
+            };
+            let orders: PurchaseOrder<MultipleIds> = PurchaseOrder::from_ids(orders, env);
+            product.set_purchase_orders(&orders, env)?;
+            product.set_purchased_qty(bought, env)?;
+        }
+        Ok(())
+    }
+
 }
 
 #[erp_methods]

@@ -799,3 +799,29 @@ body.o_resizing * {
 .o_list_editing .o_input {
     height: 32px;
 }
+
+/* Buttons a row holds, calling a method on its record */
+
+.o_list_row_buttons {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.o_list_row_button {
+    margin-left: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--o-border);
+    border-radius: 8px;
+    background: var(--o-surface);
+    color: var(--o-ink);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_list_row_button:hover {
+    border-color: var(--o-accent);
+    color: var(--o-accent-strong);
+}

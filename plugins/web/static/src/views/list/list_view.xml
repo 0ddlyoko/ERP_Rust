@@ -81,13 +81,14 @@
                                           t-on-mousedown="(ev) => resize(ev, column.name)"/>
                                 </th>
                                 <th t-if="widths" class="o_list_filler"/>
+                                <th t-if="rowButtons.length" class="o_list_row_buttons"/>
                             </tr>
                         </thead>
                         <Suspense>
                             <t t-set-slot="fallback">
                                 <tbody>
                                     <tr class="o_list_empty">
-                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
+                                        <td t-att-colspan="columns.length + extraCells"><t t-call="web.Loading"/></td>
                                     </tr>
                                 </tbody>
                             </t>
@@ -119,9 +120,10 @@
                                             <t t-elif="isSummed(column)">{{ sumText(column, line.group.sums) }}</t>
                                         </td>
                                         <td t-if="widths" class="o_list_filler"/>
+                                        <td t-if="rowButtons.length" class="o_list_row_buttons"/>
                                     </tr>
                                     <tr t-elif="line.kind === 'quick'" class="o_list_quick">
-                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)">
+                                        <td t-att-colspan="columns.length + extraCells">
                                             <form t-on-submit.prevent="(ev) => add(line.group, ev.target)">
                                                 <input type="text" class="o_input" autocomplete="off" placeholder="Title" aria-label="Title"
                                                        t-on-keydown="(ev) => ev.key === 'Escape' &amp;&amp; closeAdd()"/>
@@ -131,7 +133,7 @@
                                         </td>
                                     </tr>
                                     <tr t-elif="line.kind === 'loading'" class="o_list_empty">
-                                        <td t-att-colspan="columns.length + (widths ? 2 : 1)"><t t-call="web.Loading"/></td>
+                                        <td t-att-colspan="columns.length + extraCells"><t t-call="web.Loading"/></td>
                                     </tr>
                                     <tr t-elif="isEditing(line.record)" class="o_list_row o_list_editing" t-att-data-id="line.record.id"
                                         t-on-keydown="(ev) => rowKey(ev)">
@@ -150,6 +152,11 @@
                                                field="column.field" attrs="column.attrs"/>
                                         </td>
                                         <td t-if="widths" class="o_list_filler"/>
+                                        <td t-if="rowButtons.length" class="o_list_row_buttons" t-on-click.stop="() => {}">
+                                            <button t-foreach="buttonsOf(line.record)" t-as="button" t-key="button.name" type="button"
+                                                    class="o_list_row_button"
+                                                    t-on-click="() => pressRowButton(idOf(line.record), button.name)">{{ button.label }}</button>
+                                        </td>
                                     </tr>
                                 </t>
                                 <tr t-if="editing !== null &amp;&amp; editing.id === null &amp;&amp; editableAt === 'bottom'"
@@ -157,7 +164,7 @@
                                     <t t-call="web.ListEditedCells"/>
                                 </tr>
                                 <tr t-if="lines.length === 0 &amp;&amp; !(editing !== null &amp;&amp; editing.id === null)" class="o_list_empty">
-                                    <td t-att-colspan="columns.length + (widths ? 2 : 1)">No records.</td>
+                                    <td t-att-colspan="columns.length + extraCells">No records.</td>
                                 </tr>
                             </tbody>
                             <tfoot t-if="totals">
@@ -167,6 +174,7 @@
                                         {{ isSummed(column) ? sumText(column, totals) : "" }}
                                     </td>
                                     <td t-if="widths" class="o_list_filler"/>
+                                    <td t-if="rowButtons.length" class="o_list_row_buttons"/>
                                 </tr>
                             </tfoot>
                         </Suspense>
@@ -192,5 +200,11 @@
                field="column.field" attrs="column.attrs" readonly="cellReadonly(column)" onChange="rowChanger(column.name)"/>
         </td>
         <td t-if="widths" class="o_list_filler"/>
+        <td t-if="rowButtons.length" class="o_list_row_buttons">
+            <t t-if="editing.id !== null">
+                <button t-foreach="buttonsOf(editingValues)" t-as="button" t-key="button.name" type="button"
+                        class="o_list_row_button" t-on-click="() => pressRowButton(editing.id, button.name)">{{ button.label }}</button>
+            </t>
+        </td>
     </t>
 </templates>

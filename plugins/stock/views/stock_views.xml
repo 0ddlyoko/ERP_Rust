@@ -207,6 +207,8 @@
             <field name="reserved_quantity" readonly="1"/>
             <field name="inventory_quantity"/>
             <field name="inventory_diff" readonly="1"/>
+            <button name="action_apply_inventory" string="Apply" invisible="inventory_quantity === null || inventory_quantity === false"/>
+            <button name="action_clear_inventory" string="Reset" invisible="inventory_quantity === null || inventory_quantity === false"/>
         </list>
     </view>
     <view id="view_quant_form" name="stock_quant.form" model="stock_quant">

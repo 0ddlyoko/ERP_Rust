@@ -250,4 +250,13 @@ impl Quant<MultipleIds> {
             Ok(true)
         })
     }
+
+    /// Forget what was counted: nothing is applied, the line shows what is on hand again.
+    #[erp(rpc)]
+    pub fn action_clear_inventory(&self, env: &mut Environment) -> Result<bool> {
+        for quant in self {
+            quant.set_inventory_quantity(None::<Decimal>, env)?;
+        }
+        Ok(true)
+    }
 }

@@ -192,7 +192,7 @@ impl Arch<'_> {
             self.dashboard(root)?;
         }
         let allowed: &[&str] = match root.name.as_str() {
-            "list" => &["field", "buttons", "compact", "folded", "preview"],
+            "list" => &["field", "button", "buttons", "compact", "folded", "preview"],
             "kanban" => &["field", "card"],
             "search" => &["field", "filter"],
             "dashboard" => &["metric", "chart", "records"],

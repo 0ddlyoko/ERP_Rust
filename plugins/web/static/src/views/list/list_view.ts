@@ -1,6 +1,6 @@
 import { type ComponentClass, computed, effect, inject, load, loading, nextTick, props, refresh, resource, state, t } from "trame";
 import { and } from "@web/core/domain";
-import { decorationNames, decorationOf } from "@web/core/expression";
+import { decorationNames, decorationOf, evaluate, namesRead } from "@web/core/expression";
 import { listMemory, rememberList, rememberSearch, searchFacets, type Sort, takeOpening } from "@web/core/list_memory";
 import { listKey } from "@web/core/router";
 import { Notifications } from "@web/core/notifications";
@@ -158,8 +158,44 @@ export class ListView extends View {
             ...decorationNames(this.listAttrs),
             ...this.columns.flatMap((column) => decorationNames(column.attrs)),
             ...companionFields(this.columns, fields),
+            ...this.rowButtons.flatMap((button) => (button.invisible === null ? [] : namesRead(button.invisible))),
         ];
         return [...new Set(names)].filter((name) => name in fields && !this.columns.some((column) => column.name === name));
+    }
+
+    /** The buttons each row holds: the `<button>`s of the `<list>` itself, calling their method on its record. */
+    @computed get rowButtons(): { name: string; label: string; invisible: string | null }[] {
+        return Array.from(this.archRoot?.querySelectorAll(":scope > button") ?? [], (button) => ({
+            name: button.getAttribute("name") ?? "",
+            label: button.getAttribute("string") ?? button.getAttribute("name") ?? "",
+            invisible: button.getAttribute("invisible"),
+        }));
+    }
+
+    /** How many cells a row spans besides its columns: its check box, the filler, its buttons. */
+    get extraCells(): number {
+        return 1 + (this.widths === null ? 0 : 1) + (this.rowButtons.length > 0 ? 1 : 0);
+    }
+
+    /** The buttons a row shows: those not invisible for its values — as edited, while it is. */
+    buttonsOf(values: Values): { name: string; label: string }[] {
+        return this.rowButtons.filter((button) => button.invisible === null || !evaluate(button.invisible, values));
+    }
+
+    /** Run a row's button on its record, the row saved first when it is being edited. */
+    async pressRowButton(id: number, name: string): Promise<void> {
+        if (this.editing?.id === id && !(await this.leaveRow())) {
+            return;
+        }
+        try {
+            await this.orm.call(this.props.resModel, name, [id]);
+            this.orm.touchRecords(this.props.resModel, [id]);
+            refresh(() => this.records);
+            refresh(() => this.total);
+            refresh(() => this.totals);
+        } catch (error) {
+            this.notifications.add("danger", error instanceof Error ? error.message : String(error));
+        }
     }
 
     /** The class of a record's row: selected, and coloured as the list's decorations say. */
