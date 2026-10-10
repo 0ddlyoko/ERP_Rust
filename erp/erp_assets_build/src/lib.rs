@@ -238,15 +238,23 @@ pub fn transpile_with(code: &str, name: &str, public: &HashSet<String>) -> Resul
 /// The code is the body of a function given `require`, `exports` and `module`: its imports become
 /// calls to `require`, a dynamic `import()` one made once the promise resolves, and its exports
 /// properties of `exports` read through getters, so they stay live bindings. Nothing else is
-/// lowered: the module is already what a browser runs.
+/// lowered: the module is already what a browser runs. It is minified, its classes and functions
+/// keeping their names; the files served apart, for debugging, are not.
 pub fn bundled_form(code: &str, name: &str) -> Result<(String, Vec<String>), String> {
     let options = serde_json::json!({
         "jsc": {
             "parser": { "syntax": "ecmascript" },
             "target": "esnext",
-            "externalHelpers": false
+            "externalHelpers": false,
+            "minify": {
+                "compress": true,
+                "mangle": { "keep_classnames": true, "keep_fnames": true },
+                "keep_classnames": true,
+                "keep_fnames": true
+            }
         },
         "module": { "type": "commonjs", "ignoreDynamic": false },
+        "minify": true,
         "sourceMaps": false
     });
     let imports = Imports::default();
@@ -554,7 +562,8 @@ mod tests {
         );
     }
 
-    /// A module becomes a function body requiring what it imported, its exports kept live.
+    /// A module becomes a function body requiring what it imported, its exports kept live, and is
+    /// minified.
     #[test]
     fn test_a_module_is_given_its_bundled_form() {
         let (code, imports) = bundled_form(
@@ -577,6 +586,10 @@ mod tests {
         assert!(code.contains("require(\"./lazy.js\")"), "{code}");
         assert!(!code.contains("import "), "{code}");
         assert!(!code.contains("export "), "{code}");
-        assert!(code.contains("#hidden"), "nothing lowered: {code}");
+        assert!(code.contains("class Main{#"), "nothing lowered: {code}");
+        assert!(
+            !code.contains("let count") && code.contains("get count()"),
+            "minified, its exports named as they are: {code}"
+        );
     }
 }
