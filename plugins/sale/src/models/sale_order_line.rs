@@ -207,8 +207,7 @@ impl SaleOrderLine<MultipleIds> {
                 continue;
             }
             let product: ProductAccount<SingleId> = product.as_model();
-            let taxes: Tax<MultipleIds> =
-                product.as_sudo(env, |product, env| product.get_taxes(env))?;
+            let taxes: Tax<MultipleIds> = product.get_taxes(&mut env.sudo())?;
             let order: SaleOrder<SingleId> = line.get_order(env)?;
             let position: FiscalPosition<SingleId> = order.get_fiscal_position(env)?;
             let mapped = position.map_taxes(env, taxes.get_ids_ref().clone())?;

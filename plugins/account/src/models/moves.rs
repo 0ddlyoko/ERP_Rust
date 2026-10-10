@@ -730,7 +730,7 @@ impl Move<MultipleIds> {
             }
             let partner: ContactAccount<SingleId> = partner.as_model();
             let position: FiscalPosition<SingleId> =
-                partner.as_sudo(env, |partner, env| partner.get_fiscal_position(env))?;
+                partner.get_fiscal_position(&mut env.sudo())?;
             entry.set_fiscal_position(&position, env)?;
         }
         Ok(())

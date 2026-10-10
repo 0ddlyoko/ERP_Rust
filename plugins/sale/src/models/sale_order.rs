@@ -242,7 +242,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactSale<SingleId> = partner.as_model();
-                partner.as_sudo(env, |partner, env| partner.get_pricelist(env))?
+                partner.get_pricelist(&mut env.sudo())?
             };
             order.set_pricelist(&pricelist, env)?;
         }
@@ -257,7 +257,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
-                partner.as_sudo(env, |partner, env| partner.get_customer_payment_term(env))?
+                partner.get_customer_payment_term(&mut env.sudo())?
             };
             order.set_payment_term(&term, env)?;
         }
@@ -272,7 +272,7 @@ impl SaleOrder<MultipleIds> {
                 env.get_record(SingleId::empty())
             } else {
                 let partner: ContactAccount<SingleId> = partner.as_model();
-                partner.as_sudo(env, |partner, env| partner.get_fiscal_position(env))?
+                partner.get_fiscal_position(&mut env.sudo())?
             };
             order.set_fiscal_position(&position, env)?;
         }
