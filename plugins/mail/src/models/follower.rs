@@ -116,10 +116,7 @@ pub(crate) fn follow(
 ) -> Result<()> {
     let followers = followers_of(env, model, record)?;
     let env = &mut *env.sudo();
-    let mut known = Vec::new();
-    for follower in followers {
-        known.push(follower.get_contact::<Contact<SingleId>>(env)?.get_id());
-    }
+    let known: Contact<MultipleIds> = followers.get_contact(env)?;
     let defaults: Vec<u32> = subtypes_of(env, model)?
         .into_iter()
         .filter(|(_, _, default)| *default)
@@ -127,7 +124,7 @@ pub(crate) fn follow(
         .collect();
     let mut new = Vec::new();
     for contact in contacts {
-        if known.contains(contact)
+        if known.get_ids_ref().contains(contact)
             || new
                 .iter()
                 .any(|values: &MapOfFields| values.get_option::<&u32>("contact") == Some(contact))

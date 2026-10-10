@@ -278,19 +278,10 @@ impl PurchaseOrder<MultipleIds> {
     pub fn compute_bills(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let lines: PurchaseOrderLine<MultipleIds> = order.get_lines(env)?;
-            let mut bills: Vec<u32> = Vec::new();
             let env = &mut *env.sudo();
-            for line in &lines {
-                let bill_lines: account::models::InvoiceLine<MultipleIds> =
-                    line.get_bill_lines(env)?;
-                for bill_line in &bill_lines {
-                    let bill: Move<SingleId> = bill_line.get_move_id(env)?;
-                    if !bills.contains(&bill.get_id()) {
-                        bills.push(bill.get_id());
-                    }
-                }
-            }
-            let bills: Move<MultipleIds> = Move::from_ids(bills, env);
+            let bill_lines: account::models::InvoiceLine<MultipleIds> =
+                lines.get_bill_lines(env)?;
+            let bills: Move<MultipleIds> = bill_lines.get_move_id(env)?;
             order.set_bills(&bills, env)?;
         }
         Ok(())

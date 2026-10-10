@@ -335,10 +335,10 @@ impl Task<MultipleIds> {
         let moved = values.contains_key("stage");
         let relinked = values.contains_key("depends_on") || values.contains_key("parent");
         let restated = values.contains_key("status");
-        let parents_before = if relinked {
-            self.parents(env)?
+        let parents_before: Task<MultipleIds> = if relinked {
+            self.get_parent(env)?
         } else {
-            Vec::new()
+            Task::from_ids(Vec::<u32>::new(), env)
         };
         let placed = moved || values.contains_key("project");
         sup.call_with(values, env)?;
@@ -354,18 +354,14 @@ impl Task<MultipleIds> {
                     task.set_status(TaskStatus::InProgress, env)?;
                 }
             }
-            let mut waiting = Vec::new();
-            for task in self {
-                let blocking: Task<MultipleIds> = task.get_blocking(env)?;
-                waiting.extend(blocking.get_ids_ref().iter().copied());
-            }
-            Task::<MultipleIds>::from_ids(waiting, env).refresh_blocked(env)?;
+            let waiting: Task<MultipleIds> = self.get_blocking(env)?;
+            waiting.refresh_blocked(env)?;
         }
         if relinked || restated {
             self.refresh_blocked(env)?;
         }
         if relinked {
-            Task::<MultipleIds>::from_ids(parents_before, env).refresh_blocked(env)?;
+            parents_before.refresh_blocked(env)?;
         }
         Ok(())
     }
@@ -410,20 +406,7 @@ impl Task<MultipleIds> {
             }
         }
         let changed = Task::<MultipleIds>::from_ids(changed, env);
-        Task::<MultipleIds>::from_ids(changed.parents(env)?, env).refresh_blocked(env)
-    }
-
-    /// The tasks these are subtasks of.
-    fn parents(&self, env: &mut Environment) -> Result<Vec<u32>> {
-        let mut parents = Vec::new();
-        for task in self {
-            let parent: Task<SingleId> = task.get_parent(env)?;
-            if let Some(parent) = parent.get_optional_id()
-                && !parents.contains(&parent)
-            {
-                parents.push(parent);
-            }
-        }
-        Ok(parents)
+        let parents: Task<MultipleIds> = changed.get_parent(env)?;
+        parents.refresh_blocked(env)
     }
 }

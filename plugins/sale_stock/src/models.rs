@@ -107,22 +107,12 @@ impl SaleOrderStock<MultipleIds> {
             let order_record: SaleOrder<SingleId> = env.get_record(order.get_id().into());
             let lines: SaleOrderLine<MultipleIds> = order_record.get_lines(env)?;
             let line_ids = lines.get_ids_ref().clone();
-            let pickings: Vec<u32> = {
+            let pickings: Picking<MultipleIds> = {
                 let env = &mut *env.sudo();
                 let moves: StockMove<MultipleIds> =
                     env.search(&make_domain!([("sale_line", "in", line_ids)]))?;
-                let mut pickings = Vec::new();
-                for stock_move in &moves {
-                    let picking: Picking<SingleId> = stock_move.get_picking(env)?;
-                    if let Some(id) = picking.get_optional_id()
-                        && !pickings.contains(&id)
-                    {
-                        pickings.push(id);
-                    }
-                }
-                pickings
+                moves.get_picking(env)?
             };
-            let pickings: Picking<MultipleIds> = Picking::from_ids(pickings, env);
             order.set_pickings(&pickings, env)?;
         }
         Ok(())
@@ -243,24 +233,12 @@ impl PickingSale<MultipleIds> {
     pub fn on_done(&self, env: &mut Environment, sup: Super) -> Result<()> {
         sup.call(env)?;
         let env = &mut *env.sudo();
-        let mut lines: Vec<u32> = Vec::new();
-        for picking in self {
-            let picking: Picking<SingleId> = env.get_record(picking.get_id().into());
-            let moves: StockMove<MultipleIds> = picking.get_moves(env)?;
-            for stock_move in &moves {
-                let stock_move: StockMoveSale<SingleId> =
-                    env.get_record(stock_move.get_id().into());
-                let line: SaleOrderLine<SingleId> = stock_move.get_sale_line(env)?;
-                if let Some(id) = line.get_optional_id()
-                    && !lines.contains(&id)
-                {
-                    lines.push(id);
-                }
-            }
-        }
-        for line in lines {
-            let delivered = delivered_quantity(env, line)?;
-            let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+        let pickings: Picking<MultipleIds> = Picking::from_ids(self.get_ids(), env);
+        let moves: StockMove<MultipleIds> = pickings.get_moves(env)?;
+        let moves: StockMoveSale<MultipleIds> = StockMoveSale::from_ids(moves.get_ids(), env);
+        let lines: SaleOrderLine<MultipleIds> = moves.get_sale_line(env)?;
+        for line in &lines {
+            let delivered = delivered_quantity(env, line.get_id())?;
             line.set_qty_delivered(delivered, env)?;
         }
         Ok(())

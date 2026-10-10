@@ -347,19 +347,10 @@ impl SaleOrder<MultipleIds> {
     pub fn compute_invoices(&self, env: &mut Environment) -> Result<()> {
         for order in self {
             let lines: SaleOrderLine<MultipleIds> = order.get_lines(env)?;
-            let mut invoices: Vec<u32> = Vec::new();
             let env = &mut *env.sudo();
-            for line in &lines {
-                let invoice_lines: account::models::InvoiceLine<MultipleIds> =
-                    line.get_invoice_lines(env)?;
-                for invoice_line in &invoice_lines {
-                    let invoice: Move<SingleId> = invoice_line.get_move_id(env)?;
-                    if !invoices.contains(&invoice.get_id()) {
-                        invoices.push(invoice.get_id());
-                    }
-                }
-            }
-            let invoices: Move<MultipleIds> = Move::from_ids(invoices, env);
+            let invoice_lines: account::models::InvoiceLine<MultipleIds> =
+                lines.get_invoice_lines(env)?;
+            let invoices: Move<MultipleIds> = invoice_lines.get_move_id(env)?;
             order.set_invoices(&invoices, env)?;
         }
         Ok(())

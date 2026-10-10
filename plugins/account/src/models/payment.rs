@@ -206,24 +206,15 @@ impl Payment<SingleId> {
 
         let invoices: Move<MultipleIds> = self.get_invoices(env)?;
         if !invoices.get_ids_ref().is_empty() {
-            let mut lines = Vec::new();
-            let mut entries: Vec<Move<SingleId>> = invoices.into_iter().collect();
-            entries.push(entry);
-            {
+            let lines = {
                 let sudo = &mut *env.sudo();
-                for invoice in entries {
-                    let items: MoveLine<MultipleIds> = invoice.get_lines(sudo)?;
-                    for line in &items {
-                        let account: Account<SingleId> = line.get_account(sudo)?;
-                        if account.get_id() == counterpart.get_id()
-                            && !*line.get_reconciled(sudo)?
-                        {
-                            lines.push(line.get_id());
-                        }
-                    }
-                }
-            }
-            MoveLine::<MultipleIds>::from_ids(lines, env).reconcile_lines(env)?;
+                let items: MoveLine<MultipleIds> = (invoices + entry).get_lines(sudo)?;
+                items.filtered(sudo, |line, sudo| {
+                    let account: Account<SingleId> = line.get_account(sudo)?;
+                    Ok(account.get_id() == counterpart.get_id() && !*line.get_reconciled(sudo)?)
+                })?
+            };
+            lines.reconcile_lines(env)?;
         }
         Ok(())
     }

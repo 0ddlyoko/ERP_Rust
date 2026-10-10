@@ -34,12 +34,8 @@ impl TaskTimesheet<MultipleIds> {
             Some(uid) => {
                 let timers: Timer<MultipleIds> =
                     env.sudo().search(&make_domain!([("user", "=", uid)]))?;
-                let mut on = Vec::new();
-                for timer in &timers {
-                    let task: Task<SingleId> = timer.get_task(&mut env.sudo())?;
-                    on.extend(task.get_optional_id());
-                }
-                on
+                let on: Task<MultipleIds> = timers.get_task(&mut env.sudo())?;
+                on.get_ids()
             }
             None => Vec::new(),
         };

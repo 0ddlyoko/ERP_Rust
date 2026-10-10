@@ -99,21 +99,11 @@ impl SaleOrderProject<MultipleIds> {
                 let sudo = &mut *env.sudo();
                 let tasks: Task<MultipleIds> =
                     sudo.search(&make_domain!([("sale_line.order", "=", id)]))?;
-                let mut projects: Vec<u32> = sudo
-                    .search::<Project<MultipleIds>>(&make_domain!([("sale_order", "=", id)]))?
-                    .get_ids_ref()
-                    .clone();
-                for task in &tasks {
-                    let project: Project<SingleId> = task.get_project(sudo)?;
-                    if let Some(project) = project.get_optional_id()
-                        && !projects.contains(&project)
-                    {
-                        projects.push(project);
-                    }
-                }
-                (tasks, projects)
+                let sold: Project<MultipleIds> =
+                    sudo.search(&make_domain!([("sale_order", "=", id)]))?;
+                let worked_on: Project<MultipleIds> = tasks.get_project(sudo)?;
+                (tasks, sold | worked_on)
             };
-            let projects = Project::<MultipleIds>::from_ids(projects, env);
             order.set_projects(&projects, env)?;
             order.set_tasks(&tasks, env)?;
         }
@@ -237,10 +227,10 @@ impl TimesheetSale<MultipleIds> {
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
-        let mut lines = lines_of(env, self.get_ids_ref())?;
+        let before = lines_of(env, self.get_ids_ref())?;
         sup.call_with(values, env)?;
-        lines.extend(lines_of(env, self.get_ids_ref())?);
-        refresh_delivered(env, lines)
+        let after = lines_of(env, self.get_ids_ref())?;
+        refresh_delivered(env, before + after)
     }
 
     pub fn delete(&self, env: &mut Environment, sup: Super) -> Result<u32> {
@@ -252,31 +242,18 @@ impl TimesheetSale<MultipleIds> {
 }
 
 /// The order lines carried out by the tasks these entries are logged on.
-fn lines_of(env: &mut Environment, entries: &[u32]) -> Result<Vec<u32>> {
+fn lines_of(env: &mut Environment, entries: &[u32]) -> Result<SaleOrderLine<MultipleIds>> {
     let env = &mut *env.sudo();
     let entries = Timesheet::<MultipleIds>::from_ids(entries.to_vec(), env);
-    let mut lines = Vec::new();
-    for entry in &entries {
-        let task: Task<SingleId> = entry.get_task(env)?;
-        let Some(task) = task.get_optional_id() else {
-            continue;
-        };
-        let task: TaskSale<SingleId> = env.get_record(task.into());
-        let line: SaleOrderLine<SingleId> = task.get_sale_line(env)?;
-        if let Some(line) = line.get_optional_id()
-            && !lines.contains(&line)
-        {
-            lines.push(line);
-        }
-    }
-    Ok(lines)
+    let tasks: Task<MultipleIds> = entries.get_task(env)?;
+    let tasks: TaskSale<MultipleIds> = TaskSale::from_ids(tasks.get_ids(), env);
+    tasks.get_sale_line(env)
 }
 
 /// What is delivered of a service invoiced as delivered: the hours logged on its tasks.
-fn refresh_delivered(env: &mut Environment, lines: Vec<u32>) -> Result<()> {
+fn refresh_delivered(env: &mut Environment, lines: SaleOrderLine<MultipleIds>) -> Result<()> {
     let env = &mut *env.sudo();
-    for line in lines {
-        let line: SaleOrderLine<SingleId> = env.get_record(line.into());
+    for line in &lines {
         let product: Product<SingleId> = line.get_product(env)?;
         let Some(product) = product.get_optional_id() else {
             continue;

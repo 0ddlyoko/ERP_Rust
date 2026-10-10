@@ -461,10 +461,7 @@ impl MoveLine<MultipleIds> {
                     ("move_id", "in", entry.get_ids_ref().clone()),
                     ("account", "=", account.get_id())
                 ]))?;
-            let mut pair = vec![id];
-            pair.extend(exchange_lines.get_ids_ref().iter().copied());
-            let pair: MoveLine<MultipleIds> = MoveLine::from_ids(pair, env);
-            pair.reconcile_in_company_currency(env)?;
+            (line + exchange_lines).reconcile_in_company_currency(env)?;
         }
         Ok(())
     }
@@ -578,24 +575,16 @@ impl MoveLine<MultipleIds> {
                 ("credit_line", "in", group.clone())
             ]))?;
         let lines: MoveLine<MultipleIds> = MoveLine::from_ids(group, env);
-        let fulls: Vec<u32> = {
-            let mut fulls = Vec::new();
-            for line in &lines {
-                let full: FullReconcile<SingleId> = line.get_full_reconcile(env)?;
-                if let Some(id) = full.get_optional_id() {
-                    fulls.push(id);
-                }
-            }
-            fulls.sort_unstable();
-            fulls.dedup();
-            fulls
-        };
+        let fulls: FullReconcile<MultipleIds> = lines.get_full_reconcile(env)?;
         env.delete(
             "account_partial_reconcile",
             &MultipleIds::from(partials.get_ids_ref().clone()),
         )?;
-        if !fulls.is_empty() {
-            env.delete("account_full_reconcile", &MultipleIds::from(fulls))?;
+        if !fulls.get_ids_ref().is_empty() {
+            env.delete(
+                "account_full_reconcile",
+                &MultipleIds::from(fulls.get_ids_ref().clone()),
+            )?;
         }
         lines.refresh_residuals(env)
     }

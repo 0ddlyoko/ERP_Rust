@@ -1041,18 +1041,15 @@ impl Move<MultipleIds> {
                 let reversal = entry.reverse_one(env, None, None)?;
                 let reversal: Move<MultipleIds> = Move::from_ids(vec![reversal.get_id()], env);
                 reversal.action_post(env)?;
-                let mut ids = Vec::new();
-                for line in &entry.get_lines::<MoveLine<MultipleIds>>(env)? {
-                    if matches!(*line.get_display_type(env)?, LineKind::PaymentTerm) {
-                        ids.push(line.get_id());
-                    }
-                }
-                for line in reversal.get_lines::<MoveLine<MultipleIds>>(env)? {
-                    if matches!(*line.get_display_type(env)?, LineKind::PaymentTerm) {
-                        ids.push(line.get_id());
-                    }
-                }
-                MoveLine::<MultipleIds>::from_ids(ids, env).reconcile_lines(env)?;
+                let entry_lines: MoveLine<MultipleIds> = entry.get_lines(env)?;
+                let reversal_lines: MoveLine<MultipleIds> = reversal.get_lines(env)?;
+                let terms = (entry_lines + reversal_lines).filtered(env, |line, env| {
+                    Ok(matches!(
+                        *line.get_display_type(env)?,
+                        LineKind::PaymentTerm
+                    ))
+                })?;
+                terms.reconcile_lines(env)?;
             }
             Ok(true)
         })
