@@ -457,6 +457,16 @@ pub fn derive(item: &DeriveInput) -> Result<TokenStream> {
         {
             #(#impl_model_setters)*
 
+            /// Run `work` on these records with the environment in sudo — what the caller may not
+            /// see or change is reached — and give back what it gives.
+            pub fn as_sudo<R>(
+                &self,
+                env: &mut erp::environment::Environment,
+                work: impl FnOnce(&Self, &mut erp::environment::Environment) -> R,
+            ) -> R {
+                env.sudo_with(|env| work(self, env))
+            }
+
             /// The same records, as another struct of the model — an extension's, to reach its
             /// fields — still loading along with what these load with.
             pub fn as_model<To>(&self) -> To
