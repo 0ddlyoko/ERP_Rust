@@ -148,7 +148,7 @@ impl Quant<SingleId> {
 impl Quant<MultipleIds> {
     /// One line per product and location: a count entered for a place already holding the
     /// product goes on its line, rather than splitting what is there in two.
-    #[erp(on = ["product", "location"])]
+    #[erp(check = ["product", "location"])]
     pub fn check_one_per_location(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
         for quant in self {

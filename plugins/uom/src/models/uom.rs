@@ -103,6 +103,7 @@ impl Uom<SingleId> {
 impl Uom<MultipleIds> {
     /// A reference unit is worth exactly one, a bigger unit more and a smaller one less; a
     /// rounding is positive; a category has a single active reference unit.
+    #[erp(check)]
     pub fn check_ratios(&self, env: &mut Environment) -> Result<()> {
         for uom in self {
             let name = uom.get_name(env)?.clone();

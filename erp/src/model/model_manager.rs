@@ -186,7 +186,8 @@ impl ModelManager {
     }
 
     /// Run `method` after records of the model are created, and after they are written — only
-    /// when a field of `on` changes, if it names some. Declared once however many blocks name it.
+    /// when one of the fields in `on` changes, if it names some. Declared once however many blocks
+    /// name it.
     pub fn register_check(
         &mut self,
         model_name: &str,

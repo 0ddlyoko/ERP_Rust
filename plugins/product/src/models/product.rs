@@ -84,6 +84,7 @@ impl Product<MultipleIds> {
     /// The purchase unit measures what the unit does; a barcode belongs to one product.
     ///
     /// Prices may be negative: a discount or a deposit given back is a product too.
+    #[erp(check)]
     pub fn check_product(&self, env: &mut Environment) -> Result<()> {
         for product in self {
             let name = product.get_name(env)?.clone();

@@ -18,7 +18,7 @@ pub struct UomProduct<Mode: IdMode> {
 impl UomProduct<MultipleIds> {
     /// A unit products use cannot move to another category: their quantities and prices would
     /// suddenly count something else.
-    #[erp(on = ["category"])]
+    #[erp(check = ["category"])]
     pub fn check_not_used(&self, env: &mut Environment) -> Result<()> {
         let env = &mut *env.sudo();
         for uom in self {

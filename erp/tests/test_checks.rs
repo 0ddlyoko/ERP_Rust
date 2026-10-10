@@ -1,5 +1,5 @@
-//! `check_*` methods run on their own once records are created or written: a refusal undoes the
-//! work, and a check naming fields with `on` runs only when one of them is written.
+//! Methods marked `#[erp(check)]` run on their own once records are created or written: a refusal
+//! undoes the work, and a check naming fields runs only when one of them is written.
 
 use erp::app::Application;
 use erp::environment::Environment;
@@ -36,6 +36,7 @@ mod models {
     #[erp_methods]
     impl Parcel<MultipleIds> {
         /// A parcel weighs something.
+        #[erp(check)]
         pub fn check_weight(&self, env: &mut Environment) -> Result<()> {
             for parcel in self {
                 if *parcel.get_weight(env)? <= 0 {
@@ -46,7 +47,7 @@ mod models {
         }
 
         /// Stamps are counted only when they change.
-        #[erp(on = ["stamps"])]
+        #[erp(check = ["stamps"])]
         pub fn check_stamps(&self, env: &mut Environment) -> Result<()> {
             STAMPS_COUNTED.set(STAMPS_COUNTED.get() + 1);
             for parcel in self {
@@ -60,7 +61,13 @@ mod models {
 
     #[erp_methods]
     impl Parcel<SingleId> {
+        /// Named like a check, without being one: never run on its own.
+        pub fn check_label(&self, _env: &mut Environment) -> Result<()> {
+            Err("never run on its own".into())
+        }
+
         /// A parcel has a name, checked one parcel at a time.
+        #[erp(check)]
         pub fn check_name(&self, env: &mut Environment) -> Result<()> {
             if self.get_name(env)?.trim().is_empty() {
                 return Err("A parcel has a name".into());
@@ -121,7 +128,7 @@ fn test_a_check_refuses_a_write() -> Result<()> {
     Ok(())
 }
 
-/// A check `on` fields runs when one of them is written, and not otherwise.
+/// A check naming fields runs when one of them is written, and not otherwise.
 #[test]
 fn test_a_check_on_fields_runs_when_they_change() -> Result<()> {
     let app = new_app();
@@ -144,4 +151,18 @@ fn test_a_check_on_fields_runs_when_they_change() -> Result<()> {
     );
     assert!(letters.set_stamps(11, &mut env).is_err());
     Ok(())
+}
+
+/// A method named like a check but not marked is not run on its own.
+#[test]
+fn test_only_marked_methods_are_checks() {
+    let app = new_app();
+    let checks: Vec<String> = app
+        .model_manager
+        .get_model("parcel")
+        .checks
+        .iter()
+        .map(|check| check.method.clone())
+        .collect();
+    assert_eq!(checks, ["check_weight", "check_stamps", "check_name"]);
 }

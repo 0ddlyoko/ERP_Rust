@@ -88,7 +88,7 @@ impl<'mm> Environment<'mm> {
         })
     }
 
-    /// Whether the model declares `check_*` methods.
+    /// Whether the model declares checks: methods marked `#[erp(check)]`.
     pub(crate) fn has_checks(&self, model_name: &str) -> bool {
         self.model_manager
             .try_get_model(model_name)

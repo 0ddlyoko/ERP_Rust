@@ -33,6 +33,7 @@ pub struct Timesheet<Mode: IdMode> {
 #[erp_methods]
 impl Timesheet<MultipleIds> {
     /// Time is spent on a project, and counted in hours that are not negative.
+    #[erp(check)]
     pub fn check_entries(&self, env: &mut Environment) -> Result<()> {
         for entry in self {
             let project: Project<SingleId> = entry.get_project(env)?;

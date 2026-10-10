@@ -49,8 +49,8 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
             );
         });
 
-        if let Some(per_record) = check_receiver(method) {
-            let on = method.on.clone().unwrap_or_default();
+        if let Some(per_record) = check_receiver(method)? {
+            let on = method.check.clone().unwrap_or_default();
             registrations.push(quote! {
                 model_manager.register_check(
                     <#many as erp::types::model::CommonModel<
@@ -118,17 +118,27 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
     })
 }
 
-/// Whether a method is a check run after records are created or written — a `check_*` method on
-/// records or on one record, taking nothing more and yielding nothing — and if so, whether it is
-/// run for each record in turn.
-fn check_receiver(method: &ParsedMethod) -> Option<bool> {
+/// Whether a method marked `#[erp(check)]` runs for each record in turn — declared on one — or
+/// on all at once; `None` for a method not marked. A check takes nothing but the environment and
+/// yields nothing, on records or on one record.
+fn check_receiver(method: &ParsedMethod) -> Result<Option<bool>> {
+    if method.check.is_none() {
+        return Ok(None);
+    }
     let is_unit = matches!(&method.ret, Type::Tuple(tuple) if tuple.elems.is_empty());
-    let is_check =
-        method.name.to_string().starts_with("check_") && method.args.is_empty() && is_unit;
+    let refused = || {
+        Error::new(
+            method.name.span(),
+            "A check takes &self and the environment only, and returns Result<()>",
+        )
+    };
+    if !method.args.is_empty() || !is_unit || method.has_sup {
+        return Err(refused());
+    }
     match method.receiver {
-        MethodReceiver::Records if is_check => Some(false),
-        MethodReceiver::Record if is_check => Some(true),
-        _ => None,
+        MethodReceiver::Records => Ok(Some(false)),
+        MethodReceiver::Record => Ok(Some(true)),
+        MethodReceiver::Model => Err(refused()),
     }
 }
 

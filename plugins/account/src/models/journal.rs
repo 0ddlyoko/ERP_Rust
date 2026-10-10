@@ -105,6 +105,7 @@ impl Journal<SingleId> {
     }
 
     /// A code is unique among journals and short enough to start a number.
+    #[erp(check)]
     fn check_journal(&self, env: &mut Environment) -> Result<()> {
         let code = self.get_code(env)?.trim().to_string();
         if code.is_empty() || code.len() > 8 {

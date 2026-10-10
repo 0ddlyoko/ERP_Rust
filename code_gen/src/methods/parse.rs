@@ -20,8 +20,8 @@ pub struct ParsedMethod {
     pub ret: Type,
     /// Whether the method answers to a remote caller.
     pub is_rpc: bool,
-    /// For a `check_*` method, the fields whose writing runs it.
-    pub on: Option<Vec<String>>,
+    /// For a check, the fields whose writing runs it: every write when empty.
+    pub check: Option<Vec<String>>,
     /// Whether the method declared a `super` cursor.
     ///
     /// Optional, because most implementations never call the one they override, and a parameter
@@ -35,11 +35,13 @@ pub struct ParsedMethod {
 #[derive(Default)]
 pub struct MethodAttributes {
     pub is_rpc: bool,
-    /// For a `check_*` method: the fields whose writing runs it, every write when none.
-    pub on: Option<Vec<String>>,
+    /// For a check: the fields whose writing runs it, every write when empty.
+    pub check: Option<Vec<String>>,
 }
 
-/// Whether the method is reachable from outside the process, and the fields a check is `on`.
+/// Whether the method is reachable from outside the process, and whether it is a check — run
+/// once records are created, and once they are written: when one of its fields is, if it names
+/// some.
 ///
 /// Overridability is not asked for — every method of an `#[erp_methods]` block has it, the block
 /// being the boundary. Being callable remotely is asked for every time, because the two are
@@ -59,19 +61,26 @@ pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
                     attributes.is_rpc = true;
                     Ok(())
                 }
-                "on" => {
-                    if !item.sig.ident.to_string().starts_with("check_") {
-                        return Err(Error::new(
-                            key.span(),
-                            "Only a check_* method is run `on` fields being written",
-                        ));
+                "check" => {
+                    if attributes.check.is_some() {
+                        return Err(Error::new(attr.span(), "Duplicate #[erp(check)]"));
+                    }
+                    if !input.peek(syn::Token![=]) {
+                        attributes.check = Some(Vec::new());
+                        return Ok(());
                     }
                     input.parse::<syn::Token![=]>()?;
                     let content;
                     syn::bracketed!(content in input);
                     let fields =
                         content.parse_terminated(<syn::LitStr as Parse>::parse, syn::Token![,])?;
-                    attributes.on = Some(fields.iter().map(syn::LitStr::value).collect());
+                    if fields.is_empty() {
+                        return Err(Error::new(
+                            key.span(),
+                            "A check naming no field is written #[erp(check)]: it runs on every write",
+                        ));
+                    }
+                    attributes.check = Some(fields.iter().map(syn::LitStr::value).collect());
                     Ok(())
                 }
                 "overridable" => Err(Error::new(
@@ -82,7 +91,7 @@ pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
                 )),
                 other => Err(Error::new(
                     key.span(),
-                    format!("Unknown key {other}. The keys on a method are: rpc, on"),
+                    format!("Unknown key {other}. The keys on a method are: rpc, check"),
                 )),
             }
         })?;
@@ -98,7 +107,7 @@ pub fn read_method_attributes(item: &ImplItemFn) -> Result<MethodAttributes> {
 /// `&self` works on the records of the block — several on `Model<MultipleIds>`, one on
 /// `Model<SingleId>` — and a method without it works on the model.
 pub fn parse_method(item: ImplItemFn, block: MethodReceiver) -> Result<ParsedMethod> {
-    let MethodAttributes { is_rpc, on } = read_method_attributes(&item)?;
+    let MethodAttributes { is_rpc, check } = read_method_attributes(&item)?;
     let signature_help = "A method of an #[erp_methods] block takes &self — or nothing, to work \
                           on the model — an &mut Environment, its own arguments, and may end with \
                           a `sup: Super` cursor";
@@ -142,7 +151,7 @@ pub fn parse_method(item: ImplItemFn, block: MethodReceiver) -> Result<ParsedMet
         args,
         ret,
         is_rpc,
-        on,
+        check,
         has_sup,
         item,
     })

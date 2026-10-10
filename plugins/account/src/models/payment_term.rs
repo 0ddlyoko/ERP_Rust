@@ -108,6 +108,7 @@ impl PaymentTerm<SingleId> {
 #[erp_methods]
 impl PaymentTerm<MultipleIds> {
     /// A term with installments ends with its balance; one without falls due at once.
+    #[erp(check)]
     pub fn check_terms(&self, env: &mut Environment) -> Result<()> {
         for term in self {
             let installments = term.installments(env)?;

@@ -39,13 +39,13 @@ pub struct FinalInternalModel {
     pub fields: HashMap<String, FinalInternalField>,
     /// Methods a plugin may override, keyed by the name a caller uses.
     pub methods: MethodRegistry,
-    /// The `check_*` methods run once records are created or written.
+    /// The methods marked `#[erp(check)]`, run once records are created or written.
     pub checks: Vec<Check>,
     stored_fields: Vec<String>,
 }
 
-/// A `check_*` method refusing records that break a rule: run after they are created, and after
-/// they are written — only when one of the fields it is `on` changes, if it names some.
+/// A method marked `#[erp(check)]`, refusing records that break a rule: run after they are
+/// created, and after they are written — only when one of the fields it names changes, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Check {
     pub method: String,

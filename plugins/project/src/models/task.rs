@@ -156,7 +156,7 @@ impl Task<SingleId> {
 #[erp_methods]
 impl Task<MultipleIds> {
     /// A task's column is one of its project's board — none without a project.
-    #[erp(on = ["stage", "project"])]
+    #[erp(check = ["stage", "project"])]
     pub fn check_stages(&self, env: &mut Environment) -> Result<()> {
         for task in self {
             let stage: Stage<SingleId> = task.get_stage(env)?;

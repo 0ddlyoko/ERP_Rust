@@ -145,6 +145,7 @@ impl Sequence<SingleId> {
 #[erp_methods]
 impl Sequence<MultipleIds> {
     /// One active series per code; numbers and steps are positive; padding is within reason.
+    #[erp(check)]
     pub fn check_series(&self, env: &mut Environment) -> Result<()> {
         for sequence in self {
             let code = sequence.get_code(env)?.clone();
