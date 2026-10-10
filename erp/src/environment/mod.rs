@@ -223,6 +223,12 @@ impl<'mm> Environment<'mm> {
         }
     }
 
+    /// Run `work` as [`Environment::sudo`] does, and give back what it gives: the sudo lasts as
+    /// long as `work`, not a block written around it.
+    pub fn sudo_with<R>(&mut self, work: impl FnOnce(&mut Environment<'mm>) -> R) -> R {
+        work(&mut self.sudo())
+    }
+
     /// Ask for a plugin to be installed, with what it depends on, once this unit of work is
     /// committed: whoever serves the application installs it then, and serves the application
     /// with it from the next request on. Nothing is asked if the work is rolled back.

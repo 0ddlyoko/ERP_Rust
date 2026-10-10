@@ -269,6 +269,9 @@ fn test_the_process_root_and_sudo_are_not_checked() -> Result<()> {
         Some(uid),
         "sudo does not change who the work is for"
     );
+    user.sudo_with(|env| make_tag(env, "by the user, sudo for a closure"))?;
+    assert!(!user.is_sudo(), "sudo lasts as long as the closure");
+    assert!(make_tag(&mut user, "by the user, again").is_err());
     Ok(())
 }
 
