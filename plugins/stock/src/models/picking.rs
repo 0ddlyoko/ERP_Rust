@@ -353,7 +353,7 @@ impl Picking<MultipleIds> {
                 .into());
             }
         }
-        Ok(sup.call(env)?)
+        sup.call(env)
     }
 
     /// Plan the transfers: their moves wait for the goods, and promise what there is.

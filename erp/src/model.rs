@@ -1,4 +1,5 @@
 mod crud;
+mod cursor;
 mod errors;
 mod iterator;
 mod model_manager;
@@ -10,6 +11,7 @@ pub use crud::{
     CREATE, CreateArgs, DEFAULT_GET, DELETE, DefaultGetArgs, DeleteArgs, ModelVerbs, WRITE,
     WriteArgs,
 };
+pub use cursor::Super;
 pub use errors::*;
 pub use iterator::*;
 pub use model_manager::*;

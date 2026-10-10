@@ -182,7 +182,7 @@ impl MoveLine<MultipleIds> {
                 .unwrap_or_default();
             line.insert("amount_residual_currency", currency);
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// The items of a posted entry are what was recorded: only their matching moves on.
@@ -208,7 +208,7 @@ impl MoveLine<MultipleIds> {
                 }
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// Settle these journal items against each other.

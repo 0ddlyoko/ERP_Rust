@@ -249,7 +249,7 @@ impl PurchaseOrderStock<MultipleIds> {
                 Picking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
             }
         }
-        Ok(sup.call(env)?)
+        sup.call(env)
     }
 }
 
@@ -328,6 +328,6 @@ impl ProductPurchaseStock<MultipleIds> {
                 product.insert("purchase_method", "receive");
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 }

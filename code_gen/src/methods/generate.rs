@@ -185,6 +185,13 @@ fn super_type(method: &ParsedMethod) -> TokenStream {
     quote! { erp::types::method::Super<'_, #args, #ret> }
 }
 
+/// The cursor an override is given: the chain's, answering with an `erp::Error`.
+fn body_super_type(method: &ParsedMethod) -> TokenStream {
+    let args = args_tuple(method);
+    let ret = &method.ret;
+    quote! { erp::model::Super<'_, #args, #ret> }
+}
+
 /// The method as written, under a name nothing calls directly.
 ///
 /// Renaming is what makes the override work: the name the author wrote now belongs to the
@@ -199,7 +206,7 @@ fn renamed_body(method: &ParsedMethod, names: &Names) -> TokenStream {
     // Only when the author asked for a cursor: otherwise the last parameter is an ordinary
     // argument, and rewriting its type would silently replace it.
     if method.has_sup {
-        let sup_ty = super_type(method);
+        let sup_ty = body_super_type(method);
         if let Some(syn::FnArg::Typed(sup)) = func.sig.inputs.last_mut() {
             *sup.ty = syn::parse_quote! { #sup_ty };
         }
@@ -284,7 +291,7 @@ fn link(method: &ParsedMethod, names: &Names, self_ty: &Type) -> TokenStream {
     };
     // A method that never calls the one it overrides does not have to declare the cursor.
     let call = if method.has_sup {
-        quote! { #target #body(env, #(#forwarded,)* sup) }
+        quote! { #target #body(env, #(#forwarded,)* erp::model::Super::new(sup)) }
     } else {
         quote! {
             let _ = sup;

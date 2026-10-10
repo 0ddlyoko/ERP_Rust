@@ -354,6 +354,6 @@ impl InvoiceLine<MultipleIds> {
                 .into());
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 }

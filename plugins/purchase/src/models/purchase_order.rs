@@ -324,7 +324,7 @@ impl PurchaseOrder<MultipleIds> {
                 order.insert("user", uid);
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// A confirmed order keeps its vendor, currency and fiscal position.
@@ -350,7 +350,7 @@ impl PurchaseOrder<MultipleIds> {
                 }
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// Only requests and cancelled orders are deleted; a confirmed order is cancelled.
@@ -364,7 +364,7 @@ impl PurchaseOrder<MultipleIds> {
                 .into());
             }
         }
-        Ok(sup.call(env)?)
+        sup.call(env)
     }
 
     /// Mark the requests as sent to the vendor.

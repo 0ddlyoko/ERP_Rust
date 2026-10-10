@@ -60,8 +60,9 @@ pub fn expand(mut item: ItemImpl) -> Result<TokenStream> {
         let args_tuple = args_tuple(method);
         let ret = &method.ret;
         let sup_ty = quote! { erp::types::method::Super<'_, #args_tuple, #ret> };
+        let body_sup_ty = quote! { erp::model::Super<'_, #args_tuple, #ret> };
 
-        in_impl.push(renamed_body(method, &body, &sup_ty));
+        in_impl.push(renamed_body(method, &body, &body_sup_ty));
         in_impl.push(dispatcher(method));
         free.push(link_fn(
             method,
@@ -335,7 +336,7 @@ fn link_fn(
         quote! { ::core::clone::Clone::clone(&args.#index) }
     });
     let call = if method.has_sup {
-        quote! { controller.#body(env, &args.0, #(#forwarded,)* sup) }
+        quote! { controller.#body(env, &args.0, #(#forwarded,)* erp::model::Super::new(sup)) }
     } else {
         quote! {
             let _ = sup;

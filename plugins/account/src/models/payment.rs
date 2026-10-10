@@ -263,7 +263,7 @@ impl Payment<MultipleIds> {
                 );
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// A confirmed payment keeps what it records: back to draft only through cancelling.
@@ -292,7 +292,7 @@ impl Payment<MultipleIds> {
                 }
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// Confirm the payments: each records its entry, and settles the invoices it pays.

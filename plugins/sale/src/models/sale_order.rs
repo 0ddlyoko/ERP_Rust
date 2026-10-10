@@ -395,7 +395,7 @@ impl SaleOrder<MultipleIds> {
                 );
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// A confirmed order keeps its customer, currency and prices; a cancelled one stays as it
@@ -422,7 +422,7 @@ impl SaleOrder<MultipleIds> {
                 }
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// Only quotations and cancelled orders are deleted; a confirmed order is cancelled.
@@ -436,7 +436,7 @@ impl SaleOrder<MultipleIds> {
                 .into());
             }
         }
-        Ok(sup.call(env)?)
+        sup.call(env)
     }
 
     /// Mark the quotations as sent to the customer.

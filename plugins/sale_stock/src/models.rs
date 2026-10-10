@@ -212,7 +212,7 @@ impl SaleOrderStock<MultipleIds> {
                 Picking::<MultipleIds>::from_ids(open, env).action_cancel(env)?;
             }
         }
-        Ok(sup.call(env)?)
+        sup.call(env)
     }
 }
 
@@ -291,6 +291,6 @@ impl ProductSaleStock<MultipleIds> {
                 product.insert("invoice_policy", "delivery");
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 }

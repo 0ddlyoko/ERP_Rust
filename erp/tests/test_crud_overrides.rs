@@ -15,9 +15,8 @@ mod notes {
     use erp::environment::Environment;
     use erp::types::field::{IdMode, MultipleIds, Reference, SingleId};
     use erp::types::model::MapOfFields;
-    use std::error::Error;
 
-    type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+    use erp::Result;
 
     #[derive(Model)]
     #[erp(id = "shelf")]

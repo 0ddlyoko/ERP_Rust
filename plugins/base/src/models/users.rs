@@ -115,7 +115,7 @@ impl Users<MultipleIds> {
         for (index, contact) in without.into_iter().zip(contacts) {
             values[index].insert("contact", contact.get_id());
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     /// Exchange credentials for a session.

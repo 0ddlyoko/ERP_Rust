@@ -76,13 +76,13 @@ impl Timesheet<MultipleIds> {
         for entry in &mut values {
             project_of_task(env, entry)?;
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 
     pub fn write(&self, env: &mut Environment, values: MapOfFields, sup: Super) -> Result<()> {
         let mut values = values;
         project_of_task(env, &mut values)?;
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 }
 

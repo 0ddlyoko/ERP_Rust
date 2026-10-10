@@ -58,7 +58,7 @@ impl ProductAccount<MultipleIds> {
                 product.insert("supplier_taxes", FieldType::Refs(vec![tax]));
             }
         }
-        Ok(sup.call_with(values, env)?)
+        sup.call_with(values, env)
     }
 }
 
